@@ -1,20 +1,19 @@
 <?php
 // partials/chat.php
 // Inicia sessão apenas se ainda não iniciada
-if (session_status() == PHP_SESSION_NONE) {
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Captura o ID de usuário da sessão
+// Captura ID do usuário da sessão
 $userId = $_SESSION['user_id'] ?? '';
 
 // Detecta avatar com qualquer extensão disponível
 $avatarDir = $_SERVER['DOCUMENT_ROOT'] . '/OKR_system/assets/img/avatars/';
 $files = glob($avatarDir . $userId . '.*');
 if (!empty($files)) {
-    // usa o primeiro arquivo encontrado
     $avatarUrl = str_replace($_SERVER['DOCUMENT_ROOT'], '', $files[0]);
 } else {
-    // avatar padrão caso não exista
+    // avatar padrão
     $avatarUrl = '/OKR_system/assets/img/avatars/user-avatar.png';
 }
 ?>
@@ -26,7 +25,6 @@ if (!empty($files)) {
     height: 80vh;
     position: sticky;
     top: 5rem;
-    align-self: flex-start;
     display: flex;
     flex-direction: column;
 }
@@ -52,11 +50,13 @@ if (!empty($files)) {
     padding: 10px;
     background: #f9f9f9;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.chat-messages .bot {
-    margin-bottom: 10px;
-    font-size: 0.85rem;
+.chat-messages .bot,
+.chat-messages .user {
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
@@ -69,26 +69,26 @@ if (!empty($files)) {
     flex-shrink: 0;
 }
 
-.bot-message {
+.bot .bot-message,
+.user .user-message {
+    padding: 8px 12px;
+    border-radius: 8px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.bot .bot-message {
     background: #fff;
-    padding: 8px 12px;
-    border-radius: 8px;
-    max-width: 80%;
+    font-size: 0.75rem;
 }
 
-.chat-box .user {
-    display: flex;
+.user {
     justify-content: flex-end;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin-bottom: 10px;
 }
 
-.user-message {
+.user .user-message {
     background: #dcf8c6;
-    padding: 8px 12px;
-    border-radius: 8px;
-    max-width: 80%;
+    font-size: 0.75rem;
 }
 
 .chat-input {
@@ -102,7 +102,7 @@ if (!empty($files)) {
 .chat-input input {
     flex: 1;
     padding: 0.75rem 1rem;
-    font-size: 1rem;
+    font-size: 0.75rem;
     border: 1px solid #ccc;
     border-radius: 20px;
     outline: none;
@@ -112,7 +112,6 @@ if (!empty($files)) {
 .chat-input button {
     width: 40px;
     height: 40px;
-    padding: 0;
     border: none;
     background: #128C7E;
     border-radius: 50%;
@@ -126,16 +125,16 @@ if (!empty($files)) {
 
 <div class="chat-container">
     <div class="chat-box">
-        <div class="chat-header">Assistente</div>
-        <div class="chat-messages">
+        <div class="chat-header">OKR Master</div>
+        <div class="chat-messages" id="chat_messages">
             <div class="bot">
                 <img src="/OKR_system/assets/img/avatars/1.png" alt="Avatar" class="chat-avatar">
-                <div class="bot-message">Se quiser compartilhar o que deseja ou dúvidas, me chame aqui e podemos montar o objetivo juntos.</div>
+                <div class="bot-message">Se quiser compartilhar o que deseja ou houver dúvidas, me chame aqui 😉.</div>
             </div>
         </div>
         <div class="chat-input">
-            <input type="text" id="chat_message" class="form-control" placeholder="Digite uma mensagem...">
-            <button id="chat_send" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+            <input type="text" id="chat_message" placeholder="Digite uma mensagem...">
+            <button id="chat_send"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 </div>
@@ -143,45 +142,43 @@ if (!empty($files)) {
 <script>
 (async function() {
     const userAvatarUrl = '<?php echo addslashes($avatarUrl); ?>';
-    const messagesContainer = document.querySelector('.chat-messages');
+    const messagesContainer = document.getElementById('chat_messages');
     const chatInput = document.getElementById('chat_message');
     const chatSendBtn = document.getElementById('chat_send');
 
-    function appendBotMessage(text) {
+    function appendMessage(role, text) {
         const msgEl = document.createElement('div');
-        msgEl.className = 'bot';
-        msgEl.innerHTML = `
-            <img src="/OKR_system/assets/img/avatars/1.png" class="chat-avatar">
-            <div class="bot-message">${text}</div>
-        `;
-        messagesContainer.appendChild(msgEl);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function appendUserMessage(text) {
-        const msgEl = document.createElement('div');
-        msgEl.className = 'user';
-        msgEl.innerHTML = `
-            <div class="user-message">${text}</div>
-            <img src="${userAvatarUrl}" class="user-avatar">
-        `;
+        msgEl.className = role;
+        if (role === 'bot') {
+            msgEl.innerHTML = `
+                <img src="/OKR_system/assets/img/avatars/1.png" class="chat-avatar" alt="Assistente">
+                <div class="bot-message">${text}</div>
+            `;
+        } else {
+            msgEl.innerHTML = `
+                <div class="user-message">${text}</div>
+                <img src="${userAvatarUrl}" class="user-avatar" alt="Você">
+            `;
+        }
         messagesContainer.appendChild(msgEl);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
     async function sendMessage(text) {
-        appendUserMessage(text);
+        appendMessage('user', text);
         try {
-            const res = await fetch('/OKR_system/api/chat_api.php', {
+            // Usa caminho absoluto baseado no domínio atual
+            const apiUrl = `${window.location.origin}/OKR_system/api/chat_api.php`;
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text })
             });
-            const { reply } = await res.json();
-            appendBotMessage(reply);
+            const data = await res.json();
+            appendMessage('bot', data.reply || 'Sem resposta do servidor.');
         } catch (err) {
             console.error(err);
-            appendBotMessage('Desculpe, ocorreu um erro ao processar sua mensagem.');
+            appendMessage('bot', 'Erro ao processar sua mensagem.');
         }
     }
 
@@ -200,3 +197,5 @@ if (!empty($files)) {
     });
 })();
 </script>
+
+<!-- acabou -->

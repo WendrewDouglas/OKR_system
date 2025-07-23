@@ -1,43 +1,85 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';  // ajuste o caminho
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
-$apiKey = $_ENV['OPENAI_API_KEY'];
+// api/chat_api.php
+try {
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    error_reporting(0);
 
-header('Content-Type: application/json');
-$input = json_decode(file_get_contents('php://input'), true);
-$message = $input['message'] ?? '';
+    // Autoload
+    $autoloadPath = __DIR__ . '/../vendor/autoload.php';  // OKR_system/vendor/autoload.php
+    if (!file_exists($autoloadPath)) {
+        throw new Exception('Arquivo vendor/autoload.php não encontrado. Execute composer install.');
+    }
+    require $autoloadPath;
 
-if (!$apiKey) {
-    http_response_code(500);
-    echo json_encode(['reply' => 'Chave da API não configurada.']);
-    exit;
-}
+    // Carrega .env da raiz do OKR_system
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->load();
 
-$data = [
-    'model' => 'gpt-3.5-turbo',
-    'messages' => [
-        ['role' => 'system', 'content' => 'Você é um assistente útil.'],
-        ['role' => 'user', 'content' => $message]
-    ]
-];
+    header('Content-Type: application/json; charset=utf-8');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Headers: Content-Type');
 
-$ch = curl_init('https://api.openai.com/v1/chat/completions');
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Bearer ' . $apiKey,
-    'Content-Type: application/json'
-]);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    // Obtém chave e prompt
+    //$apiKey = getenv('OPENAI_API_KEY');
+    $apiKey = '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';
+    $systemPrompt = getenv('CHAT_SYSTEM_PROMPT') ?: 'Você é um assistente útil especialista em OKRs. Responda de forma curta, breve e direta como se estivesse em um chat. pode incluir emojis.';
+    if (!$apiKey) {
+        throw new Exception('OPENAI_API_KEY não configurada.');
+    }
 
-$response = curl_exec($ch);
-if (curl_errno($ch)) {
-    $reply = 'Erro ao conectar à API.';
-} else {
+    // Lê entrada JSON
+    $raw = file_get_contents('php://input');
+    $input = json_decode($raw, true);
+    if (!is_array($input) || empty($input['message'])) {
+        throw new Exception('Mensagem inválida ou vazia no request.');
+    }
+    $message = trim($input['message']);
+
+    // Prepara payload para OpenAI
+    $payload = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user',   'content' => $message]
+        ]
+    ];
+
+    // Executa cURL
+    $ch = curl_init('https://api.openai.com/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey
+        ],
+        CURLOPT_POSTFIELDS     => json_encode($payload)
+    ]);
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        throw new Exception('cURL Error: ' . $curlErr);
+    }
+    if ($status < 200 || $status >= 300) {
+        throw new Exception("OpenAI retornou status $status: $response");
+    }
+
+    // Decodifica resposta
     $resp = json_decode($response, true);
-    $reply = $resp['choices'][0]['message']['content'] ?? 'Sem resposta.';
-}
-curl_close($ch);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Resposta OpenAI JSON inválido: ' . json_last_error_msg());
+    }
 
-echo json_encode(['reply' => $reply]);
+    // Extrai e imprime
+    $replyText = $resp['choices'][0]['message']['content'] ?? 'Sem resposta.';
+    echo json_encode(['reply' => $replyText]);
+
+} catch (Exception $e) {
+    error_log('Chat API Error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['reply' => 'Erro interno no servidor.', 'error' => $e->getMessage()]);
+}
