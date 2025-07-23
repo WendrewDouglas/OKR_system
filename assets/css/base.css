@@ -1,0 +1,36 @@
+/* ----------------------------
+ * Resets & Normalização
+ * ---------------------------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ----------------------------
+ * Tipografia Global
+ * ---------------------------- */
+:root {
+  --font-family: 'Inter', sans-serif;
+  --font-size-base: 1rem;
+  --line-height-base: 1.5;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: #333;
+}
+
+/* ----------------------------
+ * Variáveis de Cor (genéricas)
+ * ---------------------------- */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --gray-100: #f8f9fa;
+  --gray-900: #212529;
+}

@@ -1,0 +1,55 @@
+/* Full‐screen centering */
+.fullscreen-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background-color: var(--gray-100);
+}
+
+/* Login card dimensions */
+.login-card {
+  display: flex;
+  flex-direction: row;
+  width: 70vw;                /* 70% da largura da viewport */
+  height: 90vh;               /* 80% da altura da viewport */
+  max-width: 1200px;          /* tamanho máximo */
+  max-height: 800px;          /* tamanho máximo */
+  background-color: var(--white);
+  border: 1px solid #e0e0e0;  /* cinza claro */
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
+  overflow: hidden;           /* sem scroll nos filhos */
+}
+
+/* Divide exatamente ao meio */
+.login-illustration {
+  background-image: url('/OKR_system/assets/img/illustration-okrs.png');
+  background-size: cover;      /* preenche todo o bloco */
+  background-position: center; /* centraliza o foco */
+  background-repeat: no-repeat;
+  flex: 1;
+}
+
+.login-form-wrapper {
+  padding: 2rem 2rem;       /* mantém horizontal e aumenta vertical */
+  flex: 1;
+  display: flex;
+  max-height: 90vh; /* igual à altura do card */
+  flex-direction: column;
+  justify-content: flex-start; /* alinha ao topo */
+  overflow-y: auto;             /* caso precise, permite scroll interno */
+}
+
+/* Mobile: empilha e ajusta altura */
+@media (max-width: 991px) {
+  .login-card {
+    flex-direction: column;
+    width: 90vw;
+    height: auto;
+  }
+  .login-illustration {
+    display: none;            /* esconde ilustração no mobile */
+  }
+}

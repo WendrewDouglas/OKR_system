@@ -1,0 +1,266 @@
+<?php
+// partials/sidebar.php
+// só inicia sessão se ainda não estiver ativa
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$currentPath      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$isDashboard      = ($currentPath === '/OKR_system/views/dashboard.php');
+$isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
+$isReports        = in_array($currentPath, [
+    '/OKR_system/views/rel_vendas.php',
+    '/OKR_system/views/rel_desempenho.php'
+]);
+$isConfig         = ($currentPath === '/OKR_system/views/configuracoes.php');
+$newMessages      = $_SESSION['new_messages'] ?? 0;
+?>
+
+<!-- ====== SIDEBAR ====== -->
+<style>
+:root {
+  --sidebar-width: 250px;
+  --sidebar-collapsed: 60px;
+  --transition-speed: 0.3s;
+}
+/* Sidebar width states */
+.sidebar {
+  width: var(--sidebar-width);
+  background: #222222;
+  color: #f1c40f;
+  transition: width var(--transition-speed);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+body.collapsed .sidebar {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+}
+.sidebar-header .menu-toggle {
+  font-size: 1.5rem;
+  color: #f1c40f;
+  cursor: pointer;
+}
+.sidebar-header .toggle-text {
+  margin-left: 0.5rem;
+  color: #f1c40f;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  user-select: none;
+  cursor: pointer;
+}
+body.collapsed .sidebar-header .toggle-text {
+  display: none;
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+.sidebar li {
+  display: block;
+}
+
+.sidebar .menu-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background var(--transition-speed);
+}
+.sidebar .menu-item:hover {
+  background: #4e4e4e;
+}
+.sidebar .menu-item i.icon-main {
+  min-width: 24px;
+  text-align: center;
+  margin-right: 1rem;
+}
+.sidebar .menu-item span {
+  flex: 1;
+}
+.sidebar .menu-item.active {
+  background: #f1c40f;
+  color: #222222;
+}
+.sidebar .menu-item.active i,
+.sidebar .menu-item.active span {
+  color: inherit;
+}
+body.collapsed .sidebar .menu-item span,
+body.collapsed .sidebar .menu-item .icon-chevron {
+  display: none;
+}
+/* Hide submenu text when collapsed */
+body.collapsed .sidebar .submenu li span {
+  display: none;
+}
+
+/* Submenu styles */
+.submenu {
+  display: none;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.submenu li {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 1rem;
+  cursor: pointer;
+  transition: background var(--transition-speed);
+  color: #ccc;
+}
+.submenu li:hover {
+  background: #4e4e4e;
+}
+.submenu li i {
+  min-width: 24px;
+  text-align: center;
+  margin-right: 1rem;
+  font-size: 0.75rem;
+  color: #ccc;
+}
+.submenu li span {
+  color: #ccc;
+}
+.submenu li.active {
+  background: #f1c40f;
+  color: #222222;
+}
+.submenu li.active i,
+.submenu li.active span {
+  color: inherit;
+}
+
+.sidebar li.open > .submenu {
+  display: block;
+}
+</style>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="menu-toggle fas fa-chevron-left" onclick="toggleSidebar()"></i>
+    <span class="toggle-text" onclick="toggleSidebar()">Recolher menu</span>
+  </div>
+  <ul>
+    <li>
+      <div class="menu-item <?= $isDashboard ? 'active' : '' ?>"
+           data-href="/OKR_system/views/dashboard.php"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-tachometer-alt icon-main"></i><span>Dashboard</span>
+      </div>
+    </li>
+    <li>
+      <div class="menu-item <?= $isNewObjective ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-plus icon-main"></i><span>Novo Objetivo</span>
+      </div>
+    </li>
+    <li class="<?= $isReports ? 'open' : '' ?>">
+      <div class="menu-item <?= $isReports ? 'active' : '' ?>"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-chart-line icon-main"></i><span>Relatórios</span><i class="fas fa-chevron-down icon-chevron"></i>
+      </div>
+      <ul class="submenu">
+        <li class="<?= ($currentPath === '/OKR_system/views/rel_vendas.php') ? 'active' : '' ?>"
+            data-href="/OKR_system/views/rel_vendas.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-shopping-cart"></i><span>Vendas</span>
+        </li>
+        <li class="<?= ($currentPath === '/OKR_system/views/rel_desempenho.php') ? 'active' : '' ?>"
+            data-href="/OKR_system/views/rel_desempenho.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-chart-bar"></i><span>Desempenho</span>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <div class="menu-item <?= $isConfig ? 'active' : '' ?>"
+           data-href="/OKR_system/views/configuracoes.php"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-cog icon-main"></i><span>Configurações</span>
+      </div>
+    </li>
+  </ul>
+</aside>
+
+<script>
+function clearActive() {
+  document.querySelectorAll('.menu-item.active, .submenu li.active')
+          .forEach(el => el.classList.remove('active'));
+}
+function onMenuClick(el) {
+  const li = el.parentElement,
+        submenu = li.querySelector('.submenu');
+  if (submenu) {
+    if (document.body.classList.contains('collapsed'))
+      document.body.classList.remove('collapsed');
+    li.classList.toggle('open');
+  } else {
+    clearActive();
+    el.classList.add('active');
+    window.location = el.getAttribute('data-href');
+  }
+}
+function onSubmenuClick(el) {
+  if (document.body.classList.contains('collapsed'))
+    document.body.classList.remove('collapsed');
+  clearActive();
+  el.closest('li').classList.add('open');
+  el.classList.add('active');
+  window.location = el.getAttribute('data-href');
+}
+function autoCollapse() {
+  if (window.innerWidth <= 768) {
+    document.body.classList.add('collapsed');
+  } else {
+    document.body.classList.remove('collapsed');
+  }
+}
+function updateToggleIcon() {
+  const toggle = document.querySelector('.menu-toggle');
+  if (document.body.classList.contains('collapsed')) {
+    toggle.classList.remove('fa-chevron-left');
+    toggle.classList.add('fa-chevron-right');
+  } else {
+    toggle.classList.remove('fa-chevron-right');
+    toggle.classList.add('fa-chevron-left');
+  }
+}
+function toggleSidebar() {
+  document.body.classList.toggle('collapsed');
+  updateToggleIcon();
+  document.querySelector('.toggle-text').textContent =
+    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+}
+window.addEventListener('DOMContentLoaded', () => {
+  autoCollapse();
+  updateToggleIcon();
+  document.querySelector('.toggle-text').textContent =
+    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+});
+window.addEventListener('resize', () => {
+  autoCollapse();
+  updateToggleIcon();
+  document.querySelector('.toggle-text').textContent =
+    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+});
+</script>

@@ -1,0 +1,24 @@
+public_html/
+├── wp-content/
+├── wp-admin/
+├── wp-includes/
+├── index.php ← do WordPress
+├── .htaccess ← do WordPress
+└── OKR_system/
+    ├── index.php ← seu roteador de URLs amigáveis
+    ├── .htaccess ← que redireciona para index.php
+    ├── assets
+    │   ├── css
+    │   │   ├── base.css         /* reset, tipografia, variáveis de cor */
+    │   │   ├── layout.css       /* grid, containers, posicionamento */
+    │   │   ├── components.css   /* botões, cards, formulários */
+    │   │   └── theme.css        /* paleta de cores específica, overrides */
+    │   └── js
+    │       └── scripts.js
+    ├── auth
+    │   ├── auth_logout.php
+    │   └── auth_login.php
+    ├── views/
+    │   ├── login.php
+    │   ├── dashboard.php
+    │   └── password_reset_request.php

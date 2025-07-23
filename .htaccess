@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /OKR_system/
+
+  # Redireciona todas as requisições que não forem arquivos ou pastas reais
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Redireciona para index.php com o parâmetro da rota
+  RewriteRule ^(.+)$ index.php?path=$1 [QSA,L]
+</IfModule>

@@ -1,0 +1,109 @@
+/* ----------------------------
+ * Botões
+ * ---------------------------- */
+.btn {
+  display: inline-block;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  padding: .6rem 1rem;
+  border-radius: .5rem;
+  transition: background-color .2s ease;
+}
+
+/* Cards */
+.card {
+  background-color: var(--white);
+  border-radius: .75rem;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+}
+
+/* Formulários */
+.form-label {
+  font-weight: 500;
+}
+.form-control {
+  border-radius: .5rem;
+  padding: .75rem;
+}
+
+/* 1. Aumentar espaçamento entre os campos do formulário */
+.mb-3 {
+  margin-bottom: 1.75rem !important; /* de 1rem para 1.75rem */
+}
+
+/* 2. Centralizar o conteúdo do form e ajustar largura */
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Inputs e botão com largura fixa mas responsiva */
+.form-control,
+.btn-primary {
+  width: 100%;
+  max-width: 300px; /* ou ajuste para o tamanho que preferir */
+}
+
+/* 3. Estilizar o link “Esqueci minha senha” */
+.password-reset-link {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #007bff;           /* azul padrão de link */
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* Em hover, escurecer um pouco */
+.password-reset-link:hover {
+  color: #0056b3;
+  text-decoration: none;
+}
+
+/* Card principal */
+.login-card {
+  background-color: var(--white);
+  border: 1px solid rgba(0,0,0,0.05);  /* borda leve */
+  border-radius: 1rem;                  /* cantos arredondados */
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08); /* sombra suave */
+  display: flex;
+  flex-direction: column;               /* padrão mobile; será sobrescrito em desktop */
+  padding: 0;                           /* padding será aplicado nos filhos */
+  overflow: hidden;                     /* garante cantos arredondados */
+}
+
+/* Em desktop, alinhar imagem + conteúdo lado a lado */
+@media (min-width: 992px) {
+  .login-card {
+    flex-direction: row;
+  }
+}
+
+/* Área da ilustração */
+.login-illustration {
+  display: none;  /* escondido no mobile */
+}
+
+@media (min-width: 992px) {
+  .login-illustration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--light-gray);
+    padding: 2rem;
+    flex: 1;      /* ocupa metade do card */
+  }
+}
+
+/* Área do formulário */
+.login-form-wrapper {
+  padding: 2rem;
+  flex: 1;        /* ocupa metade do card */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
