@@ -20,9 +20,25 @@ try {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Headers: Content-Type');
 
-    // Obtém chave e prompt
-    //$apiKey = getenv('OPENAI_API_KEY');
-    $apiKey = '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';
+    // Carrega variáveis de ambiente do .env (um nível acima de auth)
+    $envFile = dirname(__DIR__) . '/.env';
+    if (file_exists($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '#') === 0) continue;
+            list($name, $value) = explode('=', $line, 2);
+            $name  = trim($name);
+            $value = trim($value, " \t\n\r\0\x0B'\"");
+            putenv("{$name}={$value}");
+        }
+    }
+    $apiKey = getenv('OPENAI_API_KEY');
+    if (!$apiKey) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Chave de API da OpenAI não encontrada']);
+        exit;
+    }
+
     $systemPrompt = getenv('CHAT_SYSTEM_PROMPT') ?: 'Você é um assistente útil especialista em OKRs. Responda de forma curta, breve e direta como se estivesse em um chat. pode incluir emojis.';
     if (!$apiKey) {
         throw new Exception('OPENAI_API_KEY não configurada.');

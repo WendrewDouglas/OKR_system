@@ -22,12 +22,13 @@ if (!isset($_SESSION['user_id'])) {
         integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
         crossorigin="anonymous" referrerpolicy="no-referrer"/>
 </head>
-<body class="collapsed">
+<body>
   <?php include __DIR__ . '/partials/sidebar.php'; ?>
   <div class="content">
     <?php include __DIR__ . '/partials/header.php'; ?>
-    <main style="padding:1rem;">
-      <!-- Conteúdo específico do Dashboard -->
+
+    <!-- Conteúdo principal com ID para deslocamento -->
+    <main id="main-content" style="padding:1rem;">
       <h1>Bem-vindo, <?= htmlspecialchars($_SESSION['user_name'] ?? 'Usuário') ?></h1>
       <section class="dashboard-cards">
         <div class="card">
@@ -40,7 +41,12 @@ if (!isset($_SESSION['user_id'])) {
         </div>
       </section>
     </main>
+
+    <!-- Chat -->
+    <?php include __DIR__ . '/partials/chat.php'; ?>
+
   </div>
+
   <!-- Scripts Globais -->
   <script>
     // Se houver toggle de submenu, já está no sidebar.js inline
@@ -48,3 +54,5 @@ if (!isset($_SESSION['user_id'])) {
   </script>
 </body>
 </html>
+
+<!-- acabou -->

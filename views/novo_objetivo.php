@@ -34,8 +34,16 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // Buscar usuários para campo Responsável(es)
-$stmt = $pdo->query("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios ORDER BY primeiro_nome");
-$users = $stmt->fetchAll();
+$usersStmt = $pdo->query("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios ORDER BY primeiro_nome");
+$users = $usersStmt->fetchAll();
+
+// Buscar pilares BSC do domínio, respeitando ordem_pilar
+$pilaresStmt = $pdo->query("SELECT id_pilar, descricao_exibicao FROM dom_pilar_bsc ORDER BY ordem_pilar");
+$pilares = $pilaresStmt->fetchAll();
+
+// Buscar tipos de objetivo do domínio
+$tiposStmt = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao");
+$tipos = $tiposStmt->fetchAll();
 
 // Data mínima para seleção de data futura
 $minDate = date('Y-m-d', strtotime('+1 day'));
@@ -88,16 +96,71 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
         .dropdown-list li:hover { background:#f1f1f1; }
         .d-none { display:none; }
         .warning-text { color:#dc3545; font-size:0.875rem; margin-top:4px; }
+        /* Overlays para AI e carregamento */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        /* garante que .d-none oculte a overlay mesmo com .overlay */
+        .overlay.d-none {
+            display: none !important;
+        }
+        .overlay-content {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 6px;
+            text-align: center;
+            max-width: 90%;
+        }
+        .evaluation-actions { margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; }
+        /* Card da avaliação */
+        .overlay-content.card {
+        max-width: 500px;
+        border-radius: 1rem;
+        background-color: #fff;
+        }
+
+        /* Caixa da nota */
+        .score-box {
+        background: rgba(13,110,253,0.1);
+        border-radius: 0.5rem;
+        padding: 1rem 0;
+        }
+
+        /* Justificativa */
+        .justification {
+        font-size: 1rem;
+        line-height: 1.5;
+        }
+
+        /* Ações (botões) */
+        .evaluation-actions .btn {
+        transition: background-color .2s, transform .2s;
+        }
+        .evaluation-actions .btn:hover {
+        transform: translateY(-2px);
+        }
+        /* Dentro do seu <style> existente */
+        #saveMessageOverlay .overlay-content.card {
+        max-width: 500px;
+        border-radius: 1rem;
+        background-color: #fff;
+        }
     </style>
 </head>
-<body class="collapsed">
+<body>
     <?php include __DIR__ . '/../views/partials/sidebar.php'; ?>
     <div class="content">
         <?php include __DIR__ . '/../views/partials/header.php'; ?>
-        <main class="main-wrapper">
+        <main id="main-content" class="main-wrapper">
             <!-- Formulário -->
             <div class="form-container">
                 <h1><i class="fas fa-bullseye info-inline"></i>Cadastrar Novo Objetivo</h1>
+
                 <?php if (!empty($errors)): ?>
                     <div class="alert alert-danger"><ul>
                         <?php foreach($errors as $e): ?>
@@ -105,8 +168,10 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                         <?php endforeach; ?>
                     </ul></div>
                 <?php endif; ?>
-                <form action="/OKR_system/controllers/objetivos_salvar.php" method="post" novalidate>
+
+                <form id="objectiveForm" action="/OKR_system/controllers/objetivos_salvar.php" method="post" novalidate>
                     <input type="hidden" name="csrf_token" value="<?=htmlspecialchars($_SESSION['csrf_token'])?>">
+
                     <!-- Nome -->
                     <div class="form-group">
                         <label for="nome_objetivo">
@@ -115,6 +180,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                         </label>
                         <input type="text" id="nome_objetivo" name="nome_objetivo" class="form-control" required>
                     </div>
+
                     <!-- Ano e Tipo -->
                     <div class="form-two-col">
                         <div class="form-group">
@@ -131,12 +197,15 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                             </label>
                             <select id="tipo_objetivo" name="tipo_objetivo" class="form-control" required>
                                 <option value="">Selecione...</option>
-                                <option value="estratégico">Estratégico</option>
-                                <option value="operacional">Operacional</option>
-                                <option value="tático">Tático</option>
+                                <?php foreach ($tipos as $t): ?>
+                                    <option value="<?=htmlspecialchars($t['id_tipo'])?>">
+                                        <?=htmlspecialchars($t['descricao_exibicao'])?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
+
                     <!-- Pilar e Prazo -->
                     <div class="form-two-col">
                         <div class="form-group">
@@ -146,10 +215,11 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                             </label>
                             <select id="pilar_bsc" name="pilar_bsc" class="form-control" required>
                                 <option value="">Selecione...</option>
-                                <option value="Financeiro">Financeiro</option>
-                                <option value="Clientes">Clientes</option>
-                                <option value="Processos">Processos</option>
-                                <option value="Aprendizado">Aprendizado</option>
+                                <?php foreach ($pilares as $p): ?>
+                                    <option value="<?=htmlspecialchars($p['id_pilar'])?>">
+                                        <?=htmlspecialchars($p['descricao_exibicao'])?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="form-group">
@@ -160,6 +230,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                             <input type="date" id="prazo_final" name="prazo_final" class="form-control" min="<?=$minDate?>" required>
                         </div>
                     </div>
+
                     <!-- Responsáveis -->
                     <div class="form-group">
                         <label>
@@ -183,6 +254,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                             ⚠️ Ao ter um único responsável por cada OKR, evitam-se ambiguidades e garante-se foco na execução e no acompanhamento dos resultados.
                         </small>
                     </div>
+
                     <!-- Observações -->
                     <div class="form-group">
                         <label for="observacoes">
@@ -191,6 +263,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                         </label>
                         <textarea id="observacoes" name="observacoes" class="form-control" rows="4"></textarea>
                     </div>
+
                     <button type="submit" class="btn btn-primary btn-save">Salvar Objetivo</button>
                 </form>
             </div>
@@ -201,28 +274,74 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
         </main>
     </div>
 
+    <!-- Overlays para carregamento e IA -->
+    <div id="loadingOverlay" class="overlay d-none">
+        <div class="overlay-content">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Carregando objetivo...</p>
+        </div>
+    </div>
+
+    <div id="evaluationOverlay" class="overlay d-none">
+    <div class="overlay-content card p-4 shadow-lg">
+        <h2 class="mb-4 text-center">Considerações sobre o objetivo</h2>
+
+        <!-- Nova área de destaque da nota -->
+        <div class="score-box text-center mb-4">
+        <span class="score-value display-1 fw-bold text-primary"></span>
+        </div>
+
+        <!-- Justificativa -->
+        <div id="evaluationResult" class="justification text-muted mb-4"></div>
+
+        <div class="evaluation-actions d-flex justify-content-center gap-3">
+        <!-- Botões mais modernos -->
+        <button id="saveObjective" class="btn btn-primary btn-lg rounded-pill px-4">
+            <i class="fas fa-check me-2"></i> Continuar e Salvar
+        </button>
+        <button id="editObjective" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
+            <i class="fas fa-pen me-2"></i>Editar
+        </button>
+        </div>
+    </div>
+    </div>
+
+    <div id="saveMessageOverlay" class="overlay d-none">
+    <div class="overlay-content card p-4 shadow-lg text-center">
+        <p class="mb-3">
+        Objetivo salvo! Aguarde aprovação do objetivo.<br>
+        Enquanto isso poderá consultá-lo em Meus OKRs.
+        </p>
+        <button id="closeSaveMessage" class="btn btn-primary btn-lg rounded-pill px-4">
+        <i class="fas fa-check me-2"></i> OK
+        </button>
+    </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Multi-select chips logic
         const inputResp = document.getElementById('responsavel_input');
         const listContainer = document.getElementById('responsavel_list');
-        const container = document.getElementById('responsavel_container');
+        const containerChips = document.getElementById('responsavel_container');
         const hiddenResp = document.getElementById('responsavel');
         const warning = document.getElementById('responsavel_warning');
 
         inputResp.addEventListener('focus', () => listContainer.classList.remove('d-none'));
         inputResp.addEventListener('click', () => listContainer.classList.remove('d-none'));
         document.addEventListener('click', e => {
-            if (!container.contains(e.target) && !listContainer.contains(e.target)) {
+            if (!containerChips.contains(e.target) && !listContainer.contains(e.target)) {
                 listContainer.classList.add('d-none');
             }
         });
+
         inputResp.addEventListener('input', () => {
             const filter = inputResp.value.toLowerCase();
             listContainer.querySelectorAll('li').forEach(li => {
                 li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
         });
+
         listContainer.querySelectorAll('li').forEach(li => {
             li.addEventListener('click', () => {
                 const text = li.textContent;
@@ -233,26 +352,89 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                 removeBtn.className = 'remove-chip';
                 removeBtn.innerHTML = '&times;';
                 removeBtn.addEventListener('click', () => {
-                    chip.remove(); updateHidden(); inputResp.style.display = 'block';
+                    chip.remove();
+                    updateHidden();
+                    inputResp.style.display = 'block';
                 });
                 chip.appendChild(removeBtn);
-                container.insertBefore(chip, inputResp);
+                containerChips.insertBefore(chip, inputResp);
                 inputResp.value = '';
-                updateHidden(); inputResp.style.display = 'none';
+                updateHidden();
+                inputResp.style.display = 'none';
             });
         });
+
         function updateHidden() {
-            const chips = Array.from(container.querySelectorAll('.chip'));
+            const chips = Array.from(containerChips.querySelectorAll('.chip'));
             const ids = chips.map(ch => {
-                const li = Array.from(listContainer.querySelectorAll('li')).find(l => l.textContent === ch.firstChild.textContent);
+                const name = ch.firstChild.textContent;
+                const li = Array.from(listContainer.querySelectorAll('li')).find(l => l.textContent === name);
                 return li ? li.dataset.id : null;
             }).filter(Boolean);
             hiddenResp.value = ids.join(',');
-            if (ids.length > 1) warning.classList.remove('d-none'); else warning.classList.add('d-none');
+            if (ids.length > 1) warning.classList.remove('d-none');
+            else warning.classList.add('d-none');
         }
+
         // Tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipTriggerList = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')];
         tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+
+        // AI evaluation on submit
+        const form = document.getElementById('objectiveForm');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            formData.append('evaluate', '1');
+
+            // exibe tela de carregamento
+            document.getElementById('loadingOverlay').classList.remove('d-none');
+
+            try {
+                const res = await fetch('/OKR_system/auth/salvar_objetivo.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json(); // espera { score: number, justification: string }
+
+                // oculta carregamento, mostra avaliação
+                document.getElementById('loadingOverlay').classList.add('d-none');
+                const evalDiv = document.getElementById('evaluationResult');
+                document.querySelector('.score-value').textContent = data.score;
+                document.getElementById('evaluationResult').textContent = data.justification;
+                document.getElementById('evaluationOverlay').classList.remove('d-none');
+
+                // salvar após avaliação
+                document.getElementById('saveObjective').onclick = async () => {
+                    document.getElementById('evaluationOverlay').classList.add('d-none');
+                    document.getElementById('loadingOverlay').classList.remove('d-none');
+                    formData.set('evaluate', '0');
+                    await fetch('/OKR_system/auth/salvar_objetivo.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    document.getElementById('loadingOverlay').classList.add('d-none');
+                    document.getElementById('saveMessageOverlay').classList.remove('d-none');
+                };
+
+                // voltar à edição
+                document.getElementById('editObjective').onclick = () => {
+                    document.getElementById('evaluationOverlay').classList.add('d-none');
+                };
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loadingOverlay').classList.add('d-none');
+                alert('Erro ao avaliar o objetivo. Tente novamente.');
+            }
+        });
+        document.getElementById('closeSaveMessage').addEventListener('click', () => {
+        // esconde o overlay
+        document.getElementById('saveMessageOverlay').classList.add('d-none');
+        // opcional: se quiser recarregar ou redirecionar de volta
+        // window.location.href = '/OKR_system/views/objetivos_create.php';
+        });
+
     </script>
 </body>
 </html>
