@@ -1,5 +1,5 @@
 <?php
-// views/objetivos_create.php
+// views/novo_objetivo.php
 
 // DEV ONLY: exibe erros na tela (remova em produção)
 ini_set('display_errors', 1);
@@ -45,8 +45,13 @@ $pilares = $pilaresStmt->fetchAll();
 $tiposStmt = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao");
 $tipos = $tiposStmt->fetchAll();
 
-// Data mínima para seleção de data futura
-$minDate = date('Y-m-d', strtotime('+1 day'));
+// Buscar ciclos do domínio
+$ciclosStmt = $pdo->query("
+    SELECT id_ciclo, nome_ciclo, descricao 
+    FROM dom_ciclos 
+    ORDER BY id_ciclo
+");
+$ciclos = $ciclosStmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -59,7 +64,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
     <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" crossorigin="anonymous"/>
     <style>
-        /* Container Flex para o form */
+        /* (todo o CSS permanece igual, sem alterações) */
         .main-wrapper {
             display: flex;
             gap: 2%;
@@ -73,7 +78,6 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
             border-radius: 6px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        /* Estilos Gerais */
         h1 { display:flex; align-items:center; font-size:1.75rem; margin-bottom:1.5rem; }
         .info-inline { margin-right:6px; color:#6c757d; cursor:pointer; }
         .form-group { margin-bottom:1rem; }
@@ -84,7 +88,6 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
         .form-two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
         @media(max-width:600px) { .form-two-col { grid-template-columns:1fr; } }
         .btn-save { display:block; margin:2rem auto 0; width:140px; padding:0.5rem; }
-        /* Multi-select chips */
         .multi-select-container { position:relative; }
         .chips-input { display:flex; flex-wrap:wrap; gap:4px; padding:4px; border:1px solid #ccc; border-radius:4px; }
         .chips-input-field { flex:1; border:none; outline:none; min-width:120px; }
@@ -96,7 +99,6 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
         .dropdown-list li:hover { background:#f1f1f1; }
         .d-none { display:none; }
         .warning-text { color:#dc3545; font-size:0.875rem; margin-top:4px; }
-        /* Overlays para AI e carregamento */
         .overlay {
             position: fixed;
             top: 0; left: 0;
@@ -105,7 +107,6 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
             display: flex; align-items: center; justify-content: center;
             z-index: 2000;
         }
-        /* garante que .d-none oculte a overlay mesmo com .overlay */
         .overlay.d-none {
             display: none !important;
         }
@@ -117,38 +118,43 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
             max-width: 90%;
         }
         .evaluation-actions { margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; }
-        /* Card da avaliação */
         .overlay-content.card {
         max-width: 500px;
         border-radius: 1rem;
         background-color: #fff;
         }
-
-        /* Caixa da nota */
         .score-box {
         background: rgba(13,110,253,0.1);
         border-radius: 0.5rem;
         padding: 1rem 0;
         }
-
-        /* Justificativa */
         .justification {
         font-size: 1rem;
         line-height: 1.5;
         }
-
-        /* Ações (botões) */
         .evaluation-actions .btn {
         transition: background-color .2s, transform .2s;
         }
         .evaluation-actions .btn:hover {
         transform: translateY(-2px);
         }
-        /* Dentro do seu <style> existente */
         #saveMessageOverlay .overlay-content.card {
         max-width: 500px;
         border-radius: 1rem;
         background-color: #fff;
+        }
+        .ciclo-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: nowrap;
+        }
+        .ciclo-row > .col {
+        flex: 1;
+        }
+        .ciclo-row .detalhe.d-flex > .form-control {
+        flex: 1;
+        width: auto;
         }
     </style>
 </head>
@@ -169,7 +175,7 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                     </ul></div>
                 <?php endif; ?>
 
-                <form id="objectiveForm" action="/OKR_system/controllers/objetivos_salvar.php" method="post" novalidate>
+                <form id="objectiveForm" action="/OKR_system/auth/salvar_objetivo.php" method="post" novalidate>
                     <input type="hidden" name="csrf_token" value="<?=htmlspecialchars($_SESSION['csrf_token'])?>">
 
                     <!-- Nome -->
@@ -181,55 +187,69 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                         <input type="text" id="nome_objetivo" name="nome_objetivo" class="form-control" required>
                     </div>
 
-                    <!-- Ano e Tipo -->
+                    <!-- Tipo e Pilar -->
                     <div class="form-two-col">
                         <div class="form-group">
-                            <label for="ano_referencia">
-                                <i class="fas fa-info-circle info-inline" data-bs-toggle="tooltip" title="Selecione o ano ao qual o objetivo se refere."></i>
-                                Ano de Referência<span class="text-danger">*</span>
-                            </label>
-                            <input type="number" id="ano_referencia" name="ano_referencia" class="form-control" min="2000" max="2100" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="tipo_objetivo">
-                                <i class="fas fa-info-circle info-inline" data-bs-toggle="tooltip" title="Escolha se o objetivo é estratégico, operacional ou tático."></i>
-                                Tipo de Objetivo<span class="text-danger">*</span>
-                            </label>
+                            <label for="tipo_objetivo">Tipo de Objetivo<span class="text-danger">*</span></label>
                             <select id="tipo_objetivo" name="tipo_objetivo" class="form-control" required>
                                 <option value="">Selecione...</option>
                                 <?php foreach ($tipos as $t): ?>
-                                    <option value="<?=htmlspecialchars($t['id_tipo'])?>">
-                                        <?=htmlspecialchars($t['descricao_exibicao'])?>
-                                    </option>
+                                    <option value="<?=htmlspecialchars($t['id_tipo'])?>"><?=htmlspecialchars($t['descricao_exibicao'])?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pilar_bsc">Pilar BSC<span class="text-danger">*</span></label>
+                            <select id="pilar_bsc" name="pilar_bsc" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <?php foreach ($pilares as $p): ?>
+                                    <option value="<?=htmlspecialchars($p['id_pilar'])?>"><?=htmlspecialchars($p['descricao_exibicao'])?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Pilar e Prazo -->
-                    <div class="form-two-col">
-                        <div class="form-group">
-                            <label for="pilar_bsc">
-                                <i class="fas fa-info-circle info-inline" data-bs-toggle="tooltip" title="Selecione o pilar do Balanced Scorecard correspondente."></i>
-                                Pilar BSC<span class="text-danger">*</span>
-                            </label>
-                            <select id="pilar_bsc" name="pilar_bsc" class="form-control" required>
-                                <option value="">Selecione...</option>
-                                <?php foreach ($pilares as $p): ?>
-                                    <option value="<?=htmlspecialchars($p['id_pilar'])?>">
-                                        <?=htmlspecialchars($p['descricao_exibicao'])?>
-                                    </option>
+                    <div class="form-group ciclo-row">
+                        <!-- Coluna Ciclo -->
+                        <div class="col">
+                            <label for="ciclo_tipo">Ciclo<span class="text-danger">*</span></label>
+                            <select id="ciclo_tipo" name="ciclo_tipo" class="form-control" required>
+                                <?php foreach ($ciclos as $c): ?>
+                                <option 
+                                    value="<?= htmlspecialchars($c['nome_ciclo']) ?>" 
+                                    <?= $c['nome_ciclo'] === 'trimestral' ? 'selected' : '' ?>
+                                >
+                                    <?= htmlspecialchars($c['descricao']) ?>
+                                </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="prazo_final">
-                                <i class="fas fa-info-circle info-inline" data-bs-toggle="tooltip" title="Defina a data limite para conclusão do objetivo (futura)."></i>
-                                Prazo Final<span class="text-danger">*</span>
-                            </label>
-                            <input type="date" id="prazo_final" name="prazo_final" class="form-control" min="<?=$minDate?>" required>
+                        <!-- Coluna Detalhe Ciclo -->
+                        <div id="ciclo_detalhe_wrapper" class="col">
+                            <div id="ciclo_detalhe_anual" class="detalhe d-none">
+                            <select id="ciclo_anual_ano" name="ciclo_anual_ano" class="form-control"></select>
+                            </div>
+                            <div id="ciclo_detalhe_semestral" class="detalhe d-none">
+                            <select id="ciclo_semestral" name="ciclo_semestral" class="form-control"></select>
+                            </div>
+                            <div id="ciclo_detalhe_trimestral" class="detalhe">
+                            <select id="ciclo_trimestral" name="ciclo_trimestral" class="form-control"></select>
+                            </div>
+                            <div id="ciclo_detalhe_bimestral" class="detalhe d-none">
+                            <select id="ciclo_bimestral" name="ciclo_bimestral" class="form-control"></select>
+                            </div>
+                            <div id="ciclo_detalhe_mensal" class="detalhe d-none d-flex">
+                            <select id="ciclo_mensal_mes" name="ciclo_mensal_mes" class="form-control"></select>
+                            <select id="ciclo_mensal_ano" name="ciclo_mensal_ano" class="form-control"></select>
+                            </div>
+                            <div id="ciclo_detalhe_personalizado" class="detalhe d-none d-flex">
+                            <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio" class="form-control">
+                            <input type="month" id="ciclo_pers_fim" name="ciclo_pers_fim" class="form-control">
+                            </div>
                         </div>
                     </div>
+
+                    <!-- (CAMPO DE PRAZO FINAL FOI REMOVIDO AQUI) -->
 
                     <!-- Responsáveis -->
                     <div class="form-group">
@@ -264,6 +284,9 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
                         <textarea id="observacoes" name="observacoes" class="form-control" rows="4"></textarea>
                     </div>
 
+                    <input type="hidden" id="qualidade" name="qualidade" value="">
+                    <input type="hidden" id="justificativa_ia" name="justificativa_ia" value="">
+
                     <button type="submit" class="btn btn-primary btn-save">Salvar Objetivo</button>
                 </form>
             </div>
@@ -286,16 +309,13 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
     <div class="overlay-content card p-4 shadow-lg">
         <h2 class="mb-4 text-center">Considerações sobre o objetivo</h2>
 
-        <!-- Nova área de destaque da nota -->
         <div class="score-box text-center mb-4">
         <span class="score-value display-1 fw-bold text-primary"></span>
         </div>
 
-        <!-- Justificativa -->
         <div id="evaluationResult" class="justification text-muted mb-4"></div>
 
         <div class="evaluation-actions d-flex justify-content-center gap-3">
-        <!-- Botões mais modernos -->
         <button id="saveObjective" class="btn btn-primary btn-lg rounded-pill px-4">
             <i class="fas fa-check me-2"></i> Continuar e Salvar
         </button>
@@ -319,122 +339,202 @@ $minDate = date('Y-m-d', strtotime('+1 day'));
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Multi-select chips logic
-        const inputResp = document.getElementById('responsavel_input');
-        const listContainer = document.getElementById('responsavel_list');
-        const containerChips = document.getElementById('responsavel_container');
-        const hiddenResp = document.getElementById('responsavel');
-        const warning = document.getElementById('responsavel_warning');
+<script>
+// 1) Silencia só o erro da extensão Chrome
+window.addEventListener('unhandledrejection', function(event) {
+  const msg = event.reason && event.reason.message;
+  if (msg && msg.includes('A listener indicated an asynchronous response')) {
+    event.preventDefault();
+  }
+});
 
-        inputResp.addEventListener('focus', () => listContainer.classList.remove('d-none'));
-        inputResp.addEventListener('click', () => listContainer.classList.remove('d-none'));
-        document.addEventListener('click', e => {
-            if (!containerChips.contains(e.target) && !listContainer.contains(e.target)) {
-                listContainer.classList.add('d-none');
-            }
-        });
+document.addEventListener('DOMContentLoaded', () => {
+  // ====== CICLO: mostrar/ocultar detalhe ======
+  const tipo = document.getElementById('ciclo_tipo');
+  const containers = {
+    anual: document.getElementById('ciclo_detalhe_anual'),
+    semestral: document.getElementById('ciclo_detalhe_semestral'),
+    trimestral: document.getElementById('ciclo_detalhe_trimestral'),
+    bimestral: document.getElementById('ciclo_detalhe_bimestral'),
+    mensal: document.getElementById('ciclo_detalhe_mensal'),
+    personalizado: document.getElementById('ciclo_detalhe_personalizado')
+  };
+  function toggleDetail() {
+    Object.keys(containers).forEach(key => {
+      containers[key].classList.toggle('d-none', tipo.value !== key);
+    });
+  }
+  tipo.addEventListener('change', toggleDetail);
+  toggleDetail();
 
-        inputResp.addEventListener('input', () => {
-            const filter = inputResp.value.toLowerCase();
-            listContainer.querySelectorAll('li').forEach(li => {
-                li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
-            });
-        });
+  // ====== POPULAÇÕES DINÂMICAS ======
+  const now = new Date(), year = now.getFullYear();
+  // Anual
+  const selAno = containers.anual.querySelector('select');
+  for (let y = year; y <= year + 5; y++) selAno.add(new Option(y, y));
 
-        listContainer.querySelectorAll('li').forEach(li => {
-            li.addEventListener('click', () => {
-                const text = li.textContent;
-                const chip = document.createElement('span');
-                chip.className = 'chip';
-                chip.textContent = text;
-                const removeBtn = document.createElement('span');
-                removeBtn.className = 'remove-chip';
-                removeBtn.innerHTML = '&times;';
-                removeBtn.addEventListener('click', () => {
-                    chip.remove();
-                    updateHidden();
-                    inputResp.style.display = 'block';
-                });
-                chip.appendChild(removeBtn);
-                containerChips.insertBefore(chip, inputResp);
-                inputResp.value = '';
-                updateHidden();
-                inputResp.style.display = 'none';
-            });
-        });
+  // Semestral
+  const selSem = containers.semestral.querySelector('select');
+  for (let y = year; y <= year + 5; y++) {
+    selSem.add(new Option(`1º Sem/${y}`, `S1/${y}`));
+    selSem.add(new Option(`2º Sem/${y}`, `S2/${y}`));
+  }
 
-        function updateHidden() {
-            const chips = Array.from(containerChips.querySelectorAll('.chip'));
-            const ids = chips.map(ch => {
-                const name = ch.firstChild.textContent;
-                const li = Array.from(listContainer.querySelectorAll('li')).find(l => l.textContent === name);
-                return li ? li.dataset.id : null;
-            }).filter(Boolean);
-            hiddenResp.value = ids.join(',');
-            if (ids.length > 1) warning.classList.remove('d-none');
-            else warning.classList.add('d-none');
+  // Trimestral
+  const selTri = containers.trimestral.querySelector('select');
+  ['Q1','Q2','Q3','Q4'].forEach(q => {
+    for (let y = year; y <= year + 5; y++) {
+      selTri.add(new Option(`${q}/${y}`, `${q}/${y}`));
+    }
+  });
+
+  // Bimestral (Jan–Fev … Nov–Dez, 24 meses)
+  const selBi = containers.bimestral.querySelector('select');
+  for (let i = 0; i < 23; i++) {
+    const d1 = new Date(year, i), d2 = new Date(year, i+1);
+    const m1 = d1.toLocaleString('pt-BR',{month:'short'}),
+          m2 = d2.toLocaleString('pt-BR',{month:'short'}),
+          label1 = m1[0].toUpperCase()+m1.slice(1),
+          label2 = m2[0].toUpperCase()+m2.slice(1),
+          y1 = d1.getFullYear();
+    selBi.add(new Option(
+      `${label1}–${label2}/${y1}`,
+      `${String(d1.getMonth()+1).padStart(2,'0')}-${String(d2.getMonth()+1).padStart(2,'0')}-${y1}`
+    ));
+  }
+
+  // Mensal
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const selMes = containers.mensal.querySelector('#ciclo_mensal_mes'),
+        selAnoM = containers.mensal.querySelector('#ciclo_mensal_ano');
+  meses.forEach((m,i) => selMes.add(new Option(m, String(i+1).padStart(2,'0'))));
+  for (let y = year; y <= year + 5; y++) selAnoM.add(new Option(y, y));
+
+  // ====== MULTI-SELECT RESPONSÁVEL ======
+  const inputResp   = document.getElementById('responsavel_input'),
+        listCont    = document.getElementById('responsavel_list'),
+        containerCh = document.getElementById('responsavel_container'),
+        hiddenResp  = document.getElementById('responsavel'),
+        warning     = document.getElementById('responsavel_warning');
+
+  inputResp.addEventListener('focus', () => listCont.classList.remove('d-none'));
+  document.addEventListener('click', e => {
+    if (!containerCh.contains(e.target) && !listCont.contains(e.target)) {
+      listCont.classList.add('d-none');
+    }
+  });
+  inputResp.addEventListener('input', () => {
+    const filter = inputResp.value.toLowerCase();
+    listCont.querySelectorAll('li').forEach(li => {
+      li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+  });
+  listCont.querySelectorAll('li').forEach(li => {
+    li.addEventListener('click', () => {
+      const text = li.textContent;
+      const chip = document.createElement('span');
+      const rem  = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = text;
+      rem.className = 'remove-chip';
+      rem.innerHTML = '&times;';
+      rem.onclick   = () => { chip.remove(); updateHidden(); inputResp.style.display = 'block'; };
+      chip.appendChild(rem);
+      containerCh.insertBefore(chip, inputResp);
+      inputResp.value = '';
+      updateHidden();
+      inputResp.style.display = 'none';
+    });
+  });
+  function updateHidden(){
+    const ids = Array.from(containerCh.querySelectorAll('.chip')).map(ch => {
+      const name = ch.firstChild.textContent;
+      const li   = Array.from(listCont.querySelectorAll('li')).find(l => l.textContent === name);
+      return li ? li.dataset.id : null;
+    }).filter(Boolean);
+    hiddenResp.value = ids.join(',');
+    warning.classList.toggle('d-none', ids.length <= 1);
+  }
+
+  // ====== TOOLTIP ======
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+    new bootstrap.Tooltip(el)
+  );
+
+  // ====== SUBMIT & IA ======
+  const form      = document.getElementById('objectiveForm'),
+        loading   = document.getElementById('loadingOverlay'),
+        evalOvr   = document.getElementById('evaluationOverlay'),
+        scoreBox  = document.querySelector('.score-value'),
+        resultBox = document.getElementById('evaluationResult'),
+        successO  = document.getElementById('saveMessageOverlay');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    fd.append('evaluate','1');
+    loading.classList.remove('d-none');
+
+    try {
+      const res  = await fetch(form.action, { method:'POST', body:fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      console.log('IA →', data);
+
+      // ──────────────── AQUI ────────────────
+      // preenche o campo hidden com a justificativa
+      document.getElementById('justificativa_ia').value = data.justification;
+      console.log('Hidden justification:', document.getElementById('justificativa_ia').value);
+      // ───────────────────────────────────────
+
+      loading.classList.add('d-none');
+      if (data.score == null || data.justification == null) {
+        throw new Error('Resposta IA inválida');
+      }
+      scoreBox.textContent  = data.score;
+      resultBox.textContent = data.justification;
+      evalOvr.classList.remove('d-none');
+
+      document.getElementById('saveObjective').onclick = async () => {
+        evalOvr.classList.add('d-none');
+        loading.classList.remove('d-none');
+        const fd2 = new FormData(form);
+        fd2.delete('evaluate');
+        // garante que o hidden está incluso
+        fd2.set('justificativa_ia', document.getElementById('justificativa_ia').value);
+        // debug: liste tudo
+        for (let [k,v] of fd2.entries()) console.log('fd2:', k, '=', v);
+
+        try {
+          const res2 = await fetch(form.action, { method:'POST', body:fd2 });
+          const ret  = await res2.json();
+          loading.classList.add('d-none');
+          if (ret.success) successO.classList.remove('d-none');
+          else            alert('Falha ao salvar o objetivo.');
+        } catch(err2) {
+          console.error('Erro ao salvar:', err2);
+          loading.classList.add('d-none');
+          alert('Erro de rede ao salvar objetivo.');
         }
+      };
 
-        // Tooltips
-        const tooltipTriggerList = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')];
-        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+      document.getElementById('editObjective').onclick = () => {
+        evalOvr.classList.add('d-none');
+      };
 
-        // AI evaluation on submit
-        const form = document.getElementById('objectiveForm');
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(form);
-            formData.append('evaluate', '1');
+    } catch(err) {
+      console.error('Fluxo IA erro:', err);
+      loading.classList.add('d-none');
+      alert('Erro ao avaliar o objetivo. Tente novamente.');
+    }
+  });
 
-            // exibe tela de carregamento
-            document.getElementById('loadingOverlay').classList.remove('d-none');
+  document.getElementById('closeSaveMessage').onclick = () => {
+    successO.classList.add('d-none');
+    window.location.href = '/OKR_system/views/novo_objetivo.php';
+  };
 
-            try {
-                const res = await fetch('/OKR_system/auth/salvar_objetivo.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json(); // espera { score: number, justification: string }
-
-                // oculta carregamento, mostra avaliação
-                document.getElementById('loadingOverlay').classList.add('d-none');
-                const evalDiv = document.getElementById('evaluationResult');
-                document.querySelector('.score-value').textContent = data.score;
-                document.getElementById('evaluationResult').textContent = data.justification;
-                document.getElementById('evaluationOverlay').classList.remove('d-none');
-
-                // salvar após avaliação
-                document.getElementById('saveObjective').onclick = async () => {
-                    document.getElementById('evaluationOverlay').classList.add('d-none');
-                    document.getElementById('loadingOverlay').classList.remove('d-none');
-                    formData.set('evaluate', '0');
-                    await fetch('/OKR_system/auth/salvar_objetivo.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    document.getElementById('loadingOverlay').classList.add('d-none');
-                    document.getElementById('saveMessageOverlay').classList.remove('d-none');
-                };
-
-                // voltar à edição
-                document.getElementById('editObjective').onclick = () => {
-                    document.getElementById('evaluationOverlay').classList.add('d-none');
-                };
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('loadingOverlay').classList.add('d-none');
-                alert('Erro ao avaliar o objetivo. Tente novamente.');
-            }
-        });
-        document.getElementById('closeSaveMessage').addEventListener('click', () => {
-        // esconde o overlay
-        document.getElementById('saveMessageOverlay').classList.add('d-none');
-        // opcional: se quiser recarregar ou redirecionar de volta
-        // window.location.href = '/OKR_system/views/objetivos_create.php';
-        });
-
-    </script>
+}); // fim DOMContentLoaded
+</script>
 </body>
 </html>

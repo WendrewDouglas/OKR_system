@@ -1,0 +1,36 @@
+[22-Jul-2025 22:21:53 America/Fortaleza] PHP Warning:  require(/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:21:53 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/chat_api.php:3
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:26:41 America/Fortaleza] PHP Warning:  require(/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:26:41 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/chat_api.php:3
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:31:07 America/Fortaleza] PHP Warning:  require(/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:31:07 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/chat_api.php:3
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 3
+[22-Jul-2025 22:32:54 America/Fortaleza] PHP Warning:  require(/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 4
+[22-Jul-2025 22:32:54 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/chat_api.php:4
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 4
+[22-Jul-2025 22:34:59 America/Fortaleza] PHP Warning:  require(/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 9
+[22-Jul-2025 22:34:59 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/api/../vendor/autoload.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/chat_api.php:9
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/api/chat_api.php on line 9
+[22-Jul-2025 22:38:38 America/Fortaleza] Chat API Error: Arquivo vendor/autoload.php não encontrado. Execute composer install.
+[22-Jul-2025 22:40:59 America/Fortaleza] Chat API Error: Arquivo vendor/autoload.php não encontrado. Execute composer install.
+[22-Jul-2025 22:43:27 America/Fortaleza] Chat API Error: Arquivo vendor/autoload.php não encontrado.
+[22-Jul-2025 22:43:30 America/Fortaleza] Chat API Error: Arquivo vendor/autoload.php não encontrado.
+[22-Jul-2025 23:07:30 America/Fortaleza] Chat API Error: Unable to read any of the environment file(s) at [/home2/planni40/public_html/OKR_system/api/../vendor/.env].
+[22-Jul-2025 23:07:34 America/Fortaleza] Chat API Error: Unable to read any of the environment file(s) at [/home2/planni40/public_html/OKR_system/api/../vendor/.env].
+[22-Jul-2025 23:10:03 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
+[22-Jul-2025 23:10:06 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
+[22-Jul-2025 23:11:08 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
+[22-Jul-2025 23:11:11 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
+[23-Jul-2025 13:11:58 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.

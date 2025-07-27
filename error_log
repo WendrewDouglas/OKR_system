@@ -1,0 +1,92 @@
+[16-Jul-2025 16:18:21 America/Fortaleza] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/../includes/db_connection.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/password_reset_request.php on line 7
+[16-Jul-2025 16:18:21 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/views/../includes/db_connection.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/password_reset_request.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/password_reset_request.php on line 7
+[20-Jul-2025 13:11:02 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 7
+[20-Jul-2025 13:11:15 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 7
+[20-Jul-2025 13:11:16 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 7
+[20-Jul-2025 13:11:54 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 7
+[20-Jul-2025 13:13:28 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:11
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 11
+[20-Jul-2025 14:51:34 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:11
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 11
+[20-Jul-2025 14:51:42 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to undefined function unset() in /home2/planni40/public_html/OKR_system/views/cadastro_site.php:7
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 7
+[20-Jul-2025 16:01:06 America/Fortaleza] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 3
+[20-Jul-2025 16:10:08 America/Fortaleza] PHP Warning:  Undefined variable $error in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 125
+[20-Jul-2025 16:10:08 America/Fortaleza] PHP Warning:  Undefined variable $success in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 127
+[20-Jul-2025 16:10:08 America/Fortaleza] PHP Warning:  Undefined global variable $_SESSION in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:10:08 America/Fortaleza] PHP Warning:  Trying to access array offset on null in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:11:38 America/Fortaleza] PHP Warning:  Undefined variable $error in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 125
+[20-Jul-2025 16:11:38 America/Fortaleza] PHP Warning:  Undefined variable $success in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 127
+[20-Jul-2025 16:11:38 America/Fortaleza] PHP Warning:  Undefined global variable $_SESSION in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:11:38 America/Fortaleza] PHP Warning:  Trying to access array offset on null in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:12:41 America/Fortaleza] PHP Warning:  Undefined variable $error in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 125
+[20-Jul-2025 16:12:41 America/Fortaleza] PHP Warning:  Undefined variable $success in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 127
+[20-Jul-2025 16:12:41 America/Fortaleza] PHP Warning:  Undefined global variable $_SESSION in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:12:41 America/Fortaleza] PHP Warning:  Trying to access array offset on null in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:13:00 America/Fortaleza] PHP Warning:  Undefined variable $error in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 125
+[20-Jul-2025 16:13:00 America/Fortaleza] PHP Warning:  Undefined variable $success in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 127
+[20-Jul-2025 16:13:00 America/Fortaleza] PHP Warning:  Undefined global variable $_SESSION in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[20-Jul-2025 16:13:00 America/Fortaleza] PHP Warning:  Trying to access array offset on null in /home2/planni40/public_html/OKR_system/views/cadastro_site.php on line 141
+[21-Jul-2025 10:31:28 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/views/../partials/sidebar.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/dashboard.php on line 26
+[21-Jul-2025 10:31:28 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/views/../partials/sidebar.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/dashboard.php on line 26
+[21-Jul-2025 10:31:28 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/views/../partials/header.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/dashboard.php on line 28
+[21-Jul-2025 10:31:28 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/views/../partials/header.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/dashboard.php on line 28
+[21-Jul-2025 12:03:19 America/Fortaleza] PHP Parse error:  syntax error, unexpected token "\" in /home2/planni40/public_html/OKR_system/views/partials/sidebar.php on line 132
+[21-Jul-2025 16:40:38 America/Fortaleza] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/includes/db_connection.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 18
+[21-Jul-2025 16:40:38 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/views/includes/db_connection.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/profile_user.php:18
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 18
+[21-Jul-2025 16:40:55 America/Fortaleza] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/includes/db_connection.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 18
+[21-Jul-2025 16:40:55 America/Fortaleza] PHP Fatal error:  Uncaught Error: Failed opening required '/home2/planni40/public_html/OKR_system/views/includes/db_connection.php' (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/profile_user.php:18
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/index.php(13): require()
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 18
+[21-Jul-2025 17:18:20 America/Fortaleza] PHP Warning:  Undefined array key "" in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 255
+[21-Jul-2025 17:18:20 America/Fortaleza] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 255
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(/home2/planni40/public_html/OKR_system/views/../partials/header.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 25
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(): Failed opening '/home2/planni40/public_html/OKR_system/views/../partials/header.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 25
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(/home2/planni40/public_html/OKR_system/views/../partials/sidebar.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 26
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(): Failed opening '/home2/planni40/public_html/OKR_system/views/../partials/sidebar.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 26
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(/home2/planni40/public_html/OKR_system/views/../partials/footer.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 104
+[22-Jul-2025 14:40:00 America/Fortaleza] PHP Warning:  include_once(): Failed opening '/home2/planni40/public_html/OKR_system/views/../partials/footer.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 104
+[22-Jul-2025 14:43:08 America/Fortaleza] PHP Parse error:  syntax error, unexpected token "\" in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 112
+[22-Jul-2025 21:30:05 America/Fortaleza] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 9) in /home2/planni40/public_html/OKR_system/views/partials/chat.php on line 3
+[23-Jul-2025 08:30:33 America/Fortaleza] PHP Parse error:  Unmatched '}' in /home2/planni40/public_html/OKR_system/views/partials/chat.php on line 5
+[23-Jul-2025 12:28:48 America/Fortaleza] PHP Parse error:  syntax error, unexpected token "\" in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 97
+[23-Jul-2025 12:29:49 America/Fortaleza] PHP Parse error:  syntax error, unexpected token "\" in /home2/planni40/public_html/OKR_system/views/novo_objetivo.php on line 97
+[2025-07-26 10:21:09] Erro ao salvar objetivo: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`planni40_okr`.`objetivos`, CONSTRAINT `fk_objetivos_qualidade` FOREIGN KEY (`qualidade`) REFERENCES `dom_qualidade_objetivo` (`id_qualidade`))
+Dados enviados: {"descricao":"Cliente no centro do neg\u00f3cio","tipo":"estrategico","pilar":"Financeiro","dono":"8","usuario_criador":1,"status":"nao iniciado","dt_criacao":"2025-07-26 10:21:09","dt_prazo":"2025-12-31","dt_inicio":"2025-07-01","status_aprovacao":"pendente","qualidade":6,"observacoes":"wendrew","tipo_ciclo":"semestral","ciclo":"S2\/2025"}
+[2025-07-27 15:03:34] Erro ao salvar objetivo: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'PRIMARY'
+Dados enviados: {"descricao":"Protif\u00f3lio de produtos com diferencial e estrat\u00e9gico","tipo":"estrategico","pilar":"Financeiro","dono":"8","usuario_criador":1,"status":"nao iniciado","dt_criacao":"2025-07-27 15:03:34","dt_prazo":"2025-12-31","dt_inicio":"2025-01-01","status_aprovacao":"pendente","qualidade":"bom","observacoes":"teste","tipo_ciclo":"anual","ciclo":"2025"}

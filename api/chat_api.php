@@ -39,7 +39,19 @@ try {
         exit;
     }
 
-    $systemPrompt = getenv('CHAT_SYSTEM_PROMPT') ?: 'Você é um assistente útil especialista em OKRs. Responda de forma curta, breve e direta como se estivesse em um chat. pode incluir emojis.';
+
+    $systemPrompt = getenv('CHAT_SYSTEM_PROMPT') ?: 
+    'Você é um assistente útil especialista em OKRs. 
+    Sabe diferenciar muito bem:
+    1 - objetivos (não é mensuravel nem precisa especificar prazo em seu texto,
+        o ciclo dado a ele define o prazo posteriormente. Entretanto precisa ser algo
+        muito importante, algo que realmente impacte o futuro da empresa.
+        De preferencia alinhado diretamente a missão e visão da empresa. 
+        Não deve ser confundido com key results e muito menos com iniciativas ou tarefas)
+    2 - key results (é algo que precisa ser alcançado,  precisa ser SMART e não pode ser uma tarefa, mas sim uma meta relevante)
+    3 - iniciativas (iniciativas são tarefas a serem executadas para alcançar os key results, não traduzem valor mas favorecem
+        o atingimento do key result).
+        Responda de forma curta, breve e direta como se estivesse em um chat. pode incluir emojis.';
     if (!$apiKey) {
         throw new Exception('OPENAI_API_KEY não configurada.');
     }
@@ -54,11 +66,13 @@ try {
 
     // Prepara payload para OpenAI
     $payload = [
-        'model' => 'gpt-3.5-turbo',
+        'model' => 'gpt-4o-mini',
         'messages' => [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user',   'content' => $message]
-        ]
+        ],
+        'max_tokens'  => 150,
+        'temperature' => 0.4,
     ];
 
     // Executa cURL
