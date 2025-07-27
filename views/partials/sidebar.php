@@ -6,8 +6,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $currentPath      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$isDashboard      = ($currentPath === '/OKR_system/views/dashboard.php');
+$isDashboard      = ($currentPath === '/OKR_system/dashboard');
 $isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
+$isMyOKRs         = ($currentPath === '/OKR_system/meus_okrs');
 $isReports        = in_array($currentPath, [
     '/OKR_system/views/rel_vendas.php',
     '/OKR_system/views/rel_desempenho.php'
@@ -162,9 +163,16 @@ body.collapsed .sidebar .submenu li span {
   <ul>
     <li>
       <div class="menu-item <?= $isDashboard ? 'active' : '' ?>"
-           data-href="/OKR_system/views/dashboard.php"
+           data-href="https://planningbi.com.br/OKR_system/dashboard"
            onclick="onMenuClick(this)">
         <i class="fas fa-tachometer-alt icon-main"></i><span>Dashboard</span>
+      </div>
+    </li>
+    <li>
+      <div class="menu-item <?= $isMyOKRs ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/meus_okrs"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-crosshairs icon-main"></i><span>Meus OKRs</span>
       </div>
     </li>
     <li>
