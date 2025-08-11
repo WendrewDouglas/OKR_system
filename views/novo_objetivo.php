@@ -64,7 +64,7 @@ $ciclos = $ciclosStmt->fetchAll();
     <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" crossorigin="anonymous"/>
     <style>
-        /* (todo o CSS permanece igual, sem alterações) */
+        /* (restante do CSS da página permanece) */
         .main-wrapper {
             display: flex;
             gap: 2%;
@@ -99,63 +99,72 @@ $ciclos = $ciclosStmt->fetchAll();
         .dropdown-list li:hover { background:#f1f1f1; }
         .d-none { display:none; }
         .warning-text { color:#dc3545; font-size:0.875rem; margin-top:4px; }
-        .overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 2000;
+        .ciclo-row { display:flex; align-items:flex-end; gap:1rem; flex-wrap:nowrap; }
+        .ciclo-row > .col { flex:1; }
+        .ciclo-row .detalhe.d-flex > .form-control { flex: 1; width: auto; }
+
+        /* ========= NOVO: estilo da experiência "IA" (igual ao novo_key_result) ========= */
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%;
+          background:rgba(2,6,23,0.68); display:flex; align-items:center; justify-content:center; z-index:2000; }
+        .overlay.d-none { display:none !important; }
+
+        .ai-card {
+          width: min(720px, 92vw);
+          background: #0b1020;
+          color: #e6e9f2;
+          border-radius: 18px;
+          box-shadow: 0 20px 60px rgba(0,0,0,.35);
+          padding: 18px 18px 16px;
+          position: relative;
+          overflow: hidden;
         }
-        .overlay.d-none {
-            display: none !important;
+        .ai-card::after {
+          content: "";
+          position: absolute; inset: 0;
+          background: radial-gradient(1000px 300px at 10% -20%, rgba(64,140,255,.18), transparent 60%),
+                      radial-gradient(700px 220px at 100% 0%, rgba(0,196,204,.12), transparent 60%);
+          pointer-events: none;
         }
-        .overlay-content {
-            background: #fff;
-            padding: 2rem;
-            border-radius: 6px;
-            text-align: center;
-            max-width: 90%;
+        .ai-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+        .ai-avatar {
+          width: 44px; height: 44px; flex:0 0 44px;
+          border-radius: 50%;
+          background: conic-gradient(from 180deg at 50% 50%, #3b82f6, #06b6d4, #8b5cf6, #3b82f6);
+          display:grid; place-items:center;
+          box-shadow: 0 6px 18px rgba(59,130,246,.35);
+          color:#fff; font-weight:700; letter-spacing:.5px;
         }
-        .evaluation-actions { margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; }
-        .overlay-content.card {
-        max-width: 500px;
-        border-radius: 1rem;
-        background-color: #fff;
+        .ai-title { font-size:.95rem; line-height:1.1; opacity:.9; }
+        .ai-subtle { font-size:.85rem; opacity:.65; }
+        .ai-bubble {
+          background:#111833; border:1px solid rgba(255,255,255,.06);
+          border-radius:14px; padding:16px; margin:8px 0 14px;
         }
-        .score-box {
-        background: rgba(13,110,253,0.1);
-        border-radius: 0.5rem;
-        padding: 1rem 0;
+        .score-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+        .score-pill {
+          font-weight:700; font-size:2.25rem; line-height:1;
+          padding:6px 14px; border-radius:12px;
+          background: linear-gradient(135deg, rgba(59,130,246,.16), rgba(2,132,199,.12));
+          border:1px solid rgba(255,255,255,.08);
         }
-        .justification {
-        font-size: 1rem;
-        line-height: 1.5;
+        .quality-badge {
+          padding:4px 10px; border-radius:999px; font-size:.8rem;
+          border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06);
+          text-transform:capitalize;
         }
-        .evaluation-actions .btn {
-        transition: background-color .2s, transform .2s;
-        }
-        .evaluation-actions .btn:hover {
-        transform: translateY(-2px);
-        }
-        #saveMessageOverlay .overlay-content.card {
-        max-width: 500px;
-        border-radius: 1rem;
-        background-color: #fff;
-        }
-        .ciclo-row {
-        display: flex;
-        align-items: flex-end;
-        gap: 1rem;
-        flex-wrap: nowrap;
-        }
-        .ciclo-row > .col {
-        flex: 1;
-        }
-        .ciclo-row .detalhe.d-flex > .form-control {
-        flex: 1;
-        width: auto;
-        }
+        .quality-badge.q-pessimo { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.25); }
+        .quality-badge.q-ruim    { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.25); }
+        .quality-badge.q-moderado{ background: rgba(14,165,233,.15); border-color: rgba(14,165,233,.25); }
+        .quality-badge.q-bom     { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.25); }
+        .quality-badge.q-otimo   { background: rgba(168,85,247,.16); border-color: rgba(168,85,247,.25); }
+
+        .ai-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+        .ai-actions .btn-lg { border-radius:12px; padding:.7rem 1rem; }
+        .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,.16); color:#d1d5db; }
+        .btn-ghost:hover { background: rgba(255,255,255,.06); color:#fff; }
+
+        .ai-success { display:flex; align-items:flex-start; gap:12px; }
+        .ai-success .ai-bubble { margin-top:0; }
     </style>
 </head>
 <body>
@@ -249,8 +258,6 @@ $ciclos = $ciclosStmt->fetchAll();
                         </div>
                     </div>
 
-                    <!-- (CAMPO DE PRAZO FINAL FOI REMOVIDO AQUI) -->
-
                     <!-- Responsáveis -->
                     <div class="form-group">
                         <label>
@@ -297,46 +304,74 @@ $ciclos = $ciclosStmt->fetchAll();
         </main>
     </div>
 
-    <!-- Overlays para carregamento e IA -->
+    <!-- ========= NOVO: Overlays no estilo IA ========= -->
     <div id="loadingOverlay" class="overlay d-none">
-        <div class="overlay-content">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p>Carregando objetivo...</p>
+        <div class="ai-card" role="dialog" aria-live="polite">
+          <div class="ai-header">
+            <div class="ai-avatar">IA</div>
+            <div>
+              <div class="ai-title">Analisando seu objetivo…</div>
+              <div class="ai-subtle">Calculando nota e justificativa.</div>
+            </div>
+          </div>
+          <div class="ai-bubble" style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Aguarde só um instante…</span>
+          </div>
         </div>
     </div>
 
     <div id="evaluationOverlay" class="overlay d-none">
-    <div class="overlay-content card p-4 shadow-lg">
-        <h2 class="mb-4 text-center">Considerações sobre o objetivo</h2>
-
-        <div class="score-box text-center mb-4">
-        <span class="score-value display-1 fw-bold text-primary"></span>
+      <div class="ai-card" role="dialog" aria-modal="true">
+        <div class="ai-header">
+          <div class="ai-avatar">IA</div>
+          <div>
+            <div class="ai-title">Avaliação do Objetivo</div>
+            <div class="ai-subtle">Veja minha nota e o porquê.</div>
+          </div>
         </div>
 
-        <div id="evaluationResult" class="justification text-muted mb-4"></div>
-
-        <div class="evaluation-actions d-flex justify-content-center gap-3">
-        <button id="saveObjective" class="btn btn-primary btn-lg rounded-pill px-4">
-            <i class="fas fa-check me-2"></i> Continuar e Salvar
-        </button>
-        <button id="editObjective" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
-            <i class="fas fa-pen me-2"></i>Editar
-        </button>
+        <div class="ai-bubble">
+          <div class="score-row">
+            <div class="score-pill score-value">—</div>
+            <span class="quality-badge" id="qualityBadge">avaliando…</span>
+          </div>
+          <div class="ai-subtle" id="evaluationResult">—</div>
         </div>
-    </div>
+
+        <div class="ai-actions">
+          <button id="editObjective" class="btn btn-ghost btn-lg">
+            <i class="fa-regular fa-pen-to-square me-1"></i>Editar
+          </button>
+          <button id="saveObjective" class="btn btn-primary btn-lg">
+            <i class="fa-regular fa-floppy-disk me-1"></i>Continuar e Salvar
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="saveMessageOverlay" class="overlay d-none">
-    <div class="overlay-content card p-4 shadow-lg text-center">
-        <p class="mb-3">
-        Objetivo salvo! Aguarde aprovação do objetivo.<br>
-        Enquanto isso poderá consultá-lo em Meus OKRs.
-        </p>
-        <button id="closeSaveMessage" class="btn btn-primary btn-lg rounded-pill px-4">
-        <i class="fas fa-check me-2"></i> OK
-        </button>
+      <div class="ai-card" role="alertdialog" aria-modal="true">
+        <div class="ai-header">
+          <div class="ai-avatar">IA</div>
+          <div>
+            <div class="ai-title">Tudo certo! ✅</div>
+            <div class="ai-subtle">Seu objetivo foi salvo.</div>
+          </div>
+        </div>
+
+        <div class="ai-bubble ai-success">
+          <div id="saveAiMessage" class="ai-subtle" style="font-size:1rem; opacity:.9">
+            Objetivo salvo com sucesso. Vou submetê-lo à aprovação e você receberá uma notificação assim que houver feedback do aprovador.
+          </div>
+        </div>
+
+        <div class="ai-actions">
+          <button id="closeSaveMessage" class="btn btn-primary btn-lg">Fechar</button>
+        </div>
+      </div>
     </div>
-    </div>
+    <!-- ========= Fim dos Overlays ========= -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -467,7 +502,17 @@ document.addEventListener('DOMContentLoaded', () => {
         evalOvr   = document.getElementById('evaluationOverlay'),
         scoreBox  = document.querySelector('.score-value'),
         resultBox = document.getElementById('evaluationResult'),
-        successO  = document.getElementById('saveMessageOverlay');
+        successO  = document.getElementById('saveMessageOverlay'),
+        qualityBadge = document.getElementById('qualityBadge');
+
+  // Mapeia nota -> qualidade (só front; opcional)
+  function scoreToQuality(score) {
+    if (score <= 2) return { id: 'péssimo', cls: 'q-pessimo', label: 'Péssimo' };
+    if (score <= 4) return { id: 'ruim',    cls: 'q-ruim',    label: 'Ruim' };
+    if (score <= 6) return { id: 'moderado',cls: 'q-moderado',label: 'Moderado' };
+    if (score <= 8) return { id: 'bom',     cls: 'q-bom',     label: 'Bom' };
+    return { id: 'ótimo',   cls: 'q-otimo',  label: 'Ótimo' };
+  }
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -479,20 +524,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const res  = await fetch(form.action, { method:'POST', body:fd });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      console.log('IA →', data);
 
-      // ──────────────── AQUI ────────────────
-      // preenche o campo hidden com a justificativa
-      document.getElementById('justificativa_ia').value = data.justification;
-      console.log('Hidden justification:', document.getElementById('justificativa_ia').value);
-      // ───────────────────────────────────────
+      // guarda justificativa no hidden
+      document.getElementById('justificativa_ia').value = data.justification ?? '';
 
       loading.classList.add('d-none');
       if (data.score == null || data.justification == null) {
         throw new Error('Resposta IA inválida');
       }
+
+      // Preenche UI IA
       scoreBox.textContent  = data.score;
       resultBox.textContent = data.justification;
+
+      // Badge de qualidade (opcional, mas bonito)
+      const q = scoreToQuality(Number(data.score));
+      qualityBadge.textContent = q.label;
+      qualityBadge.className = 'quality-badge ' + q.cls;
+
+      // (se quiser enviar para o backend via hidden já existente)
+      const qualHidden = document.getElementById('qualidade');
+      if (qualHidden) qualHidden.value = q.id;
+
       evalOvr.classList.remove('d-none');
 
       document.getElementById('saveObjective').onclick = async () => {
@@ -500,17 +553,23 @@ document.addEventListener('DOMContentLoaded', () => {
         loading.classList.remove('d-none');
         const fd2 = new FormData(form);
         fd2.delete('evaluate');
-        // garante que o hidden está incluso
         fd2.set('justificativa_ia', document.getElementById('justificativa_ia').value);
-        // debug: liste tudo
-        for (let [k,v] of fd2.entries()) console.log('fd2:', k, '=', v);
+        if (qualHidden) fd2.set('qualidade', qualHidden.value);
 
         try {
           const res2 = await fetch(form.action, { method:'POST', body:fd2 });
           const ret  = await res2.json();
           loading.classList.add('d-none');
-          if (ret.success) successO.classList.remove('d-none');
-          else            alert('Falha ao salvar o objetivo.');
+          if (ret.success) {
+            const el = document.getElementById('saveAiMessage');
+            if (el) {
+              const objId = ret.id_objetivo ? `<strong>${ret.id_objetivo}</strong>` : 'Seu objetivo';
+              el.innerHTML = `${objId} foi salvo com sucesso.<br>Vou submetê-lo à aprovação e te aviso assim que houver feedback do aprovador.`;
+            }
+            successO.classList.remove('d-none');
+          } else {
+            alert('Falha ao salvar o objetivo.');
+          }
         } catch(err2) {
           console.error('Erro ao salvar:', err2);
           loading.classList.add('d-none');

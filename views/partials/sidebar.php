@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $currentPath      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $isDashboard      = ($currentPath === '/OKR_system/dashboard');
 $isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
+$isNewKR   = ($currentPath === '/OKR_system/novo_key_result');
 $isMyOKRs         = ($currentPath === '/OKR_system/meus_okrs');
 $isReports        = in_array($currentPath, [
     '/OKR_system/views/rel_vendas.php',
@@ -27,7 +28,7 @@ $newMessages      = $_SESSION['new_messages'] ?? 0;
 /* Sidebar width states */
 .sidebar {
   width: var(--sidebar-width);
-  background: #222222;
+  background: #0d1117;
   color: #f1c40f;
   transition: width var(--transition-speed);
   position: fixed;
@@ -180,6 +181,13 @@ body.collapsed .sidebar .submenu li span {
            data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
            onclick="onMenuClick(this)">
         <i class="fas fa-plus icon-main"></i><span>Novo Objetivo</span>
+      </div>
+    </li>
+    <li>
+      <div class="menu-item <?= $isNewKR ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/novo_key_result"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-plus icon-main"></i><span>Novo Key Result</span>
       </div>
     </li>
     <li class="<?= $isReports ? 'open' : '' ?>">
