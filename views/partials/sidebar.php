@@ -8,13 +8,20 @@ if (session_status() === PHP_SESSION_NONE) {
 $currentPath      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $isDashboard      = ($currentPath === '/OKR_system/dashboard');
 $isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
-$isNewKR   = ($currentPath === '/OKR_system/novo_key_result');
+$isNewKR          = ($currentPath === '/OKR_system/novo_key_result');
 $isMyOKRs         = ($currentPath === '/OKR_system/meus_okrs');
 $isReports        = in_array($currentPath, [
     '/OKR_system/views/rel_vendas.php',
     '/OKR_system/views/rel_desempenho.php'
 ]);
-$isConfig         = ($currentPath === '/OKR_system/views/configuracoes.php');
+
+// Configurações: aponta para config_style.php e mantém compatibilidade com caminho legado
+$isConfig = in_array($currentPath, [
+    '/OKR_system/views/config_style.php',     // novo caminho
+    '/OKR_system/config_style',               // opcional (se tiver rota amigável)
+    '/OKR_system/views/configuracoes.php'     // legado (mantém active se acessado)
+]);
+
 $newMessages      = $_SESSION['new_messages'] ?? 0;
 ?>
 
@@ -210,7 +217,7 @@ body.collapsed .sidebar .submenu li span {
     </li>
     <li>
       <div class="menu-item <?= $isConfig ? 'active' : '' ?>"
-           data-href="/OKR_system/views/configuracoes.php"
+           data-href="/OKR_system/views/config_style.php"
            onclick="onMenuClick(this)">
         <i class="fas fa-cog icon-main"></i><span>Configurações</span>
       </div>
