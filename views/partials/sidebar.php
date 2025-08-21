@@ -47,6 +47,7 @@ $newMessages      = $_SESSION['new_messages'] ?? 0;
   position: fixed; top: 0; bottom: 0; left: 0;
   display: flex; flex-direction: column;
   z-index: 1000;
+  overflow-x: hidden; /* evita extravaso horizontal */
 }
 body.collapsed .sidebar { width: var(--sidebar-collapsed); }
 
@@ -66,6 +67,7 @@ body.collapsed .sidebar-header .toggle-text { display: none; }
 .sidebar .menu-item {
   display: flex; align-items: center; padding: 0.75rem 1rem; cursor: pointer;
   transition: background var(--transition-speed);
+  white-space: nowrap; /* evita quebra feia quando estreito */
 }
 .sidebar .menu-item:hover { background: #4e4e4e; }
 .sidebar .menu-item i.icon-main { min-width: 24px; text-align: center; margin-right: 1rem; }
@@ -74,8 +76,12 @@ body.collapsed .sidebar-header .toggle-text { display: none; }
 .sidebar .menu-item.active i,
 .sidebar .menu-item.active span { color: inherit; }
 
+/* ao recolher, esconda textos e setas do item principal */
 body.collapsed .sidebar .menu-item span,
 body.collapsed .sidebar .menu-item .icon-chevron { display: none; }
+/* centraliza apenas os ícones quando recolhido */
+body.collapsed .sidebar .menu-item { justify-content: center; }
+body.collapsed .sidebar .menu-item i.icon-main { margin-right: 0; }
 
 .submenu {
   display: none; list-style: none; padding-left: 0; margin: 0; font-size: 0.85rem;
@@ -83,6 +89,7 @@ body.collapsed .sidebar .menu-item .icon-chevron { display: none; }
 .submenu li {
   display: flex; align-items: center; padding: 0.25rem 1rem; cursor: pointer;
   transition: background var(--transition-speed); color: #ccc;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .submenu li:hover { background: #4e4e4e; }
 .submenu li i { min-width: 24px; text-align: center; margin-right: 1rem; font-size: 0.75rem; color: #ccc; }
@@ -91,11 +98,17 @@ body.collapsed .sidebar .menu-item .icon-chevron { display: none; }
 .submenu li.active i, .submenu li.active span { color: inherit; }
 
 .sidebar li.open > .submenu { display: block; }
+
+/* ===== FIX: quando recolhido, garanta que NENHUM submenu apareça ===== */
+body.collapsed .submenu { display: none !important; visibility: hidden; }
+
+/* extra: evita qualquer transbordo visual */
+body.collapsed .sidebar { overflow-y: auto; }
 </style>
 
 <aside class="sidebar">
   <div class="sidebar-header">
-    <i class="menu-toggle fas fa-chevron-left" onclick="toggleSidebar()"></i>
+    <i class="menu-toggle fas fa-chevron-left" onclick="toggleSidebar()" title="Recolher/Expandir"></i>
     <span class="toggle-text" onclick="toggleSidebar()">Recolher menu</span>
   </div>
   <ul>
@@ -165,7 +178,7 @@ body.collapsed .sidebar .menu-item .icon-chevron { display: none; }
         <li class="<?= $isOrgConfig ? 'active' : '' ?>"
             data-href="/OKR_system/views/organizacao.php"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-building"></i><span>Adicionar Organização</span>
+          <i class="fas fa-building"></i><span>Editar Organização</span>
         </li>
       </ul>
     </li>
@@ -177,12 +190,19 @@ function clearActive() {
   document.querySelectorAll('.menu-item.active, .submenu li.active')
     .forEach(el => el.classList.remove('active'));
 }
+function closeAllSubmenus() {
+  document.querySelectorAll('.sidebar li.open').forEach(li => li.classList.remove('open'));
+}
 function onMenuClick(el) {
   const li = el.parentElement,
         submenu = li.querySelector('.submenu');
   if (submenu) {
-    if (document.body.classList.contains('collapsed'))
+    // se estiver recolhido, primeiro expande a barra para então permitir abrir submenu
+    if (document.body.classList.contains('collapsed')) {
       document.body.classList.remove('collapsed');
+      updateToggleIcon();
+      updateToggleText();
+    }
     li.classList.toggle('open');
   } else {
     clearActive();
@@ -192,39 +212,62 @@ function onMenuClick(el) {
   }
 }
 function onSubmenuClick(el) {
-  if (document.body.classList.contains('collapsed'))
+  if (document.body.classList.contains('collapsed')) {
     document.body.classList.remove('collapsed');
+    updateToggleIcon();
+    updateToggleText();
+  }
   clearActive();
   el.closest('li').classList.add('open');
   el.classList.add('active');
   window.location = el.getAttribute('data-href');
 }
 function autoCollapse() {
-  if (window.innerWidth <= 768) document.body.classList.add('collapsed');
-  else document.body.classList.remove('collapsed');
+  const wasExpanded = !document.body.classList.contains('collapsed');
+  if (window.innerWidth <= 768) {
+    document.body.classList.add('collapsed');
+    if (wasExpanded) closeAllSubmenus(); // fecha submenus ao recolher automático
+  } else {
+    document.body.classList.remove('collapsed');
+  }
 }
 function updateToggleIcon() {
   const toggle = document.querySelector('.menu-toggle');
+  if (!toggle) return;
   if (document.body.classList.contains('collapsed')) {
     toggle.classList.remove('fa-chevron-left'); toggle.classList.add('fa-chevron-right');
   } else {
     toggle.classList.remove('fa-chevron-right'); toggle.classList.add('fa-chevron-left');
   }
 }
+function updateToggleText() {
+  const txt = document.querySelector('.toggle-text');
+  if (!txt) return;
+  txt.textContent = document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+}
 function toggleSidebar() {
+  const isExpanding = document.body.classList.contains('collapsed');
   document.body.classList.toggle('collapsed');
+  if (!isExpanding) {
+    // se estou recolhendo agora, fecho todos os submenus para não "sobrar" texto
+    closeAllSubmenus();
+  }
   updateToggleIcon();
-  document.querySelector('.toggle-text').textContent =
-    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+  updateToggleText();
 }
 window.addEventListener('DOMContentLoaded', () => {
-  autoCollapse(); updateToggleIcon();
-  document.querySelector('.toggle-text').textContent =
-    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+  autoCollapse();
+  updateToggleIcon();
+  updateToggleText();
+  // segurança extra: se carregar já recolhido, garanta submenus fechados
+  if (document.body.classList.contains('collapsed')) closeAllSubmenus();
 });
 window.addEventListener('resize', () => {
-  autoCollapse(); updateToggleIcon();
-  document.querySelector('.toggle-text').textContent =
-    document.body.classList.contains('collapsed') ? '' : 'Recolher menu';
+  const prevCollapsed = document.body.classList.contains('collapsed');
+  autoCollapse();
+  updateToggleIcon();
+  updateToggleText();
+  // se mudou de expandido -> recolhido, fecha submenus
+  if (!prevCollapsed && document.body.classList.contains('collapsed')) closeAllSubmenus();
 });
 </script>
