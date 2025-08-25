@@ -1,0 +1,42 @@
+[2025-08-25 12:32:22.141] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 12:32:22.142] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:32:22.142] [INFO] Iniciando avaliação IA 
+[2025-08-25 12:32:23.272] [INFO] Avaliação IA concluída {"score":6}
+[2025-08-25 12:32:26.452] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 12:32:26.452] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:32:26.452] [WARNING] Validação falhou (save) {"errors":[{"field":"tipo_frequencia_milestone","message":"Frequência de apontamento é obrigatória para salvar"}]}
+[2025-08-25 12:34:12.380] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 12:34:12.380] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:34:12.380] [INFO] Iniciando avaliação IA 
+[2025-08-25 12:34:13.761] [INFO] Avaliação IA concluída {"score":6}
+[2025-08-25 12:34:17.028] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 12:34:17.028] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:34:17.028] [WARNING] Validação falhou (save) {"errors":[{"field":"tipo_frequencia_milestone","message":"Frequência de apontamento é obrigatória para salvar"}]}
+[2025-08-25 12:38:55.497] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 12:38:55.497] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:38:55.497] [INFO] Iniciando avaliação IA 
+[2025-08-25 12:38:56.373] [INFO] Avaliação IA concluída {"score":4}
+[2025-08-25 12:39:08.192] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 12:39:08.192] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 12:39:08.192] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-08-25 12:39:08.193] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-25 12:39:08.193] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa"}
+[2025-08-25 12:39:08.193] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-25 12:39:08.193] [INFO] Iniciando transação para salvar KR 
+[2025-08-25 12:39:08.194] [INFO] Gerado id_kr {"id_kr":"001-20","key_result_num":1}
+[2025-08-25 12:39:08.199] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`planni40_okr`.`key_results`, CONSTRAINT `fk_kr_status` FOREIGN KEY (`status`) REFERENCES `dom_status_kr` (`id_status`))"}
+[2025-08-25 13:11:14.044] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 13:11:14.045] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 13:11:14.045] [INFO] Iniciando avaliação IA 
+[2025-08-25 13:11:15.357] [INFO] Avaliação IA concluída {"score":6}
+[2025-08-25 13:11:17.633] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 13:11:17.634] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 13:11:17.634] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-08-25 13:11:17.635] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-25 13:11:17.636] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-08-25 13:11:17.636] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-25 13:11:17.636] [INFO] Iniciando transação para salvar KR 
+[2025-08-25 13:11:17.636] [INFO] Gerado id_kr {"id_kr":"001-20","key_result_num":1}
+[2025-08-25 13:11:17.640] [INFO] KR inserido {"id_kr":"001-20","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-08-25 13:11:17.640] [INFO] Gerando milestones {"id_kr":"001-20"}
+[2025-08-25 13:11:17.644] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.milestone_kr' doesn't exist"}

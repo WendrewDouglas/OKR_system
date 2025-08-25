@@ -144,6 +144,14 @@ body.collapsed .sidebar { overflow-y: auto; }
       </div>
     </li>
 
+    <li>
+      <div class="menu-item <?= $isNewKR ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/matriz_prioridade"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-table icon-main"></i><span>Matriz de Prioridade</span>
+      </div>
+    </li>
+
     <li class="<?= $isReports ? 'open' : '' ?>">
       <div class="menu-item <?= $isReports ? 'active' : '' ?>" onclick="onMenuClick(this)">
         <i class="fas fa-chart-line icon-main"></i><span>Relatórios</span>

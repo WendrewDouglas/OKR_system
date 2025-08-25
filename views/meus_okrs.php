@@ -312,7 +312,7 @@ function resolveFarol(array $row): string {
                           </div>
 
                           <div class="okr-footer">
-                            <a href="OKR_detalhe_objetivo.php?id=<?= h($obj['id_objetivo']) ?>" class="btn btn-sm btn-outline-primary">
+                            <a href="/OKR_system/views/detalhe_okr.php?id=<?= (int)$obj['id_objetivo'] ?>" class="btn btn-sm btn-outline-primary">
                               Detalhar
                             </a>
                           </div>
