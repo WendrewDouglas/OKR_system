@@ -93,12 +93,24 @@ if (isset($_GET['ajax'])) {
     $krUserIdCol = $findKrUserIdCol($pdo);
     $hasRespText = $colExists($pdo,'key_results','responsavel');
 
+    // Campos candidatos para prazo (alguns projetos usam nomes diferentes)
+    $prazoCandidates = ['dt_novo_prazo','data_fim','dt_prazo','data_limite','dt_limite','prazo','deadline'];
+    $prazoParts = [];
+    foreach ($prazoCandidates as $c) {
+      if ($colExists($pdo,'key_results',$c)) $prazoParts[] = "kr.`$c`";
+    }
+    $prazoExpr = $prazoParts ? ("COALESCE(" . implode(',', $prazoParts) . ")") : "NULL";
+
+
     $select = "
       SELECT
         kr.id_kr, kr.key_result_num, kr.descricao, kr.farol, kr.status,
         kr.tipo_frequencia_milestone, kr.baseline, kr.meta, kr.unidade_medida,
-        kr.direcao_metrica, kr.data_fim, kr.dt_novo_prazo
+        kr.direcao_metrica,
+        kr.data_fim, kr.dt_novo_prazo,
+        $prazoExpr AS prazo_final
     ";
+
     $join = "";
     if ($krUserIdCol) {
       $select .= ",
@@ -144,6 +156,7 @@ if (isset($_GET['ajax'])) {
         'direcao_metrica' => $r['direcao_metrica'],
         'data_fim' => $r['data_fim'],
         'dt_novo_prazo' => $r['dt_novo_prazo'],
+        'prazo_final' => $r['prazo_final'],
         'responsavel' => $nome ?: '—',
       ];
     }
@@ -497,6 +510,12 @@ $saldoObj = max(0, $aprovObj - $realObj);
     .meta-line{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
     .meta-pill{ display:inline-flex; align-items:center; gap:6px; background:#0b0f14; border:1px solid var(--border); color:#a6adbb; padding:5px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
     .meta-pill i{ font-size:.85rem; }
+    /* Chip de data limite em branco */
+    .meta-pill.white,
+    .meta-pill.white i {
+      color: #eeeeeeff !important;
+    }
+
 
     .kr-actions{ display:flex; gap:8px; flex-wrap:nowrap; align-items:center; }
     @media (max-width:560px){ .kr-actions{ flex-wrap:wrap; } }
@@ -734,6 +753,54 @@ $saldoObj = max(0, $aprovObj - $realObj);
     }
     function respLabel(kr){ return kr.responsavel ?? '—'; }
 
+    function onlyDate(s){
+      if(!s) return '';
+      const str = String(s).trim();
+      // corta hora se vier "YYYY-MM-DD HH:MM:SS"
+      return str.includes(' ') ? str.split(' ')[0] : str;
+    }
+
+    // Converte para ddmmyyyy; use sep="/" se quiser dd/mm/aaaa
+    function toDDMMYYYY(raw, sep='/'){
+      const s = onlyDate(raw);
+      if(!s) return '';
+
+      let y, m, d;
+
+      // ISO: YYYY-MM-DD
+      let m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m1){
+        y=m1[1]; m=m1[2]; d=m1[3];
+        return [d,m,y].join(sep);
+      }
+
+      // BR: DD/MM/YYYY ou DD-MM-YYYY
+      let m2 = s.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+      if (m2){
+        d=m2[1]; m=m2[2]; y=m2[3];
+        return [d,m,y].join(sep);
+      }
+
+      // Tenta Date() como fallback
+      const dt = new Date(s);
+      if(!isNaN(dt)){
+        d = String(dt.getDate()).padStart(2,'0');
+        m = String(dt.getMonth()+1).padStart(2,'0');
+        y = String(dt.getFullYear());
+        return [d,m,y].join(sep);
+      }
+
+      // se não reconheceu, devolve cru
+      return s;
+    }
+
+    function prazoLabel(kr){
+      const raw = kr.prazo_final || kr.dt_novo_prazo || kr.data_fim || kr.dt_prazo || kr.data_limite || kr.dt_limite;
+      const fmt = toDDMMYYYY(raw, '/'); // '' => ddmmyyyy
+      return fmt || '—';
+    }
+
+
     // ================== KR List ==================
     async function loadKRs(){
       const cont = $('#krContainer');
@@ -757,6 +824,9 @@ $saldoObj = max(0, $aprovObj - $realObj);
                   <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
                   <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
                   <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
+                  <span class="meta-pill white" title="Data limite">
+                    <i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}
+                  </span>
                   <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
