@@ -11,6 +11,8 @@ $isDashboard      = ($currentPath === '/OKR_system/dashboard');
 $isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
 $isNewKR          = ($currentPath === '/OKR_system/novo_key_result');
 $isMyOKRs         = ($currentPath === '/OKR_system/meus_okrs');
+$isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
+$isOrcamento = ($currentPath === '/OKR_system/orcamento');
 
 $isReports        = in_array($currentPath, [
     '/OKR_system/views/rel_vendas.php',
@@ -145,7 +147,15 @@ body.collapsed .sidebar { overflow-y: auto; }
     </li>
 
     <li>
-      <div class="menu-item <?= $isNewKR ? 'active' : '' ?>"
+      <div class="menu-item <?= $isOrcamento ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/orcamento"
+           onclick="onMenuClick(this)">
+        <i class="fas fa-file-invoice-dollar icon-main"></i><span>Orçamento</span>
+      </div>
+    </li>
+
+    <li>
+      <div class="menu-item <?= $isMatrizPrioridade ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/matriz_prioridade"
            onclick="onMenuClick(this)">
         <i class="fas fa-table icon-main"></i><span>Matriz de Prioridade</span>

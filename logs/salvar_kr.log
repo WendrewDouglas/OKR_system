@@ -40,3 +40,69 @@
 [2025-08-25 13:11:17.640] [INFO] KR inserido {"id_kr":"001-20","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
 [2025-08-25 13:11:17.640] [INFO] Gerando milestones {"id_kr":"001-20"}
 [2025-08-25 13:11:17.644] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.milestone_kr' doesn't exist"}
+[2025-08-25 17:37:17.391] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 17:37:17.391] [INFO] Datas do ciclo derivadas {"inicio":"2026-01-01","fim":"2026-06-30","ciclo":"semestral"}
+[2025-08-25 17:37:17.391] [INFO] Iniciando avaliação IA 
+[2025-08-25 17:37:19.429] [INFO] Avaliação IA concluída {"score":7}
+[2025-08-25 17:37:28.371] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 17:37:28.371] [INFO] Datas do ciclo derivadas {"inicio":"2026-01-01","fim":"2026-06-30","ciclo":"semestral"}
+[2025-08-25 17:37:28.371] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-08-25 17:37:28.373] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-25 17:37:28.374] [INFO] Normalizações {"freq":"quinzenal","natureza":"acumulativa","status_raw":"nao iniciado","status_norm":"nao iniciado"}
+[2025-08-25 17:37:28.374] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-25 17:37:28.374] [INFO] Iniciando transação para salvar KR 
+[2025-08-25 17:37:28.374] [INFO] Gerado id_kr {"id_kr":"002-20","key_result_num":2}
+[2025-08-25 17:37:28.379] [INFO] KR inserido {"id_kr":"002-20","freq":"quinzenal","inicio":"2026-01-01","fim":"2026-06-30"}
+[2025-08-25 17:37:28.379] [INFO] Gerando milestones {"id_kr":"002-20"}
+[2025-08-25 17:37:28.384] [INFO] Milestones gerados {"id_kr":"002-20","qtde":12}
+[2025-08-25 17:37:28.384] [INFO] Transação concluída com sucesso {"id_kr":"002-20"}
+[2025-08-25 17:40:12.196] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 17:40:12.196] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 17:40:12.196] [INFO] Iniciando avaliação IA 
+[2025-08-25 17:40:14.962] [INFO] Avaliação IA concluída {"score":8}
+[2025-08-25 17:40:21.126] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 17:40:21.126] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-25 17:40:21.126] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-08-25 17:40:21.127] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-25 17:40:21.128] [INFO] Normalizações {"freq":"quinzenal","natureza":"binaria","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-08-25 17:40:21.128] [INFO] Coerção binária aplicada {"baseline":0,"meta":1}
+[2025-08-25 17:40:21.128] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-25 17:40:21.128] [INFO] Iniciando transação para salvar KR 
+[2025-08-25 17:40:21.128] [INFO] Gerado id_kr {"id_kr":"003-20","key_result_num":3}
+[2025-08-25 17:40:21.129] [INFO] KR inserido {"id_kr":"003-20","freq":"quinzenal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-08-25 17:40:21.129] [INFO] Gerando milestones {"id_kr":"003-20"}
+[2025-08-25 17:40:21.130] [INFO] Milestones gerados {"id_kr":"003-20","qtde":7}
+[2025-08-25 17:40:21.130] [INFO] Transação concluída com sucesso {"id_kr":"003-20"}
+[2025-08-25 17:46:04.492] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-25 17:46:04.493] [INFO] Datas do ciclo derivadas {"inicio":"2025-09-01","fim":"2028-09-30","ciclo":"personalizado"}
+[2025-08-25 17:46:04.493] [INFO] Iniciando avaliação IA 
+[2025-08-25 17:46:05.748] [INFO] Avaliação IA concluída {"score":7}
+[2025-08-25 17:46:10.343] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-25 17:46:10.344] [INFO] Datas do ciclo derivadas {"inicio":"2025-09-01","fim":"2028-09-30","ciclo":"personalizado"}
+[2025-08-25 17:46:10.344] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-08-25 17:46:10.345] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-25 17:46:10.346] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-08-25 17:46:10.346] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-25 17:46:10.346] [INFO] Iniciando transação para salvar KR 
+[2025-08-25 17:46:10.347] [INFO] Gerado id_kr {"id_kr":"004-20","key_result_num":4}
+[2025-08-25 17:46:10.347] [INFO] KR inserido {"id_kr":"004-20","freq":"mensal","inicio":"2025-09-01","fim":"2028-09-30"}
+[2025-08-25 17:46:10.347] [INFO] Gerando milestones {"id_kr":"004-20"}
+[2025-08-25 17:46:10.350] [INFO] Milestones gerados {"id_kr":"004-20","qtde":23}
+[2025-08-25 17:46:10.350] [INFO] Transação concluída com sucesso {"id_kr":"004-20"}
+[2025-08-26 12:45:59.135] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-08-26 12:45:59.136] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-26 12:45:59.136] [INFO] Iniciando avaliação IA 
+[2025-08-26 12:46:00.119] [INFO] Avaliação IA concluída {"score":6}
+[2025-08-26 12:46:01.699] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-08-26 12:46:01.699] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-08-26 12:46:01.700] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-08-26 12:46:01.716] [INFO] Conectado ao MySQL com sucesso 
+[2025-08-26 12:46:01.724] [INFO] Normalizações {"freq":"quinzenal","natureza":"binaria","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-08-26 12:46:01.724] [INFO] Coerção binária aplicada {"baseline":0,"meta":1}
+[2025-08-26 12:46:01.724] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-08-26 12:46:01.724] [INFO] Iniciando transação para salvar KR 
+[2025-08-26 12:46:01.732] [INFO] Gerado id_kr {"id_kr":"005-20","key_result_num":5}
+[2025-08-26 12:46:01.743] [INFO] KR inserido {"id_kr":"005-20","freq":"quinzenal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-08-26 12:46:01.743] [INFO] Gerando milestones {"id_kr":"005-20"}
+[2025-08-26 12:46:01.774] [INFO] Milestones gerados {"id_kr":"005-20","qtde":7}
+[2025-08-26 12:46:01.774] [INFO] Transação concluída com sucesso {"id_kr":"005-20"}
