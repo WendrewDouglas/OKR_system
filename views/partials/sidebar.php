@@ -5,16 +5,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$currentPath      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$currentPath        = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-$isDashboard      = ($currentPath === '/OKR_system/dashboard');
-$isNewObjective   = ($currentPath === '/OKR_system/novo_objetivo');
-$isNewKR          = ($currentPath === '/OKR_system/novo_key_result');
-$isMyOKRs         = ($currentPath === '/OKR_system/meus_okrs');
+$isDashboard        = ($currentPath === '/OKR_system/dashboard');
+$isMyOKRs           = ($currentPath === '/OKR_system/meus_okrs');
+$isNewObjective     = ($currentPath === '/OKR_system/novo_objetivo');
+$isNewKR            = ($currentPath === '/OKR_system/novo_key_result');
 $isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
-$isOrcamento = ($currentPath === '/OKR_system/orcamento');
+$isOrcamento        = ($currentPath === '/OKR_system/orcamento');
 
-$isReports        = in_array($currentPath, [
+// Grupo "Meus OKRs" deve abrir quando qualquer um dos três estiver ativo
+$isOKRGroup         = ($isMyOKRs || $isNewObjective || $isNewKR);
+
+$isReports = in_array($currentPath, [
     '/OKR_system/views/rel_vendas.php',
     '/OKR_system/views/rel_desempenho.php'
 ]);
@@ -31,7 +34,7 @@ $isOrgConfig = in_array($currentPath, [
 ]);
 $isSettings = ($isConfigStyle || $isOrgConfig);
 
-$newMessages      = $_SESSION['new_messages'] ?? 0;
+$newMessages = $_SESSION['new_messages'] ?? 0;
 ?>
 
 <!-- ====== SIDEBAR ====== -->
@@ -49,7 +52,7 @@ $newMessages      = $_SESSION['new_messages'] ?? 0;
   position: fixed; top: 0; bottom: 0; left: 0;
   display: flex; flex-direction: column;
   z-index: 1000;
-  overflow-x: hidden; /* evita extravaso horizontal */
+  overflow-x: hidden;
 }
 body.collapsed .sidebar { width: var(--sidebar-collapsed); }
 
@@ -69,11 +72,12 @@ body.collapsed .sidebar-header .toggle-text { display: none; }
 .sidebar .menu-item {
   display: flex; align-items: center; padding: 0.75rem 1rem; cursor: pointer;
   transition: background var(--transition-speed);
-  white-space: nowrap; /* evita quebra feia quando estreito */
+  white-space: nowrap;
 }
 .sidebar .menu-item:hover { background: #4e4e4e; }
 .sidebar .menu-item i.icon-main { min-width: 24px; text-align: center; margin-right: 1rem; }
 .sidebar .menu-item span { flex: 1; }
+.sidebar .menu-item .icon-chevron { margin-left: 0.25rem; }
 .sidebar .menu-item.active { background: #f1c40f; color: #222222; }
 .sidebar .menu-item.active i,
 .sidebar .menu-item.active span { color: inherit; }
@@ -117,39 +121,39 @@ body.collapsed .sidebar { overflow-y: auto; }
     <li>
       <div class="menu-item <?= $isDashboard ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/dashboard"
-           onclick="onMenuClick(this)">
+           onclick="onMenuClick(this, event)">
         <i class="fas fa-tachometer-alt icon-main"></i><span>Dashboard</span>
       </div>
     </li>
 
-    <li>
-      <div class="menu-item <?= $isMyOKRs ? 'active' : '' ?>"
+    <!-- ===== Meus OKRs com submenu (Novo Objetivo / Novo Key Result) ===== -->
+    <li class="<?= $isOKRGroup ? 'open' : '' ?>">
+      <div class="menu-item <?= $isOKRGroup ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/meus_okrs"
-           onclick="onMenuClick(this)">
+           onclick="onMenuClick(this, event)">
         <i class="fas fa-crosshairs icon-main"></i><span>Meus OKRs</span>
+        <i class="fas fa-chevron-down icon-chevron"
+           title="Abrir/Fechar"
+           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
       </div>
-    </li>
-
-    <li>
-      <div class="menu-item <?= $isNewObjective ? 'active' : '' ?>"
-           data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
-           onclick="onMenuClick(this)">
-        <i class="fas fa-plus icon-main"></i><span>Novo Objetivo</span>
-      </div>
-    </li>
-
-    <li>
-      <div class="menu-item <?= $isNewKR ? 'active' : '' ?>"
-           data-href="https://planningbi.com.br/OKR_system/novo_key_result"
-           onclick="onMenuClick(this)">
-        <i class="fas fa-plus icon-main"></i><span>Novo Key Result</span>
-      </div>
+      <ul class="submenu">
+        <li class="<?= $isNewObjective ? 'active' : '' ?>"
+            data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-plus"></i><span>Novo Objetivo</span>
+        </li>
+        <li class="<?= $isNewKR ? 'active' : '' ?>"
+            data-href="https://planningbi.com.br/OKR_system/novo_key_result"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-plus"></i><span>Novo Key Result</span>
+        </li>
+      </ul>
     </li>
 
     <li>
       <div class="menu-item <?= $isOrcamento ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/orcamento"
-           onclick="onMenuClick(this)">
+           onclick="onMenuClick(this, event)">
         <i class="fas fa-file-invoice-dollar icon-main"></i><span>Orçamento</span>
       </div>
     </li>
@@ -157,13 +161,13 @@ body.collapsed .sidebar { overflow-y: auto; }
     <li>
       <div class="menu-item <?= $isMatrizPrioridade ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/matriz_prioridade"
-           onclick="onMenuClick(this)">
+           onclick="onMenuClick(this, event)">
         <i class="fas fa-table icon-main"></i><span>Matriz de Prioridade</span>
       </div>
     </li>
 
     <li class="<?= $isReports ? 'open' : '' ?>">
-      <div class="menu-item <?= $isReports ? 'active' : '' ?>" onclick="onMenuClick(this)">
+      <div class="menu-item <?= $isReports ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
         <i class="fas fa-chart-line icon-main"></i><span>Relatórios</span>
         <i class="fas fa-chevron-down icon-chevron"></i>
       </div>
@@ -183,7 +187,7 @@ body.collapsed .sidebar { overflow-y: auto; }
 
     <!-- ===== Configurações com submenu ===== -->
     <li class="<?= $isSettings ? 'open' : '' ?>">
-      <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this)">
+      <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
         <i class="fas fa-cog icon-main"></i><span>Configurações</span>
         <i class="fas fa-chevron-down icon-chevron"></i>
       </div>
@@ -211,18 +215,33 @@ function clearActive() {
 function closeAllSubmenus() {
   document.querySelectorAll('.sidebar li.open').forEach(li => li.classList.remove('open'));
 }
-function onMenuClick(el) {
-  const li = el.parentElement,
-        submenu = li.querySelector('.submenu');
+function onMenuClick(el, ev) {
+  const li = el.parentElement;
+  const submenu = li.querySelector('.submenu');
+
   if (submenu) {
-    // se estiver recolhido, primeiro expande a barra para então permitir abrir submenu
+    // Se estiver recolhido, expande primeiro para permitir interações
     if (document.body.classList.contains('collapsed')) {
       document.body.classList.remove('collapsed');
       updateToggleIcon();
       updateToggleText();
     }
-    li.classList.toggle('open');
+    // Clique no chevron => apenas abre/fecha
+    if (ev && (ev.target.classList && (ev.target.classList.contains('icon-chevron') || ev.target.closest('.icon-chevron')))) {
+      li.classList.toggle('open');
+      return;
+    }
+    // Se o item também navega (Meus OKRs), respeitar data-href
+    const href = el.getAttribute('data-href');
+    if (href) {
+      clearActive();
+      el.classList.add('active');
+      window.location = href;
+    } else {
+      li.classList.toggle('open');
+    }
   } else {
+    // Itens sem submenu: navega
     clearActive();
     el.classList.add('active');
     const href = el.getAttribute('data-href');
@@ -236,7 +255,11 @@ function onSubmenuClick(el) {
     updateToggleText();
   }
   clearActive();
-  el.closest('li').classList.add('open');
+  // garante que o li pai (de nível do menu) fique aberto
+  const ul = el.closest('ul.submenu');
+  const parentLi = ul ? ul.closest('li') : null;
+  if (parentLi) parentLi.classList.add('open');
+
   el.classList.add('active');
   window.location = el.getAttribute('data-href');
 }
@@ -244,7 +267,7 @@ function autoCollapse() {
   const wasExpanded = !document.body.classList.contains('collapsed');
   if (window.innerWidth <= 768) {
     document.body.classList.add('collapsed');
-    if (wasExpanded) closeAllSubmenus(); // fecha submenus ao recolher automático
+    if (wasExpanded) closeAllSubmenus();
   } else {
     document.body.classList.remove('collapsed');
   }
@@ -267,7 +290,6 @@ function toggleSidebar() {
   const isExpanding = document.body.classList.contains('collapsed');
   document.body.classList.toggle('collapsed');
   if (!isExpanding) {
-    // se estou recolhendo agora, fecho todos os submenus para não "sobrar" texto
     closeAllSubmenus();
   }
   updateToggleIcon();
@@ -277,7 +299,6 @@ window.addEventListener('DOMContentLoaded', () => {
   autoCollapse();
   updateToggleIcon();
   updateToggleText();
-  // segurança extra: se carregar já recolhido, garanta submenus fechados
   if (document.body.classList.contains('collapsed')) closeAllSubmenus();
 });
 window.addEventListener('resize', () => {
@@ -285,7 +306,6 @@ window.addEventListener('resize', () => {
   autoCollapse();
   updateToggleIcon();
   updateToggleText();
-  // se mudou de expandido -> recolhido, fecha submenus
   if (!prevCollapsed && document.body.classList.contains('collapsed')) closeAllSubmenus();
 });
 </script>
