@@ -34,3 +34,41 @@ Stack trace:
 [22-Jul-2025 23:11:08 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
 [22-Jul-2025 23:11:11 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
 [23-Jul-2025 13:11:58 America/Fortaleza] Chat API Error: OPENAI_API_KEY não configurada.
+[28-Aug-2025 16:36:47 America/Fortaleza] avatar_ai.php error: OpenAI (images) HTTP 400: {
+  "error": {
+    "message": "Unknown parameter: 'response_format'.",
+    "type": "invalid_request_error",
+    "param": "response_format",
+    "code": "unknown_parameter"
+  }
+}
+[28-Aug-2025 16:43:50 America/Fortaleza] Avatar AI Error: OpenAI (images) HTTP 400: {
+  "error": {
+    "message": "Invalid value: '512x512'. Supported values are: '1024x1024', '1024x1536', '1536x1024', and 'auto'.",
+    "type": "invalid_request_error",
+    "param": "size",
+    "code": "invalid_value"
+  }
+}
+[28-Aug-2025 16:49:00 America/Fortaleza] Avatar AI Error: OpenAI (images) HTTP 403: {
+  "error": {
+    "message": "Your organization must be verified to use the model `gpt-image-1`. Please go to: https://platform.openai.com/settings/organization/general and click on Verify Organization. If you just verified, it can take up to 15 minutes for access to propagate.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+[29-Aug-2025 09:01:09 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/api/partials/sidebar.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 92
+[29-Aug-2025 09:01:09 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/api/partials/sidebar.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 92
+[29-Aug-2025 09:01:09 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/api/partials/header.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 94
+[29-Aug-2025 09:01:09 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/api/partials/header.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 94
+[29-Aug-2025 09:03:31 America/Fortaleza] Avatar AI Error: OPENAI_API_KEY ausente no .env
+[29-Aug-2025 09:37:23 America/Fortaleza] Avatar AI Error: Stability HTTP 401: {"id":"cf99a50a8235612deccf1a5952d1ae73","message":"Incorrect API key provided: sk-proj*********************************************************************************************************************************************************WUwA. You can find your API key at https://stability.ai.","name":"unauthorized"}
+
+[29-Aug-2025 09:38:17 America/Fortaleza] Avatar AI Error: Stability HTTP 401: {"id":"37ee33cbe6aab1f88b3a301b3cbb9716","message":"Incorrect API key provided: sk-proj*********************************************************************************************************************************************************WUwA. You can find your API key at https://stability.ai.","name":"unauthorized"}
+
+[29-Aug-2025 10:15:54 America/Fortaleza] Avatar AI Error: OPENAI_API_KEY ausente no .env
+[29-Aug-2025 10:16:05 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/api/partials/sidebar.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 92
+[29-Aug-2025 10:16:05 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/api/partials/sidebar.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 92
+[29-Aug-2025 10:16:05 America/Fortaleza] PHP Warning:  include(/home2/planni40/public_html/OKR_system/api/partials/header.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 94
+[29-Aug-2025 10:16:05 America/Fortaleza] PHP Warning:  include(): Failed opening '/home2/planni40/public_html/OKR_system/api/partials/header.php' for inclusion (include_path='.:/opt/cpanel/ea-php83/root/usr/share/pear') in /home2/planni40/public_html/OKR_system/api/avatar_ai.php on line 94

@@ -20,7 +20,11 @@ $csrf = $_SESSION['csrf_token'];
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
   <style>
-    :root{ --border:#222733; --card:#12161c; --muted:#a6adbb; --text:#eaeef6; --shadow:0 10px 30px rgba(0,0,0,.20); }
+    :root{
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
+    }
     body{ background:#fff !important; color:#111; }
     main.noti{ padding:24px; display:grid; gap:16px; }
     .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px; color:var(--text); box-shadow:var(--shadow); }
@@ -31,7 +35,7 @@ $csrf = $_SESSION['csrf_token'];
     .meta{ color:#9aa4b2; font-size:.85rem; }
     .badge{ font-size:.78rem; border:1px solid var(--border); padding:2px 8px; border-radius:999px; }
     .actions{ display:flex; align-items:center; gap:6px; }
-    .btn{ border:1px solid var(--border); background:#0b1118; color:#e5e7eb; padding:8px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
+    .btn{ border:1px solid var(--border); background:var(--gold); color:#222222; padding:8px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
     .empty{ border:1px dashed #334155; color:#cbd5e1; padding:16px; border-radius:12px; text-align:center; background:#0b1118; }
     .pill{ display:inline-flex; gap:6px; align-items:center; border:1px solid #334155; padding:6px 10px; border-radius:999px; }

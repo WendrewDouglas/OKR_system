@@ -22,6 +22,13 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
+/* ============ INJETAR O TEMA (uma vez por página) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
 // Conexão
 try {
   $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4";
@@ -231,9 +238,9 @@ function first_upper_rest_lower(string $s): string {
     }
 
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
     }
 
     /* regra universal p/ elementos com hidden */
@@ -276,7 +283,7 @@ function first_upper_rest_lower(string $s): string {
     @media (max-width: 1200px){ .pillars{ grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 700px){ .pillars{ grid-template-columns: 1fr; } }
     .pillar-card{
-      background: var(--bg-soft); border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--card), #0d1117); border: 1px solid var(--border);
       border-radius: 16px; padding: 18px; box-shadow: var(--shadow);
       position:relative; overflow:hidden; transition: transform .2s ease, border-color .2s ease; color: var(--text);
     }
@@ -309,7 +316,7 @@ function first_upper_rest_lower(string $s): string {
       position:relative; overflow:hidden; color: var(--text);
     }
     .kpi-card .kpi-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; color:var(--muted); font-size:.9rem; }
-    .kpi-card .kpi-value{ font-size:2rem; font-weight:900; letter-spacing:.3px; }
+    .kpi-card .kpi-value{ font-size:2rem; color:var(--gold); font-weight:900; letter-spacing:.3px; }
     .kpi-icon{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; border:1px solid var(--border); color:#c7d2fe; background:rgba(96,165,250,.12); }
     .kpi-card.success .kpi-icon{ color:#86efac; background:rgba(34,197,94,.12); }
     .kpi-card.danger .kpi-icon{ color:#fca5a5; background:rgba(239,68,68,.12); }

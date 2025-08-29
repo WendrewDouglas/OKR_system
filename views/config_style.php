@@ -19,6 +19,13 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
+/* ============ INJETAR O TEMA (uma vez por página) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
 // Carrega SOMENTE a empresa do usuário logado
 $userCompany = null;
 $hasCompany = false;
@@ -81,8 +88,8 @@ $companyName = $userCompany['organizacao'] ?? '';
 
   <style>
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
     }
     .main-wrapper{ padding:2rem 2rem 2rem 1.5rem; }
@@ -159,6 +166,89 @@ $companyName = $userCompany['organizacao'] ?? '';
        Garante que o modal e o backdrop fiquem escondidos por padrão
        e só apareçam quando a classe .show for aplicada via JS.
        =========================================================== */
+
+    /* ===== Modal moderno (dark + gold) ===== */
+  .modal-modern .modal-dialog{ max-width:520px; }
+  .modal-modern .modal-content{
+    position:relative;
+    background: radial-gradient(1200px 300px at 120% -10%, rgba(246,195,67,.10), transparent 60%),
+                linear-gradient(180deg, var(--card), #0e1319);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    box-shadow: 0 26px 80px rgba(0,0,0,.65);
+    color: var(--text);
+    animation: modal-pop .18s ease-out;
+    overflow:hidden;
+  }
+  @keyframes modal-pop {
+    from{ transform:scale(.96); opacity:.6 }
+    to  { transform:scale(1);   opacity:1 }
+  }
+
+  /* glow decorativo */
+  .modal-modern .glow{
+    position:absolute; inset:-30% -10% auto auto;
+    width:340px; height:340px; pointer-events:none; opacity:.18;
+    background: radial-gradient(closest-side, var(--gold), transparent 65%);
+    filter: blur(40px);
+  }
+
+  /* header compacto com "hero" */
+  .modal-modern .modal-body{ padding:20px 18px 14px; }
+  .modal-modern .modal-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:10px;
+  }
+  .modal-modern .hero{
+    width:64px; height:64px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(135deg, rgba(246,195,67,.20), rgba(239,68,68,.18));
+    border:1px solid rgba(246,195,67,.35);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .modal-modern .hero i{ font-size:26px; color: var(--gold); }
+
+  .modal-modern .title{
+    font-weight:800; letter-spacing:.2px; font-size:1.08rem; line-height:1.15;
+  }
+  .modal-modern .subtitle{
+    color: var(--muted); font-size:.95rem; margin-top:4px;
+  }
+
+  /* linha de “padrões” com swatches */
+  .modal-modern .defaults{
+    display:flex; align-items:center; gap:10px;
+    margin:8px 0 2px;
+  }
+  .modal-modern .swatch{
+    width:28px; height:20px; border-radius:6px; border:1px solid var(--border);
+    background: var(--c);
+  }
+
+  /* bullets */
+  .modal-modern .bullets{
+    margin:6px 0 0; padding-left:18px; color:var(--muted); font-size:.92rem;
+  }
+
+  /* footer com botões */
+  .modal-modern .modal-footer{
+    border:0; padding:12px 18px 18px; display:flex; gap:10px; justify-content:flex-end;
+  }
+  .modal-modern .btn-ghost{
+    background: transparent; color: var(--text); border:1px solid var(--border);
+    border-radius:12px; padding:10px 14px; font-weight:700; display:inline-flex; gap:8px; align-items:center;
+  }
+  .modal-modern .btn-ghost:hover{ border-color:#304054; }
+  .modal-modern .btn-danger-strong{
+    background: linear-gradient(90deg, #f87171, #ef4444); color:#1a1a1a; 
+    border:1px solid rgba(255,255,255,.15); border-radius:12px;
+    padding:10px 14px; font-weight:800; display:inline-flex; gap:8px; align-items:center;
+  }
+  .modal-modern .btn-close{
+    position:absolute; top:10px; right:10px;
+    filter: invert(1) grayscale(100%) brightness(200%); opacity:.85;
+  }
+
+
     .modal { 
       display: none;                 /* oculto por padrão */
       position: fixed !important;
@@ -319,23 +409,41 @@ $companyName = $userCompany['organizacao'] ?? '';
     </main>
   </div>
 
-  <!-- Modal de confirmação de reset (card central, fundo desfocado) -->
-  <div class="modal fade" id="confirmResetModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+  <!-- Modal de confirmação de reset (visual moderno) -->
+  <div class="modal fade modal-modern" id="confirmResetModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="fa-solid fa-triangle-exclamation me-2" style="color:#f6c343"></i>Confirmar reset</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
+        <span class="glow" aria-hidden="true"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+
         <div class="modal-body">
-          Esta ação vai restaurar as <strong>cores padrão</strong> (bg1 <code>#222222</code>, bg2 <code>#f1c40f</code>)
-          e aplicar a <strong>logo padrão</strong> para a sua organização. Deseja continuar?
+          <div class="modal-head">
+            <div class="hero"><i class="fa-solid fa-rotate-left"></i></div>
+            <div>
+              <div class="title">Resetar para o padrão?</div>
+              <div class="subtitle">
+                Esta ação aplica as <strong>cores padrão</strong> e a <strong>logo padrão</strong> da sua organização.
+              </div>
+            </div>
+          </div>
+
+          <div class="defaults">
+            <span class="muted">Cores padrão:</span>
+            <span class="swatch" style="--c:#222222" title="#222222"></span>
+            <span class="swatch" style="--c:#f1c40f" title="#f1c40f"></span>
+          </div>
+
+          <ul class="bullets">
+            <li>Atualiza sidebar, header e páginas com a paleta padrão.</li>
+            <li>Substitui a logo personalizada, se houver.</li>
+          </ul>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn-modern" data-bs-dismiss="modal">
+          <button type="button" class="btn-ghost btn-modern" data-bs-dismiss="modal">
             <i class="fa-solid fa-xmark"></i> Cancelar
           </button>
-          <button type="button" class="btn-modern btn-danger-modern" id="btnConfirmReset">
+          <button type="button" class="btn-danger-strong btn-modern" id="btnConfirmReset">
             <i class="fa-solid fa-rotate-left"></i> Resetar agora
           </button>
         </div>
@@ -478,6 +586,7 @@ $companyName = $userCompany['organizacao'] ?? '';
         const data = await resp.json();
         if (!resp.ok || !data.success) throw new Error(data.error || 'Falha ao salvar estilo.');
         flashStatus(statusStyle, 'Estilo salvo com sucesso!', 'success');
+        await hardReload({ bg1: fd.get('bg1_hex'), bg2: fd.get('bg2_hex') });
       } catch (e) {
         showStatus(statusStyle, '<strong>Erro:</strong> ' + (e.message || e), 'error');
       } finally {
@@ -541,6 +650,7 @@ $companyName = $userCompany['organizacao'] ?? '';
         updatePreview();
 
         flashStatus(statusStyle, 'Estilo restaurado para o padrão com sucesso.', 'success');
+        await hardReload({ bg1: '#222222', bg2: '#f1c40f' });
       } catch (e) {
         showStatus(statusStyle, '<strong>Erro:</strong> ' + (e.message || e), 'error');
       } finally {
@@ -557,6 +667,30 @@ $companyName = $userCompany['organizacao'] ?? '';
     if (!HAS_VALID_CNPJ) {
       document.getElementById('fsStyle').disabled = true;
     }
+
+    async function hardReload(expected){ 
+  // 1) aguarda o backend refletir (poll em get_company_style)
+  const sleep = ms => new Promise(r=>setTimeout(r, ms));
+  if (expected) {
+    for (let i=0; i<8; i++) { // até ~2.4s
+      try {
+        const r = await fetch(`/OKR_system/auth/get_company_style.php?id_company=${encodeURIComponent(COMPANY_ID)}&t=${Date.now()}`, { cache: 'no-store' });
+        const d = await r.json();
+        const rec = d?.record || {};
+        if (d?.success && rec.bg1_hex?.toLowerCase() === expected.bg1.toLowerCase()
+                      && rec.bg2_hex?.toLowerCase() === expected.bg2.toLowerCase()) {
+          break;
+        }
+      } catch(_) {}
+      await sleep(300);
+    }
+  }
+  // 2) navega com cache-buster para forçar HTML/CSS/partials atualizados
+  const url = new URL(window.location.href);
+  url.searchParams.set('r', String(Date.now()));
+  window.location.replace(url.toString());
+}
+
   </script>
 </body>
 </html>

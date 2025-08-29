@@ -184,14 +184,43 @@ if (!empty($files)) {
     const chatInput = document.getElementById('chat_message');
     const chatSendBtn = document.getElementById('chat_send');
 
+    // --- Utilitários ---
+    function escapeHTML(s) {
+        return s
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+    }
+
+    // Converte **texto** ou *texto* em <strong>texto</strong> (e mantém o resto escapado)
+    function formatBotReply(text) {
+        let t = escapeHTML(String(text ?? ''));
+        // **negrito**
+        t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // *negrito* (evita conflitar com ** já processado)
+        t = t.replace(/(^|\s)\*([^*\n]+?)\*(?=\s|$)/g, '$1<strong>$2</strong>');
+        // Quebras de linha
+        t = t.replace(/\n/g, '<br>');
+        return t;
+    }
+
     function appendMessage(role, text) {
         const msgEl = document.createElement('div');
         msgEl.className = role;
+
         if (role === 'bot') {
-            msgEl.innerHTML = `<img src="${avatar}" class="chat-avatar" alt="Assistente"><div class="bot-message">${text}</div>`;
+            const html = `
+              <img src="${avatar}" class="chat-avatar" alt="Assistente">
+              <div class="bot-message">${formatBotReply(text)}</div>`;
+            msgEl.innerHTML = html;
         } else {
-            msgEl.innerHTML = `<div class="user-message">${text}</div><img src="${avatar}" class="user-avatar" alt="Você">`;
+            // Mensagem do usuário SEM HTML (escapada)
+            const safe = escapeHTML(String(text ?? ''));
+            msgEl.innerHTML = `
+              <div class="user-message">${safe}</div>
+              <img src="${avatar}" class="user-avatar" alt="Você">`;
         }
+
         messagesContainer.appendChild(msgEl);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }

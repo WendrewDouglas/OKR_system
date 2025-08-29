@@ -14,6 +14,15 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+
+/* ============ INJETAR O TEMA (uma vez por página) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
+
 try {
     $pdo = new PDO(
         "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
@@ -69,10 +78,10 @@ function resolveFarol(array $row): string {
       /* ========= Paleta (padrão do dashboard) ========= */
       :root{
         --bg-soft:#171b21;
-        --card:#12161c;
+        --card: var(--bg1, #222222);
         --muted:#a6adbb;
         --text:#eaeef6;
-        --gold:#f6c343;
+        --gold:var(--bg2, #F1C40F);
         --green:#22c55e;
         --blue:#60a5fa;
         --red:#ef4444;

@@ -16,6 +16,15 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+
+/* ============ INJETAR O TEMA (uma vez por página) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
+
 // Conexão PDO
 try {
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
@@ -58,8 +67,8 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     main.nobj{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
     }
 

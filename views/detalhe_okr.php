@@ -992,9 +992,9 @@ $saldoObj = max(0, $aprovObj - $realObj);
     main.okr-detail{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
     }
 
     /* Breadcrumb */
@@ -1168,7 +1168,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
       background:#0b1018; border:1px solid #1f2a3a;
       color:#eaeef6; padding:10px 12px; border-radius:10px; margin-bottom:12px;
     }
-    .kr-banner i { color:#f6c343; }
+    .kr-banner i { color:var(--gold); }
     .kr-banner .title { font-weight:800; }
     .kr-banner .sub { color:#a6adbb; font-size:.9rem; }
     .ni-flex { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }

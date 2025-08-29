@@ -60,8 +60,8 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
 
   <style>
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+     --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
       --accent:#0c4a6e;
       --chip:#0e131a;

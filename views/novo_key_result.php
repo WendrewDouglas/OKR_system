@@ -23,6 +23,15 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
+
+/* ============ INJETAR O TEMA (uma vez por página) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
+
 // Conexão
 try {
   $pdo = new PDO(
@@ -80,9 +89,9 @@ if (!$hasQuinzenal) {
     main.nkr{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
     :root{
-      --bg-soft:#171b21; --card:#12161c; --muted:#a6adbb; --text:#eaeef6;
-      --gold:#f6c343; --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
+      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
     }
 
     .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
