@@ -13,6 +13,7 @@ $isNewObjective     = ($currentPath === '/OKR_system/novo_objetivo');
 $isNewKR            = ($currentPath === '/OKR_system/novo_key_result');
 $isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
 $isOrcamento        = ($currentPath === '/OKR_system/orcamento');
+$isAprovacao        = ($currentPath === '/OKR_system/aprovacao');
 
 // Grupo "Meus OKRs" deve abrir quando qualquer um dos três estiver ativo
 $isOKRGroup         = ($isMyOKRs || $isNewObjective || $isNewKR);
@@ -32,7 +33,15 @@ $isOrgConfig = in_array($currentPath, [
     '/OKR_system/organizacao',
     '/OKR_system/views/configuracoes.php' // legado, mantém ativo no grupo
 ]);
-$isSettings = ($isConfigStyle || $isOrgConfig);
+
+// >>> NOVO: flag para Gerenciar Usuários
+$isUsersMgmt = in_array($currentPath, [
+    '/OKR_system/views/usuarios.php',
+    '/OKR_system/usuarios'
+]);
+
+// abre o grupo se qualquer subitem de Config estiver ativo
+$isSettings = ($isConfigStyle || $isOrgConfig || $isUsersMgmt);
 
 $newMessages = $_SESSION['new_messages'] ?? 0;
 ?>
@@ -185,6 +194,14 @@ body.collapsed .sidebar { overflow-y: auto; }
       </ul>
     </li>
 
+    <li>
+      <div class="menu-item <?= $isAprovacao ? 'active' : '' ?>"
+           data-href="https://planningbi.com.br/OKR_system/aprovacao"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-clipboard-check icon-main"></i><span>Aprovações</span>
+      </div>
+    </li>
+
     <!-- ===== Configurações com submenu ===== -->
     <li class="<?= $isSettings ? 'open' : '' ?>">
       <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
@@ -201,6 +218,12 @@ body.collapsed .sidebar { overflow-y: auto; }
             data-href="/OKR_system/views/organizacao.php"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-building"></i><span>Editar Organização</span>
+        </li>
+        <!-- >>> NOVO: Gerenciar Usuários -->
+        <li class="<?= $isUsersMgmt ? 'active' : '' ?>"
+            data-href="/OKR_system/views/usuarios.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-users-gear"></i><span>Gerenciar Usuários</span>
         </li>
       </ul>
     </li>
@@ -220,18 +243,15 @@ function onMenuClick(el, ev) {
   const submenu = li.querySelector('.submenu');
 
   if (submenu) {
-    // Se estiver recolhido, expande primeiro para permitir interações
     if (document.body.classList.contains('collapsed')) {
       document.body.classList.remove('collapsed');
       updateToggleIcon();
       updateToggleText();
     }
-    // Clique no chevron => apenas abre/fecha
     if (ev && (ev.target.classList && (ev.target.classList.contains('icon-chevron') || ev.target.closest('.icon-chevron')))) {
       li.classList.toggle('open');
       return;
     }
-    // Se o item também navega (Meus OKRs), respeitar data-href
     const href = el.getAttribute('data-href');
     if (href) {
       clearActive();
@@ -241,7 +261,6 @@ function onMenuClick(el, ev) {
       li.classList.toggle('open');
     }
   } else {
-    // Itens sem submenu: navega
     clearActive();
     el.classList.add('active');
     const href = el.getAttribute('data-href');
@@ -255,7 +274,6 @@ function onSubmenuClick(el) {
     updateToggleText();
   }
   clearActive();
-  // garante que o li pai (de nível do menu) fique aberto
   const ul = el.closest('ul.submenu');
   const parentLi = ul ? ul.closest('li') : null;
   if (parentLi) parentLi.classList.add('open');

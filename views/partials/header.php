@@ -5,10 +5,10 @@
 
 // Usuário e notificações (definidos em session no login)
 $userName    = $_SESSION['user_name']    ?? 'Usuário';
-$newMessages = $_SESSION['new_messages'] ?? 0;
+$newMessages = (int)($_SESSION['new_messages'] ?? 0);
 
-// Lógica de avatar: se existir em assets/img/avatars/{id}.{ext}, usa; senão padrão
-$id_user = $_SESSION['user_id'] ?? null;
+// Avatar: assets/img/avatars/{id}.{ext} se existir; senão, padrão
+$id_user  = $_SESSION['user_id'] ?? null;
 $avatarUrl = '/OKR_system/assets/img/user-avatar.jpeg';
 if ($id_user) {
     $webDir = '/OKR_system/assets/img/avatars/';
@@ -21,7 +21,6 @@ if ($id_user) {
     }
 }
 ?>
-
 <!-- ====== HEADER ====== -->
 <style>
 /* Header styles */
@@ -58,23 +57,33 @@ if ($id_user) {
   display: flex;
   align-items: center;
   position: relative;
+  gap: 16px; /* <- dá respiro entre envelope e avatar */
 }
-.header .icon {
+.notif-link {
   position: relative;
-  margin-right: 1rem;
-  font-size: 1.2rem;
-  cursor: pointer;
+  display: inline-block;
+  line-height: 1;
   color: #2C3E50;
 }
-.header .icon .badge {
+.notif-link i {
+  font-size: 1.2rem;
+}
+.notif-link .badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: red;
+  top: -6px;
+  right: -8px;
+  display: none;            /* começa escondido quando count=0 */
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
   color: #fff;
-  border-radius: 50%;
-  padding: 2px 5px;
-  font-size: 0.7rem;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff; /* contorno para destacar no fundo branco */
 }
 .profile {
   display: flex;
@@ -107,12 +116,8 @@ if ($id_user) {
   min-width: 150px;
   z-index: 200;
 }
-.profile.open .profile-menu {
-  display: block;
-}
-.profile-menu li {
-  padding: 0;
-}
+.profile.open .profile-menu { display: block; }
+.profile-menu li { padding: 0; }
 .profile-menu a {
   display: flex;
   align-items: center;
@@ -121,38 +126,35 @@ if ($id_user) {
   text-decoration: none;
   transition: background 0.2s;
 }
-.profile-menu a:hover {
-  background: #f1c40f;
-}
-.profile-menu a i {
-  margin-right: 0.5rem;
-  color: #222222;
-}
+.profile-menu a:hover { background: #f1c40f; }
+.profile-menu a i { margin-right: 0.5rem; color: #222222; }
+
 /* Ajuste para não sobrepor a sidebar */
-.content {
-  margin-left: var(--sidebar-width);
-  transition: margin-left var(--transition-speed);
-}
-body.collapsed .content {
-  margin-left: var(--sidebar-collapsed);
-}
+.content { margin-left: var(--sidebar-width); transition: margin-left var(--transition-speed); }
+body.collapsed .content { margin-left: var(--sidebar-collapsed); }
 </style>
 
 <header class="header">
   <div class="left">
     <a href="https://planningbi.com.br/" class="logo-link"
        aria-label="Ir para página inicial" target="_blank" rel="noopener">
-      <img src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg"
-           alt="Logo">
+      <img src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg" alt="Logo">
     </a>
   </div>
   <div class="right">
-    <div class="icon" onclick="window.location='/OKR_system/views/messages.php'">
-      <i class="fas fa-envelope"></i>
-      <?php if ($newMessages > 0): ?>
-        <span class="badge"><?= $newMessages ?></span>
-      <?php endif; ?>
-    </div>
+    <!-- Envelope + badge numérico -->
+    <a href="/OKR_system/views/notificacoes.php"
+       class="notif-link"
+       aria-label="Abrir notificações">
+      <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+      <span id="notifBadge" class="badge"
+            aria-live="polite"
+            <?php if ($newMessages > 0): ?>style="display:inline-block"<?php endif; ?>>
+        <?= $newMessages > 99 ? '99+' : ($newMessages > 0 ? (int)$newMessages : '') ?>
+      </span>
+    </a>
+
+    <!-- Perfil -->
     <div class="profile" onclick="toggleProfileMenu(event)">
       <img src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar">
       <span><?= htmlspecialchars($userName, ENT_QUOTES, 'UTF-8') ?></span>
@@ -178,13 +180,46 @@ function toggleProfileMenu(e) {
   const profile = e.currentTarget;
   const isOpen = profile.classList.contains('open');
   document.querySelectorAll('.profile').forEach(el => el.classList.remove('open'));
-  if (!isOpen) {
-    profile.classList.add('open');
-  }
+  if (!isOpen) profile.classList.add('open');
 }
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.profile')) {
     document.querySelectorAll('.profile').forEach(el => el.classList.remove('open'));
   }
 });
+</script>
+<script>
+(function(){
+  const API = '/OKR_system/auth/notificacoes_api.php';
+  const badge = document.getElementById('notifBadge');
+
+  function renderBadge(count){
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    }
+  }
+
+  async function refreshBadge(){
+    try{
+      const r = await fetch(API+'?action=count', { cache:'no-store' });
+      const j = await r.json();
+      const count = parseInt(j?.count ?? 0, 10) || 0;
+      renderBadge(count);
+    }catch(e){
+      // silencioso
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // já inicia com valor da sessão (server-side) e atualiza em seguida
+    refreshBadge();
+    // polling leve a cada 60s
+    setInterval(refreshBadge, 60000);
+  });
+})();
 </script>
