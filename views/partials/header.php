@@ -3,22 +3,60 @@
 // Exibe o header fixo em todas as páginas
 // Deve ser incluído dentro da <div class="content">, antes do <main>
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_start();
+}
+
 // Usuário e notificações (definidos em session no login)
 $userName    = $_SESSION['user_name']    ?? 'Usuário';
 $newMessages = (int)($_SESSION['new_messages'] ?? 0);
 
-// Avatar: assets/img/avatars/{id}.{ext} se existir; senão, padrão
-$id_user  = $_SESSION['user_id'] ?? null;
-$avatarUrl = '/OKR_system/assets/img/user-avatar.jpeg';
-if ($id_user) {
-    $webDir = '/OKR_system/assets/img/avatars/';
-    $fsDir  = __DIR__ . '/../../assets/img/avatars/';
-    foreach (['png','jpg','jpeg'] as $ext) {
-        if (file_exists($fsDir . $id_user . '.' . $ext)) {
-            $avatarUrl = $webDir . $id_user . '.' . $ext;
-            break;
-        }
+// ===== Avatar (nova lógica: usuarios.avatar_id -> avatars.filename) =====
+$id_user         = $_SESSION['user_id'] ?? null;
+$avatarBaseWeb   = '/OKR_system/assets/img/avatars/default_avatar/';
+$avatarUrl       = $avatarBaseWeb . 'default.png';
+
+// Se já tiver em sessão (setado no login), usa direto
+if (!empty($_SESSION['avatar_filename']) && preg_match('/^[a-z0-9_.-]+\.png$/i', $_SESSION['avatar_filename'])) {
+  $avatarUrl = $avatarBaseWeb . $_SESSION['avatar_filename'];
+}
+// Senão, consulta no banco e faz cache em sessão
+elseif ($id_user) {
+  try {
+    // Caminho correto: subir 2 níveis a partir de views/partials -> /OKR_system
+    $root = dirname(__DIR__, 2);
+    $cfg  = $root . '/auth/config.php';
+
+    if (is_file($cfg)) {
+      require_once $cfg;
+
+      $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+      $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+      ]);
+
+      $st = $pdo->prepare("
+        SELECT a.filename
+          FROM usuarios u
+          JOIN avatars  a ON a.id = u.avatar_id
+         WHERE u.id_user = :id
+         LIMIT 1
+      ");
+      $st->execute([':id' => $id_user]);
+      $fn = $st->fetchColumn();
+
+      if (is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn)) {
+        $_SESSION['avatar_filename'] = $fn; // cache
+        $avatarUrl = $avatarBaseWeb . $fn;
+      }
     }
+    // Se não houver config.php, fica no default silenciosamente
+  } catch (Throwable $e) {
+    // Mantém default.png em caso de erro sem poluir o output
+    // error_log('header avatar lookup: ' . $e->getMessage());
+  }
 }
 ?>
 <!-- ====== HEADER ====== -->
@@ -72,7 +110,7 @@ if ($id_user) {
   position: absolute;
   top: -6px;
   right: -8px;
-  display: none;            /* começa escondido quando count=0 */
+  display: none; /* começa escondido quando count=0 */
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -96,6 +134,7 @@ if ($id_user) {
   height: 32px;
   border-radius: 50%;
   margin-right: 0.5rem;
+  object-fit: cover;
 }
 .profile span {
   color: #2C3E50;
@@ -156,7 +195,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
 
     <!-- Perfil -->
     <div class="profile" onclick="toggleProfileMenu(event)">
-      <img src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar">
+      <img src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar do usuário" loading="lazy">
       <span><?= htmlspecialchars($userName, ENT_QUOTES, 'UTF-8') ?></span>
       <ul class="profile-menu">
         <li>
@@ -216,9 +255,7 @@ document.addEventListener('click', function(e) {
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
-    // já inicia com valor da sessão (server-side) e atualiza em seguida
     refreshBadge();
-    // polling leve a cada 60s
     setInterval(refreshBadge, 60000);
   });
 })();

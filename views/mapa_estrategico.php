@@ -1,10 +1,5 @@
 <?php
-// views/mapa_estrategico.php — Mapa Estratégico (visual padrão usuarios.php)
-// • Sem debug na saída
-// • Cards compactos (expandem ao hover)
-// • Dentro de cada pilar: cards à esquerda (2 colunas) + gráfico de evolução mensal à direita
-// • Respeita sidebar, header e chat (usa --chat-w)
-
+// views/mapa_estrategico.php — Mapa Estratégico
 declare(strict_types=1);
 ini_set('display_errors','0'); ini_set('display_startup_errors','0'); error_reporting(0);
 
@@ -15,18 +10,8 @@ require_once __DIR__ . '/../auth/functions.php';
 if (!isset($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php'); exit;
 }
-
 if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 $csrf = $_SESSION['csrf_token'];
-
-
-/* ============ INJETAR O TEMA (uma vez por página) ============ */
-if (!defined('PB_THEME_LINK_EMITTED')) {
-  define('PB_THEME_LINK_EMITTED', true);
-  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
-  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
-}
-
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function slug($s){
@@ -46,6 +31,30 @@ try{
   );
 }catch(Throwable){ /* silencioso */ }
 
+// ===== Empresa do usuário (obrigatória) =====
+$userId = (int)$_SESSION['user_id'];
+$companyId = null;
+try{
+  $st = $pdo->prepare("
+    SELECT c.id_company
+    FROM usuarios u
+    LEFT JOIN company c ON c.id_company = u.id_company
+    WHERE u.id_user = :uid
+    LIMIT 1
+  ");
+  $st->execute([':uid'=>$userId]);
+  $row = $st->fetch();
+  if ($row && !empty($row['id_company'])) {
+    $companyId = (int)$row['id_company'];
+  }
+}catch(Throwable){ /* noop */ }
+
+if (!$companyId) {
+  header('Location: /OKR_system/organizacao'); exit;
+}
+$_SESSION['company_id'] = $companyId;
+
+// ===== Utilitários de schema =====
 function table_exists(PDO $pdo, string $table): bool {
   try{ $st=$pdo->prepare("SHOW TABLES LIKE :t"); $st->execute([':t'=>$table]); return (bool)$st->fetchColumn(); }
   catch(Throwable){ return false; }
@@ -56,17 +65,27 @@ function cols(PDO $pdo, string $table): array {
 }
 function hascol(array $list, string $name): bool { foreach($list as $c){ if (strcasecmp($c,$name)===0) return true; } return false; }
 
+/* ============ INJETAR O TEMA (agora com ?cid=) ============ */
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  $cid = (int)$_SESSION['company_id'];
+  $noc = isset($_GET['nocache']) ? '&nocache=1' : '';
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php?cid='.$cid.$noc.'">';
+}
+
 /* ======================= Dados base ======================= */
 
-// Usuários (id -> primeiro_nome)
+// Usuários (somente da mesma company) — id -> primeiro_nome
 $usuarios=[];
 if ($pdo && table_exists($pdo,'usuarios')){
-  foreach($pdo->query("SELECT id_user, primeiro_nome FROM usuarios") as $r){
+  $st = $pdo->prepare("SELECT id_user, primeiro_nome FROM usuarios WHERE id_company = :cid");
+  $st->execute([':cid'=>$companyId]);
+  foreach($st as $r){
     $usuarios[(string)$r['id_user']] = $r['primeiro_nome'] ?: $r['id_user'];
   }
 }
 
-// Pilares
+// Pilares (domínio — não depende de empresa)
 $pilares=[];
 if ($pdo && table_exists($pdo,'dom_pilar_bsc')){
   $c=cols($pdo,'dom_pilar_bsc');
@@ -88,26 +107,39 @@ if ($pdo && table_exists($pdo,'dom_pilar_bsc')){
   }
 }
 
-// Objetivos
+// Objetivos (somente da company)
 $objetivos=[];
 if ($pdo && table_exists($pdo,'objetivos')){
-  foreach($pdo->query("SELECT id_objetivo, descricao, pilar_bsc, tipo, dono, status, dt_prazo, qualidade FROM objetivos") as $r){
+  $st = $pdo->prepare("
+    SELECT o.id_objetivo, o.descricao, o.pilar_bsc, o.tipo, o.dono, o.status, o.dt_prazo, o.qualidade
+    FROM objetivos o
+    WHERE o.id_company = :cid
+  ");
+  $st->execute([':cid'=>$companyId]);
+  foreach($st as $r){
     $r['pilar'] = slug($r['pilar_bsc']);
     $objetivos[] = $r;
   }
 }
 
-// KRs por objetivo
-$krs=[];           // id_kr => ['id_objetivo'=>..]
+// KRs (somente KRs de objetivos da company)
+$krs=[];           // id_kr => ['id_objetivo'=>..,'status'=>..]
 $krPorObj=[];      // id_objetivo => [id_kr,...]
 if ($pdo && table_exists($pdo,'key_results')){
-  foreach($pdo->query("SELECT id_kr, id_objetivo, status FROM key_results") as $r){
+  $st = $pdo->prepare("
+    SELECT kr.id_kr, kr.id_objetivo, kr.status
+    FROM key_results kr
+    JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+    WHERE o.id_company = :cid
+  ");
+  $st->execute([':cid'=>$companyId]);
+  foreach($st as $r){
     $krs[$r['id_kr']] = ['id_objetivo'=>$r['id_objetivo'], 'status'=>mb_strtolower((string)$r['status'])];
     $krPorObj[$r['id_objetivo']][] = $r['id_kr'];
   }
 }
 
-// Status KR agregado por objetivo -> status do objetivo
+// Status KR agregado -> status do objetivo
 function statusObjetivoAgregado(int $id_obj, array $krPorObj, array $krs): string {
   $lista = $krPorObj[$id_obj] ?? [];
   if (!$lista) return 'não iniciado';
@@ -123,19 +155,18 @@ function statusObjetivoAgregado(int $id_obj, array $krPorObj, array $krs): strin
   return 'não iniciado';
 }
 
-/* ======================= Milestones / Métricas ======================= */
+/* ======================= Métricas / Gráficos ======================= */
 $metrics=[]; // id_objetivo => ['qtd_kr'=>int,'progresso'=>float,'krs_sem_apont_mes'=>int]
 $charts=[];  // anc => ['labels'=>[], 'data'=>[], 'color'=>hex]
 
 $msTable=null; foreach(['milestones_kr','milestones'] as $t) if($pdo && table_exists($pdo,$t)) { $msTable=$t; break; }
 if ($pdo && $msTable){
   $mc = cols($pdo,$msTable);
-  // Colunas
+  // Detecta nomes de colunas
   $COL_EXP = null; foreach(['valor_esperado','esperado','target','meta'] as $c) if(hascol($mc,$c)){$COL_EXP=$c; break;}
   $COL_REAL= null; foreach(['valor_real','realizado','resultado','alcancado'] as $c) if(hascol($mc,$c)){$COL_REAL=$c; break;}
   $COL_ORD = null; foreach(['num_ordem','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_ORD=$c; break;}
-  // Data para gráfico (preferir apont/evidência)
-  $COL_DATE = null; foreach(['dt_apontamento','data_apontamento','data_apont','apontamento_dt','dt_evidencia','data_evidencia','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_DATE=$c; break;}
+  $COL_DATE= null; foreach(['dt_apontamento','data_apontamento','data_apont','apontamento_dt','dt_evidencia','data_evidencia','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_DATE=$c; break;}
 
   // ---- Métricas por objetivo (qtd KR + progresso médio) ----
   if ($COL_EXP && $COL_ORD){
@@ -148,7 +179,14 @@ if ($pdo && $msTable){
     $SUB_META = "(SELECT $EXP FROM `$msTable` mme WHERE mme.id_kr=kr.id_kr ORDER BY $ordDesc LIMIT 1)";
     $SUB_REAL = "(SELECT $REAL FROM `$msTable` mmu WHERE mmu.id_kr=kr.id_kr AND $REAL IS NOT NULL ORDER BY $ordDesc LIMIT 1)";
 
-    $sqlCountKR = "SELECT id_objetivo, COUNT(*) AS qtd_kr FROM key_results GROUP BY id_objetivo";
+    // Só KRs da company
+    $sqlCountKR = "
+      SELECT kr.id_objetivo, COUNT(*) AS qtd_kr
+      FROM key_results kr
+      JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
+      GROUP BY kr.id_objetivo
+    ";
     $sqlProgKR  = "
       SELECT kr.id_objetivo,
         CASE WHEN (($SUB_META) - ($SUB_BASE)) <> 0 THEN
@@ -157,6 +195,8 @@ if ($pdo && $msTable){
           ))
         ELSE 0 END AS progresso_kr
       FROM key_results kr
+      JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
     ";
     $sqlSum = "
       SELECT o.id_objetivo,
@@ -166,8 +206,11 @@ if ($pdo && $msTable){
       LEFT JOIN ($sqlCountKR) c ON c.id_objetivo=o.id_objetivo
       LEFT JOIN (SELECT id_objetivo, AVG(progresso_kr) AS progresso FROM ($sqlProgKR) t GROUP BY id_objetivo) avgp
         ON avgp.id_objetivo=o.id_objetivo
+      WHERE o.id_company = :cid
     ";
-    foreach($pdo->query($sqlSum) as $row){
+    $st = $pdo->prepare($sqlSum);
+    $st->execute([':cid'=>$companyId]);
+    foreach($st as $row){
       $metrics[$row['id_objetivo']] = [
         'qtd_kr'=>(int)$row['qtd_kr'],
         'progresso'=>(float)$row['progresso'],
@@ -175,7 +218,7 @@ if ($pdo && $msTable){
       ];
     }
   } else {
-    // Sem milestones utilizáveis: ao menos conta KR
+    // Sem milestones utilizáveis: ao menos conta KR (já filtrados por company)
     foreach($krPorObj as $ido=>$arr){
       $metrics[$ido] = ['qtd_kr'=>count($arr),'progresso'=>0.0,'krs_sem_apont_mes'=>0];
     }
@@ -183,25 +226,38 @@ if ($pdo && $msTable){
 
   // ---- Dados para os gráficos (evolução no mês) ----
   if ($COL_DATE && $COL_EXP){
-    // Base/meta por KR (usando min/max como fallback robusto)
     $EXP="`$COL_EXP`";
     $REAL= $COL_REAL ? "`$COL_REAL`" : "NULL";
+
+    // Base/meta por KR (somente KRs da company)
     $bm = [];
-    foreach($pdo->query("SELECT id_kr, MIN($EXP) AS base, MAX($EXP) AS meta FROM `$msTable` GROUP BY id_kr") as $r){
-      $bm[$r['id_kr']] = ['base'=>(float)$r['base'], 'meta'=>(float)$r['meta']];
-    }
+    $sqlBM = "
+      SELECT m.id_kr, MIN($EXP) AS base, MAX($EXP) AS meta
+      FROM `$msTable` m
+      JOIN key_results kr ON kr.id_kr = m.id_kr
+      JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
+      GROUP BY m.id_kr
+    ";
+    $st = $pdo->prepare($sqlBM); $st->execute([':cid'=>$companyId]);
+    foreach($st as $r){ $bm[$r['id_kr']] = ['base'=>(float)$r['base'], 'meta'=>(float)$r['meta']]; }
 
     // Intervalo do mês atual
     $ini = (new DateTime('first day of this month'))->format('Y-m-d');
     $fim = (new DateTime('last day of this month'))->format('Y-m-d');
 
-    // Coletar milestones no mês (somente data/real/esperado)
-    $sql = "SELECT id_kr, DATE(`$COL_DATE`) AS dia, $EXP AS exp, ".($COL_REAL ? "$REAL AS realv" : "NULL AS realv")."
-            FROM `$msTable`
-            WHERE `$COL_DATE` BETWEEN :ini AND :fim";
-    $st=$pdo->prepare($sql); $st->execute([':ini'=>$ini,':fim'=>$fim]);
+    // Milestones do mês (apenas da company)
+    $sql = "
+      SELECT m.id_kr, DATE(m.`$COL_DATE`) AS dia, $EXP AS exp, ".($COL_REAL ? "$REAL AS realv" : "NULL AS realv")."
+      FROM `$msTable` m
+      JOIN key_results kr ON kr.id_kr = m.id_kr
+      JOIN objetivos o    ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
+        AND m.`$COL_DATE` BETWEEN :ini AND :fim
+    ";
+    $st=$pdo->prepare($sql); $st->execute([':cid'=>$companyId, ':ini'=>$ini, ':fim'=>$fim]);
 
-    // Mapa auxiliar: pilar por KR
+    // Mapa auxiliar: pilar por KR (via objetivos já filtrados)
     $pilarPorKr=[];
     foreach($krs as $idkr=>$infokr){
       $id_obj = (int)$infokr['id_objetivo'];
@@ -212,7 +268,7 @@ if ($pdo && $msTable){
 
     $acc = []; // $acc[pilar][dia] = [v1,v2,...]
     while($row=$st->fetch()){
-      $idkr = (int)$row['id_kr'];
+      $idkr = (string)$row['id_kr'];
       $pkey = $pilarPorKr[$idkr] ?? null;
       if (!$pkey || empty($bm[$idkr])) continue;
       $base=$bm[$idkr]['base']; $meta=$bm[$idkr]['meta']; if ($meta==$base) continue;
@@ -245,7 +301,7 @@ if ($pdo && $msTable){
   }
 }
 
-// Agregados para header
+// Agregados para header (já filtrados por company)
 $totalObj = count($objetivos);
 $totalKR  = 0; foreach($metrics as $m){ $totalKR += (int)($m['qtd_kr']??0); }
 $totalPil = count($pilares);
@@ -273,104 +329,44 @@ $totalPil = count($pilares);
     body{ background:#fff !important; color:#111; }
     .content{ background:transparent; }
     main.mapa{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
-
-    /* Breadcrumb */
     .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
     .crumbs a{ color:var(--accent); text-decoration:none; }
     .crumbs .sep{ opacity:.5; margin:0 2px; }
     .crumbs i{ opacity:.8; }
-
-    /* Cabeçalho */
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden;
-    }
+    .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden; }
     .head-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
     .head-title i{ color:var(--gold); }
     .head-meta{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
     .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
     .pill i{ font-size:.9rem; opacity:.9; }
-
     .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
-    .btn-gold{
-      background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9);
-      padding:10px 16px; border-radius:12px; font-weight:900; white-space:nowrap;
-      box-shadow:0 6px 20px rgba(246,195,67,.22);
-    }
+    .btn-gold{ background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9); padding:10px 16px; border-radius:12px; font-weight:900; white-space:nowrap; box-shadow:0 6px 20px rgba(246,195,67,.22); }
     .btn-gold:hover{ filter:brightness(.96); transform:translateY(-1px); box-shadow:0 10px 28px rgba(246,195,67,.28); }
-
-    /* Toolbar (busca + âncoras) */
-    .filters{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:var(--shadow); color:var(--text);
-    }
+    .filters{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:var(--shadow); color:var(--text); }
     .filters-grid{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
     .search{ width:100%; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; padding:10px 10px; outline:none; }
     .anchors{ display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .anchors .pill{ cursor:pointer; }
-
-    /* Pilar container */
-    .pilar-wrap{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow); color:var(--text);
-    }
+    .pilar-wrap{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow); color:var(--text); }
     .pilar-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
     .pilar-title{ font-weight:900; display:flex; align-items:center; gap:8px; text-transform:lowercase; }
     .pilar-title i{ color:var(--gold); }
-
-    /* Progresso pilar */
-    .pilar-progress{
-      height:18px; background:#0b1422; border:1px solid #1c2b46; border-radius:999px; overflow:hidden; position:relative; margin:8px 0 14px;
-      box-shadow: inset 0 4px 18px rgba(0,0,0,.35);
-    }
-    .pilar-progress .bar{
-      height:100%; width:0%; transition:width .5s ease;
-      background: linear-gradient(90deg, var(--gold), var(--blue));
-    }
-    .pilar-progress .val{
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      color:#0a1220; font-weight:900; text-shadow:0 1px 0 rgba(255,255,255,.45); mix-blend-mode:screen;
-    }
-
-    /* Grid interno do pilar: cards à esquerda (2 colunas) + chart à direita */
-    .pilar-grid{
-      display:grid;
-      grid-template-columns: minmax(360px, 2fr) minmax(320px, 1.2fr);
-      gap:14px; align-items:stretch;
-    }
-    @media (max-width: 980px){
-      .pilar-grid{ grid-template-columns: 1fr; }
-    }
-
-    /* Cards de objetivo: compactos e expansíveis */
-    .cards-grid{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(240px,1fr));
-      gap:12px;
-    }
-    @media (max-width: 640px){
-      .cards-grid{ grid-template-columns: 1fr; }
-    }
-
-    .card{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:10px; box-shadow:var(--shadow); color:var(--text);
-      position:relative; display:grid; gap:8px; grid-template-rows:auto auto auto 1fr; overflow:hidden;
-      transition:transform .2s ease, box-shadow .2s ease, max-height .25s ease;
-      max-height: 160px; /* compacto */
-    }
+    .pilar-progress{ height:18px; background:#0b1422; border:1px solid #1c2b46; border-radius:999px; overflow:hidden; position:relative; margin:8px 0 14px; box-shadow: inset 0 4px 18px rgba(0,0,0,.35); }
+    .pilar-progress .bar{ height:100%; width:0%; transition:width .5s ease; background: linear-gradient(90deg, var(--gold), var(--blue)); }
+    .pilar-progress .val{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#0a1220; font-weight:900; text-shadow:0 1px 0 rgba(255,255,255,.45); mix-blend-mode:screen; }
+    .pilar-grid{ display:grid; grid-template-columns: minmax(360px, 2fr) minmax(320px, 1.2fr); gap:14px; align-items:stretch; }
+    @media (max-width: 980px){ .pilar-grid{ grid-template-columns: 1fr; } }
+    .cards-grid{ display:grid; grid-template-columns: repeat(2, minmax(240px,1fr)); gap:12px; }
+    @media (max-width: 640px){ .cards-grid{ grid-template-columns: 1fr; } }
+    .card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:10px; box-shadow:var(--shadow); color:var(--text); position:relative; display:grid; gap:8px; grid-template-rows:auto auto auto 1fr; overflow:hidden; transition:transform .2s ease, box-shadow .2s ease, max-height .25s ease; max-height: 160px; }
     .card:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35); max-height: 360px; }
     .title{ font-weight:900; letter-spacing:.2px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     .progress{ height:8px; background:#0f172a; border:1px solid #1f2a44; border-radius:5px; overflow:hidden; }
     .progress .bar{ height:100%; background:var(--bar, #60a5fa); transition:width .35s ease; }
     .row{ display:flex; justify-content:space-between; font-size:.9rem; color:#cbd5e1; }
-
-    .more{
-      display:grid; gap:8px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease;
-    }
+    .more{ display:grid; gap:8px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease; }
     .card:hover .more{ opacity:1; max-height:220px; }
     .badges{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .badge{ font-size:.78rem; border:1px solid var(--border); padding:4px 8px; border-radius:999px; color:#c9d4e5; }
@@ -381,13 +377,7 @@ $totalPil = count($pilares);
     .b-warn{ background:rgba(250,204,21,.16); border-color:#705e14; color:#ffec99; }
     .meta{ font-size:.92rem; color:#cbd5e1; display:grid; gap:2px; }
     .link{ position:absolute; inset:0; text-decoration:none; color:inherit; }
-
-    /* Card do gráfico (direita) */
-    .chart-card{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:var(--shadow); color:var(--text);
-      display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:280px;
-    }
+    .chart-card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:var(--shadow); color:#var(--text); display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:280px; }
     .chart-title{ font-weight:900; display:flex; align-items:center; gap:8px; }
     .chart-box{ position:relative; height:100%; min-height:220px; }
   </style>
@@ -429,12 +419,10 @@ $totalPil = count($pilares);
 
       <!-- Pilares + Objetivos + Gráficos -->
       <?php
-      // preparar âncoras
       echo '<script>window.__anchors = [];</script>';
 
       foreach ($pilares as $pillKey => $info):
         $objs = array_values(array_filter($objetivos, fn($o)=> slug($o['pilar']) === $pillKey));
-        // progresso médio do pilar a partir das métricas (último valor médio dos objetivos)
         $acc=0; $n=0;
         foreach($objs as $o){ if(isset($metrics[$o['id_objetivo']])){ $acc += (float)$metrics[$o['id_objetivo']]['progresso']; $n++; } }
         $pilarProg = $n ? round($acc/$n,1) : 0.0;
@@ -563,7 +551,6 @@ $totalPil = count($pilares);
       const ctx = document.getElementById('chart_'+anc);
       if (!ctx) return;
       const color = cfg.color || '#60a5fa';
-      // Utilitário para rgba
       const hexToRGBA = (hex, a)=> {
         const s=hex.replace('#',''); const bigint=parseInt(s,16);
         const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255;
@@ -587,9 +574,7 @@ $totalPil = count($pilares);
           interaction: { mode:'index', intersect:false },
           plugins: {
             legend: { display:false },
-            tooltip: {
-              callbacks: { label: (ctx)=> ` ${ctx.formattedValue}%` }
-            }
+            tooltip: { callbacks: { label: (ctx)=> ` ${ctx.formattedValue}%` } }
           },
           scales: {
             x: { grid:{ display:false }, ticks:{ color:'#cbd5e1', maxRotation:0, autoSkip:true } },

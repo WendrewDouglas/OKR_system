@@ -1,5 +1,5 @@
 <?php
-// views/usuario_form.php — Cadastro/edição de usuário + upload + Canvas + IA realista com preview/commit
+// views/usuario_form.php — Cadastro/Edição + RBAC (Papéis, Overrides) + Avatar (Canvas/IA)
 declare(strict_types=1);
 ini_set('display_errors',1); ini_set('display_startup_errors',1); error_reporting(E_ALL);
 
@@ -55,9 +55,7 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
 }
 
 .badge{ border:1px solid var(--border); border-radius:999px; padding:4px 8px; font-size:.8rem; color:#cbd5e1; }
-.btn{
-  border:1px solid var(--border); background:#0b1118; color:#e5e7eb; padding:10px 12px; border-radius:12px; font-weight:800; cursor:pointer;
-}
+.btn{ border:1px solid var(--border); background:#0b1118; color:#e5e7eb; padding:10px 12px; border-radius:12px; font-weight:800; cursor:pointer; }
 .btn:hover{ transform:translateY(-1px); transition:.15s; }
 .btn-primary{ background:#1f2937; }
 .btn-gold{ background:var(--gold); color:#111; border-color:#ad8a00; }
@@ -70,22 +68,27 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
 .small{ color:#9aa4b2; font-size:.85rem; }
 .helper{ color:#9aa4b2; font-size:.85rem; display:block; margin-top:6px; }
 
-/* Overlays (Canvas e IA) */
 .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
 .overlay.show{ display:grid; }
 .modal{ width:min(980px,95vw); background:#0b1020; color:#e6e9f2; border-radius:18px; border:1px solid #223047; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
 .modal h3{ margin:0 0 8px; }
 
-/* Canvas Builder */
 .builder{ display:grid; grid-template-columns:360px 1fr; gap:12px; }
 .canvas-wrap{ background:#0c1118; border:1px solid #1f2635; border-radius:12px; padding:12px; display:grid; place-items:center; }
 .builder .ctrls{ background:#0c1118; border:1px solid #1f2635; border-radius:12px; padding:12px; }
 .builder .ctrls .row{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px; }
 .builder select, .builder input[type=color], .builder input[type=range]{ width:100%; background:#0b1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; }
 
-/* IA modal content */
-.modal .ai-body{ display:grid; gap:8px; }
-.modal .ai-body .grid-3{ margin-bottom:6px; }
+/* RBAC overrides */
+.grid-cap{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:8px; }
+.cap-group{ border:1px solid #1f2635; border-radius:12px; padding:10px; background:#0c1118; }
+.cap-title{ font-weight:900; color:#e5e7eb; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.cap-item{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:.9rem; }
+.cap-item select{ background:#0b1118; border:1px solid #223047; color:#e6e9f2; border-radius:8px; padding:6px 8px; }
+
+.access{ display:grid; gap:4px; margin-top:6px; }
+.access-row{ font-size:.88rem; color:#cbd5e1; }
+.access-row strong{ color:#fff; }
 </style>
 </head>
 <body>
@@ -94,7 +97,6 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
 <?php include __DIR__.'/partials/header.php'; ?>
 
 <main class="form">
-  <!-- Cabeçalho -->
   <section class="head-card">
     <h1 style="margin:0;font-size:1.2rem;display:flex;gap:8px;align-items:center;">
       <i class="fa-solid fa-user-gear"></i> <?= $id? 'Editar usuário' : 'Novo usuário' ?>
@@ -104,7 +106,6 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
     </div>
   </section>
 
-  <!-- Form -->
   <section class="form-card">
     <h2 class="section-title"><i class="fa-regular fa-id-card"></i> Dados do usuário</h2>
 
@@ -152,18 +153,27 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
 
       <hr style="border-color:#1f2635; margin:16px 0;">
 
-      <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> Acessos e Páginas</h2>
+      <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> Permissões (RBAC)</h2>
       <div class="grid-2">
         <div>
           <label>Papéis (roles)</label>
           <div id="rolesBox" class="checkbox-list"></div>
-          <div class="small">Use papéis para acessos amplos (ex.: admin_master).</div>
+          <div class="small">Papéis concedem acessos amplos (ex.: <em>admin_master</em>).</div>
         </div>
         <div>
-          <label>Páginas permitidas</label>
-          <div id="pagesBox" class="checkbox-list"></div>
-          <div class="small">Controle granular por página/área.</div>
+          <label>Overrides (opcionais)</label>
+          <div id="capsBox" class="grid-cap"></div>
+          <div class="small">Use **Overrides** para exceções por capacidade (ALLOW/DENY). “Inherit” remove a exceção e mantém o herdado do papel.</div>
         </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="section-title"><i class="fa-regular fa-eye"></i> Resumo efetivo</div>
+        <div class="access">
+          <div class="access-row"><strong>Consulta (R):</strong> <span id="sumR">—</span></div>
+          <div class="access-row"><strong>Edição (W):</strong> <span id="sumW">—</span></div>
+        </div>
+        <div class="small">O resumo reflete o que está no banco. Após salvar, recarregue para ver mudanças.</div>
       </div>
 
       <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end;">
@@ -180,15 +190,13 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
   <div class="modal" role="dialog" aria-modal="true">
     <h3><i class="fa-regular fa-face-smile"></i> Gerador de Avatar (Canvas)</h3>
     <div class="builder">
-      <div class="canvas-wrap">
-        <canvas id="avatarCanvas" width="320" height="320"></canvas>
-      </div>
+      <div class="canvas-wrap"><canvas id="avatarCanvas" width="320" height="320"></canvas></div>
       <div class="ctrls">
         <div class="row"><label>Cor da pele</label><input type="color" id="skinColor" value="#F0C7A8"></div>
         <div class="row"><label>Tipo de cabelo</label><select id="hairType"></select></div>
         <div class="row"><label>Cor do cabelo</label><input type="color" id="hairColor" value="#2E2E2E"></div>
         <div class="row"><label>Olhos</label><select id="eyesType"></select></div>
-        <div class="row"><label>Tamanho dos olhos</label><input type="range" id="eyesScale" min="0.8" max="1.3" step="0.05" value="1"></div>
+        <div class="row"><label>Tam. dos olhos</label><input type="range" id="eyesScale" min="0.8" max="1.3" step="0.05" value="1"></div>
         <div class="row"><label>Nariz</label><select id="noseType"></select></div>
         <div class="row"><label>Boca</label><select id="mouthType"></select></div>
         <div class="row"><label>Formato do rosto</label><select id="faceType"></select></div>
@@ -285,22 +293,28 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
 </div>
 
 <script>
-/* ================== Constantes ================== */
 const API_USERS = '/OKR_system/auth/usuarios_api.php';
 const API_AVATAR_AI = '/OKR_system/api/avatar_ai.php';
 const CSRF = '<?= htmlspecialchars($csrf, ENT_QUOTES, "UTF-8") ?>';
 const USER_ID = <?= (int)$id ?>;
 
-/* ================== Helpers ================== */
 const $  = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 function show(el){ el?.classList.add('show'); el?.setAttribute('aria-hidden','false'); }
 function hide(el){ el?.classList.remove('show'); el?.setAttribute('aria-hidden','true'); }
 
-/* ================== Options (companies/roles/pages) ================== */
+let OPTIONS = { companies:[], roles:[], capabilities:[] };
+let IS_MASTER=false, MY_COMPANY=null;
+
+/* ===== Options ===== */
 async function loadOptions(){
   const r = await fetch(API_USERS + '?action=options', {cache:'no-store'});
   const j = await r.json();
+
+  IS_MASTER  = !!j.is_master;
+  MY_COMPANY = j.my_company ?? null;
+  OPTIONS.roles        = j.roles || [];
+  OPTIONS.capabilities = j.capabilities || [];
 
   const sel  = $('#id_company'), hint = $('#orgHint');
   sel.innerHTML = '';
@@ -322,26 +336,63 @@ async function loadOptions(){
     }
   }
 
-  const rolesBox = $('#rolesBox'); rolesBox.innerHTML='';
-  (j.roles||[]).forEach(r=>{
-    const w=document.createElement('label'); w.style.display='flex'; w.style.alignItems='center'; w.style.gap='6px';
-    w.innerHTML = `<input type="checkbox" name="roles[]" value="${r.id}"> <span>${r.descricao||r.id}</span>`;
-    rolesBox.appendChild(w);
-  });
+  renderRoles($('#rolesBox'), []);
+  renderOverrides($('#capsBox'), []);
+}
 
-  const pagesBox = $('#pagesBox'); pagesBox.innerHTML='';
-  (j.pages||[]).forEach(p=>{
-    const w=document.createElement('label'); w.style.display='flex'; w.style.alignItems='center'; w.style.gap='6px';
-    w.innerHTML = `<input type="checkbox" name="pages[]" value="${p.id}"> <span>${p.descricao}</span> <span class="badge">${p.path}</span>`;
-    pagesBox.appendChild(w);
+/* ===== Render roles & overrides ===== */
+function renderRoles(container, selected){
+  container.innerHTML='';
+  const set = new Set((selected||[]).map(v=> String(v)));
+  OPTIONS.roles.forEach(r=>{
+    const rid = r.id || r.role_id || r.key || r.role_key;
+    const label = r.descricao || r.role_name || r.key || r.role_key || rid;
+    const id = 'role_'+rid;
+    container.insertAdjacentHTML('beforeend',
+      `<label style="display:flex;align-items:center;gap:6px" for="${id}">
+         <input type="checkbox" id="${id}" name="roles[]" value="${rid}" ${set.has(String(rid))?'checked':''}>
+         <span>${label}</span>
+       </label>`);
   });
 }
 
-/* ================== Load User ================== */
+function groupByResource(caps){
+  const g={}; (caps||[]).forEach(c=>{ (g[c.resource] ||= []).push(c); });
+  Object.values(g).forEach(arr=> arr.sort((a,b)=> (a.action+a.scope).localeCompare(b.action+b.scope)));
+  return g;
+}
+function renderOverrides(container, overrides){
+  container.innerHTML='';
+  const ov = new Map((overrides||[]).map(o=> [String(o.capability_id), o.effect])); // ALLOW/DENY
+  const grouped = groupByResource(OPTIONS.capabilities);
+
+  Object.keys(grouped).sort().forEach(resource=>{
+    const items = grouped[resource];
+    const box = document.createElement('div');
+    box.className='cap-group';
+    box.innerHTML = `<div class="cap-title"><i class="fa-solid fa-cube"></i> ${resource}</div>`;
+    items.forEach(c=>{
+      const key = String(c.capability_id);
+      const sel = ov.get(key) || 'INHERIT';
+      const label = `${c.action} @ ${c.scope}`;
+      box.insertAdjacentHTML('beforeend', `
+        <div class="cap-item">
+          <span style="min-width:120px;display:inline-block;">${label}</span>
+          <select name="ov_${key}" data-cap="${key}">
+            <option value="INHERIT" ${sel==='INHERIT'?'selected':''}>Inherit</option>
+            <option value="ALLOW"   ${sel==='ALLOW'  ?'selected':''}>Allow</option>
+            <option value="DENY"    ${sel==='DENY'   ?'selected':''}>Deny</option>
+          </select>
+        </div>`);
+    });
+    container.appendChild(box);
+  });
+}
+
+/* ===== Load User ===== */
 async function loadUser(){
   if (!USER_ID) return;
   const r = await fetch(API_USERS + `?action=get&id=${USER_ID}`, {cache:'no-store'});
-  if (!r.ok) { alert('Falha ao carregar usuário'); return; }
   const j = await r.json();
   const u = j.user;
   if (!u) { alert('Usuário não encontrado'); return; }
@@ -354,21 +405,37 @@ async function loadUser(){
 
   if (j.avatar) $('#avatarPrev').src = j.avatar;
 
-  (j.roles||[]).forEach(id=>{
-    const el = document.querySelector(`#rolesBox input[value="${CSS.escape(id)}"]`);
-    if (el) el.checked = true;
-  });
-  (j.pages||[]).forEach(id=>{
-    const el = document.querySelector(`#pagesBox input[value="${CSS.escape(id)}"]`);
-    if (el) el.checked = true;
-  });
+  // Permissões (se o endpoint já retornar)
+  if (j.roles_all)  OPTIONS.roles = j.roles_all;
+  if (j.caps_all)   OPTIONS.capabilities = j.caps_all;
+
+  renderRoles($('#rolesBox'), j.roles || []);
+  renderOverrides($('#capsBox'), j.overrides || []);
+
+  // Resumo
+  const sum = j.summary || {};
+  $('#sumR').textContent = (sum.consulta_R || sum.consulta || '—') || '—';
+  $('#sumW').textContent = (sum.edicao_W   || sum.edicao   || '—') || '—';
 }
 
-/* ================== Save User ================== */
+/* ===== Save User (dados + roles + overrides) ===== */
 $('#userForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const fd = new FormData(e.currentTarget);
   fd.append('action','save');
+
+  // roles marcados
+  $$('#rolesBox input[type="checkbox"]:checked').forEach(chk=>{
+    fd.append('roles[]', chk.value);
+  });
+
+  // overrides selecionados != INHERIT
+  $$('#capsBox select').forEach(sel=>{
+    if (sel.value && sel.value!=='INHERIT'){
+      fd.append(`overrides[${sel.dataset.cap}]`, sel.value);
+    }
+  });
+
   const r = await fetch(API_USERS, { method:'POST', body:fd });
   const j = await r.json();
   if (j?.success){
@@ -378,7 +445,7 @@ $('#userForm').addEventListener('submit', async (e)=>{
   }
 });
 
-/* ================== Upload Avatar (arquivo) ================== */
+/* ===== Upload Avatar ===== */
 $('#avatarFile').addEventListener('change', async (ev)=>{
   const f = ev.target.files[0];
   if (!f) return;
@@ -399,7 +466,7 @@ $('#avatarFile').addEventListener('change', async (ev)=>{
   }
 });
 
-/* ================== Canvas (opcional) ================== */
+/* ===== Canvas Avatar ===== */
 const avatarModal = $('#avatarModal');
 const cv = $('#avatarCanvas'); const ctx = cv.getContext('2d');
 let parts = {};
@@ -439,17 +506,16 @@ async function loadParts(){
 }
 ['skinColor','hairType','hairColor','eyesType','eyesScale','noseType','mouthType','faceType','glassesType','hatType','clothesType']
   .forEach(id=> document.addEventListener('input', (ev)=>{ if (ev.target?.id===id) drawCanvas(); }));
-document.getElementById('btnBuildAvatar').addEventListener('click', ()=>{
+
+$('#btnBuildAvatar').addEventListener('click', ()=>{
   if (!USER_ID){ alert('Salve o usuário antes de gerar avatar.'); return; }
   show(avatarModal); drawCanvas();
 });
-document.getElementById('btnCloseAvatar').addEventListener('click', ()=> hide(avatarModal));
-document.getElementById('btnSaveAvatar').addEventListener('click', async ()=>{
+$('#btnCloseAvatar').addEventListener('click', ()=> hide(avatarModal));
+$('#btnSaveAvatar').addEventListener('click', async ()=>{
   if (!USER_ID){ alert('Salve o usuário antes de gerar avatar.'); return; }
-  const selCompany = document.getElementById('id_company');
-  if (!selCompany.disabled && (!selCompany.value || selCompany.value === '0')) {
-    alert('Selecione uma organização antes de salvar.'); return;
-  }
+  const selCompany = $('#id_company');
+  if (!selCompany.disabled && (!selCompany.value || selCompany.value === '0')) { alert('Selecione uma organização antes de salvar.'); return; }
   const data=cv.toDataURL('image/png');
   const fd=new FormData();
   fd.append('csrf_token',CSRF);
@@ -458,11 +524,11 @@ document.getElementById('btnSaveAvatar').addEventListener('click', async ()=>{
   fd.append('data_url', data);
   const r=await fetch(API_USERS,{method:'POST', body:fd});
   const j=await r.json();
-  if (j?.success){ document.getElementById('avatarPrev').src = j.path + '?t=' + Date.now(); hide(avatarModal); }
+  if (j?.success){ $('#avatarPrev').src = j.path + '?t=' + Date.now(); hide(avatarModal); }
   else alert(j?.error||'Falha ao salvar avatar');
 });
 
-/* ================== IA realista (preview/commit) ================== */
+/* ===== IA Avatar ===== */
 const aiModal   = document.getElementById('aiModal');
 const aiHintEl  = document.getElementById('aiHint');
 const aiImg     = document.getElementById('aiPreviewImg');
@@ -473,9 +539,8 @@ function showAIModal(){
   lastPreviewToken=''; aiImg.src=''; aiImg.style.display='none'; aiHintEl.style.display='none';
   aiModal.classList.add('show'); aiModal.setAttribute('aria-hidden','false');
 }
-function hideAIModal(){
-  aiModal.classList.remove('show'); aiModal.setAttribute('aria-hidden','true');
-}
+function hideAIModal(){ aiModal.classList.remove('show'); aiModal.setAttribute('aria-hidden','true'); }
+
 function buildPrompt(){
   const gen = document.getElementById('aiGenero').value;
   const pele = (document.getElementById('aiPele').value||'').trim();
@@ -486,20 +551,15 @@ function buildPrompt(){
   const barba  = document.getElementById('aiBarba').value;
   const sinais = document.getElementById('aiSinais').value;
   const expr   = document.getElementById('aiExpressao').value;
-
   const oculos = document.getElementById('aiOculos').value;
   const ocEst  = (document.getElementById('aiOculosEst').value||'').trim();
   const ocLen  = (document.getElementById('aiOculosLente').value||'').trim();
-
   const headAcc = document.getElementById('aiHeadAcc').value;
   const headDet = (document.getElementById('aiHeadAccDet').value||'').trim();
-
   const roupa   = document.getElementById('aiRoupa').value;
   const roupaCor= (document.getElementById('aiRoupaCor').value||'').trim();
   const extras  = (document.getElementById('aiExtras').value||'').trim();
-
   const generoDesc = gen === 'masculino' ? 'homem' : gen === 'feminino' ? 'mulher' : 'pessoa de gênero neutro';
-
   const parts = [];
   parts.push(`${generoDesc} em retrato realista, busto (peito para cima)`);
   if (pele)   parts.push(`pele ${pele}`);
@@ -510,9 +570,7 @@ function buildPrompt(){
   if (barba)  parts.push(barba);
   if (sinais) parts.push(sinais);
   parts.push(`expressão ${expr}`);
-  if (oculos === 'sim') {
-    let o = 'óculos'; if (ocEst) o += ` de ${ocEst}`; if (ocLen) o += `, lentes ${ocLen}`; parts.push(o);
-  }
+  if (oculos === 'sim') { let o = 'óculos'; if (ocEst) o += ` de ${ocEst}`; if (ocLen) o += `, lentes ${ocLen}`; parts.push(o); }
   if (headAcc) { let h = headAcc; if (headDet) h += ` ${headDet}`; parts.push(h); }
   let r = roupa; if (roupaCor) r += ` ${roupaCor}`; parts.push(r);
   if (extras) parts.push(extras);
@@ -573,16 +631,25 @@ async function aiCommit(){
     aiHintEl.textContent = 'Erro: ' + (e.message || 'Falha inesperada ao salvar');
   }
 }
-
 document.getElementById('btnAIAvatar').addEventListener('click', showAIModal);
 document.getElementById('aiClose').addEventListener('click', hideAIModal);
 document.getElementById('aiPreviewBtn').addEventListener('click', aiPreview);
 document.getElementById('aiSaveBtn').addEventListener('click', aiCommit);
 
-/* ================== Boot ================== */
+/* ===== Boot ===== */
+async function loadSummary(){
+  if (!USER_ID) return;
+  const r = await fetch(API_USERS+`?action=get_access&id=${USER_ID}`,{cache:'no-store'});
+  const j = await r.json();
+  const sum = j.summary || {};
+  document.getElementById('sumR').textContent = (sum.consulta_R || sum.consulta || '—') || '—';
+  document.getElementById('sumW').textContent = (sum.edicao_W   || sum.edicao   || '—') || '—';
+}
+
 (async function init(){
   await loadOptions();
   await loadUser();
+  await loadSummary();
   await loadParts();
 })();
 </script>

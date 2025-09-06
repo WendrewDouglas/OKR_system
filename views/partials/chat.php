@@ -7,15 +7,17 @@ if (session_status() === PHP_SESSION_NONE) {
 // Captura ID do usuário da sessão
 $userId = $_SESSION['user_id'] ?? '';
 
+$avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
+
 // Detecta avatar com qualquer extensão disponível
-$avatarDir = $_SERVER['DOCUMENT_ROOT'] . '/OKR_system/assets/img/avatars/';
-$files = glob($avatarDir . $userId . '.*');
-if (!empty($files)) {
-    $avatarUrl = str_replace($_SERVER['DOCUMENT_ROOT'], '', $files[0]);
-} else {
-    // avatar padrão
-    $avatarUrl = '/OKR_system/assets/img/avatars/user-avatar.png';
-}
+//$avatarDir = $_SERVER['DOCUMENT_ROOT'] . '/OKR_system/assets/img/avatars/';
+//$files = glob($avatarDir . $userId . '.*');
+//if (!empty($files)) {
+//    $avatarUrl = str_replace($_SERVER['DOCUMENT_ROOT'], '', $files[0]);
+//} else {
+//    // avatar padrão
+//    $avatarUrl = '/OKR_system/assets/img/avatars/user-avatar.png';
+//}
 ?>
 
 <style>

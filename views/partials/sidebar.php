@@ -20,12 +20,13 @@ $isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
 $isOrcamento        = ($currentPath === '/OKR_system/orcamento');
 $isAprovacao        = ($currentPath === '/OKR_system/aprovacao');
 $isOKRGroup         = ($isMyOKRs || $isNewObjective || $isNewKR);
-$isReports          = in_array($currentPath, ['/OKR_system/views/rel_vendas.php','/OKR_system/views/rel_desempenho.php']);
 $isConfigStyle      = in_array($currentPath, ['/OKR_system/views/config_style.php','/OKR_system/config_style']);
 $isOrgConfig        = in_array($currentPath, ['/OKR_system/views/organizacao.php','/OKR_system/organizacao','/OKR_system/views/configuracoes.php']);
 $isUsersMgmt        = in_array($currentPath, ['/OKR_system/views/usuarios.php','/OKR_system/usuarios']);
 $isSettings         = ($isConfigStyle || $isOrgConfig || $isUsersMgmt);
 $newMessages        = $_SESSION['new_messages'] ?? 0;
+$isRelOKRs          = ($currentPath === '/OKR_system/views/relatorios_okrs.php');
+$isReports          = ($isRelOKRs || $currentPath === '/OKR_system/views/rel_desempenho.php');
 
 /* ===================== DADOS DE USUÁRIO/ORG ===================== */
 $firstName = trim((string)($_SESSION['primeiro_nome'] ?? $_SESSION['first_name'] ?? ''));
@@ -164,13 +165,13 @@ body.collapsed .sidebar .menu-item i.icon-main { margin-right: 0; }
   display: none; list-style: none; padding-left: 0; margin: 0; font-size: 0.85rem;
 }
 .submenu li {
-  display: flex; align-items: center; padding: 0.25rem 1rem; cursor: pointer;
+  display: flex; align-items: center; padding: 0.25rem 2rem; cursor: pointer;
   transition: background var(--transition-speed), color var(--transition-speed);
-  color: #f5f5f5ff;
+  color: #ffeb9dff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .submenu li:hover { background: var(--bg1-hover, #2B2B2B); }
-.submenu li i { min-width: 24px; text-align: center; margin-right: 1rem; font-size: 0.75rem; color: #f5f5f5ff; }
+.submenu li i { min-width: 24px; text-align: center; margin-right: 1rem; font-size: 0.75rem; color: #ffeb9dff; }
 .submenu li span { color: inherit; }
 
 .submenu li.active {
@@ -241,12 +242,12 @@ body.collapsed .sidebar-footer .org { display: none; }
         <li class="<?= $isNewObjective ? 'active' : '' ?>"
             data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-plus"></i><span>Novo Objetivo</span>
+          <i class="fas fa-bullseye mr-2"></i><span>Novo Objetivo</span>
         </li>
         <li class="<?= $isNewKR ? 'active' : '' ?>"
             data-href="https://planningbi.com.br/OKR_system/novo_key_result"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-plus"></i><span>Novo Key Result</span>
+          <i class="fas fa-clipboard-check mr-2"></i><span>Novo Key Result</span>
         </li>
       </ul>
     </li>
@@ -263,15 +264,18 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-chevron-down icon-chevron"></i>
       </div>
       <ul class="submenu">
-        <li class="<?= ($currentPath === '/OKR_system/views/rel_vendas.php') ? 'active' : '' ?>"
-            data-href="/OKR_system/views/rel_vendas.php"
+        <!-- Relatório Personalizado -> nossa página -->
+        <li class="<?= $isRelOKRs ? 'active' : '' ?>"
+            data-href="/OKR_system/views/relatorios_okrs.php"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-shopping-cart"></i><span>Vendas</span>
+          <i class="fas fa-clipboard-list"></i><span>Relatório Personalizado</span>
         </li>
+
+        <!-- Sumário Executivo -> corrige o active/href -->
         <li class="<?= ($currentPath === '/OKR_system/views/rel_desempenho.php') ? 'active' : '' ?>"
             data-href="/OKR_system/views/rel_desempenho.php"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-chart-bar"></i><span>Desempenho</span>
+          <i class="fas fa-flag-checkered"></i><span>Sumário Executivo</span>
         </li>
       </ul>
     </li>
@@ -279,7 +283,7 @@ body.collapsed .sidebar-footer .org { display: none; }
       <div class="menu-item <?= $isAprovacao ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/aprovacao"
            onclick="onMenuClick(this, event)">
-        <i class="fas fa-clipboard-check icon-main"></i><span>Aprovações</span>
+        <i class="fas fa-stamp icon-main"></i><span>Aprovações</span>
       </div>
     </li>
     <li class="<?= $isSettings ? 'open' : '' ?>">

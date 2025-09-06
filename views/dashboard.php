@@ -1,5 +1,5 @@
 <?php
-// views/home.php
+// views/dashboard.php
 
 // DEV ONLY (remova em produção)
 ini_set('display_errors',1);
@@ -22,13 +22,6 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
-/* ============ INJETAR O TEMA (uma vez por página) ============ */
-if (!defined('PB_THEME_LINK_EMITTED')) {
-  define('PB_THEME_LINK_EMITTED', true);
-  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
-  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
-}
-
 // Conexão
 try {
   $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4";
@@ -44,12 +37,12 @@ try {
 // ====== Dados da empresa do usuário (usuarios.id_user -> company.id_company) ======
 $userId = (int)$_SESSION['user_id'];
 $company = [
-  'id_company' => null,
-  'organizacao' => null,
+  'id_company'   => null,
+  'organizacao'  => null,
   'razao_social' => null,
-  'cnpj' => null,
-  'missao' => null,
-  'visao' => null,
+  'cnpj'         => null,
+  'missao'       => null,
+  'visao'        => null,
 ];
 
 try {
@@ -74,8 +67,19 @@ try {
   // mantém valores padrão
 }
 
+// === SEM fallback para 1: exige empresa vinculada ===
+if (empty($company['id_company'])) {
+  // Direcione para a página de Organização para o usuário vincular a empresa
+  header('Location: /OKR_system/organizacao');
+  exit;
+}
+
+// Sessão e variável local
+$_SESSION['company_id'] = (int)$company['id_company'];
+$companyId = (int)$company['id_company'];
+
 $companyName = $company['organizacao'] ?: ($company['razao_social'] ?: 'Sua Empresa');
-$companyHasCNPJ = !empty($company['cnpj']); // basta existir; ajuste se quiser validar 14 dígitos
+$companyHasCNPJ = !empty($company['cnpj']); // ajuste se quiser validar 14 dígitos
 
 // ====== Endpoint AJAX: salvar missão/visão ======
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
@@ -166,31 +170,46 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
   exit;
 }
 
-// ====== Totais ======
-$totais = $pdo->query("
+// ====== Totais (AGORA filtrados por empresa) ======
+$stTotais = $pdo->prepare("
   SELECT
-    (SELECT COUNT(*) FROM objetivos) AS total_obj,
-    (SELECT COUNT(*) FROM key_results) AS total_kr,
-    (SELECT COUNT(*) FROM key_results kr
-      WHERE kr.dt_conclusao IS NOT NULL
-         OR kr.status IN ('Concluído','Concluido','Completo','Finalizado')
-    ) AS total_kr_done,
-    (SELECT COUNT(*) FROM key_results kr
-      WHERE kr.status = 'Em Risco'
-         OR (kr.dt_conclusao IS NULL AND kr.data_fim IS NOT NULL AND kr.data_fim < CURDATE())
-         OR kr.farol IN ('vermelho','amarelo')
-    ) AS total_kr_risk
-")->fetch();
+    (SELECT COUNT(*)
+       FROM objetivos o
+      WHERE o.id_company = :cid) AS total_obj,
 
-// ====== Pilares BSC ======
-$pilares = $pdo->query("
+    (SELECT COUNT(*)
+       FROM key_results kr
+       JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid) AS total_kr,
+
+    (SELECT COUNT(*)
+       FROM key_results kr
+       JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
+        AND (kr.dt_conclusao IS NOT NULL
+             OR kr.status IN ('Concluído','Concluido','Completo','Finalizado'))) AS total_kr_done,
+
+    (SELECT COUNT(*)
+       FROM key_results kr
+       JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+      WHERE o.id_company = :cid
+        AND ( kr.status = 'Em Risco'
+              OR (kr.dt_conclusao IS NULL AND kr.data_fim IS NOT NULL AND kr.data_fim < CURDATE())
+              OR kr.farol IN ('vermelho','amarelo') )) AS total_kr_risk
+");
+$stTotais->execute([':cid' => $companyId]);
+$totais = $stTotais->fetch();
+
+// ====== Pilares BSC (AGORA filtrados por empresa) ======
+$stPilares = $pdo->prepare("
   SELECT
     p.id_pilar,
     p.descricao_exibicao AS pilar_nome,
     COALESCE(COUNT(DISTINCT o.id_objetivo),0) AS objetivos,
     COALESCE(COUNT(kr.id_kr),0) AS krs,
     COALESCE(SUM(CASE
-      WHEN kr.dt_conclusao IS NOT NULL OR kr.status IN ('Concluído','Concluido','Completo','Finalizado') THEN 1
+      WHEN kr.dt_conclusao IS NOT NULL
+        OR kr.status IN ('Concluído','Concluido','Completo','Finalizado') THEN 1
       ELSE 0 END),0) AS krs_concluidos,
     COALESCE(SUM(CASE
       WHEN kr.status = 'Em Risco'
@@ -198,15 +217,20 @@ $pilares = $pdo->query("
         OR kr.farol IN ('vermelho','amarelo') THEN 1
       ELSE 0 END),0) AS krs_risco
   FROM dom_pilar_bsc p
-  LEFT JOIN objetivos o ON o.pilar_bsc = p.id_pilar
-  LEFT JOIN key_results kr ON kr.id_objetivo = o.id_objetivo
+  LEFT JOIN objetivos o
+         ON o.pilar_bsc = p.id_pilar
+        AND o.id_company = :cid
+  LEFT JOIN key_results kr
+         ON kr.id_objetivo = o.id_objetivo
   GROUP BY p.id_pilar, p.descricao_exibicao
   ORDER BY p.id_pilar
-")->fetchAll();
+");
+$stPilares->execute([':cid' => $companyId]);
+$pilares = $stPilares->fetchAll();
 
 function pct($parte, $todo) { return $todo ? (int)round(($parte/$todo)*100) : 0; }
 
-// Helper de apresentação: primeira letra maiúscula, resto minúsculo (multibyte-safe)
+// Helper de apresentação
 function first_upper_rest_lower(string $s): string {
   $s = trim($s);
   if ($s === '') return $s;
@@ -228,6 +252,11 @@ function first_upper_rest_lower(string $s): string {
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
+   <!-- Tema por empresa (depois dos CSS globais) -->
+  <link rel="stylesheet"
+        href="/OKR_system/assets/company_theme.php?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>">
+  <!-- Para testar sem cache, use temporariamente:  ?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>&nocache=1 -->
+
   <style>
     body { background:#fff !important; color:#111; }
     :root{ --chat-w: 0px; }
@@ -243,17 +272,15 @@ function first_upper_rest_lower(string $s): string {
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
     }
 
-    /* regra universal p/ elementos com hidden */
     [hidden]{ display:none !important; }
 
-    /* VISÃO & MISSÃO — altura menor e texto à esquerda */
     .vision-mission{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 900px){ .vision-mission{ grid-template-columns: 1fr; } }
     .vm-card{
       background: linear-gradient(180deg, var(--card), #0d1117);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 14px 16px;              /* menor altura */
+      padding: 14px 16px;
       box-shadow: var(--shadow);
       position: relative; overflow: hidden;
       color: var(--text);
@@ -269,16 +296,9 @@ function first_upper_rest_lower(string $s): string {
       font-weight:700; letter-spacing:.2px;
     }
     .vm-title .badge{ background: var(--gold); color:#1a1a1a; padding:5px 9px; border-radius:999px; font-size:.72rem; font-weight:800; text-transform:uppercase; }
-    .vm-text{
-      color:var(--muted);
-      line-height:1.45;
-      white-space:pre-line;  /* colapsa espaços; preserva \n */
-      text-align:left;
-      font-size:.95rem;
-    }
+    .vm-text{ color:var(--muted); line-height:1.45; white-space:pre-line; text-align:left; font-size:.95rem; }
     .vm-text a.vm-edit-link{ color:#eab308; text-decoration:underline dotted; }
 
-    /* PILARES */
     .pillars{ display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
     @media (max-width: 1200px){ .pillars{ grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 700px){ .pillars{ grid-template-columns: 1fr; } }
@@ -297,7 +317,7 @@ function first_upper_rest_lower(string $s): string {
     .pillar-stats{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin:12px 0 10px; }
     .stat{ background: #0e131a; border:1px solid var(--border); border-radius: 12px; padding:10px; text-align:center; }
     .stat .label{ font-size:.75rem; color:var(--muted); }
-    .stat .value{ font-size:1.25rem; font-weight:800; letter-spacing:.2px; color:var(--text); }
+    .stat .value{ font-size:1.25rem; font-weight:800; letter-spacing:.2px; color: var(--text); }
     .progress-wrap{ margin-top:10px; }
     .progress-label{ display:flex; align-items:center; justify-content:space-between; font-size:.85rem; color:var(--muted); margin-bottom:6px;}
     .progress-bar{ width:100%; height:10px; background:#0b0f14; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
@@ -306,7 +326,6 @@ function first_upper_rest_lower(string $s): string {
     .risk-badge{ display:inline-flex; align-items:center; gap:6px; background: rgba(239,68,68,.12); color: #fecaca; border:1px solid rgba(239,68,68,.35); padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:700; }
     .pillar-footer{ margin-top: 12px; display:flex; justify-content:center; }
 
-    /* KPIs */
     .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
     @media (max-width: 1200px){ .kpi-row{ grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 700px){ .kpi-row{ grid-template-columns: 1fr; } }
@@ -321,33 +340,13 @@ function first_upper_rest_lower(string $s): string {
     .kpi-card.success .kpi-icon{ color:#86efac; background:rgba(34,197,94,.12); }
     .kpi-card.danger .kpi-icon{ color:#fca5a5; background:rgba(239,68,68,.12); }
 
-    /* -------- Modais (ESCONDIDOS por padrão) -------- */
-    .modal-backdrop{
-      position: fixed;
-      inset:0;
-      display:none;               /* oculto por padrão */
-      place-items:center;
-      background: rgba(0,0,0,.5);
-      z-index: 2000;
-    }
-    .modal-backdrop.show{ display:grid; } /* visível quando .show */
-
-    .modal{
-      width: min(680px, 94vw);
-      background: #0f1420; color: #e5e7eb;
-      border: 1px solid #223047; border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.4); overflow:hidden;
-    }
-    .modal header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 14px 16px; border-bottom:1px solid #1f2a3a; background:#0b101a;
-    }
+    .modal-backdrop{ position: fixed; inset:0; display:none; place-items:center; background: rgba(0,0,0,.5); z-index: 2000; }
+    .modal-backdrop.show{ display:grid; }
+    .modal{ width: min(680px, 94vw); background: #0f1420; color: #e5e7eb; border: 1px solid #223047; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.4); overflow:hidden; }
+    .modal header{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom:1px solid #1f2a3a; background:#0b101a; }
     .modal header h3{ margin:0; font-size:1.05rem; letter-spacing:.2px; }
     .modal .modal-body{ padding: 16px; }
-    .modal .modal-actions{
-      display:flex; gap:10px; justify-content:flex-end;
-      padding: 12px 16px; border-top:1px solid #1f2a3a; background:#0b101a;
-    }
+    .modal .modal-actions{ display:flex; gap:10px; justify-content:flex-end; padding: 12px 16px; border-top:1px solid #1f2a3a; background:#0b101a; }
     .btn{ border:1px solid var(--border); background: var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:700; }
     .btn:hover{ border-color:#2a3342; transform: translateY(-1px); transition:.15s; }
     .btn-primary{ background: #1f2937; }
@@ -364,7 +363,7 @@ function first_upper_rest_lower(string $s): string {
 
     <main class="dashboard-container">
 
-      <!-- Visão & Missão (sem botão; apenas “clique aqui”) -->
+      <!-- Visão & Missão -->
       <section class="vision-mission">
         <!-- VISÃO -->
         <article class="vm-card" id="cardVisao">
@@ -485,7 +484,6 @@ function first_upper_rest_lower(string $s): string {
       <div class="modal-body">
         <div class="helper"><i class="fa-solid fa-building"></i> <strong id="companyHeaderName"><?= htmlspecialchars($companyName, ENT_QUOTES, 'UTF-8') ?></strong></div>
         <label for="vmTextarea" class="helper" id="vmHelper">Atualize o texto abaixo.</label>
-        <!-- Sempre em branco; placeholder muda conforme tipo -->
         <textarea id="vmTextarea" class="textarea" maxlength="2000" placeholder="Digite aqui sua missão"></textarea>
         <div class="helper"><span id="vmCount">0</span>/2000</div>
       </div>
@@ -539,7 +537,6 @@ function first_upper_rest_lower(string $s): string {
     const TOGGLE_SELECTORS = ['#chatToggle', '.chat-toggle', '.btn-chat-toggle', '.chat-icon', '.chat-open'];
 
     function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-    function findToggleEls(){ let arr=[]; TOGGLE_SELECTORS.forEach(s=>{ document.querySelectorAll(s).forEach(btn=>arr.push(btn)); }); return arr; }
     function isOpen(el){
       const style = getComputedStyle(el);
       const visible = style.display!=='none' && style.visibility!=='hidden';
@@ -552,9 +549,7 @@ function first_upper_rest_lower(string $s): string {
       const mo = new MutationObserver(()=>updateChatWidth());
       mo.observe(chat, { attributes:true, attributeFilter:['style','class','aria-expanded'] });
       window.addEventListener('resize', updateChatWidth);
-      TOGGLE_SELECTORS.forEach(s=>{
-        document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click', ()=>setTimeout(updateChatWidth, 200)));
-      });
+      document.querySelectorAll(TOGGLE_SELECTORS.join(',')).forEach(btn=>btn.addEventListener('click', ()=>setTimeout(updateChatWidth, 200)));
       updateChatWidth();
     }
 
@@ -585,7 +580,6 @@ function first_upper_rest_lower(string $s): string {
         ? 'Defina a Visão de forma aspiracional e clara.'
         : 'Defina a Missão de forma objetiva e centrada no cliente.';
       document.getElementById('companyHeaderName').textContent = COMPANY_NAME;
-      // Sempre em branco (sem reutilizar texto anterior):
       vmTextarea.value = '';
       vmTextarea.placeholder = (type === 'visao') ? 'Digite aqui sua visão' : 'Digite aqui sua missão';
       vmCount.textContent = '0';
@@ -613,7 +607,7 @@ function first_upper_rest_lower(string $s): string {
     cnpjBack && cnpjBack.addEventListener('click', closeCNPJModal);
     cnpjClose && cnpjClose.addEventListener('click', closeCNPJModal);
 
-    // Abrir via “clique aqui”: já valida CNPJ antes de abrir o editor
+    // Abrir via “clique aqui”: valida CNPJ antes de abrir o editor
     document.addEventListener('click', (e)=>{
       const a = e.target.closest('.vm-edit-link');
       if (a){
@@ -690,11 +684,20 @@ function first_upper_rest_lower(string $s): string {
       });
       animateProgressBars();
 
-      setupChatObservers();
-      const moBody = new MutationObserver(()=>{
-        if(document.querySelector('#chatPanel, .chat-panel, .chat-container, #chat, .drawer-chat')){ setupChatObservers(); moBody.disconnect(); }
-      });
-      moBody.observe(document.body, { childList:true, subtree:true });
+      // Chat space
+      const CHAT_SELECTORS = ['#chatPanel', '.chat-panel', '.chat-container', '#chat', '.drawer-chat'];
+      function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
+      function isOpen(el){
+        const style = getComputedStyle(el);
+        const visible = style.display!=='none' && style.visibility!=='hidden';
+        const w = el.offsetWidth;
+        return (visible && w>0) || el.classList.contains('open') || el.classList.contains('show') || el.getAttribute('aria-expanded')==='true';
+      }
+      function updateChatWidth(){ const el = findChatEl(); const w = (el && isOpen(el)) ? el.offsetWidth : 0; document.documentElement.style.setProperty('--chat-w', (w||0)+'px'); }
+      const mo = new MutationObserver(()=>updateChatWidth());
+      const chat = findChatEl(); if(chat){ mo.observe(chat, { attributes:true, attributeFilter:['style','class','aria-expanded'] }); }
+      window.addEventListener('resize', updateChatWidth);
+      updateChatWidth();
     });
   </script>
 </body>

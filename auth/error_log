@@ -53,3 +53,774 @@ Stack trace:
 #0 /home2/planni40/public_html/OKR_system/auth/usuarios_api.php(181): PDOStatement->execute(Array)
 #1 {main}
   thrown in /home2/planni40/public_html/OKR_system/auth/usuarios_api.php on line 181
+[03-Sep-2025 13:16:47 America/Fortaleza] SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'created_by' cannot be null
+[03-Sep-2025 13:17:32 America/Fortaleza] SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'created_by' cannot be null
+[03-Sep-2025 13:20:12 America/Fortaleza] SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'created_by' cannot be null
+[03-Sep-2025 16:21:14 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 35
+[03-Sep-2025 16:21:14 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:21:14 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to a member function inTransaction() on null in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php:83
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:21:15 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 35
+[03-Sep-2025 16:21:15 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:21:15 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to a member function inTransaction() on null in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php:83
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:21:37 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 35
+[03-Sep-2025 16:21:37 America/Fortaleza] PHP Warning:  Undefined variable $pdo in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:21:37 America/Fortaleza] PHP Fatal error:  Uncaught Error: Call to a member function inTransaction() on null in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php:83
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/auth/email_verify_request.php on line 83
+[03-Sep-2025 16:54:13 America/Fortaleza] [2025-09-03T16:54:13-03:00] EMAIL_VERIFY_REQ_START {"email":"c******@planningbi.com.br"}
+
+[03-Sep-2025 16:54:13 America/Fortaleza] [2025-09-03T16:54:13-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"c******@planningbi.com.br","token":"3d6deba8e03d5468a7537f0334a434ecaf0e587f65391f395fbbba81b8f253bc","ttl":600}
+
+[03-Sep-2025 16:54:13 America/Fortaleza] [2025-09-03T16:54:13-03:00] EMAIL_VERIFICATION_SEND {"to":"c******@planningbi.com.br","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 16:54:13 America/Fortaleza] [2025-09-03T16:54:13-03:00] EMAIL_VERIFY_SEND_OK {"email":"c******@planningbi.com.br","token":"3d6deba8e03d5468a7537f0334a434ecaf0e587f65391f395fbbba81b8f253bc"}
+
+[03-Sep-2025 16:57:26 America/Fortaleza] [2025-09-03T16:57:26-03:00] EMAIL_VERIFY_REQ_START {"email":"w**************@gmail.com"}
+
+[03-Sep-2025 16:57:26 America/Fortaleza] [2025-09-03T16:57:26-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w**************@gmail.com","token":"104a0908201cbbcdb4f8a501d20ba3541c1c1ea3407c648f04c970f150494565","ttl":600}
+
+[03-Sep-2025 16:57:26 America/Fortaleza] [2025-09-03T16:57:26-03:00] EMAIL_VERIFICATION_SEND {"to":"w**************@gmail.com","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 16:57:26 America/Fortaleza] [2025-09-03T16:57:26-03:00] EMAIL_VERIFY_SEND_OK {"email":"w**************@gmail.com","token":"104a0908201cbbcdb4f8a501d20ba3541c1c1ea3407c648f04c970f150494565"}
+
+[03-Sep-2025 16:58:37 America/Fortaleza] [2025-09-03T16:58:37-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[03-Sep-2025 16:58:37 America/Fortaleza] [2025-09-03T16:58:37-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"fa0050aa329d7b00acdda59b6ed266d0f08fc4630cc27b4ae50b9dbb1b78bb01","ttl":600}
+
+[03-Sep-2025 16:58:37 America/Fortaleza] [2025-09-03T16:58:37-03:00] EMAIL_VERIFICATION_SEND {"to":"w************@colormaq.com.br","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 16:58:37 America/Fortaleza] [2025-09-03T16:58:37-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"fa0050aa329d7b00acdda59b6ed266d0f08fc4630cc27b4ae50b9dbb1b78bb01"}
+
+[03-Sep-2025 17:12:59 America/Fortaleza] [2025-09-03T17:12:59-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[03-Sep-2025 17:12:59 America/Fortaleza] [2025-09-03T17:12:59-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"2f8f0d3e4130c114ab835ee38cda8a4515cf3d4733045befc87f4e5990cf0e4f","ttl":600}
+
+[03-Sep-2025 17:12:59 America/Fortaleza] [2025-09-03T17:12:59-03:00] EMAIL_VERIFICATION_SEND {"to":"w************@colormaq.com.br","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 17:12:59 America/Fortaleza] [2025-09-03T17:12:59-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"2f8f0d3e4130c114ab835ee38cda8a4515cf3d4733045befc87f4e5990cf0e4f"}
+
+[03-Sep-2025 17:13:51 America/Fortaleza] [2025-09-03T17:13:51-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[03-Sep-2025 17:13:51 America/Fortaleza] [2025-09-03T17:13:51-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"1d340060ad3170caac51edd56d6790ddafe99ac0de1a01779d1830f20d175622","ttl":600}
+
+[03-Sep-2025 17:13:51 America/Fortaleza] [2025-09-03T17:13:51-03:00] EMAIL_VERIFICATION_SEND {"to":"w************@colormaq.com.br","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 17:13:51 America/Fortaleza] [2025-09-03T17:13:51-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"1d340060ad3170caac51edd56d6790ddafe99ac0de1a01779d1830f20d175622"}
+
+[03-Sep-2025 17:14:03 America/Fortaleza] [2025-09-03T17:14:03-03:00] EMAIL_VERIFY_CHECK_START {"token":"1d340060ad31…"}
+
+[03-Sep-2025 17:14:03 America/Fortaleza] [2025-09-03T17:14:03-03:00] EMAIL_VERIFY_CHECK_OK {"token":"1d340060ad31…"}
+
+[03-Sep-2025 17:14:49 America/Fortaleza] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[03-Sep-2025 17:32:53 America/Fortaleza] [2025-09-03T17:32:53-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[03-Sep-2025 17:32:53 America/Fortaleza] [2025-09-03T17:32:53-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"8ee2ce2c17d716b49fbab90dbb51372c678cecb980fb724edb74212b847293be","ttl":600}
+
+[03-Sep-2025 17:32:53 America/Fortaleza] [2025-09-03T17:32:53-03:00] EMAIL_VERIFICATION_SEND {"to":"w************@colormaq.com.br","from":"no-reply@planningbi.com.br","subject":"Seu código de verificação – OKR System","used_mail":true,"result":"accepted_by_mail"}
+
+[03-Sep-2025 17:32:53 America/Fortaleza] [2025-09-03T17:32:53-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"8ee2ce2c17d716b49fbab90dbb51372c678cecb980fb724edb74212b847293be"}
+
+[03-Sep-2025 17:34:45 America/Fortaleza] [2025-09-03T17:34:45-03:00] EMAIL_VERIFY_CHECK_START {"token":"8ee2ce2c17d7…"}
+
+[03-Sep-2025 17:34:45 America/Fortaleza] [2025-09-03T17:34:45-03:00] EMAIL_VERIFY_CHECK_OK {"token":"8ee2ce2c17d7…"}
+
+[03-Sep-2025 17:36:31 America/Fortaleza] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[03-Sep-2025 18:22:13 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Class "PHPMailer\PHPMailer\PHPMailer" not found in /home2/planni40/public_html/OKR_system/auth/_mail_probe.php:7
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/auth/_mail_probe.php on line 7
+[03-Sep-2025 18:31:27 America/Sao_Paulo] PHP Fatal error:  Uncaught PHPMailer\PHPMailer\Exception: SMTP Error: Could not authenticate. in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php:2327
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(2118): PHPMailer\PHPMailer\PHPMailer->smtpConnect(Array)
+#1 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1747): PHPMailer\PHPMailer\PHPMailer->smtpSend('Date: Wed, 3 Se...', '--b1=_3vWzEs5fH...')
+#2 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1564): PHPMailer\PHPMailer\PHPMailer->postSend()
+#3 /home2/planni40/public_html/OKR_system/auth/_mail_probe.php(25): PHPMailer\PHPMailer\PHPMailer->send()
+#4 {main}
+  thrown in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php on line 2327
+[03-Sep-2025 18:32:28 America/Sao_Paulo] PHP Fatal error:  Uncaught PHPMailer\PHPMailer\Exception: SMTP Error: Could not authenticate. in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php:2327
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(2118): PHPMailer\PHPMailer\PHPMailer->smtpConnect(Array)
+#1 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1747): PHPMailer\PHPMailer\PHPMailer->smtpSend('Date: Wed, 3 Se...', '--b1=_ln68c3yot...')
+#2 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1564): PHPMailer\PHPMailer\PHPMailer->postSend()
+#3 /home2/planni40/public_html/OKR_system/auth/_mail_probe.php(25): PHPMailer\PHPMailer\PHPMailer->send()
+#4 {main}
+  thrown in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php on line 2327
+[03-Sep-2025 18:34:50 America/Sao_Paulo] PHP Fatal error:  Uncaught PHPMailer\PHPMailer\Exception: SMTP Error: Could not authenticate. in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php:2327
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(2118): PHPMailer\PHPMailer\PHPMailer->smtpConnect(Array)
+#1 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1747): PHPMailer\PHPMailer\PHPMailer->smtpSend('Date: Wed, 3 Se...', '--b1=_RLByPBVl2...')
+#2 /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php(1564): PHPMailer\PHPMailer\PHPMailer->postSend()
+#3 /home2/planni40/public_html/OKR_system/auth/_mail_probe.php(25): PHPMailer\PHPMailer\PHPMailer->send()
+#4 {main}
+  thrown in /home2/planni40/public_html/OKR_system/vendor/phpmailer/phpmailer/src/PHPMailer.php on line 2327
+[03-Sep-2025 19:04:54 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Class "PHPMailer\PHPMailer\PHPMailer\PHPMailer\PHPMailer" not found in /home2/planni40/public_html/OKR_system/auth/_mail_probe.php:31
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/auth/_mail_probe.php on line 31
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=300, options=array()
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[03-Sep-2025 19:07:18 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:07:20 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:07:20 America/Sao_Paulo] MAIL_PROBE_EXCEPTION: SMTP Error: Could not authenticate.
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=LOGIN
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[03-Sep-2025 19:12:32 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:33 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=PLAIN
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[03-Sep-2025 19:12:35 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=LOGIN
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:37 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=PLAIN
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[03-Sep-2025 19:12:39 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:12:41 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=LOGIN
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=PLAIN
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[03-Sep-2025 19:17:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=LOGIN
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=PLAIN
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][3] Connection: opened
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[03-Sep-2025 19:17:57 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][3] Connection: closed
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[03-Sep-2025 19:17:59 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=LOGIN
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][3] Connection: opened
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[04-Sep-2025 11:09:46 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:47 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][3] Connection: closed
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 587, secure=tls, auth=PLAIN
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][3] Connection: opening to smtp.titan.email:587, timeout=20, options=array()
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][3] Connection: opened
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: STARTTLS
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 2.0.0 Ready to start TLS
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[04-Sep-2025 11:09:49 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][3] Connection: closed
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=LOGIN
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][3] Connection: opened
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH LOGIN
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 VXNlcm5hbWU6
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:51 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][1] SMTP ERROR: Password command failed: 535 5.7.8 Error: authentication failed: UGFzc3dvcmQ6
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][3] Connection: closed
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [MAIL_PROBE] Tentando porta 465, secure=ssl, auth=PLAIN
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][3] Connection: opening to ssl://smtp.titan.email:465, timeout=20, options=array()
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][3] Connection: opened
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 220 smtp-out.flockmail.com ESMTP Postfix
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: EHLO planningbi.com.br
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 250-smtp-out.flockmail.com
+250-PIPELINING
+250-SIZE 52428800
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 CHUNKING
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: AUTH PLAIN
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 334 
+
+[04-Sep-2025 11:09:53 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: [credentials hidden]
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 535 5.7.8 Error: authentication failed: 
+
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][1] SMTP ERROR: User & Password command failed: 535 5.7.8 Error: authentication failed: 
+
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][3] SMTP Error: Could not authenticate.
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][1] CLIENT -> SERVER: QUIT
+
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][2] SERVER -> CLIENT: 221 2.0.0 Bye
+
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][3] Connection: closed
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [SMTP][3] SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:09:55 America/Sao_Paulo] [MAIL_PROBE] Falhou nessa combinação: SMTP connect() failed. https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting
+[04-Sep-2025 11:41:48 America/Sao_Paulo] [2025-09-04T11:41:48-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[04-Sep-2025 11:41:48 America/Sao_Paulo] [2025-09-04T11:41:48-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"56133929fd5d…","ttl":600,"ip":"200.206.17.170"}
+
+[04-Sep-2025 11:41:51 America/Sao_Paulo] [2025-09-04T11:41:51-03:00] SMTP_SEND_FAIL {"to":"w************@colormaq.com.br","error":"SMTP Error: Could not authenticate.","host":"smtp.titan.email","port":587}
+
+[04-Sep-2025 11:41:51 America/Sao_Paulo] [2025-09-04T11:41:51-03:00] MAIL_FALLBACK_SEND {"to":"w************@colormaq.com.br","result":"accepted_by_mail","file":"20250904_114148_wendrew.gomes_colormaq.com.br.eml"}
+
+[04-Sep-2025 11:41:51 America/Sao_Paulo] [2025-09-04T11:41:51-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"56133929fd5d…"}
+
+[04-Sep-2025 11:42:11 America/Sao_Paulo] [2025-09-04T11:42:11-03:00] EMAIL_VERIFY_CHECK_START {"token":"56133929fd5d…"}
+
+[04-Sep-2025 11:42:11 America/Sao_Paulo] [2025-09-04T11:42:11-03:00] EMAIL_VERIFY_CHECK_OK {"token":"56133929fd5d…"}
+
+[04-Sep-2025 11:42:47 America/Sao_Paulo] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[04-Sep-2025 11:42:48 America/Sao_Paulo] auth_register: mark verification token used falhou: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'used_by_user_id' in 'field list'
+[04-Sep-2025 15:19:46 America/Sao_Paulo] [2025-09-04T15:19:46-03:00] EMAIL_VERIFY_REQ_START {"email":"w************@colormaq.com.br"}
+
+[04-Sep-2025 15:19:46 America/Sao_Paulo] [2025-09-04T15:19:46-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"w************@colormaq.com.br","token":"5df57072f9e5…","ttl":600,"ip":"200.206.17.170"}
+
+[04-Sep-2025 15:19:48 America/Sao_Paulo] [2025-09-04T15:19:48-03:00] SMTP_SEND_FAIL {"to":"w************@colormaq.com.br","error":"SMTP Error: Could not authenticate.","host":"smtp.titan.email","port":587}
+
+[04-Sep-2025 15:19:48 America/Sao_Paulo] [2025-09-04T15:19:48-03:00] MAIL_FALLBACK_SEND {"to":"w************@colormaq.com.br","result":"accepted_by_mail","file":"20250904_151946_wendrew.gomes_colormaq.com.br.eml"}
+
+[04-Sep-2025 15:19:48 America/Sao_Paulo] [2025-09-04T15:19:48-03:00] EMAIL_VERIFY_SEND_OK {"email":"w************@colormaq.com.br","token":"5df57072f9e5…"}
+
+[04-Sep-2025 15:20:36 America/Sao_Paulo] [2025-09-04T15:20:36-03:00] EMAIL_VERIFY_CHECK_START {"token":"5df57072f9e5…"}
+
+[04-Sep-2025 15:20:36 America/Sao_Paulo] [2025-09-04T15:20:36-03:00] EMAIL_VERIFY_CHECK_OK {"token":"5df57072f9e5…"}
+
+[04-Sep-2025 15:21:22 America/Sao_Paulo] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[04-Sep-2025 15:21:23 America/Sao_Paulo] auth_register: mark verification token used falhou: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'used_by_user_id' in 'field list'
+[04-Sep-2025 17:07:44 America/Sao_Paulo] PHP Warning:  Undefined variable $tmp in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 207
+[04-Sep-2025 17:07:44 America/Sao_Paulo] PHP Fatal error:  Uncaught TypeError: saveAvatarAsPng(): Argument #1 ($src) must be of type string, null given, called in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 207 and defined in /home2/planni40/public_html/OKR_system/views/profile_user.php:49
+Stack trace:
+#0 /home2/planni40/public_html/OKR_system/views/profile_user.php(207): saveAvatarAsPng(NULL, '/home2/planni40...')
+#1 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 49
+[04-Sep-2025 18:29:03 America/Sao_Paulo] [2025-09-04T18:29:03-03:00] EMAIL_VERIFY_REQ_START {"email":"m*************@yahoo.com.br"}
+
+[04-Sep-2025 18:29:03 America/Sao_Paulo] [2025-09-04T18:29:03-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"m*************@yahoo.com.br","token":"7282d10662b6…","ttl":600,"ip":"187.120.135.134"}
+
+[04-Sep-2025 18:29:05 America/Sao_Paulo] [2025-09-04T18:29:05-03:00] SMTP_SEND_FAIL {"to":"m*************@yahoo.com.br","error":"SMTP Error: Could not authenticate.","host":"smtp.titan.email","port":587}
+
+[04-Sep-2025 18:29:05 America/Sao_Paulo] [2025-09-04T18:29:05-03:00] MAIL_FALLBACK_SEND {"to":"m*************@yahoo.com.br","result":"accepted_by_mail","file":"20250904_182903_marcelaturismo_yahoo.com.br.eml"}
+
+[04-Sep-2025 18:29:05 America/Sao_Paulo] [2025-09-04T18:29:05-03:00] EMAIL_VERIFY_SEND_OK {"email":"m*************@yahoo.com.br","token":"7282d10662b6…"}
+
+[04-Sep-2025 18:30:08 America/Sao_Paulo] [2025-09-04T18:30:08-03:00] EMAIL_VERIFY_CHECK_START {"token":"7282d10662b6…"}
+
+[04-Sep-2025 18:30:08 America/Sao_Paulo] [2025-09-04T18:30:08-03:00] EMAIL_VERIFY_CHECK_OK {"token":"7282d10662b6…"}
+
+[04-Sep-2025 18:31:32 America/Sao_Paulo] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[04-Sep-2025 18:31:33 America/Sao_Paulo] auth_register: mark verification token used falhou: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'used_by_user_id' in 'field list'
+[04-Sep-2025 20:10:46 America/Sao_Paulo] [2025-09-04T20:10:46-03:00] EMAIL_VERIFY_REQ_START {"email":"d**********@darlinpaula.com.br"}
+
+[04-Sep-2025 20:10:47 America/Sao_Paulo] [2025-09-04T20:10:47-03:00] EMAIL_VERIFY_CODE_GENERATED {"email":"d**********@darlinpaula.com.br","token":"0c0b9bfd6a30…","ttl":600,"ip":"187.120.135.134"}
+
+[04-Sep-2025 20:10:49 America/Sao_Paulo] [2025-09-04T20:10:49-03:00] SMTP_SEND_FAIL {"to":"d**********@darlinpaula.com.br","error":"SMTP Error: Could not authenticate.","host":"smtp.titan.email","port":587}
+
+[04-Sep-2025 20:10:49 America/Sao_Paulo] [2025-09-04T20:10:49-03:00] MAIL_FALLBACK_SEND {"to":"d**********@darlinpaula.com.br","result":"accepted_by_mail","file":"20250904_201047_darlinpaula_darlinpaula.com.br.eml"}
+
+[04-Sep-2025 20:10:49 America/Sao_Paulo] [2025-09-04T20:10:49-03:00] EMAIL_VERIFY_SEND_OK {"email":"d**********@darlinpaula.com.br","token":"0c0b9bfd6a30…"}
+
+[04-Sep-2025 20:11:40 America/Sao_Paulo] [2025-09-04T20:11:40-03:00] EMAIL_VERIFY_CHECK_START {"token":"0c0b9bfd6a30…"}
+
+[04-Sep-2025 20:11:41 America/Sao_Paulo] [2025-09-04T20:11:41-03:00] EMAIL_VERIFY_CHECK_OK {"token":"0c0b9bfd6a30…"}
+
+[04-Sep-2025 20:12:47 America/Sao_Paulo] auth_register: resolvePermissionId falhou: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'planni40_okr.permissoes' doesn't exist
+[04-Sep-2025 20:12:47 America/Sao_Paulo] auth_register: mark verification token used falhou: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'used_by_user_id' in 'field list'
+[05-Sep-2025 10:31:23 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials/../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
+[05-Sep-2025 10:34:48 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials../../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
+[05-Sep-2025 10:37:58 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials../../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
