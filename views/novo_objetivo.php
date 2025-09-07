@@ -1,52 +1,57 @@
 <?php
 // views/novo_objetivo.php
-
-// DEV ONLY: exibe erros na tela (remova em produção)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors','1');
+ini_set('display_startup_errors','1');
 error_reporting(E_ALL);
 
 session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 
-// Redireciona se não estiver logado
-if (!isset($_SESSION['user_id'])) {
-    header('Location: /OKR_system/views/login.php');
-    exit;
+if (empty($_SESSION['user_id'])) {
+  header('Location: /OKR_system/views/login.php');
+  exit;
 }
 
-
-/* ============ INJETAR O TEMA (uma vez por página) ============ */
-if (!defined('PB_THEME_LINK_EMITTED')) {
-  define('PB_THEME_LINK_EMITTED', true);
-  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
-  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
-}
-
-
-// Conexão PDO
+// Conexão
 try {
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+  $pdo = new PDO(
+    "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4",
+    DB_USER, DB_PASS,
+    [ PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC ]
+  );
 } catch (PDOException $e) {
-    http_response_code(500);
-    die("Erro ao conectar: " . $e->getMessage());
+  http_response_code(500);
+  die("Erro ao conectar: ".$e->getMessage());
 }
 
 // CSRF
 if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Domínios / listas
-$users   = $pdo->query("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios ORDER BY primeiro_nome")->fetchAll();
+// Descobre empresa do logado
+$userId = (int)$_SESSION['user_id'];
+$st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user=:u LIMIT 1");
+$st->execute([':u'=>$userId]);
+$companyId = (int)($st->fetchColumn() ?: 0);
+
+// Listas
+$users = [];
+if ($companyId) {
+  $st = $pdo->prepare("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios WHERE id_company=:c ORDER BY primeiro_nome");
+  $st->execute([':c'=>$companyId]);
+  $users = $st->fetchAll();
+}
 $pilares = $pdo->query("SELECT id_pilar, descricao_exibicao FROM dom_pilar_bsc ORDER BY ordem_pilar")->fetchAll();
-$tipos   = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao")->fetchAll();
+$tipos   = $pdo->query("SELECT id_tipo,  descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao")->fetchAll();
 $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
+
+// Tema (uma vez)
+if (!defined('PB_THEME_LINK_EMITTED')) {
+  define('PB_THEME_LINK_EMITTED', true);
+  echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -72,13 +77,11 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
     }
 
-    /* Breadcrumb */
     .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
     .crumbs a{ color:#0c4a6e; text-decoration:none; }
     .crumbs .sep{ opacity:.5; margin:0 2px; }
     .crumbs i{ opacity:.85; }
 
-    /* Card do cabeçalho */
     .head-card{
       background:linear-gradient(180deg, var(--card), #0d1117);
       border:1px solid var(--border); border-radius:16px; padding:16px;
@@ -92,7 +95,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     .pill-gold{ border-color: var(--gold); color: var(--gold); background: rgba(246,195,67,.10); box-shadow: 0 0 0 1px rgba(246,195,67,.10), 0 6px 18px rgba(246,195,67,.10); }
     .pill-gold i{ color: var(--gold); }
 
-    /* Card do formulário */
     .form-card{
       background:linear-gradient(180deg, var(--card), #0e1319);
       border:1px solid var(--border); border-radius:16px; padding:16px;
@@ -110,7 +112,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     }
     textarea{ resize:vertical; min-height:90px; }
 
-    /* Multi-select chips (responsáveis) */
     .multi-select-container { position:relative; }
     .chips-input { display:flex; flex-wrap:wrap; gap:6px; padding:6px; background:#0c1118; border:1px solid #1f2635; border-radius:10px; }
     .chips-input-field { flex:1; border:none; outline:none; min-width:160px; background:transparent; color:#e5e7eb; padding:6px; }
@@ -129,14 +130,9 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     .btn:hover{ border-color:#2a3342; transform:translateY(-1px); transition:.15s; }
     .btn-primary{ background:#1f2937; }
 
-    /* Centraliza verticalmente os dois campos da linha do ciclo */
     .grid-2.align-center { align-items: center; }
-    /* Evita deslocar quando centralizado */
-    .grid-2.align-center #ciclo_detalhe_wrapper .detalhe { margin-top: 0 !important; }
-    /* Estilo do label "Período" para ficar igual aos demais */
     #ciclo_detalhe_wrapper > label { display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
 
-    /* Overlays IA (mesmo estilo do KR) */
     .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
     .overlay.show{ display:grid; }
     .ai-card{ width:min(920px,94vw); background:#0b1020; color:#e6e9f2; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:18px; position:relative; overflow:hidden; border:1px solid #223047; }
@@ -165,7 +161,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="nobj">
-      <!-- Breadcrumb -->
       <div class="crumbs">
         <i class="fa-solid fa-route"></i>
         <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
@@ -175,19 +170,14 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
         <span><i class="fa-solid fa-circle-plus"></i> Novo Objetivo</span>
       </div>
 
-      <!-- Cabeçalho -->
       <section class="head-card">
         <h1 class="head-title"><i class="fa-solid fa-bullseye"></i>Novo Objetivo</h1>
         <div class="head-meta">
           <span class="pill"><i class="fa-solid fa-circle-info"></i>Defina o objetivo, ciclo e responsável(eis), e salve para submeter à aprovação.</span>
-
-          <!-- Badge de período (mostra quando computado) -->
           <span id="periodBadge" class="pill" style="display:none;">
             <i class="fa-regular fa-calendar"></i>
             <span id="periodText"></span>
           </span>
-
-          <!-- Badge de responsáveis (contador) -->
           <span id="ownersBadge" class="pill pill-gold" style="display:none;">
             <i class="fa-regular fa-user"></i>
             <span id="ownersText"></span>
@@ -195,28 +185,19 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
         </div>
       </section>
 
-      <!-- Formulário -->
       <section class="form-card">
         <h2><i class="fa-regular fa-rectangle-list"></i> Dados do Objetivo</h2>
-
-        <?php if (!empty($errors)): ?>
-          <div class="alert alert-danger"><ul>
-            <?php foreach($errors as $e): ?><li><?= htmlspecialchars($e) ?></li><?php endforeach; ?>
-          </ul></div>
-        <?php endif; ?>
 
         <form id="objectiveForm" action="/OKR_system/auth/salvar_objetivo.php" method="post" novalidate>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
           <input type="hidden" id="qualidade" name="qualidade" value="">
           <input type="hidden" id="justificativa_ia" name="justificativa_ia" value="">
 
-          <!-- Nome -->
           <div>
             <label for="nome_objetivo"><i class="fa-regular fa-pen-to-square"></i> Nome do Objetivo <span class="helper">(obrigatório)</span></label>
             <input type="text" id="nome_objetivo" name="nome_objetivo" required>
           </div>
 
-          <!-- Tipo e Pilar -->
           <div class="grid-2" style="margin-top:12px;">
             <div>
               <label for="tipo_objetivo"><i class="fa-regular fa-square-check"></i> Tipo de Objetivo <span class="helper">(obrigatório)</span></label>
@@ -238,7 +219,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
             </div>
           </div>
 
-          <!-- Ciclo + Período (detalhe) -->
           <div class="grid-2 align-center" style="margin-top:12px;">
             <div>
               <label for="ciclo_tipo"><i class="fa-regular fa-calendar-days"></i> Ciclo <span class="helper">(obrigatório)</span></label>
@@ -286,7 +266,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
             </div>
           </div>
 
-          <!-- Responsáveis -->
           <div style="margin-top:12px;">
             <label><i class="fa-regular fa-user"></i> Responsável(es) <span class="helper">(obrigatório)</span></label>
             <div class="multi-select-container">
@@ -296,7 +275,7 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
               <div class="dropdown-list d-none" id="responsavel_list">
                 <ul>
                   <?php foreach($users as $u): ?>
-                    <li data-id="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars(($u['primeiro_nome'].' '.$u['ultimo_nome'])) ?></li>
+                    <li data-id="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
                   <?php endforeach; ?>
                 </ul>
               </div>
@@ -307,7 +286,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
             </small>
           </div>
 
-          <!-- Observações -->
           <div style="margin-top:12px;">
             <label for="observacoes"><i class="fa-regular fa-note-sticky"></i> Observações</label>
             <textarea id="observacoes" name="observacoes" rows="4"></textarea>
@@ -389,19 +367,17 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-  // Silencia o erro da extensão Chrome (como no KR)
-  window.addEventListener('unhandledrejection', function(event) {
+  // Silencia erros irrelevantes de extensões
+  window.addEventListener('unhandledrejection', (event) => {
     const msg = event?.reason?.message || '';
     if (msg.includes('A listener indicated an asynchronous response')) event.preventDefault();
   });
 
-  // ========= Utils =========
   const $  = (s, r=document)=>r.querySelector(s);
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
-  function show(el){ el?.classList.add('show'); el?.setAttribute('aria-hidden','false'); }
-  function hide(el){ el?.classList.remove('show'); el?.setAttribute('aria-hidden','true'); }
+  const show = el => { el?.classList.add('show'); el?.setAttribute('aria-hidden','false'); };
+  const hide = el => { el?.classList.remove('show'); el?.setAttribute('aria-hidden','true'); };
 
-  // ========= Badges auxiliares =========
   function pad2(n){ return String(n).padStart(2,'0'); }
   function lastDayOfMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
   function toISO(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
@@ -463,7 +439,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     }
 
     if (!start || !end) {
-      // fallback: trimestre corrente
       const d=new Date(), m=d.getMonth()+1, y=d.getFullYear();
       const q = m<=3?1 : m<=6?2 : m<=9?3 : 4;
       const sm=(q-1)*3, em=sm+2;
@@ -476,14 +451,12 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     const {startISO, endISO} = computePeriodFromCycle();
     const pb = $('#periodBadge'), pt = $('#periodText');
     if (pt && pb){ pt.textContent = `Período: ${startISO} → ${endISO}`; pb.style.display='inline-flex'; }
-    // Responsáveis
     const ids = ($('#responsavel')?.value || '').split(',').filter(Boolean);
     const ob = $('#ownersBadge'), ot = $('#ownersText');
     if (ids.length>0 && ob && ot){ ot.textContent = `Responsáveis: ${ids.length}`; ob.style.display='inline-flex'; }
     else if (ob){ ob.style.display='none'; }
   }
 
-  // ========= População dinâmica de ciclos =========
   function populateCycles(){
     const anoAtual = new Date().getFullYear();
 
@@ -514,7 +487,8 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
       for(let y=anoAtual; y<=anoAtual+5; y++){
         for(let i=0;i<12;i+=2){
           const d1=new Date(y,i), d2=new Date(y,i+1);
-          const m1=d1.toLocaleString('pt-BR',{month:'short'}); const m2=d2.toLocaleString('pt-BR',{month:'short'});
+          const m1=d1.toLocaleString('pt-BR',{month:'short'});
+          const m2=d2.toLocaleString('pt-BR',{month:'short'});
           const lbl=`${m1.charAt(0).toUpperCase()+m1.slice(1)}–${m2.charAt(0).toUpperCase()+m2.slice(1)}/${y}`;
           const val=`${String(d1.getMonth()+1).padStart(2,'0')}-${String(d2.getMonth()+1).padStart(2,'0')}-${y}`;
           sBim.add(new Option(lbl,val));
@@ -546,7 +520,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     updateBadges();
   }
 
-  // ========= Multi-select Responsável(es) =========
   function setupOwners(){
     const inputResp   = $('#responsavel_input'),
           listCont    = $('#responsavel_list'),
@@ -590,7 +563,7 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     }
   }
 
-  // ========= Chat lateral (acomoda largura, igual ao KR) =========
+  // Chat lateral (acomoda largura)
   const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
   const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
@@ -598,7 +571,7 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
   function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
   function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
 
-  // ========= Fluxo IA =========
+  // Fluxo IA
   document.addEventListener('DOMContentLoaded', () => {
     setupChatObservers();
     populateCycles();
@@ -621,11 +594,11 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
     function setLoading(on){ on ? show(loading) : hide(loading); }
 
     function scoreToQuality(score){
-      if (score <= 2) return { id:'péssimo', cls:'q-pessimo',  label:'Péssimo'  };
-      if (score <= 4) return { id:'ruim',    cls:'q-ruim',     label:'Ruim'     };
-      if (score <= 6) return { id:'moderado',cls:'q-moderado', label:'Moderado' };
-      if (score <= 8) return { id:'bom',     cls:'q-bom',      label:'Bom'      };
-      return            { id:'ótimo',   cls:'q-otimo',    label:'Ótimo'    };
+      if (score <= 2) return { id:'péssimo',  cls:'q-pessimo',  label:'Péssimo'  };
+      if (score <= 4) return { id:'ruim',     cls:'q-ruim',     label:'Ruim'     };
+      if (score <= 6) return { id:'moderado', cls:'q-moderado', label:'Moderado' };
+      if (score <= 8) return { id:'bom',      cls:'q-bom',      label:'Bom'      };
+      return            { id:'ótimo',    cls:'q-otimo',    label:'Ótimo'    };
     }
 
     form.addEventListener('submit', async e => {
@@ -637,9 +610,12 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
       try {
         const res  = await fetch(form.action, { method:'POST', body:fd });
         const data = await res.json();
+
         setLoading(false);
 
-        if (data.score == null || data.justification == null) throw new Error('Resposta IA inválida');
+        if (typeof data?.score !== 'number' || typeof data?.justification !== 'string') {
+          throw new Error('Resposta IA inválida');
+        }
 
         // Guarda justificativa
         $('#justificativa_ia').value = data.justification ?? '';
@@ -660,11 +636,13 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
           setLoading(true);
           const fd2 = new FormData(form);
           fd2.delete('evaluate');
+
           try {
             const res2 = await fetch(form.action, { method:'POST', body:fd2 });
             const ret  = await res2.json();
             setLoading(false);
-            if (ret.success) {
+
+            if (ret?.success) {
               const el = $('#saveAiMessage');
               if (el) {
                 const objId = ret.id_objetivo ? `<strong>${ret.id_objetivo}</strong>` : 'Seu objetivo';
@@ -695,7 +673,6 @@ $ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos O
       window.location.href = '/OKR_system/views/novo_objetivo.php';
     });
 
-    // Badges iniciais
     updateBadges();
   });
   </script>

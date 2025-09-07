@@ -1,5 +1,6 @@
 <?php
-// views/mapa_estrategico.php — Mapa Estratégico
+// views/mapa_estrategico.php — Mapa Estratégico (rewritten)
+// ---------------------------------------------------------------------------------
 declare(strict_types=1);
 ini_set('display_errors','0'); ini_set('display_startup_errors','0'); error_reporting(0);
 
@@ -13,6 +14,7 @@ if (!isset($_SESSION['user_id'])) {
 if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 $csrf = $_SESSION['csrf_token'];
 
+// Helpers
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function slug($s){
   $s = mb_strtolower(trim((string)$s),'UTF-8');
@@ -20,8 +22,13 @@ function slug($s){
   $s = preg_replace('/[^a-z0-9]+/',' ', $s);
   return trim(preg_replace('/\s+/',' ', $s));
 }
-function normalizeText($s){ return mb_strtoupper(mb_substr((string)$s,0,1),'UTF-8').mb_strtolower(mb_substr((string)$s,1),'UTF-8'); }
+function normalizeText($s){
+  $s = (string)$s;
+  if ($s==='') return '';
+  return mb_strtoupper(mb_substr($s,0,1),'UTF-8').mb_strtolower(mb_substr($s,1),'UTF-8');
+}
 
+// Conexão
 $pdo = null;
 try{
   $pdo = new PDO(
@@ -32,7 +39,7 @@ try{
 }catch(Throwable){ /* silencioso */ }
 
 // ===== Empresa do usuário (obrigatória) =====
-$userId = (int)$_SESSION['user_id'];
+$userId = (int)($_SESSION['user_id'] ?? 0);
 $companyId = null;
 try{
   $st = $pdo->prepare("
@@ -44,14 +51,10 @@ try{
   ");
   $st->execute([':uid'=>$userId]);
   $row = $st->fetch();
-  if ($row && !empty($row['id_company'])) {
-    $companyId = (int)$row['id_company'];
-  }
+  if ($row && !empty($row['id_company'])) $companyId = (int)$row['id_company'];
 }catch(Throwable){ /* noop */ }
 
-if (!$companyId) {
-  header('Location: /OKR_system/organizacao'); exit;
-}
+if (!$companyId) { header('Location: /OKR_system/organizacao'); exit; }
 $_SESSION['company_id'] = $companyId;
 
 // ===== Utilitários de schema =====
@@ -63,7 +66,10 @@ function cols(PDO $pdo, string $table): array {
   try{ $st=$pdo->query("SHOW COLUMNS FROM `$table`"); $out=[]; foreach($st as $r){ $out[]=$r['Field']; } return $out; }
   catch(Throwable){ return []; }
 }
-function hascol(array $list, string $name): bool { foreach($list as $c){ if (strcasecmp($c,$name)===0) return true; } return false; }
+function hascol(array $list, string $name): bool {
+  foreach($list as $c){ if (strcasecmp($c,$name)===0) return true; }
+  return false;
+}
 
 /* ============ INJETAR O TEMA (agora com ?cid=) ============ */
 if (!defined('PB_THEME_LINK_EMITTED')) {
@@ -357,6 +363,8 @@ $totalPil = count($pilares);
     .pilar-progress .bar{ height:100%; width:0%; transition:width .5s ease; background: linear-gradient(90deg, var(--gold), var(--blue)); }
     .pilar-progress .val{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#0a1220; font-weight:900; text-shadow:0 1px 0 rgba(255,255,255,.45); mix-blend-mode:screen; }
     .pilar-grid{ display:grid; grid-template-columns: minmax(360px, 2fr) minmax(320px, 1.2fr); gap:14px; align-items:stretch; }
+    /* Quando não houver gráfico, a grade vira 1 coluna */
+    .pilar-grid.no-chart{ grid-template-columns: 1fr; }
     @media (max-width: 980px){ .pilar-grid{ grid-template-columns: 1fr; } }
     .cards-grid{ display:grid; grid-template-columns: repeat(2, minmax(240px,1fr)); gap:12px; }
     @media (max-width: 640px){ .cards-grid{ grid-template-columns: 1fr; } }
@@ -377,7 +385,7 @@ $totalPil = count($pilares);
     .b-warn{ background:rgba(250,204,21,.16); border-color:#705e14; color:#ffec99; }
     .meta{ font-size:.92rem; color:#cbd5e1; display:grid; gap:2px; }
     .link{ position:absolute; inset:0; text-decoration:none; color:inherit; }
-    .chart-card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:var(--shadow); color:#var(--text); display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:280px; }
+    .chart-card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:var(--shadow); color:var(--text); display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:280px; }
     .chart-title{ font-weight:900; display:flex; align-items:center; gap:8px; }
     .chart-box{ position:relative; height:100%; min-height:220px; }
   </style>
@@ -428,6 +436,9 @@ $totalPil = count($pilares);
         $pilarProg = $n ? round($acc/$n,1) : 0.0;
         $anc = 'pilar_'.preg_replace('/\s+/','_', $pillKey);
         echo "<script>window.__anchors.push({id:".json_encode($anc).",label:".json_encode(mb_strtolower($info['titulo'],'UTF-8'))."});</script>";
+
+        // Para esta demanda: só mostramos o gráfico se houver ao menos um objetivo
+        $hasChart = !empty($objs);
       ?>
       <section id="<?= h($anc) ?>" class="pilar">
         <div class="pilar-wrap" style="border-left:6px solid <?= h($info['cor']) ?>;">
@@ -444,7 +455,7 @@ $totalPil = count($pilares);
             <div class="val"><?= number_format($pilarProg,1,',','.') ?>%</div>
           </div>
 
-          <div class="pilar-grid">
+          <div class="pilar-grid<?= $hasChart ? '' : ' no-chart' ?>">
             <!-- Cards à esquerda -->
             <div class="cards-grid" data-cards="<?= h($pillKey) ?>">
               <?php if (!$objs): ?>
@@ -488,13 +499,15 @@ $totalPil = count($pilares);
               <?php endforeach; endif; ?>
             </div>
 
-            <!-- Gráfico à direita -->
+            <?php if ($hasChart): ?>
+            <!-- Gráfico à direita (só quando houver objetivos) -->
             <div class="chart-card">
               <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Evolução no mês</div>
               <div class="chart-box">
                 <canvas id="chart_<?= h($anc) ?>"></canvas>
               </div>
             </div>
+            <?php endif; ?>
           </div>
         </div>
       </section>
@@ -536,10 +549,19 @@ $totalPil = count($pilares);
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
   function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
   function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-  function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
+  function setupChatObservers(){
+    const chat=findChatEl(); if(!chat) return;
+    const mo=new MutationObserver(()=>updateChatWidth());
+    mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
+    window.addEventListener('resize',updateChatWidth);
+    TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200))));
+    updateChatWidth();
+  }
   document.addEventListener('DOMContentLoaded', ()=>{
     setupChatObservers();
-    const moBody = new MutationObserver(()=>{ if(findChatEl()){ setupChatObservers(); moBody.disconnect(); } });
+    const moBody = new MutationObserver(()=>{
+      if(findChatEl()){ setupChatObservers(); moBody.disconnect(); }
+    });
     moBody.observe(document.body,{childList:true,subtree:true});
   });
 
@@ -549,7 +571,7 @@ $totalPil = count($pilares);
     if (!window.Chart || !window.__charts) return;
     Object.entries(window.__charts).forEach(([anc, cfg])=>{
       const ctx = document.getElementById('chart_'+anc);
-      if (!ctx) return;
+      if (!ctx) return; // pilar sem objetivos: sem canvas, não instancia
       const color = cfg.color || '#60a5fa';
       const hexToRGBA = (hex, a)=> {
         const s=hex.replace('#',''); const bigint=parseInt(s,16);

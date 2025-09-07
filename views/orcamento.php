@@ -1,10 +1,5 @@
 <?php
-// views/orcamento.php — Análise de Orçamentos (estilo claro + cards escuros)
-// Ajustes pedidos:
-// - Tabelas: remover colunas "Financeiro" e "Pilar" em Orçamentos; remover "Pilar" em Despesas
-// - Objetivo/KR/Iniciativa: exibir apenas 2 linhas (line-clamp) com tooltip no hover mostrando o texto completo
-// - Readequar larguras das colunas (mais espaço para Objetivo/KR/Iniciativa)
-// - Layout sem overflow lateral, main responde ao chat, gráfico com altura controlada.
+// views/orcamento.php — Análise de Orçamentos (escopo por company + botão filtrar com texto preto)
 
 declare(strict_types=1);
 ini_set('display_errors',1);
@@ -31,6 +26,17 @@ try {
   die('Erro ao conectar ao banco.');
 }
 
+/* ===================== Company do usuário ===================== */
+$userId = (int)$_SESSION['user_id'];
+try{
+  $stC = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = :u LIMIT 1");
+  $stC->execute([':u'=>$userId]);
+  $companyId = (int)($stC->fetchColumn() ?: 0);
+  if ($companyId <= 0) { http_response_code(403); die('Usuário sem company vinculada.'); }
+} catch(Throwable $e){
+  http_response_code(500); die('Falha ao obter company do usuário.');
+}
+
 /* ===================== Helpers ===================== */
 $g = static function(array $row, string $k, $d=null){ return array_key_exists($k,$row) ? $row[$k] : $d; };
 
@@ -43,41 +49,75 @@ if (isset($_GET['ajax'])) {
 
   try {
     if ($action === 'filters_init') {
-      // Pilares existentes (pelos orçamentos); se vazio, cai para objetivos
+      // Pilares existentes (pelos orçamentos) — escopo por company
       $pillars = [];
       try {
-        $pillars = $pdo->query("
+        $st = $pdo->prepare("
           SELECT DISTINCT COALESCE(obj.pilar_bsc,'—') AS label
           FROM orcamentos o
           LEFT JOIN iniciativas i ON i.id_iniciativa = o.id_iniciativa
           LEFT JOIN key_results kr ON kr.id_kr = i.id_kr
           LEFT JOIN objetivos obj ON obj.id_objetivo = kr.id_objetivo
+          WHERE obj.id_company = :c
           ORDER BY label
-        ")->fetchAll();
+        ");
+        $st->execute([':c'=>$companyId]);
+        $pillars = $st->fetchAll();
       } catch(Throwable $e){ /* fallback abaixo */ }
+
       if (!$pillars) {
         try {
-          $pillars = $pdo->query("SELECT DISTINCT COALESCE(pilar_bsc,'—') AS label FROM objetivos ORDER BY label")->fetchAll();
+          $st = $pdo->prepare("SELECT DISTINCT COALESCE(pilar_bsc,'—') AS label FROM objetivos WHERE id_company = :c ORDER BY label");
+          $st->execute([':c'=>$companyId]);
+          $pillars = $st->fetchAll();
         } catch(Throwable $e){ $pillars = []; }
       }
 
-      // Responsáveis diretamente do que existe em orçamentos (criador)
+      // Responsáveis (criador do orçamento) com nome — escopo por company
       $responsaveis = [];
       try {
-        $responsaveis = $pdo->query("
-          SELECT DISTINCT o.id_user_criador AS id_user
+        $st = $pdo->prepare("
+          SELECT DISTINCT u.id_user,
+            TRIM(CONCAT(COALESCE(u.primeiro_nome,''),' ',COALESCE(u.ultimo_nome,''))) AS nome
           FROM orcamentos o
-          WHERE o.id_user_criador IS NOT NULL AND o.id_user_criador <> ''
-          ORDER BY 1
-        ")->fetchAll();
+          LEFT JOIN iniciativas i ON i.id_iniciativa = o.id_iniciativa
+          LEFT JOIN key_results kr ON kr.id_kr = i.id_kr
+          LEFT JOIN objetivos obj ON obj.id_objetivo = kr.id_objetivo
+          LEFT JOIN usuarios u ON u.id_user = o.id_user_criador
+          WHERE obj.id_company = :c
+            AND o.id_user_criador IS NOT NULL AND o.id_user_criador <> ''
+          ORDER BY nome
+        ");
+        $st->execute([':c'=>$companyId]);
+        $responsaveis = $st->fetchAll() ?: [];
       } catch(Throwable $e){ $responsaveis = []; }
-      foreach ($responsaveis as &$r) { $r['nome'] = (string)$r['id_user']; }
+      foreach ($responsaveis as &$r) { if (empty($r['nome'])) $r['nome'] = (string)$r['id_user']; }
 
-      // Status aprovação/financeiro direto de orçamentos
+      // Status aprovação/financeiro apenas da company
       $aprov = [];
       $fin = [];
-      try { $aprov = $pdo->query("SELECT DISTINCT COALESCE(status_aprovacao,'pendente') AS s FROM orcamentos ORDER BY s")->fetchAll(PDO::FETCH_COLUMN); } catch(Throwable $e){}
-      try { $fin   = $pdo->query("SELECT DISTINCT COALESCE(status_financeiro,'—') AS s FROM orcamentos ORDER BY s")->fetchAll(PDO::FETCH_COLUMN); } catch(Throwable $e){}
+      try {
+        $st = $pdo->prepare("
+          SELECT DISTINCT COALESCE(o.status_aprovacao,'pendente') AS s
+          FROM orcamentos o
+          LEFT JOIN iniciativas i ON i.id_iniciativa=o.id_iniciativa
+          LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
+          LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo
+          WHERE obj.id_company = :c
+          ORDER BY s
+        "); $st->execute([':c'=>$companyId]); $aprov = $st->fetchAll(PDO::FETCH_COLUMN);
+      } catch(Throwable $e){}
+      try {
+        $st = $pdo->prepare("
+          SELECT DISTINCT COALESCE(o.status_financeiro,'—') AS s
+          FROM orcamentos o
+          LEFT JOIN iniciativas i ON i.id_iniciativa=o.id_iniciativa
+          LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
+          LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo
+          WHERE obj.id_company = :c
+          ORDER BY s
+        "); $st->execute([':c'=>$companyId]); $fin = $st->fetchAll(PDO::FETCH_COLUMN);
+      } catch(Throwable $e){}
 
       echo json_encode(['success'=>true,'pillars'=>$pillars,'responsaveis'=>$responsaveis,'status_aprovacao'=>$aprov,'status_financeiro'=>$fin]); exit;
     }
@@ -86,10 +126,11 @@ if (isset($_GET['ajax'])) {
       $pilar = trim($_GET['pilar'] ?? '');
       try {
         if ($pilar !== '') {
-          $st=$pdo->prepare("SELECT id_objetivo, descricao FROM objetivos WHERE pilar_bsc=:p ORDER BY descricao");
-          $st->execute(['p'=>$pilar]);
+          $st=$pdo->prepare("SELECT id_objetivo, descricao FROM objetivos WHERE id_company=:c AND pilar_bsc=:p ORDER BY descricao");
+          $st->execute([':c'=>$companyId, ':p'=>$pilar]);
         } else {
-          $st=$pdo->query("SELECT id_objetivo, descricao FROM objetivos ORDER BY descricao");
+          $st=$pdo->prepare("SELECT id_objetivo, descricao FROM objetivos WHERE id_company=:c ORDER BY descricao");
+          $st->execute([':c'=>$companyId]);
         }
         echo json_encode(['success'=>true,'items'=>$st->fetchAll()]); exit;
       } catch(Throwable $e){
@@ -102,12 +143,13 @@ if (isset($_GET['ajax'])) {
       if ($id_obj===''){ echo json_encode(['success'=>true,'items'=>[]]); exit; }
       try{
         $st = $pdo->prepare("
-          SELECT id_kr, COALESCE(descricao,'') AS label
-          FROM key_results
-          WHERE id_objetivo=:o
-          ORDER BY key_result_num ASC
+          SELECT kr.id_kr, COALESCE(kr.descricao,'') AS label
+          FROM key_results kr
+          INNER JOIN objetivos obj ON obj.id_objetivo = kr.id_objetivo
+          WHERE kr.id_objetivo=:o AND obj.id_company=:c
+          ORDER BY kr.key_result_num ASC
         ");
-        $st->execute(['o'=>$id_obj]);
+        $st->execute([':o'=>$id_obj, ':c'=>$companyId]);
         echo json_encode(['success'=>true,'items'=>$st->fetchAll()]); exit;
       } catch(Throwable $e){
         echo json_encode(['success'=>false,'error'=>'Falha ao listar KRs']); exit;
@@ -124,14 +166,16 @@ if (isset($_GET['ajax'])) {
       $dini   = trim($_GET['ini'] ?? '');
       $dfim   = trim($_GET['fim'] ?? '');
 
-      $nowY = (int)date('Y');
-      if (!preg_match('/^\d{4}\-\d{2}$/', $dini)) $dini = $nowY.'-01';
-      if (!preg_match('/^\d{4}\-\d{2}$/', $dfim)) $dfim = date('Y-m');
-      $dateStart = $dini.'-01';
+      $nowY  = (int)date('Y');
+      $nextY = $nowY + 1;
+      if (!preg_match('/^\d{4}\-\d{2}$/', $dini)) $dini = sprintf('%04d-01', $nowY);
+      if (!preg_match('/^\d{4}\-\d{2}$/', $dfim)) $dfim = sprintf('%04d-12', $nextY);      $dateStart = $dini.'-01';
       $y = (int)substr($dfim,0,4); $m=(int)substr($dfim,5,2); $lastDay = (int)date('t', strtotime("$y-$m-01"));
       $dateEnd = sprintf('%04d-%02d-%02d', $y, $m, $lastDay);
 
-      $where=[]; $binds=['dini'=>$dateStart,'dfim'=>$dateEnd];
+      // Escopo base: company do usuário
+      $where   = ["obj.id_company = :cid"];
+      $binds   = ['cid'=>$companyId, 'dini'=>$dateStart,'dfim'=>$dateEnd];
 
       if ($pilar !== '') { $where[]="obj.pilar_bsc=:pilar"; $binds['pilar']=$pilar; }
       if ($id_obj !== ''){ $where[]="obj.id_objetivo=:id_obj"; $binds['id_obj']=$id_obj; }
@@ -236,23 +280,27 @@ if (isset($_GET['ajax'])) {
       "); $stB1->execute($binds);
       $byPilar=[]; foreach($stB1 as $r){ $ap=(float)$r['aprovado']; $re=(float)$r['realizado']; $byPilar[]=['pilar'=>$g($r,'pilar','—'),'aprovado'=>$ap,'realizado'=>$re,'saldo'=>max(0,$ap-$re)]; }
 
-      // Breakdown por Responsável (criador do orçamento)
+      // Breakdown por Responsável (com nome)
       $stB2=$pdo->prepare("
-        SELECT COALESCE(NULLIF(o.id_user_criador,''),'—') AS responsavel,
-               SUM(o.valor) AS aprovado, COALESCE(SUM(od.valor),0) AS realizado
+        SELECT
+          COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.primeiro_nome,''),' ',COALESCE(u.ultimo_nome,''))),''), o.id_user_criador, '—') AS responsavel,
+          SUM(o.valor) AS aprovado, COALESCE(SUM(od.valor),0) AS realizado
         FROM orcamentos o
+        LEFT JOIN usuarios u ON u.id_user = o.id_user_criador
         LEFT JOIN iniciativas i ON i.id_iniciativa=o.id_iniciativa
         LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
         LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo
         LEFT JOIN orcamentos_detalhes od ON od.id_orcamento=o.id_orcamento
              AND od.data_pagamento BETWEEN :dini AND :dfim
         WHERE o.data_desembolso BETWEEN :dini AND :dfim
+          AND obj.id_company = :cid
         $whereSql
-        GROUP BY o.id_user_criador ORDER BY responsavel
+        GROUP BY o.id_user_criador, responsavel
+        ORDER BY responsavel
       "); $stB2->execute($binds);
       $byResp=[]; foreach($stB2 as $r){ $ap=(float)$r['aprovado']; $re=(float)$r['realizado']; $byResp[]=['responsavel'=>$g($r,'responsavel','—'),'aprovado'=>$ap,'realizado'=>$re,'saldo'=>max(0,$ap-$re)]; }
 
-      // Tabela Orçamentos (sem cortar textos de Objetivo/KR/Iniciativa)
+      // Tabela Orçamentos
       $stTab=$pdo->prepare("
         SELECT 
           o.id_orcamento, o.id_iniciativa, o.valor, o.data_desembolso,
@@ -272,12 +320,13 @@ if (isset($_GET['ajax'])) {
         LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
         LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo
         WHERE o.data_desembolso BETWEEN :dini AND :dfim
+          AND obj.id_company = :cid
           $whereSql
         ORDER BY o.data_desembolso ASC, o.id_orcamento ASC
         LIMIT 300
       "); $stTab->execute($binds); $orcList=$stTab->fetchAll();
 
-      // Tabela Despesas (sem cortar textos de Objetivo/KR/Iniciativa)
+      // Tabela Despesas
       $stDesp=$pdo->prepare("
         SELECT 
           od.id_despesa, od.valor, od.data_pagamento, LEFT(COALESCE(od.descricao,''),200) AS descricao,
@@ -292,6 +341,7 @@ if (isset($_GET['ajax'])) {
         LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
         LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo
         WHERE od.data_pagamento BETWEEN :dini AND :dfim
+          AND obj.id_company = :cid
           $whereSql
         ORDER BY COALESCE(od.data_pagamento, od.dt_criacao) DESC, od.id_despesa DESC
         LIMIT 200
@@ -341,7 +391,6 @@ if (isset($_GET['ajax'])) {
     body{ background:#fff !important; color:#111; }
     .content{ background:transparent; max-width:100vw; overflow-x:hidden; }
 
-    /* O main agora reduz de largura quando o chat abre (sem scroll lateral) */
     main.orc{
       padding:24px; display:grid; grid-template-columns:1fr; gap:16px;
       width: calc(100% - var(--chat-w, 0px));
@@ -382,6 +431,14 @@ if (isset($_GET['ajax'])) {
     .btn-warning{ background:#8a6d00; color:#fff7cc; border-color:#8a6d00; }
     .btn-outline{ background:transparent; }
 
+    /* >>> Texto do botão FILTRAR em preto (com fundo claro p/ contraste) */
+    #btnApply{
+      background:#f6c343;      /* dourado claro */
+      border-color:#f6c343;
+      color:#000 !important;   /* pedido: texto preto */
+    }
+    #btnApply:hover{ filter:brightness(0.95); }
+
     .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
     @media (max-width:1000px){ .kpis{ grid-template-columns:repeat(2,1fr); } }
     @media (max-width:560px){ .kpis{ grid-template-columns:1fr; } }
@@ -396,7 +453,7 @@ if (isset($_GET['ajax'])) {
 
     .table-wrap{ overflow:auto; border-radius:12px; max-width:100%; }
     table{ width:100%; border-collapse:collapse; }
-    table.fixed{ table-layout: fixed; } /* respeita colgroup */
+    table.fixed{ table-layout: fixed; }
     th,td{ border-bottom:1px solid #1f2635; padding:10px 8px; text-align:left; color:#cbd5e1; font-size:.93rem; vertical-align:top; }
     th{ background:#0f1524; position:sticky; top:0; z-index:1; }
     .right{ text-align:right; }
@@ -432,25 +489,17 @@ if (isset($_GET['ajax'])) {
       overflow:hidden;
       white-space:normal;
       line-height:1.25rem;
-      max-height:2.5rem; /* 2 linhas x 1.25rem */
+      max-height:2.5rem;
     }
 
     .legend{ display:flex; gap:10px; align-items:center; font-size:.85rem; color:#a6adbb; }
     .badge{ border:1px solid #705e14; background:#3b320a; color:#ffec99; padding:3px 8px; border-radius:999px; font-size:.72rem; }
 
     /* ===== Gráfico com altura controlada ===== */
-    .chart-box{
-      position: relative;
-      width: 100%;
-      height: 340px;
-    }
+    .chart-box{ position: relative; width: 100%; height: 340px; }
     @media (max-width: 900px){ .chart-box{ height: 300px; } }
     @media (max-width: 600px){ .chart-box{ height: 260px; } }
-    .chart-box canvas{
-      width: 100% !important;
-      height: 100% !important;
-      display: block;
-    }
+    .chart-box canvas{ width: 100% !important; height: 100% !important; display: block; }
   </style>
 </head>
 <body>
@@ -581,7 +630,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </section>
 
-      <!-- Tabela Orçamentos (sem colunas Financeiro e Pilar; com clamp em Obj/KR/Ini) -->
+      <!-- Tabela Orçamentos -->
       <section class="card">
         <h2><i class="fa-solid fa-coins"></i> Orçamentos</h2>
         <div class="table-wrap">
@@ -609,7 +658,7 @@ if (isset($_GET['ajax'])) {
         </div>
       </section>
 
-      <!-- Tabela Despesas (sem coluna Pilar; com clamp em Obj/KR/Ini) -->
+      <!-- Tabela Despesas -->
       <section class="card">
         <h2><i class="fa-solid fa-file-invoice-dollar"></i> Despesas</h2>
         <div class="table-wrap">
@@ -641,7 +690,6 @@ if (isset($_GET['ajax'])) {
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
-    // Endpoint = mesma rota que renderizou a página
     const SCRIPT = window.location.pathname;
 
     const $ = (s,p=document)=>p.querySelector(s);
@@ -674,10 +722,10 @@ if (isset($_GET['ajax'])) {
 
       // período default = ano corrente
       const now = new Date();
-      const y = now.getFullYear(); const m = String(now.getMonth()+1).padStart(2,'0');
+      const y = now.getFullYear();
+      const nextY = y + 1;
       $('#f_ini').value = `${y}-01`;
-      $('#f_fim').value = `${y}-${m}`;
-
+      $('#f_fim').value = `${nextY}-12`;
       await loadObjetivos();
     }
 
@@ -723,7 +771,7 @@ if (isset($_GET['ajax'])) {
       const pb = document.getElementById('periodBadge'), pt = document.getElementById('periodText');
       if (pt){ pt.textContent = `Período: ${data.periodo.ini} → ${data.periodo.fim}`; pb.style.display='inline-flex'; }
 
-      // Chart
+      // Chart datasets
       const labels = (data.series||[]).map(s=>toDMY(s.competencia));
       const mensalP = (data.series||[]).map(s=>s.planejado||0);
       const mensalR = (data.series||[]).map(s=>s.realizado||0);
@@ -827,7 +875,7 @@ if (isset($_GET['ajax'])) {
       });
       if (!tbR.children.length) tbR.innerHTML = `<tr><td colspan="4" class="muted">Sem dados</td></tr>`;
 
-      // ===== Tabela Orçamentos (com clamp e tooltip; sem "Financeiro" e "Pilar") =====
+      // ===== Tabela Orçamentos (clamp + tooltip) =====
       const tbO = $('#tbOrc'); tbO.innerHTML = '';
       (data.orcamentos||[]).forEach(o=>{
         const comp = (o.data_desembolso||'').slice(0,7);
@@ -850,7 +898,7 @@ if (isset($_GET['ajax'])) {
       });
       if (!tbO.children.length) tbO.innerHTML = `<tr><td colspan="9" class="muted">Sem orçamentos no período/filtros.</td></tr>`;
 
-      // ===== Tabela Despesas (com clamp e tooltip; sem "Pilar") =====
+      // ===== Tabela Despesas (clamp + tooltip) =====
       const tbD = $('#tbDesp'); tbD.innerHTML = '';
       (data.despesas||[]).forEach(d=>{
         const objFull = d.obj_desc||'';
@@ -872,25 +920,25 @@ if (isset($_GET['ajax'])) {
       if (!tbD.children.length) tbD.innerHTML = `<tr><td colspan="8" class="muted">Sem despesas no período/filtros.</td></tr>`;
     }
 
-    // Ações
     $('#btnApply')?.addEventListener('click', runSearch);
     $('#btnClear')?.addEventListener('click', async ()=>{
       $('#f_pilar').value=''; await loadObjetivos();
       $('#f_resp').value=''; $('#f_aprov').value=''; $('#f_fin').value='';
-      const now = new Date(), y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
-      $('#f_ini').value = `${y}-01`; $('#f_fim').value = `${y}-${m}`;
+      const now = new Date();
+      const y = now.getFullYear();
+      const nextY = y + 1;
+      $('#f_ini').value = `${y}-01`;
+      $('#f_fim').value = `${nextY}-12`;
       runSearch();
     });
 
-    // ===== Ajuste com chat lateral (robusto) =====
+    // Ajuste responsivo ao chat lateral
     (function chatAdjust(){
       const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
       const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
       function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-
       function chatWidth(){
-        const el = findChatEl();
-        if (!el) return 0;
+        const el = findChatEl(); if (!el) return 0;
         const cs = getComputedStyle(el);
         const hidden = (cs.display==='none' || cs.visibility==='hidden' || cs.opacity==='0');
         if (hidden) return 0;
@@ -899,27 +947,14 @@ if (isset($_GET['ajax'])) {
         if (rect.width && rect.left >= 0 && rect.right <= vw) return rect.width;
         return el.offsetWidth || 0;
       }
-
-      function updateChatWidth(){
-        const w = chatWidth();
-        document.documentElement.style.setProperty('--chat-w', (w||0)+'px');
-      }
-
-      const el = findChatEl();
-      if (el){
-        const mo=new MutationObserver(updateChatWidth);
-        mo.observe(el,{attributes:true, attributeFilter:['style','class','aria-expanded','hidden']});
-      }
+      function updateChatWidth(){ document.documentElement.style.setProperty('--chat-w', (chatWidth()||0)+'px'); }
+      const el = findChatEl(); if (el){ const mo=new MutationObserver(updateChatWidth); mo.observe(el,{attributes:true, attributeFilter:['style','class','aria-expanded','hidden']}); }
       window.addEventListener('resize', updateChatWidth);
-      // Poll curto para capturar animações de abertura/fechamento
-      let poll = setInterval(updateChatWidth, 300);
-      setTimeout(()=>clearInterval(poll), 5000);
-
+      let poll = setInterval(updateChatWidth, 300); setTimeout(()=>clearInterval(poll), 5000);
       TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,220))));
       updateChatWidth();
     })();
 
-    // Init
     (async function init(){
       await loadFilters();
       await runSearch();

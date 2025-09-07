@@ -1,8 +1,6 @@
 <?php
-// views/novo_key_result.php — KR form com:
-// - Frequência "Quinzenal (15 dias)" garantida no front
-// - Prévia de milestones (datas + valores esperados) espelhando o backend
-// - Natureza Binária (lock 0→1), ajuda dinâmica e safeguards
+// views/novo_key_result.php — KR form
+// Agora filtra objetivos e usuários SOMENTE da mesma company do usuário logado.
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -23,14 +21,11 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf = $_SESSION['csrf_token'];
 
-
 /* ============ INJETAR O TEMA (uma vez por página) ============ */
 if (!defined('PB_THEME_LINK_EMITTED')) {
   define('PB_THEME_LINK_EMITTED', true);
-  // Se quiser forçar recarregar em testes, acrescente ?nocache=1
   echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
 }
-
 
 // Conexão
 try {
@@ -44,28 +39,64 @@ try {
   die("Erro ao conectar: ".$e->getMessage());
 }
 
-// Pré-seleção via GET
+// Descobre a company do usuário logado
+$userId = (int)$_SESSION['user_id'];
+$st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = :u LIMIT 1");
+$st->execute([':u' => $userId]);
+$companyId = (int)($st->fetchColumn() ?: 0);
+if ($companyId <= 0) {
+  http_response_code(403);
+  die("Usuário sem company vinculada.");
+}
+
+// Pré-seleção via GET (validando contra a mesma company)
 $prefIdObjetivo = 0;
 if (isset($_GET['id_objetivo']))     $prefIdObjetivo = (int)$_GET['id_objetivo'];
 elseif (isset($_GET['id']))          $prefIdObjetivo = (int)$_GET['id'];
 
-// Domínios
-$objetivos = $pdo->query("SELECT id_objetivo, descricao, status_aprovacao FROM objetivos ORDER BY dt_prazo ASC")->fetchAll();
+if ($prefIdObjetivo > 0) {
+  $chk = $pdo->prepare("SELECT 1 FROM objetivos WHERE id_objetivo = :id AND id_company = :c LIMIT 1");
+  $chk->execute([':id' => $prefIdObjetivo, ':c' => $companyId]);
+  if (!$chk->fetchColumn()) {
+    // Se não pertencer à company do usuário, ignora a preferência
+    $prefIdObjetivo = 0;
+  }
+}
+
+// ===== Domínios / Listas =====
+// OBJETIVOS: apenas da MESMA company
+$st = $pdo->prepare("
+  SELECT id_objetivo, descricao, status_aprovacao, dt_prazo
+  FROM objetivos
+  WHERE id_company = :c
+  ORDER BY dt_prazo ASC, id_objetivo ASC
+");
+$st->execute([':c' => $companyId]);
+$objetivos = $st->fetchAll();
+
+// USERS (responsável KR): apenas da MESMA company
+$st = $pdo->prepare("
+  SELECT id_user, primeiro_nome, ultimo_nome
+  FROM usuarios
+  WHERE id_company = :c
+  ORDER BY primeiro_nome, ultimo_nome
+");
+$st->execute([':c' => $companyId]);
+$users = $st->fetchAll();
+
+// Domínios globais (não dependem de company)
 $tiposKr   = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_kr ORDER BY descricao_exibicao")->fetchAll();
 $naturezas = $pdo->query("SELECT id_natureza, descricao_exibicao FROM dom_natureza_kr ORDER BY descricao_exibicao")->fetchAll();
-$users     = $pdo->query("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios ORDER BY primeiro_nome")->fetchAll();
 $ciclos    = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
 $freqs     = $pdo->query("SELECT id_frequencia, descricao_exibicao FROM dom_tipo_frequencia_milestone ORDER BY descricao_exibicao")->fetchAll();
 $statusKr  = $pdo->query("SELECT id_status, descricao_exibicao FROM dom_status_kr ORDER BY 1")->fetchAll();
 
-// Garante opção "quinzenal" no front mesmo que não exista na tabela
+// Garante opção "Quinzenal (15 dias)" no front mesmo que não exista na tabela
 $hasQuinzenal = false;
 foreach ($freqs as $f) {
   $id  = strtolower(trim((string)$f['id_frequencia']));
   $lbl = strtolower(trim((string)$f['descricao_exibicao']));
-  if ($id === 'quinzenal' || strpos($lbl,'quinzen') !== false) {
-    $hasQuinzenal = true; break;
-  }
+  if ($id === 'quinzenal' || strpos($lbl,'quinzen') !== false) { $hasQuinzenal = true; break; }
 }
 if (!$hasQuinzenal) {
   $freqs[] = ['id_frequencia'=>'quinzenal', 'descricao_exibicao'=>'Quinzenal (15 dias)'];
@@ -178,7 +209,6 @@ if (!$hasQuinzenal) {
     .note{ font-size:.82rem; color:#cbd5e1; margin-top:6px; }
     .note strong{ color:#e5e7eb; }
 
-    /* prévia milestones */
     .ms-preview{ margin-top:14px; border:1px solid #222733; border-radius:12px; overflow:hidden; }
     .ms-preview header{ background:#101626; color:#e5e7eb; padding:10px 12px; font-weight:800; display:flex; align-items:center; gap:8px; }
     .ms-table{ width:100%; border-collapse:collapse; }
@@ -186,6 +216,7 @@ if (!$hasQuinzenal) {
     .ms-table th{ text-align:left; color:#cbd5e1; font-weight:700; font-size:.88rem; background:#0f1524; }
     .muted{ color:#9aa4b2; font-size:.9rem; }
     .right{ text-align:right; }
+    .ms-table tbody {color: #fff}
   </style>
 </head>
 <body>
@@ -435,7 +466,7 @@ if (!$hasQuinzenal) {
             <textarea id="observacoes" name="observacoes" rows="4"></textarea>
           </div>
 
-          <!-- Prévia Milestones (datas + esperado) -->
+          <!-- Prévia Milestones -->
           <div class="ms-preview" id="msPreview" style="display:none;">
             <header><i class="fa-solid fa-flask"></i> Prévia de milestones (datas de referência e valor esperado)</header>
             <div class="muted" style="padding:8px 12px;">A prévia usa a mesma lógica do backend. Valores inteiros para unidades discretas (ex.: unid, itens, ord…).</div>
@@ -625,21 +656,16 @@ if (!$hasQuinzenal) {
 
   // === Série de datas (espelha backend) ===
   function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-
-  // primeiro fim de período a partir do início (offset step-1 meses)
   function endOfMonthOffsetFromStart(d, stepMonths){
     const first = new Date(d.getFullYear(), d.getMonth(), 1);
     const targetFirst = new Date(first.getFullYear(), first.getMonth() + (stepMonths-1), 1);
     return endOfMonth(targetFirst);
   }
-
-  // próximo fim de período a partir de um fim de período (avança +step meses)
   function endOfMonthAdvance(d, stepMonths){
     const first = new Date(d.getFullYear(), d.getMonth(), 1);
     const targetFirst = new Date(first.getFullYear(), first.getMonth() + stepMonths, 1);
     return endOfMonth(targetFirst);
   }
-
   function gerarSerieDatas(startISO, endISO, freq){
     const out = [];
     if(!startISO || !endISO) return out;
@@ -653,7 +679,7 @@ if (!$hasQuinzenal) {
     };
 
     if (f==='semanal' || f==='quinzenal'){
-      const stepDays = (f==='semanal')?7:15; // requisito: quinzenal = 15 dias
+      const stepDays = (f==='semanal')?7:15;
       let d = new Date(start);
       d.setDate(d.getDate()+stepDays);
       while (d < end) {
@@ -663,17 +689,13 @@ if (!$hasQuinzenal) {
       pushUnique(end);
     } else {
       const stepMonths = ({mensal:1,bimestral:2,trimestral:3,semestral:6,anual:12}[f] || 1);
-
       const firstEnd = endOfMonthOffsetFromStart(start, stepMonths);
       if (firstEnd > end){
         pushUnique(end);
       } else {
         pushUnique(firstEnd);
         let d = endOfMonthAdvance(firstEnd, stepMonths);
-        while (d < end) {
-          pushUnique(d);
-          d = endOfMonthAdvance(d, stepMonths);
-        }
+        while (d < end) { pushUnique(d); d = endOfMonthAdvance(d, stepMonths); }
         pushUnique(end);
       }
     }
@@ -681,30 +703,25 @@ if (!$hasQuinzenal) {
     return out;
   }
 
-  // === Rounding por unidade (igual ao back) ===
   function unidadeRequerInteiro(u){
     u = String(u||'').toLowerCase().trim();
     const ints = ['unid','itens','pcs','ord','proc','contratos','processos','pessoas','casos','tickets','visitas'];
     return ints.includes(u);
   }
 
-  // === Esperado por milestone (espelha backend) ===
   function calcularEsperados(datas, baseline, meta, naturezaSlug, direcao, unidade){
     const N = datas.length;
     const out = [];
     const isInt = unidadeRequerInteiro(unidade);
     const round = (v)=> isInt ? Math.round(v) : Math.round(v*100)/100;
 
-    const acum = (naturezaSlug==='acumulativa' || naturezaSlug==='acumulativo'); // aceita ambos
+    const acum = (naturezaSlug==='acumulativa' || naturezaSlug==='acumulativo');
     const bin  = (naturezaSlug==='binario' || naturezaSlug==='binária' || naturezaSlug==='binaria');
-
     const maiorMelhor = String(direcao||'').toUpperCase() !== 'MENOR_MELHOR';
 
     for (let i=1; i<=N; i++){
       let esp = 0;
-
       if (bin){
-        // Binário: 0 até o último; 1 no último
         esp = (i===N) ? 1 : 0;
       }
       else if (acum){
@@ -715,21 +732,17 @@ if (!$hasQuinzenal) {
         }
       }
       else {
-        // Pontual/flutuante: 0 até o último; meta no último (como referência)
         esp = (i===N) ? meta : 0;
       }
-
       out.push(round(esp));
     }
     return out;
   }
 
-  // === Estimativa count (para badge) ===
   function estimateMilestones(startISO, endISO, freq){
     return gerarSerieDatas(startISO, endISO, freq).length;
   }
 
-  // === Badges período + contagem ===
   function updateBadges(){
     const pb = $('#periodBadge'), pt = $('#periodText');
     const mb = $('#milestoneBadge'), mt = $('#milestoneText');
@@ -752,7 +765,6 @@ if (!$hasQuinzenal) {
     if ($('#frequencia_apontamento')?.value) $('#frequencia_apontamento').classList.add('has-value');
   }
 
-  // ===== Natureza: ajuda + binário auto-ajuste =====
   const NAT_HELP = {
     'acumulativo': 'Acumulativo (monotônico): progride de forma cumulativa — só sobe ou só desce (ex.: faturamento acumulado, quitação de dívidas).',
     'acumulativa': 'Acumulativo (monotônico): progride de forma cumulativa — só sobe ou só desce (ex.: faturamento acumulado, quitação de dívidas).',
@@ -774,10 +786,9 @@ if (!$hasQuinzenal) {
       if (base){ base.readOnly=false; }
       if (meta){ meta.readOnly=false; }
     }
-    renderMilestonesPreview(); // refaz prévia
+    renderMilestonesPreview();
   }
 
-  // ===== Status: default válido (evita FK inválida se o back exigir) =====
   function ensureDefaultStatus(){
     const sel = $('#status_kr');
     if (!sel || sel.value) return;
@@ -787,7 +798,6 @@ if (!$hasQuinzenal) {
     if (firstValid){ sel.value = firstValid.value; sel.classList.add('has-value'); }
   }
 
-  // ===== Prévia Milestones (datas + esperado) =====
   function renderMilestonesPreview(){
     const freq = ($('#frequencia_apontamento')?.value || '').toLowerCase();
     const { startISO, endISO } = computePeriodFromCycle();
@@ -796,7 +806,6 @@ if (!$hasQuinzenal) {
     const base = parseFloat($('#baseline')?.value||'');
     const meta = parseFloat($('#meta')?.value||'');
     const naturezaRaw = ($('#natureza_kr')?.value||'').toLowerCase();
-    // normaliza 'acumulativo' -> 'acumulativa' para a fórmula
     const naturezaSlug = naturezaRaw==='acumulativo' ? 'acumulativa' : naturezaRaw;
     const direcao = $('#direcao_metrica')?.value || '';
     const unidade = $('#unidade_medida')?.value || '';
@@ -804,7 +813,6 @@ if (!$hasQuinzenal) {
     const tbody = $('#msTable tbody');
     const wrapper = $('#msPreview');
 
-    // Condições mínimas para exibir
     if (!freq || !datas.length || isNaN(base) || isNaN(meta)) {
       if (wrapper) wrapper.style.display='none';
       return;
@@ -812,7 +820,6 @@ if (!$hasQuinzenal) {
 
     const esperados = calcularEsperados(datas, base, meta, naturezaSlug, direcao, unidade);
 
-    // Render
     tbody.innerHTML = '';
     datas.forEach((d, i)=>{
       const tr = document.createElement('tr');
@@ -824,12 +831,19 @@ if (!$hasQuinzenal) {
     });
 
     wrapper.style.display = 'block';
-    updateBadges(); // mantém badges coerentes
+    updateBadges();
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
-
-    setupChatObservers();
+    // Chat lateral
+    (function setupChatObservers(){
+      const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
+      const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
+      function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
+      function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
+      function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
+      const chat=findChatEl(); if(chat){ const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
+    })();
 
     const form = $('#krForm');
     const loadOv = $('#loadingOverlay');
