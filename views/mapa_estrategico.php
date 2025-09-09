@@ -1,6 +1,6 @@
 <?php
-// views/mapa_estrategico.php — Mapa Estratégico (rewritten)
-// ---------------------------------------------------------------------------------
+// views/mapa_estrategico.php — Mapa Estratégico com ligações entre objetivos (SVG overlay, CRUD AJAX, Neon + Modal UX)
+// -------------------------------------------------------------------------------------------------------------------------------
 declare(strict_types=1);
 ini_set('display_errors','0'); ini_set('display_startup_errors','0'); error_reporting(0);
 
@@ -8,9 +8,7 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
-  header('Location: /OKR_system/views/login.php'); exit;
-}
+if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.php'); exit; }
 if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 $csrf = $_SESSION['csrf_token'];
 
@@ -26,6 +24,26 @@ function normalizeText($s){
   $s = (string)$s;
   if ($s==='') return '';
   return mb_strtoupper(mb_substr($s,0,1),'UTF-8').mb_strtolower(mb_substr($s,1),'UTF-8');
+}
+function table_exists(PDO $pdo, string $table): bool {
+  try{ $st=$pdo->prepare("SHOW TABLES LIKE :t"); $st->execute([':t'=>$table]); return (bool)$st->fetchColumn(); }
+  catch(Throwable){ return false; }
+}
+function cols(PDO $pdo, string $table): array {
+  try{ $st=$pdo->query("SHOW COLUMNS FROM `$table`"); $out=[]; foreach($st as $r){ $out[]=$r['Field']; } return $out; }
+  catch(Throwable){ return []; }
+}
+function hascol(array $list, string $name): bool {
+  foreach($list as $c){ if (strcasecmp($c,$name)===0) return true; }
+  return false;
+}
+/** Cor do texto para bom contraste sobre o chip colorido */
+function pill_text_color(string $hex): string {
+  $hex = ltrim($hex, '#');
+  if (strlen($hex)===3) $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+  $r = hexdec(substr($hex,0,2)); $g = hexdec(substr($hex,2,2)); $b = hexdec(substr($hex,4,2));
+  $lum = (0.2126*$r + 0.7152*$g + 0.0722*$b);
+  return ($lum > 160) ? '#111' : '#fff';
 }
 
 // Conexão
@@ -53,25 +71,75 @@ try{
   $row = $st->fetch();
   if ($row && !empty($row['id_company'])) $companyId = (int)$row['id_company'];
 }catch(Throwable){ /* noop */ }
-
 if (!$companyId) { header('Location: /OKR_system/organizacao'); exit; }
 $_SESSION['company_id'] = $companyId;
 
-// ===== Utilitários de schema =====
-function table_exists(PDO $pdo, string $table): bool {
-  try{ $st=$pdo->prepare("SHOW TABLES LIKE :t"); $st->execute([':t'=>$table]); return (bool)$st->fetchColumn(); }
-  catch(Throwable){ return false; }
-}
-function cols(PDO $pdo, string $table): array {
-  try{ $st=$pdo->query("SHOW COLUMNS FROM `$table`"); $out=[]; foreach($st as $r){ $out[]=$r['Field']; } return $out; }
-  catch(Throwable){ return []; }
-}
-function hascol(array $list, string $name): bool {
-  foreach($list as $c){ if (strcasecmp($c,$name)===0) return true; }
-  return false;
+/* ===================== Endpoints AJAX de ligações (antes de qualquer saída) ===================== */
+function json_out($arr){ header('Content-Type: application/json; charset=utf-8'); echo json_encode($arr); exit; }
+
+if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['action'])) {
+  if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+    json_out(['ok'=>false,'msg'=>'CSRF inválido']);
+  }
+  if (!$pdo) json_out(['ok'=>false,'msg'=>'Sem conexão']);
+  $action = $_POST['action'];
+
+  try {
+    if ($action==='create_link') {
+      $src = (int)($_POST['src'] ?? 0);
+      $dst = (int)($_POST['dst'] ?? 0);
+      if ($src<=0 || $dst<=0 || $src===$dst) json_out(['ok'=>false,'msg'=>'Par inválido']);
+
+      $chk = $pdo->prepare("SELECT COUNT(*) FROM objetivos WHERE id_objetivo IN (:s,:d) AND id_company=:c");
+      $chk->execute([':s'=>$src,':d'=>$dst,':c'=>$companyId]);
+      if ((int)$chk->fetchColumn()!==2) json_out(['ok'=>false,'msg'=>'Objetivo fora da empresa']);
+
+      $pdo->beginTransaction();
+      $sel = $pdo->prepare("SELECT id_link, ativo FROM objetivo_links WHERE id_company=:c AND id_src=:s AND id_dst=:d LIMIT 1");
+      $sel->execute([':c'=>$companyId,':s'=>$src,':d'=>$dst]);
+      $row = $sel->fetch();
+      if ($row) {
+        if ((int)$row['ativo']===0) {
+          $upd = $pdo->prepare("UPDATE objetivo_links SET ativo=1, atualizado_em=NOW() WHERE id_link=:id");
+          $upd->execute([':id'=>$row['id_link']]);
+          $pdo->commit();
+          json_out(['ok'=>true,'id_link'=>(int)$row['id_link'],'reactivated'=>true]);
+        } else {
+          $pdo->rollBack();
+          json_out(['ok'=>false,'msg'=>'Ligação já existe']);
+        }
+      } else {
+        $ins = $pdo->prepare("INSERT INTO objetivo_links (id_company,id_src,id_dst,ativo,criado_por) VALUES (:c,:s,:d,1,:u)");
+        $ins->execute([':c'=>$companyId,':s'=>$src,':d'=>$dst,':u'=>$userId]);
+        $id = (int)$pdo->lastInsertId();
+        $pdo->commit();
+        json_out(['ok'=>true,'id_link'=>$id]);
+      }
+    }
+
+    if ($action==='toggle_active') {
+      $id = (int)($_POST['id_link'] ?? 0);
+      $to = (int)($_POST['ativo'] ?? 0) ? 1 : 0;
+      $upd = $pdo->prepare("UPDATE objetivo_links SET ativo=:a, atualizado_em=NOW() WHERE id_link=:id AND id_company=:c");
+      $upd->execute([':a'=>$to, ':id'=>$id, ':c'=>$companyId]);
+      json_out(['ok'=>true]);
+    }
+
+    if ($action==='delete_link') {
+      $id = (int)($_POST['id_link'] ?? 0);
+      $del = $pdo->prepare("DELETE FROM objetivo_links WHERE id_link=:id AND id_company=:c");
+      $del->execute([':id'=>$id, ':c'=>$companyId]);
+      json_out(['ok'=>true]);
+    }
+
+    json_out(['ok'=>false,'msg'=>'Ação desconhecida']);
+  } catch(Throwable $e){
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    json_out(['ok'=>false,'msg'=>'Erro: '.$e->getMessage()]);
+  }
 }
 
-/* ============ INJETAR O TEMA (agora com ?cid=) ============ */
+/* ============ INJETAR O TEMA (com ?cid=) — somente após possíveis saídas JSON acima ============ */
 if (!defined('PB_THEME_LINK_EMITTED')) {
   define('PB_THEME_LINK_EMITTED', true);
   $cid = (int)$_SESSION['company_id'];
@@ -100,7 +168,7 @@ if ($pdo && table_exists($pdo,'dom_pilar_bsc')){
   $sql="SELECT id_pilar, `$labelCol` AS titulo FROM dom_pilar_bsc".($ordCol?" ORDER BY `$ordCol`":"");
   $colorMap = [
     'financeiro' => '#f39c12',
-    'clientes'   => '#27ae60',
+    'cliente'    => '#27ae60', 'clientes' => '#27ae60',
     'processos'  => '#2980b9', 'processos internos'=>'#2980b9',
     'aprendizado' => '#8e44ad', 'aprendizado e crescimento'=>'#8e44ad'
   ];
@@ -117,9 +185,11 @@ if ($pdo && table_exists($pdo,'dom_pilar_bsc')){
 $objetivos=[];
 if ($pdo && table_exists($pdo,'objetivos')){
   $st = $pdo->prepare("
-    SELECT o.id_objetivo, o.descricao, o.pilar_bsc, o.tipo, o.dono, o.status, o.dt_prazo, o.qualidade
+    SELECT o.id_objetivo, o.descricao, o.pilar_bsc, o.tipo, o.dono, o.status, o.dt_prazo, o.qualidade,
+           COALESCE(o.status_aprovacao,'Pendente') AS status_aprovacao, o.dt_criacao
     FROM objetivos o
     WHERE o.id_company = :cid
+    ORDER BY o.dt_criacao DESC
   ");
   $st->execute([':cid'=>$companyId]);
   foreach($st as $r){
@@ -145,7 +215,7 @@ if ($pdo && table_exists($pdo,'key_results')){
   }
 }
 
-// Status KR agregado -> status do objetivo
+// Status KR agregado -> status do objetivo (lógica simples)
 function statusObjetivoAgregado(int $id_obj, array $krPorObj, array $krs): string {
   $lista = $krPorObj[$id_obj] ?? [];
   if (!$lista) return 'não iniciado';
@@ -161,20 +231,16 @@ function statusObjetivoAgregado(int $id_obj, array $krPorObj, array $krs): strin
   return 'não iniciado';
 }
 
-/* ======================= Métricas / Gráficos ======================= */
+/* ======================= Métricas ======================= */
 $metrics=[]; // id_objetivo => ['qtd_kr'=>int,'progresso'=>float,'krs_sem_apont_mes'=>int]
-$charts=[];  // anc => ['labels'=>[], 'data'=>[], 'color'=>hex]
 
 $msTable=null; foreach(['milestones_kr','milestones'] as $t) if($pdo && table_exists($pdo,$t)) { $msTable=$t; break; }
 if ($pdo && $msTable){
   $mc = cols($pdo,$msTable);
-  // Detecta nomes de colunas
   $COL_EXP = null; foreach(['valor_esperado','esperado','target','meta'] as $c) if(hascol($mc,$c)){$COL_EXP=$c; break;}
   $COL_REAL= null; foreach(['valor_real','realizado','resultado','alcancado'] as $c) if(hascol($mc,$c)){$COL_REAL=$c; break;}
   $COL_ORD = null; foreach(['num_ordem','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_ORD=$c; break;}
-  $COL_DATE= null; foreach(['dt_apontamento','data_apontamento','data_apont','apontamento_dt','dt_evidencia','data_evidencia','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_DATE=$c; break;}
 
-  // ---- Métricas por objetivo (qtd KR + progresso médio) ----
   if ($COL_EXP && $COL_ORD){
     $ordAsc  = "`$COL_ORD` ASC";
     $ordDesc = "`$COL_ORD` DESC";
@@ -224,90 +290,33 @@ if ($pdo && $msTable){
       ];
     }
   } else {
-    // Sem milestones utilizáveis: ao menos conta KR (já filtrados por company)
+    // Sem milestones utilizáveis: ao menos conta KR
     foreach($krPorObj as $ido=>$arr){
       $metrics[$ido] = ['qtd_kr'=>count($arr),'progresso'=>0.0,'krs_sem_apont_mes'=>0];
     }
   }
+}
 
-  // ---- Dados para os gráficos (evolução no mês) ----
-  if ($COL_DATE && $COL_EXP){
-    $EXP="`$COL_EXP`";
-    $REAL= $COL_REAL ? "`$COL_REAL`" : "NULL";
-
-    // Base/meta por KR (somente KRs da company)
-    $bm = [];
-    $sqlBM = "
-      SELECT m.id_kr, MIN($EXP) AS base, MAX($EXP) AS meta
-      FROM `$msTable` m
-      JOIN key_results kr ON kr.id_kr = m.id_kr
-      JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
-      WHERE o.id_company = :cid
-      GROUP BY m.id_kr
-    ";
-    $st = $pdo->prepare($sqlBM); $st->execute([':cid'=>$companyId]);
-    foreach($st as $r){ $bm[$r['id_kr']] = ['base'=>(float)$r['base'], 'meta'=>(float)$r['meta']]; }
-
-    // Intervalo do mês atual
-    $ini = (new DateTime('first day of this month'))->format('Y-m-d');
-    $fim = (new DateTime('last day of this month'))->format('Y-m-d');
-
-    // Milestones do mês (apenas da company)
-    $sql = "
-      SELECT m.id_kr, DATE(m.`$COL_DATE`) AS dia, $EXP AS exp, ".($COL_REAL ? "$REAL AS realv" : "NULL AS realv")."
-      FROM `$msTable` m
-      JOIN key_results kr ON kr.id_kr = m.id_kr
-      JOIN objetivos o    ON o.id_objetivo = kr.id_objetivo
-      WHERE o.id_company = :cid
-        AND m.`$COL_DATE` BETWEEN :ini AND :fim
-    ";
-    $st=$pdo->prepare($sql); $st->execute([':cid'=>$companyId, ':ini'=>$ini, ':fim'=>$fim]);
-
-    // Mapa auxiliar: pilar por KR (via objetivos já filtrados)
-    $pilarPorKr=[];
-    foreach($krs as $idkr=>$infokr){
-      $id_obj = (int)$infokr['id_objetivo'];
-      $pilar_key = null;
-      foreach($objetivos as $o){ if((int)$o['id_objetivo']===$id_obj){ $pilar_key = $o['pilar']; break; } }
-      if ($pilar_key) $pilarPorKr[$idkr] = $pilar_key;
-    }
-
-    $acc = []; // $acc[pilar][dia] = [v1,v2,...]
-    while($row=$st->fetch()){
-      $idkr = (string)$row['id_kr'];
-      $pkey = $pilarPorKr[$idkr] ?? null;
-      if (!$pkey || empty($bm[$idkr])) continue;
-      $base=$bm[$idkr]['base']; $meta=$bm[$idkr]['meta']; if ($meta==$base) continue;
-
-      $val = (float)($row['realv'] ?? null);
-      if (!is_finite($val)) $val = (float)$row['exp'];
-      $prog = max(0.0, min(100.0, round((($val-$base)/($meta-$base))*100,1)));
-      $d = $row['dia'];
-
-      $acc[$pkey][$d][] = $prog;
-    }
-
-    // Construir séries por pilar (carry-forward)
-    foreach($pilares as $key=>$info){
-      $labels=[]; $data=[]; $last=0.0;
-      $dt = new DateTime('first day of this month'); $end = new DateTime('last day of this month');
-      while($dt <= $end){
-        $d = $dt->format('Y-m-d');
-        $labels[] = $dt->format('d/m');
-        if (!empty($acc[$key][$d])){
-          $avg = array_sum($acc[$key][$d]) / max(1,count($acc[$key][$d]));
-          $last = round($avg,1);
-        }
-        $data[] = $last;
-        $dt->modify('+1 day');
-      }
-      $anc = 'pilar_'.preg_replace('/\s+/','_', $key);
-      $charts[$anc] = ['labels'=>$labels, 'data'=>$data, 'color'=>$info['cor']];
-    }
+// ====== Carregar ligações desta empresa ======
+$links = [];
+if ($pdo && table_exists($pdo,'objetivo_links')) {
+  $st = $pdo->prepare("SELECT id_link, id_src, id_dst, ativo FROM objetivo_links WHERE id_company=:c");
+  $st->execute([':c'=>$companyId]);
+  foreach($st as $r){
+    $links[] = [
+      'id_link'=>(int)$r['id_link'],
+      'src'    =>(int)$r['id_src'],
+      'dst'    =>(int)$r['id_dst'],
+      'ativo'  =>(int)$r['ativo'],
+    ];
   }
 }
 
-// Agregados para header (já filtrados por company)
+// Mapa id -> titulo (para mostrar nos modais)
+$objTitles = [];
+foreach($objetivos as $o){ $objTitles[(int)$o['id_objetivo']] = normalizeText($o['descricao']); }
+
+// Agregados para header
 $totalObj = count($objetivos);
 $totalKR  = 0; foreach($metrics as $m){ $totalKR += (int)($m['qtd_kr']??0); }
 $totalPil = count($pilares);
@@ -323,7 +332,6 @@ $totalPil = count($pilares);
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 
   <style>
     :root{
@@ -334,60 +342,172 @@ $totalPil = count($pilares);
     }
     body{ background:#fff !important; color:#111; }
     .content{ background:transparent; }
-    main.mapa{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
+    main.mapa{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; position:relative; }
     .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
     .crumbs a{ color:var(--accent); text-decoration:none; }
     .crumbs .sep{ opacity:.5; margin:0 2px; }
     .crumbs i{ opacity:.8; }
+
     .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden; }
-    .head-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .head-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
     .head-title i{ color:var(--gold); }
     .head-meta{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+
     .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
     .pill i{ font-size:.9rem; opacity:.9; }
     .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
     .btn-gold{ background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9); padding:10px 16px; border-radius:12px; font-weight:900; white-space:nowrap; box-shadow:0 6px 20px rgba(246,195,67,.22); }
     .btn-gold:hover{ filter:brightness(.96); transform:translateY(-1px); box-shadow:0 10px 28px rgba(246,195,67,.28); }
-    .filters{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:var(--shadow); color:var(--text); }
-    .filters-grid{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
-    .search{ width:100%; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; padding:10px 10px; outline:none; }
-    .anchors{ display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
-    .anchors .pill{ cursor:pointer; }
-    .pilar-wrap{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow); color:var(--text); }
-    .pilar-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
-    .pilar-title{ font-weight:900; display:flex; align-items:center; gap:8px; text-transform:lowercase; }
-    .pilar-title i{ color:var(--gold); }
-    .pilar-progress{ height:18px; background:#0b1422; border:1px solid #1c2b46; border-radius:999px; overflow:hidden; position:relative; margin:8px 0 14px; box-shadow: inset 0 4px 18px rgba(0,0,0,.35); }
-    .pilar-progress .bar{ height:100%; width:0%; transition:width .5s ease; background: linear-gradient(90deg, var(--gold), var(--blue)); }
-    .pilar-progress .val{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#0a1220; font-weight:900; text-shadow:0 1px 0 rgba(255,255,255,.45); mix-blend-mode:screen; }
-    .pilar-grid{ display:grid; grid-template-columns: minmax(360px, 2fr) minmax(320px, 1.2fr); gap:14px; align-items:stretch; }
-    /* Quando não houver gráfico, a grade vira 1 coluna */
-    .pilar-grid.no-chart{ grid-template-columns: 1fr; }
-    @media (max-width: 980px){ .pilar-grid{ grid-template-columns: 1fr; } }
-    .cards-grid{ display:grid; grid-template-columns: repeat(2, minmax(240px,1fr)); gap:12px; }
+
+    /* ====== Seções do pilar ====== */
+    .pilar-row{
+      display:grid;
+      grid-template-columns: minmax(180px, 240px) 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){ .pilar-row{ grid-template-columns: 1fr; } }
+
+    :root { --pillar-gap: 35px; }
+    section.pilar + section.pilar { margin-top: var(--pillar-gap); }
+    main.mapa { gap: 16px; }
+    @media (min-width: 1400px){ :root { --pillar-gap: 36px; } }
+
+    .pilar-info{ padding:0; }
+    .pilar-info-card{
+      background:linear-gradient(180deg, var(--card), #0e1319);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      box-shadow:var(--shadow);
+      color:var(--text);
+    }
+    .pilar-info-card .pilar-title{
+      display:flex; align-items:flex-start; gap:6px;
+      font-weight:800; font-size:.92rem; line-height:1.2; color:var(--text);
+      white-space:normal; word-break:break-word;
+    }
+    .pilar-info-card .pilar-title i{ flex:0 0 auto; }
+    .pilar-info-card .pilar-badges{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+    .pilar-info-card .pill{ font-size:.78rem; padding:5px 8px; }
+    .pilar-info-card .progress-pill{ font-weight:900; }
+
+    .pilar-wrap{
+      background:linear-gradient(180deg, var(--card), #0e1319);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:var(--shadow);
+      color:var(--text);
+      position:relative;
+    }
+
+    #pillarsContainer { position:relative; }
+
+    .cards-grid{ display:grid; grid-template-columns: repeat(3, minmax(210px,1fr)); gap:12px; }
+    @media (min-width: 1400px){ .cards-grid{ grid-template-columns: repeat(4, minmax(200px,1fr)); } }
+    @media (max-width: 1200px){ .cards-grid{ grid-template-columns: repeat(2, minmax(200px,1fr)); } }
     @media (max-width: 640px){ .cards-grid{ grid-template-columns: 1fr; } }
-    .card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:10px; box-shadow:var(--shadow); color:var(--text); position:relative; display:grid; gap:8px; grid-template-rows:auto auto auto 1fr; overflow:hidden; transition:transform .2s ease, box-shadow .2s ease, max-height .25s ease; max-height: 160px; }
-    .card:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35); max-height: 360px; }
-    .title{ font-weight:900; letter-spacing:.2px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .progress{ height:8px; background:#0f172a; border:1px solid #1f2a44; border-radius:5px; overflow:hidden; }
+
+    .card{
+      background:linear-gradient(180deg, var(--card), #0e1319);
+      border:1px solid #7e7e7eff;
+      border-radius:14px;
+      padding:8px;
+      box-shadow:var(--shadow);
+      color:#eaeef6;
+      position:relative;
+      display:grid;
+      gap:6px;
+      grid-template-rows:auto auto 1fr;
+      overflow:hidden;
+      max-height:110px;
+      transition:transform .2s ease, box-shadow .2s ease, max-height .25s ease;
+    }
+    .card:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35); max-height: 320px; }
+
+    .title{
+      font-weight:600; letter-spacing:.05px; line-height:1.25;
+      font-size:.70rem;
+      display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+    }
+
+    .progress{ height:6px; background:#0f172a; border:1px solid #1f2a44; border-radius:5px; overflow:hidden; }
     .progress .bar{ height:100%; background:var(--bar, #60a5fa); transition:width .35s ease; }
-    .row{ display:flex; justify-content:space-between; font-size:.9rem; color:#cbd5e1; }
-    .more{ display:grid; gap:8px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease; }
+
+    .more{ display:grid; gap:6px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease; }
     .card:hover .more{ opacity:1; max-height:220px; }
-    .badges{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .badge{ font-size:.78rem; border:1px solid var(--border); padding:4px 8px; border-radius:999px; color:#c9d4e5; }
+
+    .row{ display:flex; justify-content:space-between; font-size:.8rem; color:#cbd5e1; }
+    .badges{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .badge{ font-size:.72rem; border:1px solid var(--border); padding:3px 6px; border-radius:999px; color:#c9d4e5; }
     .b-type{ border:1px dashed #334155; color:#cbd5e1; }
     .b-green{ background:rgba(34,197,94,.12); border-color:#14532d; color:#a7f3d0; }
     .b-blue{ background:rgba(59,130,246,.12); border-color:#1e3a8a; color:#bfdbfe; }
     .b-gray{ background:rgba(148,163,184,.15); border-color:#334155; color:#cbd5e1; }
     .b-warn{ background:rgba(250,204,21,.16); border-color:#705e14; color:#ffec99; }
-    .meta{ font-size:.92rem; color:#cbd5e1; display:grid; gap:2px; }
+
+    .meta{ font-size:.82rem; color:#cbd5e1; display:grid; gap:2px; }
     .link{ position:absolute; inset:0; text-decoration:none; color:inherit; }
-    .chart-card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:12px; box-shadow:var(--shadow); color:var(--text); display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:280px; }
-    .chart-title{ font-weight:900; display:flex; align-items:center; gap:8px; }
-    .chart-box{ position:relative; height:100%; min-height:220px; }
+
+    /* ====== Overlay de ligações (NEON) ====== */
+    #linksLayerWrap { position:absolute; inset:0; pointer-events:none; z-index: 9; }
+    #linksLayer { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+    .link-path{
+      fill:none;
+      stroke-width:1.5;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      vector-effect:non-scaling-stroke;
+      filter:url(#neonGlow);
+      stroke-opacity:1;
+      mix-blend-mode:normal;
+      pointer-events:auto; /* permite clicar na linha */
+    }
+    .link-path.inactive{
+      stroke-dasharray:6 6;
+      opacity:.85;
+      filter:url(#neonGlowSoft);
+    }
+    .link-handle { pointer-events:auto; cursor:pointer; fill:#0e131a; stroke:#888; stroke-width:1.5; }
+    .link-handle:hover{ stroke:#fff; filter:url(#neonGlowSoft); }
+
+    body.has-link-mode .card .link{ pointer-events:none; }
+    .card.link-src { outline:2px dashed #60a5fa; outline-offset:2px; }
+    .card.link-dst { outline:2px dashed #22c55e; outline-offset:2px; }
+
+    /* AÇÕES DO CABEÇALHO (botão + instrução) */
+    .head-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .link-hint{ display:none; color:#cbd5e1; font-size:.9rem; line-height:1.3; max-width:420px; text-align:right; }
+
+    /* ====== Modal (UX de confirmação) ====== */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.55); display:none;
+      align-items:center; justify-content:center; z-index:60;
+    }
+    .modal{
+      background:linear-gradient(180deg, var(--card), #0f141c);
+      border:1px solid #1f2a44; color:#eaeef6; border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.45);
+      width:min(520px, 92vw); padding:14px; display:grid; gap:10px;
+    }
+    .modal-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .modal-title{ font-weight:900; font-size:1.05rem; display:flex; align-items:center; gap:8px; }
+    .modal-body{ font-size:.95rem; color:#d1d5db; line-height:1.45; }
+    .modal-actions{ display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-top:6px; }
+    .btn-subtle{ background:#0c1118; border:1px solid #1f2635; color:#c9d4e5; padding:8px 12px; border-radius:10px; font-weight:700; cursor:pointer; }
+    .btn-primary{ background:#3b82f6; border:1px solid #1e40af; color:#fff; padding:9px 14px; border-radius:10px; font-weight:800; cursor:pointer; }
+    .btn-danger{ background:#ef4444; border:1px solid #7f1d1d; color:#fff; padding:9px 14px; border-radius:10px; font-weight:800; cursor:pointer; }
+    .btn-subtle:hover, .btn-primary:hover, .btn-danger:hover{ transform:translateY(-1px); }
+
+    /* Toast simples */
+    .toast{
+      position:fixed; right:18px; bottom:18px; background:#0c1118; color:#eaeef6; border:1px solid #1f2635;
+      border-radius:12px; padding:10px 12px; font-weight:700; box-shadow:var(--shadow); display:none; z-index:70;
+    }
+    .toast.ok{ border-color:#14532d; background:rgba(34,197,94,.12); color:#a7f3d0; }
+    .toast.err{ border-color:#7f1d1d; background:rgba(239,68,68,.12); color:#fecaca; }
   </style>
 </head>
 <body>
@@ -408,130 +528,140 @@ $totalPil = count($pilares);
       <section class="head-card">
         <div class="head-top">
           <h1 class="head-title"><i class="fa-solid fa-sitemap"></i> Mapa Estratégico</h1>
-          <button class="btn-gold" onclick="location.reload()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+
+          <!-- AÇÕES DO CABEÇALHO (à direita) -->
+          <div class="head-actions">
+            <button id="btnLinkMode" class="btn">
+              <i class="fa-solid fa-share-nodes"></i> Ligar objetivos
+            </button>
+            <div id="linkHint" class="link-hint">
+              Clique no objetivo de <strong>origem</strong> e depois no objetivo de <strong>destino</strong>.
+            </div>
+          </div>
         </div>
         <div class="head-meta">
-          <span class="pill"><i class="fa-regular fa-bullseye"></i> Objetivos: <?= (int)$totalObj ?></span>
-          <span class="pill"><i class="fa-solid fa-list-check"></i> KRs: <?= (int)$totalKR ?></span>
-          <span class="pill"><i class="fa-solid fa-layer-group"></i> Pilares: <?= (int)$totalPil ?></span>
+          <span class="pill"><i class="fa-solid fa-layer-group"></i> Perspectivas: <?= (int)$totalPil ?></span>
+          <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= (int)$totalObj ?></span>
+          <span class="pill"><i class="fa-solid fa-list-check"></i> Key Results: <?= (int)$totalKR ?></span>
         </div>
       </section>
 
-      <!-- Toolbar (busca + âncoras) -->
-      <section class="filters">
-        <div class="filters-grid">
-          <input id="q" class="search" type="search" placeholder="Pesquisar objetivos por texto…">
-          <div class="anchors" id="anchors"></div>
-        </div>
-      </section>
-
-      <!-- Pilares + Objetivos + Gráficos -->
       <?php
-      echo '<script>window.__anchors = [];</script>';
-
-      foreach ($pilares as $pillKey => $info):
-        $objs = array_values(array_filter($objetivos, fn($o)=> slug($o['pilar']) === $pillKey));
-        $acc=0; $n=0;
-        foreach($objs as $o){ if(isset($metrics[$o['id_objetivo']])){ $acc += (float)$metrics[$o['id_objetivo']]['progresso']; $n++; } }
-        $pilarProg = $n ? round($acc/$n,1) : 0.0;
-        $anc = 'pilar_'.preg_replace('/\s+/','_', $pillKey);
-        echo "<script>window.__anchors.push({id:".json_encode($anc).",label:".json_encode(mb_strtolower($info['titulo'],'UTF-8'))."});</script>";
-
-        // Para esta demanda: só mostramos o gráfico se houver ao menos um objetivo
-        $hasChart = !empty($objs);
+      // Ícones por pilar
+      $iconMap = [
+        'financeiro'                  => 'fa-solid fa-coins',
+        'cliente'                     => 'fa-solid fa-users',
+        'clientes'                    => 'fa-solid fa-users',
+        'processos'                   => 'fa-solid fa-gears',
+        'processos internos'          => 'fa-solid fa-gears',
+        'aprendizado'                 => 'fa-solid fa-graduation-cap',
+        'aprendizado e crescimento'   => 'fa-solid fa-graduation-cap',
+      ];
       ?>
-      <section id="<?= h($anc) ?>" class="pilar">
-        <div class="pilar-wrap" style="border-left:6px solid <?= h($info['cor']) ?>;">
-          <div class="pilar-head">
-            <div class="pilar-title"><i class="fa-solid fa-layer-group"></i> <?= h(mb_strtolower($info['titulo'],'UTF-8')) ?></div>
-            <div class="head-meta" style="margin:0">
-              <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= count($objs) ?></span>
-              <span class="pill"><i class="fa-solid fa-chart-line"></i> Progresso médio: <?= number_format($pilarProg,1,',','.') ?>%</span>
-            </div>
-          </div>
 
-          <div class="pilar-progress" title="Progresso médio dos objetivos deste pilar">
-            <div class="bar" style="width: <?= (float)$pilarProg ?>%"></div>
-            <div class="val"><?= number_format($pilarProg,1,',','.') ?>%</div>
-          </div>
+      <!-- Container que envolve APENAS os pilares (overlay relativo a ele) -->
+      <div id="pillarsContainer">
+        <?php
+        foreach ($pilares as $pillKey => $info):
+          $objs = array_values(array_filter($objetivos, fn($o)=> slug($o['pilar']) === $pillKey));
+          $acc=0; $n=0;
+          foreach($objs as $o){ if(isset($metrics[$o['id_objetivo']])){ $acc += (float)$metrics[$o['id_objetivo']]['progresso']; $n++; } }
+          $pilarProg = $n ? round($acc/$n,1) : 0.0;
 
-          <div class="pilar-grid<?= $hasChart ? '' : ' no-chart' ?>">
-            <!-- Cards à esquerda -->
-            <div class="cards-grid" data-cards="<?= h($pillKey) ?>">
-              <?php if (!$objs): ?>
-                <div class="pill"><i class="fa-regular fa-folder-open"></i> Nenhum objetivo neste pilar.</div>
-              <?php else: foreach($objs as $obj):
-                $m = $metrics[$obj['id_objetivo']] ?? ['qtd_kr'=>0,'progresso'=>0,'krs_sem_apont_mes'=>0];
-                $prog = min(100, (float)$m['progresso']);
-                $prazo = 'Sem prazo';
-                if(!empty($obj['dt_prazo'])){
-                  try{ $prazo=(new DateTime($obj['dt_prazo']))->format('d/m/Y'); }catch(Throwable){ $prazo='Data inválida'; }
-                }
-                $status = statusObjetivoAgregado((int)$obj['id_objetivo'], $krPorObj, $krs);
-                $statusBadge = $status==='concluído' ? 'b-green' : ($status==='em andamento' ? 'b-blue' : 'b-gray');
-                $pend = (int)($m['krs_sem_apont_mes'] ?? 0);
-                $detailUrl = "/OKR_system/views/detalhe_okr.php?id=" . urlencode((string)$obj['id_objetivo']);
-              ?>
-              <article class="card" data-text="<?= h(mb_strtolower($obj['descricao'],'UTF-8')) ?>" style="--bar: <?= h($info['cor']) ?>">
-                <div class="title"><?= h(normalizeText($obj['descricao'])) ?></div>
-                <div class="progress"><div class="bar" style="width: <?= (float)$prog ?>%"></div></div>
-                <div class="row"><div>KR: <strong><?= (int)$m['qtd_kr'] ?></strong></div><div>Prog: <strong><?= number_format($prog,1,',','.') ?>%</strong></div></div>
-
-                <div class="more">
-                  <div class="badges">
-                    <span class="badge b-type"><?= h(normalizeText($obj['tipo'])) ?></span>
-                    <span class="badge <?= $statusBadge ?>">Status: <?= h(ucfirst($status)) ?></span>
-                    <?php if ($pend>0): ?>
-                      <span class="badge b-warn" title="KRs sem apontamento no mês anterior">🔔 <?= $pend ?></span>
-                    <?php else: ?>
-                      <span class="badge">✅</span>
-                    <?php endif; ?>
-                  </div>
-                  <div class="meta">
-                    <div>Dono: <?= h($usuarios[(string)$obj['dono']] ?? $obj['dono']) ?></div>
-                    <div>Prazo: <?= h($prazo) ?></div>
-                    <div>Qualidade: <?= h($obj['qualidade']) ?></div>
-                  </div>
+          $iconClass = $iconMap[$pillKey] ?? 'fa-solid fa-layer-group';
+          $chipFg = pill_text_color($info['cor']);
+        ?>
+        <section class="pilar">
+          <div class="pilar-row">
+            <!-- Trilho FORA: mini-card na coluna esquerda -->
+            <aside class="pilar-info" aria-label="Pilar <?= h($info['titulo']) ?>">
+              <div class="pilar-info-card" style="border-left:6px solid <?= h($info['cor']) ?>;">
+                <div class="pilar-title">
+                  <i class="<?= h($iconClass) ?>" style="color: <?= h($info['cor']) ?>;"></i>
+                  <span><?= h(mb_strtolower($info['titulo'],'UTF-8')) ?></span>
                 </div>
+                <div class="pilar-badges">
+                  <span class="pill progress-pill"
+                        style="background: <?= h($info['cor']) ?>; border-color: <?= h($info['cor']) ?>; color: <?= h($chipFg) ?>;">
+                    <?= number_format($pilarProg,1,',','.') ?>%
+                  </span>
+                </div>
+                <div class="pilar-badges">
+                  <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= count($objs) ?></span>
+                </div>
+              </div>
+            </aside>
 
-                <a class="link" href="<?= h($detailUrl) ?>" title="Abrir objetivo"></a>
-              </article>
-              <?php endforeach; endif; ?>
-            </div>
-
-            <?php if ($hasChart): ?>
-            <!-- Gráfico à direita (só quando houver objetivos) -->
-            <div class="chart-card">
-              <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Evolução no mês</div>
-              <div class="chart-box">
-                <canvas id="chart_<?= h($anc) ?>"></canvas>
+            <!-- À direita: container escuro com a grid de objetivos -->
+            <div class="pilar-wrap" style="border-left:6px solid <?= h($info['cor']) ?>;">
+              <div class="cards-grid" data-cards="<?= h($pillKey) ?>">
+                <?php if (!$objs): ?>
+                  <div class="pill" style="grid-column:1 / -1"><i class="fa-regular fa-folder-open"></i> Nenhum objetivo neste pilar.</div>
+                <?php else: foreach($objs as $obj):
+                  $m = $metrics[$obj['id_objetivo']] ?? ['qtd_kr'=>0,'progresso'=>0,'krs_sem_apont_mes'=>0];
+                  $prog = min(100, (float)$m['progresso']);
+                  $status = statusObjetivoAgregado((int)$obj['id_objetivo'], $krPorObj, $krs);
+                  $statusBadge = $status==='concluído' ? 'b-green' : ($status==='em andamento' ? 'b-blue' : 'b-gray');
+                  $detailUrl = "/OKR_system/views/detalhe_okr.php?id=" . urlencode((string)$obj['id_objetivo']);
+                  $dono = $usuarios[(string)$obj['dono']] ?? $obj['dono'];
+                ?>
+                <article
+                  id="obj-<?= (int)$obj['id_objetivo'] ?>"
+                  class="card"
+                  data-obj-id="<?= (int)$obj['id_objetivo'] ?>"
+                  data-pilar-color="<?= h($info['cor']) ?>"
+                  data-text="<?= h(mb_strtolower($obj['descricao'],'UTF-8')) ?>"
+                  style="--bar: <?= h($info['cor']) ?>">
+                  <div class="title"><?= h(normalizeText($obj['descricao'])) ?></div>
+                  <div class="progress" title="Progresso do objetivo">
+                    <div class="bar" style="width: <?= (float)$prog ?>%"></div>
+                  </div>
+                  <div class="more">
+                    <div class="row"><div>KR: <strong><?= (int)$m['qtd_kr'] ?></strong></div><div>Prog: <strong><?= number_format($prog,1,',','.') ?>%</strong></div></div>
+                    <div class="badges">
+                      <span class="badge"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
+                      <span class="badge <?= $statusBadge ?>">Farol: <?= h(ucfirst($status)) ?></span>
+                      <?php if(!empty($obj['tipo'])): ?><span class="badge b-type"><?= h(normalizeText($obj['tipo'])) ?></span><?php endif; ?>
+                      <?php if(!empty($obj['dt_prazo'])):
+                        try{ $prazo=(new DateTime($obj['dt_prazo']))->format('d/m/Y'); }catch(Throwable){ $prazo='Data inválida'; }
+                        ?><span class="badge b-gray"><i class="fa-regular fa-calendar"></i> <?= h($prazo) ?></span><?php endif; ?>
+                    </div>
+                  </div>
+                  <a class="link" href="<?= h($detailUrl) ?>" title="Abrir objetivo"></a>
+                </article>
+                <?php endforeach; endif; ?>
               </div>
             </div>
-            <?php endif; ?>
           </div>
+        </section>
+        <?php endforeach; ?>
+        <!-- Overlay para as setas -->
+        <div id="linksLayerWrap" aria-hidden="true">
+          <svg id="linksLayer"></svg>
         </div>
-      </section>
-      <?php endforeach; ?>
+      </div>
 
       <?php include __DIR__ . '/partials/chat.php'; ?>
     </main>
   </div>
 
-<script>
-  // Âncoras dos pilares
-  (function(){
-    const box = document.getElementById('anchors');
-    if (!box || !window.__anchors) return;
-    window.__anchors.forEach(a=>{
-      const link = document.createElement('a');
-      link.className='pill';
-      link.href='#'+a.id;
-      link.textContent=a.label;
-      box.appendChild(link);
-    });
-  })();
+  <!-- ===== Modal reutilizável ===== -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle"><i class="fa-solid fa-circle-info"></i> Ação</div>
+        <button id="modalClose" class="btn-subtle" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalBody">...</div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
 
-  // Busca de objetivos
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status"></div>
+
+<script>
+  // ===== Busca de objetivos por texto
   const q = document.getElementById('q');
   if (q){
     q.addEventListener('input', ()=>{
@@ -540,10 +670,11 @@ $totalPil = count($pilares);
         const txt = (card.getAttribute('data-text')||'').toLowerCase();
         card.style.display = term && !txt.includes(term) ? 'none' : '';
       });
+      setTimeout(drawLinks, 60);
     });
   }
 
-  // Ajuste com chat lateral
+  // ===== Ajuste com chat lateral
   const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
   const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
@@ -551,62 +682,364 @@ $totalPil = count($pilares);
   function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
   function setupChatObservers(){
     const chat=findChatEl(); if(!chat) return;
-    const mo=new MutationObserver(()=>updateChatWidth());
+    const mo=new MutationObserver(()=>{ updateChatWidth(); drawLinks(); });
     mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
-    window.addEventListener('resize',updateChatWidth);
-    TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200))));
+    window.addEventListener('resize',()=>{ updateChatWidth(); drawLinks(); });
+    TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(()=>{ updateChatWidth(); drawLinks(); },200))));
     updateChatWidth();
   }
-  document.addEventListener('DOMContentLoaded', ()=>{
-    setupChatObservers();
-    const moBody = new MutationObserver(()=>{
-      if(findChatEl()){ setupChatObservers(); moBody.disconnect(); }
-    });
-    moBody.observe(document.body,{childList:true,subtree:true});
-  });
+  document.addEventListener('DOMContentLoaded', ()=>{ setupChatObservers(); });
 
-  // Charts
-  window.__charts = <?= json_encode($charts, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-  document.addEventListener('DOMContentLoaded', ()=>{
-    if (!window.Chart || !window.__charts) return;
-    Object.entries(window.__charts).forEach(([anc, cfg])=>{
-      const ctx = document.getElementById('chart_'+anc);
-      if (!ctx) return; // pilar sem objetivos: sem canvas, não instancia
-      const color = cfg.color || '#60a5fa';
-      const hexToRGBA = (hex, a)=> {
-        const s=hex.replace('#',''); const bigint=parseInt(s,16);
-        const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255;
-        return `rgba(${r}, ${g}, ${b}, ${a})`;
-      };
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: cfg.labels || [],
-          datasets: [{
-            data: (cfg.data||[]).map(v=>typeof v==='number'?v:null),
-            borderColor: color,
-            backgroundColor: hexToRGBA(color, 0.18),
-            fill: true,
-            tension: 0.35,
-            pointRadius: 0,
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          interaction: { mode:'index', intersect:false },
-          plugins: {
-            legend: { display:false },
-            tooltip: { callbacks: { label: (ctx)=> ` ${ctx.formattedValue}%` } }
-          },
-          scales: {
-            x: { grid:{ display:false }, ticks:{ color:'#cbd5e1', maxRotation:0, autoSkip:true } },
-            y: { grid:{ color:'rgba(255,255,255,.05)' }, ticks:{ color:'#cbd5e1', callback:(v)=> v+'%' }, min:0, max:100 }
-          },
-          elements: { line: { borderWidth:2 }, point: { hitRadius:8 } },
-          spanGaps: true
+  // ===== Dados do backend
+  window.__links = <?= json_encode($links, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+  window.__objTitles = <?= json_encode($objTitles, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+
+  // ===== Overlay / desenho de ligações (NEON)
+  const pillarsContainer = document.getElementById('pillarsContainer');
+  const svg = document.getElementById('linksLayer');
+
+  function ensureMarkers(){
+    if (svg.querySelector('#neonGlow')) return;
+    const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+    defs.innerHTML = `
+      <filter id="neonGlow" filterUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b1"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="5"   result="b2"/>
+        <feMerge>
+          <feMergeNode in="b2"/>
+          <feMergeNode in="b1"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <filter id="neonGlowSoft" filterUnits="userSpaceOnUse" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    `;
+    svg.appendChild(defs);
+  }
+
+  function ensureDefs(){
+    let d = svg.querySelector('defs');
+    if(!d){ d = document.createElementNS(svg.namespaceURI,'defs'); svg.appendChild(d); }
+    return d;
+  }
+
+  // Marker por cor (garante ponta = cor da linha, com brilho)
+  function getMarkerForColor(color){
+    const safe = String(color).replace(/[^a-zA-Z0-9]/g,'_');
+    const id = 'arrowHead_' + safe;
+    let m = svg.querySelector('#'+id);
+    if (!m){
+      const defs = ensureDefs();
+      m = document.createElementNS(svg.namespaceURI,'marker');
+      m.setAttribute('id', id);
+      m.setAttribute('viewBox','0 0 10 10');
+      m.setAttribute('refX','10');
+      m.setAttribute('refY','5');
+      m.setAttribute('markerWidth','9');
+      m.setAttribute('markerHeight','9');
+      m.setAttribute('orient','auto-start-reverse');
+
+      const p = document.createElementNS(svg.namespaceURI,'path');
+      p.setAttribute('d','M0 0 L10 5 L0 10 Z');
+      p.setAttribute('fill', color);
+      p.setAttribute('stroke', color);
+      p.setAttribute('filter','url(#neonGlow)');
+
+      m.appendChild(p);
+      defs.appendChild(m);
+    }
+    return 'url(#'+id+')';
+  }
+
+  function syncLayerSize(){
+    const r = pillarsContainer.getBoundingClientRect();
+    svg.setAttribute('width', r.width);
+    svg.setAttribute('height', pillarsContainer.scrollHeight);
+    svg.style.width = r.width+'px';
+    svg.style.height = pillarsContainer.scrollHeight+'px';
+  }
+
+  function getOffset(el){
+    const base = pillarsContainer.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const top = (r.top - base.top) + pillarsContainer.scrollTop;
+    const left = (r.left - base.left) + pillarsContainer.scrollLeft;
+    return { top, left, width:r.width, height:r.height };
+  }
+
+  // Âncoras utilitárias
+  function anchorPoint(el, where='center'){
+    const rect = getOffset(el);
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top  + rect.height/2;
+    if (where === 'top')    return { x: cx, y: rect.top - 2 };
+    if (where === 'bottom') return { x: cx, y: rect.top + rect.height + 2 };
+    if (where === 'left')   return { x: rect.left, y: cy };
+    if (where === 'right')  return { x: rect.left + rect.width, y: cy };
+    return { x: cx, y: cy };
+  }
+
+  // Curva Bezier vertical com controle por âncora
+  function bezierAnchored(p1, p2, a1/*top|bottom*/, a2/*top|bottom*/){
+    const vy = p2.y - p1.y;
+    const dy = Math.max(40, Math.abs(vy) * 0.35);
+    const c1 = { x: p1.x, y: (a1==='top') ? (p1.y - dy) : (p1.y + dy) };
+    const c2 = { x: p2.x, y: (a2==='top') ? (p2.y - dy) : (p2.y + dy) };
+    return `M ${p1.x},${p1.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`;
+  }
+
+  function samePillar(cardA, cardB){
+    const gA = cardA.closest('.cards-grid');
+    const gB = cardB.closest('.cards-grid');
+    if (!gA || !gB) return false;
+    return gA === gB || (gA.dataset.cards && gA.dataset.cards === gB.dataset.cards);
+  }
+
+  function drawLinks(){
+    syncLayerSize();
+    ensureMarkers();
+    Array.from(svg.querySelectorAll('.link-path, .link-handle')).forEach(n=>n.remove());
+
+    const getCard = (id)=> document.getElementById('obj-'+id);
+
+    (window.__links||[]).forEach(link=>{
+      const srcEl = getCard(link.src);
+      const dstEl = getCard(link.dst);
+      if (!srcEl || !dstEl) return;
+      if (srcEl.style.display==='none' || dstEl.style.display==='none') return;
+
+      // --- Regra de ancoragem:
+      // 1) Mesmo pilar: topo -> topo
+      // 2) Pilares diferentes: ligar base do MAIS ALTO ao topo do MAIS BAIXO (independe da direção)
+      //    (a seta sempre aponta para o "destino" pois o marker está no fim do path)
+      let aStart = 'top', aEnd = 'top';
+      if (!samePillar(srcEl, dstEl)){
+        const r1 = getOffset(srcEl);
+        const r2 = getOffset(dstEl);
+        const srcIsAbove = r1.top <= r2.top;
+        if (srcIsAbove){
+          // src acima, dst abaixo => base do de cima -> topo do de baixo
+          aStart = 'bottom'; aEnd = 'top';
+        } else {
+          // src abaixo, dst acima => topo do de baixo -> base do de cima
+          aStart = 'top'; aEnd = 'bottom';
         }
-      });
+      }
+
+      const p1 = anchorPoint(srcEl, aStart);
+      const p2 = anchorPoint(dstEl, aEnd);
+      const d  = bezierAnchored(p1, p2, aStart, aEnd);
+
+      const color = srcEl.getAttribute('data-pilar-color') || '#60a5fa';
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', d);
+      path.setAttribute('class', 'link-path' + (link.ativo ? '' : ' inactive'));
+      path.setAttribute('stroke', color);
+      path.setAttribute('marker-end', getMarkerForColor(color)); // ponta = cor da linha (neon)
+      path.dataset.linkId = String(link.id_link);
+      path.dataset.ativo  = String(link.ativo ?? 1);
+      path.addEventListener('click', (ev)=>{ ev.stopPropagation(); showLinkActions(link); });
+      svg.appendChild(path);
+
+      // handle no meio (clicável)
+      const mid = { x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 };
+      const handle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      handle.setAttribute('cx', mid.x);
+      handle.setAttribute('cy', mid.y);
+      handle.setAttribute('r', 7);
+      handle.setAttribute('class','link-handle');
+      handle.dataset.linkId = link.id_link;
+      handle.addEventListener('click', (ev)=>{ ev.stopPropagation(); showLinkActions(link); });
+      svg.appendChild(handle);
     });
+  }
+
+  // ===== Modal & Toast
+  const $backdrop = document.getElementById('modalBackdrop');
+  const $modalTitle = document.getElementById('modalTitle');
+  const $modalBody  = document.getElementById('modalBody');
+  const $modalActions = document.getElementById('modalActions');
+  const $modalClose = document.getElementById('modalClose');
+  const $toast = document.getElementById('toast');
+
+  function openModal({title, html, actions=[]}){
+    $modalTitle.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${title || 'Mensagem'}`;
+    $modalBody.innerHTML = html || '';
+    $modalActions.innerHTML = '';
+    actions.forEach(a=>{
+      const btn = document.createElement('button');
+      btn.className = a.className || 'btn-subtle';
+      btn.textContent = a.label || 'OK';
+      btn.addEventListener('click', ()=>{ a.onClick && a.onClick(); });
+      $modalActions.appendChild(btn);
+    });
+    $backdrop.style.display = 'flex';
+    $backdrop.setAttribute('aria-hidden','false');
+  }
+  function closeModal(){
+    $backdrop.style.display = 'none';
+    $backdrop.setAttribute('aria-hidden','true');
+    $modalActions.innerHTML = '';
+  }
+  $modalClose.addEventListener('click', closeModal);
+  $backdrop.addEventListener('click', (e)=>{ if(e.target === $backdrop) closeModal(); });
+
+  function toast(msg, ok=true){
+    $toast.textContent = msg;
+    $toast.className = 'toast ' + (ok ? 'ok' : 'err');
+    $toast.style.display = 'block';
+    setTimeout(()=>{ $toast.style.display = 'none'; }, 2200);
+  }
+
+  // ===== CRUD helpers
+  function postForm(data){
+    return fetch(location.href, {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(data)
+    }).then(r=>r.json());
+  }
+
+  function toggleLink(id, ativo){
+    postForm({action:'toggle_active', id_link:id, ativo: ativo?1:0, csrf_token:'<?= $csrf ?>'})
+      .then(res=>{
+        if (!res.ok) { toast(res.msg||'Falha ao atualizar ligação', false); return; }
+        const it = (window.__links||[]).find(x=>x.id_link===id); if (it){ it.ativo = ativo?1:0; }
+        drawLinks();
+        toast(ativo ? 'Ligação reativada' : 'Ligação inativada', true);
+      }).catch(()=>toast('Erro ao atualizar ligação', false))
+      .finally(closeModal);
+  }
+
+  function deleteLink(id){
+    postForm({action:'delete_link', id_link:id, csrf_token:'<?= $csrf ?>'})
+      .then(res=>{
+        if (!res.ok) { toast(res.msg||'Falha ao excluir ligação', false); return; }
+        window.__links = (window.__links||[]).filter(x=>x.id_link!==id);
+        drawLinks();
+        toast('Ligação excluída', true);
+      }).catch(()=>toast('Erro ao excluir ligação', false))
+      .finally(closeModal);
+  }
+
+  function showLinkActions(link){
+    const srcName = (window.__objTitles||{})[link.src] || ('#'+link.src);
+    const dstName = (window.__objTitles||{})[link.dst] || ('#'+link.dst);
+    const statusLabel = link.ativo ? '<span style="color:#a7f3d0">Ativa</span>' : '<span style="color:#fecaca">Inativa</span>';
+
+    openModal({
+      title: 'Gerenciar ligação',
+      html: `
+        <div style="display:grid; gap:8px;">
+          <div><strong>Origem:</strong> ${srcName}</div>
+          <div><strong>Destino:</strong> ${dstName}</div>
+          <div><strong>Status:</strong> ${statusLabel}</div>
+          <div style="margin-top:6px; font-size:.9rem; color:#94a3b8;">
+            Escolha a ação desejada. Você pode ativar/inativar ou excluir permanentemente esta ligação.
+          </div>
+        </div>
+      `,
+      actions: [
+        link.ativo
+          ? { label:'Inativar', className:'btn-subtle', onClick:()=>toggleLink(link.id_link, false) }
+          : { label:'Reativar', className:'btn-primary', onClick:()=>toggleLink(link.id_link, true) },
+        { label:'Excluir', className:'btn-danger', onClick:()=>confirmDelete(link) },
+        { label:'Cancelar', className:'btn-subtle', onClick:()=>closeModal() },
+      ]
+    });
+  }
+
+  function confirmDelete(link){
+    const srcName = (window.__objTitles||{})[link.src] || ('#'+link.src);
+    const dstName = (window.__objTitles||{})[link.dst] || ('#'+link.dst);
+    openModal({
+      title: 'Confirmar exclusão',
+      html: `
+        <div style="display:grid; gap:8px;">
+          <div>Você está prestes a <strong>excluir</strong> a ligação:</div>
+          <div style="padding:8px; border:1px dashed #334155; border-radius:10px;">
+            <div><strong>Origem:</strong> ${srcName}</div>
+            <div><strong>Destino:</strong> ${dstName}</div>
+          </div>
+          <div style="margin-top:4px; color:#fca5a5;">Esta ação não pode ser desfeita.</div>
+        </div>
+      `,
+      actions: [
+        { label:'Excluir definitivamente', className:'btn-danger', onClick:()=>deleteLink(link.id_link) },
+        { label:'Cancelar', className:'btn-subtle', onClick:()=>closeModal() },
+      ]
+    });
+  }
+
+  // ===== Modo ligação (origem -> destino)
+  let linkMode = false;
+  let srcSel = null;
+
+  const btn = document.getElementById('btnLinkMode');
+  const hint = document.getElementById('linkHint');
+
+  function setLinkMode(on){
+    linkMode = !!on;
+    document.body.classList.toggle('has-link-mode', linkMode);
+    btn.classList.toggle('btn-gold', linkMode);
+    hint.style.display = linkMode ? 'block' : 'none';
+    document.querySelectorAll('.card.link-src,.card.link-dst').forEach(el=>el.classList.remove('link-src','link-dst'));
+    srcSel = null;
+  }
+  btn.addEventListener('click', ()=> setLinkMode(!linkMode));
+
+  function onCardClick(ev){
+    if (!linkMode) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const card = ev.currentTarget;
+    const id = parseInt(card.getAttribute('data-obj-id'),10);
+    if (!srcSel){
+      srcSel = id;
+      card.classList.add('link-src');
+    } else {
+      const dst = id;
+      if (dst===srcSel) return;
+      card.classList.add('link-dst');
+
+      postForm({action:'create_link', src:srcSel, dst:dst, csrf_token:'<?= $csrf ?>'})
+        .then(res=>{
+          if (!res.ok) { toast(res.msg||'Falha ao criar ligação', false); }
+          else {
+            window.__links.push({id_link: res.id_link, src: srcSel, dst: dst, ativo:1});
+            drawLinks();
+            toast('Ligação criada', true);
+          }
+          setLinkMode(false);
+        }).catch(()=>{ toast('Erro ao criar ligação', false); setLinkMode(false); });
+    }
+  }
+
+  function bindCardClicks(){
+    document.querySelectorAll('.cards-grid .card').forEach(card=>{
+      card.removeEventListener('click', onCardClick);
+      card.addEventListener('click', onCardClick);
+    });
+  }
+
+  // Redesenhar em eventos relevantes
+  const pillars = document.getElementById('pillarsContainer');
+  const ro = new ResizeObserver(()=>drawLinks());
+  ro.observe(pillars);
+  window.addEventListener('resize', drawLinks);
+  window.addEventListener('scroll', drawLinks, {passive:true});
+
+  // Init
+  document.addEventListener('DOMContentLoaded', ()=>{
+    bindCardClicks();
+    setTimeout(drawLinks, 80);
   });
 </script>
 </body>
