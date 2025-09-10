@@ -491,6 +491,140 @@ if (isset($_GET['ajax'])) {
     exit;
   }
 
+
+
+    /* ---------- NOVA INICIATIVA (+ orçamento opcional) ---------- */
+    if ($action === 'nova_iniciativa') {
+      if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+      }
+
+      $id_kr   = $_POST['id_kr'] ?? '';
+      $desc    = trim((string)($_POST['descricao'] ?? ''));
+      $resp    = (int)($_POST['id_user_responsavel'] ?? 0);
+      $status  = trim((string)($_POST['status_iniciativa'] ?? ''));
+      $dt_prazo= $_POST['dt_prazo'] ?? null;
+
+      $inclOrc = !empty($_POST['incluir_orcamento']);
+      $valorTot= (float)($_POST['valor_orcamento'] ?? 0);
+      $prevArr = json_decode($_POST['desembolsos_json'] ?? '[]', true) ?: [];
+      $just    = trim((string)($_POST['justificativa_orcamento'] ?? ''));
+
+      if (!$id_kr || $desc==='') {
+        echo json_encode(['success'=>false,'error'=>'Dados obrigatórios ausentes']); exit;
+      }
+
+      try {
+        $pdo->beginTransaction();
+
+        // Próximo número da iniciativa dentro do KR
+        $st = $pdo->prepare("SELECT COALESCE(MAX(num_iniciativa),0)+1 FROM iniciativas WHERE id_kr=:k");
+        $st->execute(['k'=>$id_kr]);
+        $num = (int)$st->fetchColumn();
+
+        // Gera id da iniciativa (varchar PK)
+        $id_ini = bin2hex(random_bytes(12));
+
+        // Insert dinâmico em iniciativas (resiliente a colunas)
+        $colsI = ['id_iniciativa'=>$id_ini, 'id_kr'=>$id_kr, 'num_iniciativa'=>$num, 'descricao'=>$desc];
+        if ($colExists($pdo,'iniciativas','status'))               $colsI['status'] = $status ?: 'Não Iniciado';
+        if ($colExists($pdo,'iniciativas','id_user_responsavel'))  $colsI['id_user_responsavel'] = $resp ?: (int)$_SESSION['user_id'];
+        if ($colExists($pdo,'iniciativas','dt_prazo') && $dt_prazo)$colsI['dt_prazo'] = $dt_prazo;
+        if ($colExists($pdo,'iniciativas','dt_criacao'))           $colsI['dt_criacao'] = date('Y-m-d H:i:s');
+        if ($colExists($pdo,'iniciativas','id_user_criador'))      $colsI['id_user_criador'] = (int)$_SESSION['user_id'];
+
+        $fI = implode(',', array_keys($colsI));
+        $mI = implode(',', array_map(fn($k)=>":$k", array_keys($colsI)));
+        $st = $pdo->prepare("INSERT INTO iniciativas ($fI) VALUES ($mI)");
+        $st->execute($colsI);
+
+        // Orçamento opcional: 1 linha por competência em "orcamentos"
+        $createdOrc = 0;
+        if ($inclOrc && $tableExists($pdo,'orcamentos')) {
+          $linhas = []; $sumPrev = 0.0;
+
+          // Monta a partir do JSON (competencia yyyy-mm, valor)
+          foreach ((array)$prevArr as $p) {
+            $comp = preg_match('/^\d{4}-\d{2}$/', $p['competencia'] ?? '') ? $p['competencia'] : null;
+            $val  = (float)($p['valor'] ?? 0);
+            if ($comp && $val>0) { $linhas[] = [$comp, $val]; $sumPrev += $val; }
+          }
+          // Se houver total e diferença, ajusta a última parcela
+          if ($linhas && $valorTot>0 && abs($sumPrev - $valorTot) > 0.01) {
+            $linhas[count($linhas)-1][1] += ($valorTot - $sumPrev);
+          }
+          // Se não veio previsão, cria 1 parcela única
+          if (!$linhas) {
+            $comp = $dt_prazo ? substr($dt_prazo,0,7) : date('Y-m');
+            $linhas = [[$comp, max($valorTot,0)]];
+          }
+
+          foreach ($linhas as [$comp,$val]) {
+            $d   = $comp.'-01';
+            $ins = ['id_iniciativa'=>$id_ini];
+            if ($colExists($pdo,'orcamentos','valor'))               $ins['valor'] = $val;
+            if ($colExists($pdo,'orcamentos','data_desembolso'))     $ins['data_desembolso'] = $d;
+            if ($colExists($pdo,'orcamentos','status_aprovacao'))    $ins['status_aprovacao'] = 'pendente';
+            if ($just && $colExists($pdo,'orcamentos','justificativa_orcamento')) $ins['justificativa_orcamento'] = $just;
+            if ($colExists($pdo,'orcamentos','id_user_criador'))     $ins['id_user_criador'] = (int)$_SESSION['user_id'];
+            if ($colExists($pdo,'orcamentos','dt_criacao'))          $ins['dt_criacao'] = date('Y-m-d H:i:s');
+
+            $f = implode(',', array_keys($ins));
+            $m = implode(',', array_map(fn($k)=>":$k", array_keys($ins)));
+            $st = $pdo->prepare("INSERT INTO orcamentos ($f) VALUES ($m)");
+            $st->execute($ins);
+            $createdOrc++;
+          }
+        }
+
+        $pdo->commit();
+        echo json_encode(['success'=>true,'id_iniciativa'=>$id_ini,'num_iniciativa'=>$num,'orc_parcelas'=>$createdOrc]); exit;
+
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        echo json_encode(['success'=>false,'error'=>'Falha ao criar iniciativa: '.$e->getMessage()]); exit;
+      }
+    }
+
+
+
+    /* ---------- LANÇAR DESPESA (orcamentos_detalhes) ---------- */
+    if ($action === 'add_despesa') {
+      if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+      }
+      $id_orc = $_POST['id_orcamento'] ?? '';
+      $valor  = (float)($_POST['valor'] ?? 0);
+      $data   = $_POST['data_pagamento'] ?? '';
+      $desc   = trim((string)($_POST['descricao'] ?? ''));
+
+      if (!$id_orc || $valor<=0 || !$data) {
+        echo json_encode(['success'=>false,'error'=>'Dados da despesa inválidos']); exit;
+      }
+
+      try {
+        $ins = ['id_orcamento'=>$id_orc];
+        if ($colExists($pdo,'orcamentos_detalhes','valor'))          $ins['valor'] = $valor;
+        if ($colExists($pdo,'orcamentos_detalhes','data_pagamento')) $ins['data_pagamento'] = $data;
+        if ($desc && $colExists($pdo,'orcamentos_detalhes','descricao')) $ins['descricao'] = $desc;
+        if ($colExists($pdo,'orcamentos_detalhes','id_user_criador'))$ins['id_user_criador'] = (int)$_SESSION['user_id'];
+        if ($colExists($pdo,'orcamentos_detalhes','dt_criacao'))     $ins['dt_criacao'] = date('Y-m-d H:i:s');
+
+        $f = implode(',', array_keys($ins));
+        $m = implode(',', array_map(fn($k)=>":$k", array_keys($ins)));
+        $st = $pdo->prepare("INSERT INTO orcamentos_detalhes ($f) VALUES ($m)");
+        $st->execute($ins);
+
+        echo json_encode(['success'=>true]); exit;
+      } catch (Throwable $e) {
+        echo json_encode(['success'=>false,'error'=>'Falha ao lançar despesa']); exit;
+      }
+    }
+
+
+
   /* ---------- DASHBOARD DE ORÇAMENTOS (aba Orçamentos do KR) ---------- */
   if ($action === 'orc_dashboard') {
     $id_kr = $_GET['id_kr'] ?? '';
@@ -1600,6 +1734,73 @@ $saldoObj = max(0, $aprovObj - $realObj);
       renderPrev();
     });
     $('#ni_valor_total')?.addEventListener('input', updatePrevTotals);
+
+    // Toggle do bloco de orçamento
+    $('#ni_sw_orc')?.addEventListener('change', (e)=>{
+      $('#ni_orc_group').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // Salvar Nova Iniciativa (+ orçamento opcional)
+    $('#btnSalvarIni')?.addEventListener('click', async ()=>{
+      const form = $('#formNovaIniciativa');
+      const fd   = new FormData(form);
+      const idKR = $('#ni_id_kr')?.value;
+
+      if (!idKR) { toast('KR inválido.', false); return; }
+
+      if ($('#ni_sw_orc')?.checked) {
+        const total = Number($('#ni_valor_total')?.value || 0);
+        const soma  = previsoes.reduce((a,b)=> a + (Number(b.valor)||0), 0);
+        if (total <= 0) { toast('Informe o Valor aprovado (total).', false); return; }
+        // updatePrevTotals() já preenche o JSON; só alerta se estiver diferente
+        if (Math.abs(soma - total) > 0.01) {
+          toast('Soma das parcelas ≠ total. Ajustei a última parcela ao salvar.', true);
+        }
+      } else {
+        fd.delete('desembolsos_json');
+        fd.delete('valor_orcamento');
+        fd.delete('justificativa_orcamento');
+      }
+
+      const res  = await fetch(`${SCRIPT}?ajax=nova_iniciativa`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (!data.success) { toast(data.error || 'Falha ao salvar', false); return; }
+
+      toast('Iniciativa criada com sucesso!');
+      toggleDrawer('#drawerNovaIni', false);
+
+      // Recarregar listas/painéis do KR aberto
+      const open = document.querySelector('.kr-card.open') || document.querySelector(`.kr-card[data-id="${idKR}"]`);
+      if (open) {
+        await loadIniciativas(idKR);
+        await loadKrDetail(idKR);
+        const selAno = document.getElementById(`orc_ano_${idKR}`);
+        await loadOrcDashboard(idKR, selAno?.value);
+      } else {
+        await loadKRs();
+      }
+    });
+
+    // Lançar despesa
+    $('#btnSalvarDesp')?.addEventListener('click', async ()=>{
+      const fd  = new FormData($('#formDespesa'));
+      const res = await fetch(`${SCRIPT}?ajax=add_despesa`, { method:'POST', body:fd });
+      const data= await res.json();
+      if (!data.success) { toast(data.error || 'Falha ao lançar despesa', false); return; }
+
+      toast('Despesa lançada!');
+      toggleDrawer('#drawerDespesa', false);
+
+      const open = document.querySelector('.kr-card.open');
+      if (open) {
+        const id = open.getAttribute('data-id');
+        const selAno = document.getElementById(`orc_ano_${id}`);
+        await loadOrcDashboard(id, selAno?.value);
+        await loadIniciativas(id);
+        await loadKrDetail(id);
+      }
+    });
+
 
     // ====== KRs ======
     async function openNovaIniciativaDrawer(id){
