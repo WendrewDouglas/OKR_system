@@ -136,6 +136,85 @@ if (isset($_GET['ajax'])) {
 
   $action = $_GET['ajax'];
 
+  /* ---------- LISTAR STATUS DE INICIATIVA (NOVO) ---------- */
+  if ($action === 'list_status_iniciativa') {
+    try {
+      $cols = $pdo->query("SHOW COLUMNS FROM dom_status_kr")->fetchAll(PDO::FETCH_ASSOC);
+      if (!$cols) { echo json_encode(['success'=>false,'error'=>'Tabela dom_status_kr não encontrada']); exit; }
+      $names = array_column($cols,'Field');
+      $idCol    = in_array('id_status',$names,true) ? 'id_status' : $names[0];
+      $labelCol = in_array('descricao_exibicao',$names,true) ? 'descricao_exibicao' : $idCol;
+
+      $sql  = "SELECT $idCol AS id, $labelCol AS label FROM dom_status_kr ORDER BY $labelCol";
+      $rows = $pdo->query($sql)->fetchAll();
+
+      echo json_encode(['success'=>true,'items'=>$rows]);
+      exit;
+    } catch (Throwable $e) {
+      echo json_encode(['success'=>false,'error'=>'Falha ao listar status (dom_status_kr)']);
+      exit;
+    }
+  }
+
+
+  /* ---------- ATUALIZAR STATUS DE INICIATIVA (obs obrigatória) ---------- */
+  if ($action === 'update_iniciativa_status') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']);
+      exit;
+    }
+
+    $id_ini = $_POST['id_iniciativa'] ?? '';
+    $novo   = trim((string)($_POST['novo_status'] ?? ''));
+    $obs    = trim((string)($_POST['observacao'] ?? ''));
+
+    if (!$id_ini || $novo==='') { echo json_encode(['success'=>false,'error'=>'Dados inválidos']); exit; }
+    if ($obs==='')              { echo json_encode(['success'=>false,'error'=>'Observação é obrigatória.']); exit; }
+
+    try {
+      $pdo->beginTransaction();
+
+      // Monta UPDATE de forma resiliente às colunas
+      $sets  = ["status = :s"];
+      $binds = [':s'=>$novo, ':id'=>$id_ini];
+
+      // observacoes
+      $hasObs = $colExists($pdo,'iniciativas','observacoes');
+      if ($hasObs) {
+        $sep   = PHP_EOL.'['.date('Y-m-d H:i').'] ';
+        $usr   = (int)$_SESSION['user_id'];
+        $linha = "Status alterado para \"{$novo}\" por usuário {$usr}. Obs: {$obs}";
+        $sets[] = "observacoes = CONCAT(COALESCE(observacoes,''), :sep, :linha)";
+        $binds[':sep']   = $sep;
+        $binds[':linha'] = $linha;
+      }
+
+      // auditoria (se existirem)
+      if ($colExists($pdo,'iniciativas','id_user_ult_alteracao')) {
+        $sets[] = "id_user_ult_alteracao = :u";
+        $binds[':u'] = (int)$_SESSION['user_id'];
+      }
+      if ($colExists($pdo,'iniciativas','dt_ultima_atualizacao')) {
+        $sets[] = "dt_ultima_atualizacao = NOW()";
+      }
+
+      $sql = "UPDATE iniciativas SET ".implode(', ', $sets)." WHERE id_iniciativa = :id";
+      $st  = $pdo->prepare($sql);
+      $st->execute($binds);
+
+      $pdo->commit();
+      echo json_encode(['success'=>true]);
+      exit;
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      echo json_encode(['success'=>false,'error'=>'Falha ao alterar status']);
+      exit;
+    }
+  }
+
+
+
   /* ---------- LISTAR RESPONSÁVEIS DA MESMA COMPANY ---------- */
   if ($action === 'list_responsaveis_company') {
     try {
@@ -872,6 +951,8 @@ if (isset($_GET['ajax'])) {
   exit;
 }
 
+
+
 /* ===================== MODO PÁGINA ===================== */
 ini_set('display_errors',1);
 ini_set('display_startup_errors',1);
@@ -1358,6 +1439,40 @@ $saldoObj = max(0, $aprovObj - $realObj);
     </div>
   </aside>
 
+
+  <!-- Drawer: Alterar Status da Iniciativa -->
+<aside id="drawerIniStatus" class="drawer" aria-hidden="true">
+  <header>
+    <h3 style="margin:0;font-size:1rem">
+      <i class="fa-solid fa-arrows-rotate"></i> Alterar status da iniciativa
+    </h3>
+    <button class="btn btn-outline" type="button" onclick="toggleDrawer('#drawerIniStatus',false)">Fechar ✕</button>
+  </header>
+  <div class="body">
+    <form id="formIniStatus">
+      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+      <input type="hidden" name="id_iniciativa" id="inis_id_iniciativa">
+      <div class="mb-2">
+        <label><i class="fa-solid fa-clipboard-check"></i> Novo status</label>
+        <select name="novo_status" id="inis_status" required>
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <div class="mb-2">
+        <label><i class="fa-regular fa-note-sticky"></i> Observação (obrigatória)</label>
+        <textarea name="observacao" id="inis_obs" rows="3" required placeholder="Explique o motivo da mudança..."></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="actions">
+    <button class="btn btn-outline" type="button" onclick="toggleDrawer('#drawerIniStatus',false)">Cancelar</button>
+    <button class="btn btn-primary" type="button" id="btnSalvarIniStatus">
+      <i class="fa-regular fa-floppy-disk"></i> Salvar
+    </button>
+  </div>
+</aside>
+
+
   <!-- Drawer: Reativar KR -->
   <aside id="drawerReativar" class="drawer" aria-hidden="true">
     <header>
@@ -1529,30 +1644,43 @@ $saldoObj = max(0, $aprovObj - $realObj);
         $('#ni_resp').innerHTML = '<option value="">Falha ao carregar</option>';
       }
 
-      // 3) status (reaproveita dom_status_kr)
-      try{
-        const res  = await fetch(`${SCRIPT}?ajax=list_status_kr`);
+      // 3) status (carrega de dom_status_kr via list_status_iniciativa)
+      try {
+        const res = await fetch(`${SCRIPT}?ajax=list_status_iniciativa`);
         const data = await res.json();
-        const sel  = $('#ni_status');
+
+        const sel = document.getElementById('ni_status');
         sel.innerHTML = '';
-        (data.items||[]).forEach(s=>{
+
+        (data.items || []).forEach(s => {
           const opt = document.createElement('option');
           opt.value = s.id;
           opt.textContent = s.label || s.id;
           sel.appendChild(opt);
         });
-        const pref = ['nao iniciado','em andamento'];
-        const idx = (data.items||[]).findIndex(it =>
-          pref.includes((it.id||'').toLowerCase()) || pref.includes((it.label||'').toLowerCase())
+
+        // Seleção padrão
+        const preferidos = ['nao iniciado', 'não iniciado', 'em andamento'];
+        const idx = (data.items || []).findIndex(it =>
+          preferidos.includes(String(it.id || '').toLowerCase()) ||
+          preferidos.includes(String(it.label || '').toLowerCase())
         );
-        if (idx >= 0) sel.selectedIndex = idx;
-      } catch(e){
-        $('#ni_status').innerHTML = '<option value="">Falha ao carregar</option>';
+        if (idx >= 0 && sel.options[idx]) sel.selectedIndex = idx;
+
+        if (!sel.options.length) {
+          sel.innerHTML = '<option value="" disabled selected>Nenhum status disponível</option>';
+        }
+      } catch (e) {
+        const sel = document.getElementById('ni_status');
+        // placeholder silencioso (não quebra o layout nem o JS)
+        sel.innerHTML = '<option value="" disabled selected>—</option>';
       }
 
       updatePrevTotals();
       toggleDrawer('#drawerNovaIni', true);
     }
+
+
 
     async function loadKRs(){
       const cont = $('#krContainer');
@@ -1770,6 +1898,71 @@ $saldoObj = max(0, $aprovObj - $realObj);
         return;
       }
 
+      // Abrir drawer "Alterar status da iniciativa"
+      const btnIniStatus = e.target.closest('button[data-act="ini-status"]');
+      if (btnIniStatus) {
+        const idIni = btnIniStatus.getAttribute('data-id');
+        await openIniStatusDrawer(idIni);
+        return;
+      }
+
+
+      async function openIniStatusDrawer(idIni){
+      // Preenche id
+      $('#inis_id_iniciativa').value = idIni;
+      // Limpa form
+      $('#formIniStatus')?.reset();
+
+      // Carrega lista de status
+      const sel = $('#inis_status');
+      sel.innerHTML = '<option value="">Carregando...</option>';
+      try{
+        const res = await fetch(`${SCRIPT}?ajax=list_status_iniciativa`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error||'Falha ao listar status');
+        sel.innerHTML = '';
+        (data.items||[]).forEach(s=>{
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.label || s.id;
+          sel.appendChild(opt);
+        });
+        // Sugestão de default
+        const pref = ['Em Andamento','Não Iniciado'];
+        const idx  = (data.items||[]).findIndex(it => 
+          pref.map(p=>p.toLowerCase()).includes((it.id||'').toLowerCase()) ||
+          pref.map(p=>p.toLowerCase()).includes((it.label||'').toLowerCase())
+        );
+        if (idx >= 0) sel.selectedIndex = idx;
+      }catch(err){
+        sel.innerHTML = '<option value="">Falha ao carregar</option>';
+        toast(err.message, false);
+      }
+
+      toggleDrawer('#drawerIniStatus', true);
+    }
+
+    $('#btnSalvarIniStatus')?.addEventListener('click', async ()=>{
+      const fd  = new FormData($('#formIniStatus'));
+      const obs = (fd.get('observacao')||'').toString().trim();
+      if (!obs) { toast('Observação é obrigatória.', false); return; }
+
+      const res = await fetch(`${SCRIPT}?ajax=update_iniciativa_status`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (!data.success) { toast(data.error||'Falha ao alterar status', false); return; }
+
+      toast('Status da iniciativa atualizado!');
+      toggleDrawer('#drawerIniStatus', false);
+
+      // Recarrega a lista da aba Iniciativas do KR aberto
+      const open = document.querySelector('.kr-card.open');
+      if (open){
+        const id = open.getAttribute('data-id');
+        await loadIniciativas(id);
+      }
+    });
+
+
       // Cancelar KR
       const btnCancel = e.target.closest('button[data-act="cancel-kr"]');
       if (btnCancel){
@@ -1978,9 +2171,27 @@ $saldoObj = max(0, $aprovObj - $realObj);
         return;
       }
       data.iniciativas.forEach(ini=>{
-        const actions = ini.orcamento?.id_orcamento
-          ? `<button class="btn btn-outline btn-sm" data-act="despesa" data-id="${ini.orcamento.id_orcamento}"><i class="fa-solid fa-file-invoice-dollar"></i> Lançar despesa</button>`
-          : `<span class="chip"><i class="fa-regular fa-circle"></i> Sem orçamento</span>`;
+      // Ícone de saquinho de dinheiro (lançar despesa) se houver orçamento
+        const moneyBtn = ini.orcamento?.id_orcamento
+          ? `<button class="btn btn-outline btn-sm" title="Lançar despesa"
+              data-act="despesa" data-id="${ini.orcamento.id_orcamento}">
+              <i class="fa-solid fa-sack-dollar"></i>
+            </button>`
+          : `<button class="btn btn-outline btn-sm" title="Sem orçamento vinculado" disabled>
+              <i class="fa-solid fa-sack-dollar"></i>
+            </button>`;
+
+        // Ícone para alterar status da iniciativa (sempre habilitado)
+        const statusBtn = `<button class="btn btn-outline btn-sm" title="Alterar status"
+                            data-act="ini-status" data-id="${ini.id_iniciativa}">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                          </button>`;
+
+        const actions = `<div style="display:flex; gap:6px; justify-content:flex-end;">
+                          ${moneyBtn}
+                          ${statusBtn}
+                        </div>`;
+
         tb.insertAdjacentHTML('beforeend', `
           <tr>
             <td>${ini.num_iniciativa}</td>
