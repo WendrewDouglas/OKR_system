@@ -139,19 +139,28 @@ if (isset($_GET['ajax'])) {
   /* ---------- LISTAR STATUS DE INICIATIVA (NOVO) ---------- */
   if ($action === 'list_status_iniciativa') {
     try {
-      $cols = $pdo->query("SHOW COLUMNS FROM dom_status_kr")->fetchAll(PDO::FETCH_ASSOC);
-      if (!$cols) { echo json_encode(['success'=>false,'error'=>'Tabela dom_status_kr não encontrada']); exit; }
-      $names = array_column($cols,'Field');
-      $idCol    = in_array('id_status',$names,true) ? 'id_status' : $names[0];
-      $labelCol = in_array('descricao_exibicao',$names,true) ? 'descricao_exibicao' : $idCol;
+      // tenta variações comuns primeiro
+      $candidatas = ['dom_status_iniciativa','dom_status_iniciativas','dom_status_ini','dom_status_kr'];
+      $tabela = null;
+      foreach ($candidatas as $t) {
+        try { $pdo->query("SHOW COLUMNS FROM `$t`"); $tabela = $t; break; } catch(Throwable $e){}
+      }
+      if (!$tabela) { echo json_encode(['success'=>false,'error'=>'Tabela de status de iniciativa não encontrada']); exit; }
 
-      $sql  = "SELECT $idCol AS id, $labelCol AS label FROM dom_status_kr ORDER BY $labelCol";
+      $cols = $pdo->query("SHOW COLUMNS FROM `$tabela`")->fetchAll(PDO::FETCH_ASSOC);
+      $names = array_column($cols,'Field');
+      $idCol    = in_array('id_status',$names,true) ? 'id_status' : (in_array('id',$names,true) ? 'id' : $names[0]);
+      $labelCol = in_array('descricao_exibicao',$names,true) ? 'descricao_exibicao'
+                : (in_array('descricao',$names,true) ? 'descricao'
+                : (in_array('nome',$names,true) ? 'nome' : ($names[1] ?? $names[0])));
+
+      $sql  = "SELECT `$idCol` AS id, `$labelCol` AS label FROM `$tabela` ORDER BY `$labelCol`";
       $rows = $pdo->query($sql)->fetchAll();
 
       echo json_encode(['success'=>true,'items'=>$rows]);
       exit;
     } catch (Throwable $e) {
-      echo json_encode(['success'=>false,'error'=>'Falha ao listar status (dom_status_kr)']);
+      echo json_encode(['success'=>false,'error'=>'Falha ao listar status de iniciativa']);
       exit;
     }
   }
@@ -356,36 +365,119 @@ if (isset($_GET['ajax'])) {
     $kr = $st->fetch();
     if (!$kr) { echo json_encode(['success'=>false,'error'=>'KR não encontrado']); exit; }
 
-    // milestones table
-    $msTable = null;
-    foreach (['milestones_kr','milestones'] as $t) {
-      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $msTable = $t; break; } catch (Throwable $e) {}
+// milestones table
+$msTable = null;
+foreach (['milestones_kr','milestones'] as $t) {
+  try { $pdo->query("SHOW COLUMNS FROM `$t`"); $msTable = $t; break; } catch (Throwable $e) {}
+}
+if (!$msTable) { echo json_encode(['success'=>false,'error'=>'Tabela de milestones não encontrada']); exit; }
+
+// helper p/ procurar colunas em uma tabela
+$getCol = function(string $table, array $cands) use($pdo){
+  foreach ($cands as $c) {
+    try { $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if ($st->fetch()) return $c; } catch(Throwable $e){}
+  }
+  return null;
+};
+
+$krCol = $findKrIdCol($pdo, $msTable);
+if (!$krCol) $krCol = $colExists($pdo, $msTable, 'id_kr') ? 'id_kr' : null;
+if (!$krCol) { echo json_encode(['success'=>false,'error'=>'Coluna que referencia o KR nos milestones não encontrada']); exit; }
+
+$cols = $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC);
+$has  = function($name) use($cols){ foreach($cols as $c){ if (strcasecmp($c['Field'],$name)===0) return true; } return false; };
+
+$dateCol = $has('data_ref') ? 'data_ref'
+         : ($has('dt_prevista') ? 'dt_prevista'
+         : ($has('data_prevista') ? 'data_prevista' : null));
+
+$expCol  = $has('valor_esperado') ? 'valor_esperado'
+         : ($has('esperado') ? 'esperado' : null);
+
+/* EXPANDEMOS os candidatos do "real" */
+$realCol = $has('valor_real') ? 'valor_real'
+         : ($has('realizado') ? 'realizado'
+         : ($has('valor_real_consolidado') ? 'valor_real_consolidado'
+         : ($has('valor_apontado') ? 'valor_apontado'
+         : ($has('resultado') ? 'resultado' : null))));
+
+$evidCol = $has('dt_evidencia') ? 'dt_evidencia'
+         : ($has('data_evidencia') ? 'data_evidencia'
+         : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
+
+if (!$dateCol || !$expCol) { echo json_encode(['success'=>false,'error'=>'Colunas de milestones não encontradas (data/esperado)']); exit; }
+
+/* ——— Fallback: último apontamento ——— */
+$apTable = null;
+foreach (['apontamentos_kr','apontamentos'] as $t) {
+  try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable = $t; break; } catch (Throwable $e) {}
+}
+$apKr   = $apTable ? $getCol($apTable, ['id_kr','kr_id','id_key_result','key_result_id']) : null;
+$apMs   = $apTable ? $getCol($apTable, ['id_milestone','id_ms']) : null;
+$apVal  = $apTable ? $getCol($apTable, ['valor_real','valor']) : null;
+$apWhen = $apTable ? $getCol($apTable, ['dt_apontamento','created_at','dt_criacao','data']) : null;
+$apRef  = $apTable ? $getCol($apTable, ['data_ref','data_prevista']) : null;
+
+/* Query base dos milestones */
+$sqlMs = "SELECT ms.`$dateCol` AS data_prevista,
+                 ms.`$expCol`  AS valor_esperado";
+
+/* Se tivermos coluna "real" no milestone, trazemos; senão criaremos via subselect */
+if ($realCol) {
+  $sqlMs .= ", ms.`$realCol` AS valor_real";
+} else {
+  $sqlMs .= ", NULL AS valor_real";
+}
+
+if ($evidCol) $sqlMs .= ", ms.`$evidCol` AS dt_evidencia";
+$sqlMs .= " FROM `$msTable` ms WHERE ms.`$krCol` = :id ORDER BY ms.`$dateCol` ASC";
+
+$stmM = $pdo->prepare($sqlMs);
+$stmM->execute(['id'=>$id_kr]);
+$milestones = $stmM->fetchAll();
+
+/* Se a coluna real não existe ou está vazia, tenta pegar o último apontamento correspondente */
+if ((!$realCol || !$milestones) && $apTable && $apKr && $apVal && ($apMs || $apRef)) {
+  foreach ($milestones as &$m) {
+    if ($realCol && $m['valor_real'] !== null && $m['valor_real'] !== '') continue;
+
+    if ($apMs && $has('id_milestone')) {
+      // por id do milestone
+      $idMsCol = $has('id_milestone') ? 'id_milestone' : ($has('id_ms') ? 'id_ms' : 'id');
+      $stA = $pdo->prepare("
+        SELECT `$apVal` AS v
+        FROM `$apTable`
+        WHERE `$apKr` = :kr AND `$apMs` = :ms
+        ORDER BY ".($apWhen ? "`$apWhen` DESC" : "1")."
+        LIMIT 1
+      ");
+      $stA->execute(['kr'=>$id_kr,'ms'=>$m[$idMsCol] ?? null]);
+      $v = $stA->fetchColumn();
+      if ($v !== false && $v !== null) $m['valor_real'] = (float)$v;
+    } elseif ($apRef) {
+      // por data de referência
+      $stA = $pdo->prepare("
+        SELECT `$apVal` AS v
+        FROM `$apTable`
+        WHERE `$apKr` = :kr AND `$apRef` = :d
+        ORDER BY ".($apWhen ? "`$apWhen` DESC" : "1")."
+        LIMIT 1
+      ");
+      $stA->execute(['kr'=>$id_kr,'d'=>$m['data_prevista']]);
+      $v = $stA->fetchColumn();
+      if ($v !== false && $v !== null) $m['valor_real'] = (float)$v;
     }
-    if (!$msTable) { echo json_encode(['success'=>false,'error'=>'Tabela de milestones não encontrada']); exit; }
+  }
+  unset($m);
+}
 
-    $cols = $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC);
-    $has = function($name) use($cols){ foreach($cols as $c){ if (strcasecmp($c['Field'],$name)===0) return true; } return false; };
-
-    $dateCol = $has('data_ref') ? 'data_ref' : ($has('dt_prevista') ? 'dt_prevista' : ($has('data_prevista') ? 'data_prevista' : null));
-    $expCol  = $has('valor_esperado') ? 'valor_esperado' : ($has('esperado') ? 'esperado' : null);
-    $realCol = $has('valor_real') ? 'valor_real' : ($has('realizado') ? 'realizado' : null);
-    $evidCol = $has('dt_evidencia') ? 'dt_evidencia' : ($has('data_evidencia') ? 'data_evidencia' : null);
-    if (!$dateCol || !$expCol) { echo json_encode(['success'=>false,'error'=>'Colunas de milestones não encontradas (data/esperado)']); exit; }
-
-    $sqlMs = "SELECT `$dateCol` AS data_prevista, `$expCol` AS valor_esperado";
-    $sqlMs .= $realCol ? ", `$realCol` AS valor_real" : ", NULL AS valor_real";
-    $sqlMs .= $evidCol ? ", `$evidCol` AS dt_evidencia" : ", NULL AS dt_evidencia";
-    $sqlMs .= " FROM `$msTable` WHERE `id_kr` = :id ORDER BY `$dateCol` ASC";
-    $stmM = $pdo->prepare($sqlMs);
-    $stmM->execute(['id'=>$id_kr]);
-    $milestones = $stmM->fetchAll();
-
-    $labels=[]; $esp=[]; $real=[];
-    foreach ($milestones as $m) {
-      $labels[] = $m['data_prevista'];
-      $esp[]    = (float)($m['valor_esperado'] ?? 0);
-      $real[]   = isset($m['valor_real']) && $m['valor_real'] !== null ? (float)$m['valor_real'] : null;
-    }
+/* Monta as séries do gráfico */
+$labels = []; $esp = []; $real = [];
+foreach ($milestones as $m) {
+  $labels[] = $m['data_prevista'];
+  $esp[]    = (float)($m['valor_esperado'] ?? 0);
+  $real[]   = ($m['valor_real'] === null || $m['valor_real'] === '') ? null : (float)$m['valor_real'];
+}
 
     // agregados
     $stmI = $pdo->prepare("SELECT COUNT(*) AS t FROM `iniciativas` WHERE `id_kr`=:id");
@@ -518,10 +610,11 @@ if (isset($_GET['ajax'])) {
       try {
         $pdo->beginTransaction();
 
-        // Próximo número da iniciativa dentro do KR
-        $st = $pdo->prepare("SELECT COALESCE(MAX(num_iniciativa),0)+1 FROM iniciativas WHERE id_kr=:k");
+        // dentro da transação:
+        $st = $pdo->prepare("SELECT num_iniciativa FROM iniciativas WHERE id_kr=:k ORDER BY num_iniciativa DESC LIMIT 1 FOR UPDATE");
         $st->execute(['k'=>$id_kr]);
-        $num = (int)$st->fetchColumn();
+        $last = (int)($st->fetchColumn() ?: 0);
+        $num  = $last + 1;
 
         // Gera id da iniciativa (varchar PK)
         $id_ini = bin2hex(random_bytes(12));
@@ -1080,6 +1173,361 @@ if (isset($_GET['ajax'])) {
     }
   }
 
+  /* ---------- APONTAMENTO: DADOS DO MODAL (lista milestones do KR) ---------- */
+  if ($action === 'apont_modal_data') {
+    $id_kr = $_GET['id_kr'] ?? '';
+    if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+
+    // Info do KR (resiliente a colunas)
+    $cKR = fn($name)=> $colExists($pdo,'key_results',$name) ? "`$name`" : "NULL AS `$name`";
+    $stKR = $pdo->prepare("
+      SELECT `id_kr`,
+            {$cKR('descricao')}, {$cKR('unidade_medida')}, {$cKR('baseline')}, {$cKR('meta')}, {$cKR('direcao_metrica')}
+      FROM `key_results` WHERE `id_kr`=:id LIMIT 1
+    ");
+    $stKR->execute(['id'=>$id_kr]);
+    $kr = $stKR->fetch();
+    if (!$kr) { echo json_encode(['success'=>false,'error'=>'KR não encontrado']); exit; }
+
+    // Descobre tabela/colunas de milestones
+    $msTable = null;
+    foreach (['milestones_kr','milestones'] as $t) {
+      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $msTable=$t; break; } catch(Throwable $e){}
+    }
+    if (!$msTable) { echo json_encode(['success'=>false,'error'=>'Tabela de milestones não encontrada']); exit; }
+
+    $cols = $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $has  = function(string $n) use($cols){ foreach($cols as $c){ if (strcasecmp($c['Field'],$n)===0) return true; } return false; };
+
+    $krCol   = $has('id_kr') ? 'id_kr' : ($findKrIdCol($pdo,$msTable) ?: null);
+    $idCol   = $has('id_milestone') ? 'id_milestone' : ($has('id_ms') ? 'id_ms' : ($has('id') ? 'id' : null));
+    $dateCol = $has('data_ref') ? 'data_ref' : ($has('dt_prevista') ? 'dt_prevista' : ($has('data_prevista') ? 'data_prevista' : null));
+    $expCol  = $has('valor_esperado') ? 'valor_esperado' : ($has('esperado') ? 'esperado' : null);
+    $realCol = $has('valor_real') ? 'valor_real'
+            : ($has('realizado') ? 'realizado'
+            : ($has('valor_real_consolidado') ? 'valor_real_consolidado' : null));
+    $eviCol  = $has('dt_evidencia') ? 'dt_evidencia'
+            : ($has('data_evidencia') ? 'data_evidencia'
+            : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
+
+    if (!$krCol || !$dateCol || !$expCol) {
+      echo json_encode(['success'=>false,'error'=>'Colunas essenciais do milestone ausentes']); exit;
+    }
+
+    $sql = "SELECT `$dateCol` AS data_prevista, `$expCol` AS valor_esperado"
+        . ($realCol? ", `$realCol` AS valor_real" : ", NULL AS valor_real")
+        . ($eviCol ? ", `$eviCol` AS dt_evidencia" : ", NULL AS dt_evidencia")
+        . ($idCol ? ", `$idCol` AS id_ms" : ", NULL AS id_ms")
+        . " FROM `$msTable` WHERE `$krCol`=:id ORDER BY `$dateCol` ASC";
+    $stm = $pdo->prepare($sql);
+    $stm->execute(['id'=>$id_kr]);
+    $rows = $stm->fetchAll();
+
+    // NOVO: injeta numeração 1/total
+    $total = count($rows);
+    foreach ($rows as $i => &$r) {
+      $r['ordem_label'] = ($i+1) . '/' . $total; // ex.: "1/12"
+    }
+    unset($r);
+
+
+    // NOVO retorno ÚNICO e completo:
+    echo json_encode([
+      'success' => true,
+      'kr' => [
+        'id_kr'           => $kr['id_kr'],
+        'descricao'       => $kr['descricao'] ?? null,
+        'unidade_medida'  => $kr['unidade_medida'] ?? null,
+        'baseline'        => $kr['baseline'] ?? null,
+        'meta'            => $kr['meta'] ?? null,
+        'direcao_metrica' => $kr['direcao_metrica'] ?? null
+      ],
+      'milestones' => $rows
+    ]);
+    exit;
+
+  }
+
+  /* ---------- APONTAMENTO: SALVAR (multi-linhas por milestone) ---------- */
+  if ($action === 'apont_save') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+    }
+    $id_kr = $_POST['id_kr'] ?? '';
+    $items = json_decode($_POST['items_json'] ?? '[]', true) ?: [];
+    if (!$id_kr || !$items || !is_array($items)) {
+      echo json_encode(['success'=>false,'error'=>'Dados inválidos para apontamento']); exit;
+    }
+
+    // Tabela/colunas de milestones (mesma lógica do modal)
+    $msTable=null;
+    foreach(['milestones_kr','milestones'] as $t){ try{$pdo->query("SHOW COLUMNS FROM `$t`"); $msTable=$t; break;}catch(Throwable $e){} }
+    if(!$msTable){ echo json_encode(['success'=>false,'error'=>'Tabela de milestones não encontrada']); exit; }
+
+    $cols = $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $has  = function(string $n) use($cols){ foreach($cols as $c){ if (strcasecmp($c['Field'],$n)===0) return true; } return false; };
+
+    $krCol   = $has('id_kr') ? 'id_kr' : ($findKrIdCol($pdo,$msTable) ?: null);
+    $idCol   = $has('id_milestone') ? 'id_milestone' : ($has('id_ms') ? 'id_ms' : ($has('id') ? 'id' : null));
+    $dateCol = $has('data_ref') ? 'data_ref' : ($has('dt_prevista') ? 'dt_prevista' : ($has('data_prevista') ? 'data_prevista' : null));
+    $realCol = $has('valor_real') ? 'valor_real'
+            : ($has('realizado') ? 'realizado'
+            : ($has('valor_real_consolidado') ? 'valor_real_consolidado' : null));
+    $eviCol  = $has('dt_evidencia') ? 'dt_evidencia'
+            : ($has('data_evidencia') ? 'data_evidencia' : null);
+    $apoCol  = $has('dt_apontamento') ? 'dt_apontamento'
+            : ($has('data_apontamento') ? 'data_apontamento'
+            : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
+    $usrCol  = $has('id_user_apontamento') ? 'id_user_apontamento'
+            : ($has('id_user_ult_alteracao') ? 'id_user_ult_alteracao' : null);
+
+    /* extras do seu schema */
+    $cntCol  = $has('qtde_apontamentos') ? 'qtde_apontamentos' : null;
+    $manCol  = $has('editado_manual') ? 'editado_manual' : null;
+    $blkCol  = $has('bloqueado_para_edicao') ? 'bloqueado_para_edicao' : null;
+
+    if (!$krCol || !$dateCol || !$realCol) {
+      echo json_encode(['success'=>false,'error'=>'Colunas para salvar apontamento ausentes']); exit;
+    }
+
+    // Tabela de log de apontamentos (opcional)
+    $apTable = null;
+    foreach (['apontamentos_kr','apontamentos'] as $t) {
+      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable=$t; break; } catch(Throwable $e){}
+    }
+    $getCol = function(string $table, array $cands) use($pdo){ foreach($cands as $c){ try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if($st->fetch()) return $c; }catch(Throwable $e){} } return null; };
+
+    try {
+      $pdo->beginTransaction();
+      $userId = (int)$_SESSION['user_id'];
+      $ok = 0;
+
+      $outRows = [];
+
+      foreach ($items as $it) {
+        $id_ms   = $it['id_ms'] ?? null;
+        $dataRef = $it['data_prevista'] ?? null; // yyyy-mm-dd
+        $valor   = isset($it['valor_real']) ? (float)$it['valor_real'] : null;
+        $evid    = trim((string)($it['dt_evidencia'] ?? ''));
+        $obs     = trim((string)($it['observacao'] ?? ''));
+
+        if ($valor === null || $valor === '' || (!$dataRef && !$id_ms)) continue;
+
+        // Lê valor anterior para detectar overwrite
+        $was = null;
+        if ($idCol && $id_ms) {
+          $st0 = $pdo->prepare("SELECT `$realCol` FROM `$msTable` WHERE `$idCol`=:idms LIMIT 1");
+          $st0->execute(['idms'=>$id_ms]);
+        } else {
+          $st0 = $pdo->prepare("SELECT `$realCol` FROM `$msTable` WHERE `$krCol`=:ik AND `$dateCol`=:dr LIMIT 1");
+          $st0->execute(['ik'=>$id_kr,'dr'=>$dataRef]);
+        }
+        $was = $st0->fetchColumn();
+        $overwrite = ($was !== null && $was !== '' && (float)$was != (float)$valor);
+
+        // WHERE para SELECT/UPDATE
+        $whereParts = [];
+        $whereBind  = [];
+        if ($idCol && $id_ms) {
+          $whereParts[] = "`$idCol` = :idms";
+          $whereBind[':idms'] = $id_ms;
+          $whereParts[] = "`$krCol` = :ik";
+          $whereBind[':ik'] = $id_kr;
+        } else {
+          $whereParts[] = "`$krCol` = :ik";
+          $whereBind[':ik'] = $id_kr;
+          $whereParts[] = "`$dateCol` = :dr";
+          $whereBind[':dr'] = $dataRef;
+        }
+
+        // Bloqueio
+        if ($blkCol) {
+          $stB = $pdo->prepare("SELECT `$blkCol` FROM `$msTable` WHERE ".implode(' AND ',$whereParts)." LIMIT 1");
+          $stB->execute($whereBind);
+          if ((int)$stB->fetchColumn() === 1) {
+            throw new RuntimeException('Milestone bloqueado para edição');
+          }
+        }
+
+        // UPDATE milestone
+        $sets = ["`$realCol` = :vr"];
+        $bind = [':vr'=>$valor] + $whereBind;
+
+        if ($eviCol) { $sets[] = "`$eviCol` = :de"; $bind[':de'] = $evid ?: date('Y-m-d'); }
+        if ($apoCol) { $sets[] = "`$apoCol` = NOW()"; }
+        if ($usrCol) { $sets[] = "`$usrCol` = :uu"; $bind[':uu'] = $userId; }
+        if ($cntCol) { $sets[] = "`$cntCol` = COALESCE(`$cntCol`,0) + 1"; }
+        if ($manCol) { $sets[] = "`$manCol` = 1"; }
+
+        $sqlUp = "UPDATE `$msTable` SET ".implode(', ',$sets)." WHERE ".implode(' AND ',$whereParts)." LIMIT 1";
+        $st = $pdo->prepare($sqlUp);
+        $st->execute($bind);
+
+        // LOG em apontamentos_kr / apontamentos (se existir)
+        if ($apTable) {
+          $colsAp = $pdo->query("SHOW COLUMNS FROM `$apTable`")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+          $hasAp  = function($n) use($colsAp){ foreach($colsAp as $c){ if(strcasecmp($c['Field'],$n)===0) return true; } return false; };
+
+          $krAp   = $getCol($apTable, ['id_kr','kr_id','id_key_result','key_result_id']);
+          $dtRef  = $getCol($apTable, ['data_ref','data_prevista']); // sua tabela não tem, é opcional
+          $vrAp   = $getCol($apTable, ['valor_real','valor']);
+          $eviAp  = $getCol($apTable, ['dt_evidencia','data_evidencia']);
+          $obsAp  = $getCol($apTable, ['observacao','obs','descricao','comentario','mensagem']);
+          $usrAp  = $getCol($apTable, ['id_user','id_usuario','usuario_id','user_id']);
+          $dtaAp  = $getCol($apTable, ['dt_apontamento','created_at','dt_criacao','data']);
+          $msAp   = $getCol($apTable, ['id_milestone','id_ms']); // novo
+
+          $ins = [];
+          if ($krAp)  $ins[$krAp]  = $id_kr;
+          if ($msAp && $id_ms) $ins[$msAp] = $id_ms;
+          if ($dtRef) $ins[$dtRef] = $dataRef ?: ($evid ?: date('Y-m-d'));
+          if ($vrAp)  $ins[$vrAp]  = $valor;
+          if ($eviAp) $ins[$eviAp] = $evid ?: date('Y-m-d');
+          if ($obs && $obsAp) $ins[$obsAp] = $obs;
+          if ($usrAp) $ins[$usrAp] = $userId;
+          if ($dtaAp) $ins[$dtaAp] = date('Y-m-d H:i:s');
+
+          if ($ins) {
+            $f = implode(',', array_map(fn($k)=>"`$k`", array_keys($ins)));
+            $m = implode(',', array_map(fn($k)=>":$k", array_keys($ins)));
+            $stI = $pdo->prepare("INSERT INTO `$apTable` ($f) VALUES ($m)");
+            $stI->execute($ins);
+          }
+        }
+
+        // Retorno atualizado para o front
+        $stR = $pdo->prepare("
+          SELECT `$dateCol` AS data_prevista,
+                COALESCE(`$realCol`, NULL) AS valor_real,
+                ".($eviCol ? "`$eviCol`" : "NULL")." AS dt_evidencia
+          FROM `$msTable`
+          WHERE ".implode(' AND ',$whereParts)."
+          LIMIT 1
+        ");
+        $stR->execute($whereBind);
+        $lastRow = $stR->fetch() ?: null;
+
+        $outRows[] = [
+          'id_ms'         => $id_ms,
+          'data_prevista' => $lastRow['data_prevista'] ?? $dataRef,
+          'valor_real'    => isset($lastRow['valor_real']) ? (float)$lastRow['valor_real'] : $valor,
+          'dt_evidencia'  => $lastRow['dt_evidencia'] ?? ($evid ?: date('Y-m-d')),
+          'overwrite'     => $overwrite
+        ];
+
+        $ok++;
+      }
+
+
+      $pdo->commit();
+      echo json_encode(['success'=>true,'salvos'=>$ok,'rows'=>$outRows ?? []]);
+      exit;
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      echo json_encode(['success'=>false,'error'=>'Falha ao salvar apontamentos']); exit;
+    }
+  }
+
+/* ---------- APONTAMENTO: UPLOAD DE EVIDÊNCIA (por milestone) ---------- */
+if ($action === 'apont_file_upload') {
+  if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+  }
+
+  $id_kr = $_POST['id_kr'] ?? '';
+  $id_ms = $_POST['id_ms'] ?? '';
+  if (!$id_kr || !$id_ms || empty($_FILES['evidencia']['tmp_name'])) {
+    echo json_encode(['success'=>false,'error'=>'Dados inválidos']); exit;
+  }
+
+  // Pasta base (ajuste se seu projeto usar outra raiz pública)
+  $base = realpath(__DIR__ . '/../uploads');
+  if (!$base) { @mkdir(__DIR__ . '/../uploads', 0775, true); $base = realpath(__DIR__ . '/../uploads'); }
+  $destDir = $base . '/kr_evidencias/' . preg_replace('/[^a-zA-Z0-9_\-]/','',$id_kr) . '/' . preg_replace('/[^a-zA-Z0-9_\-]/','',$id_ms);
+  if (!is_dir($destDir)) @mkdir($destDir, 0775, true);
+
+  // Bloqueia executáveis por extensão e por MIME
+  $fn   = $_FILES['evidencia']['name'] ?? 'arquivo';
+  $tmp  = $_FILES['evidencia']['tmp_name'];
+  $ext  = strtolower(pathinfo($fn, PATHINFO_EXTENSION));
+  $banExt = ['exe','msi','bat','cmd','sh','com','scr','jar','apk','cgi','php','phar','pl','py'];
+  if (in_array($ext, $banExt,true)) { echo json_encode(['success'=>false,'error'=>'Extensão não permitida']); exit; }
+
+  $fi = new finfo(FILEINFO_MIME_TYPE);
+  $mime = $fi->file($tmp) ?: 'application/octet-stream';
+  $banMime = [
+    'application/x-dosexec','application/x-msdownload','application/x-ms-installer',
+    'application/x-executable','application/x-sh','application/java-archive',
+    'application/x-php','text/x-php','application/x-python','text/x-python',
+  ];
+  if (in_array($mime,$banMime,true)) { echo json_encode(['success'=>false,'error'=>'Tipo de arquivo não permitido']); exit; }
+
+  // Move com nome único
+  $safe = preg_replace('/[^a-zA-Z0-9_\-\.]/','_', $fn);
+  $dest = $destDir . '/' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '_' . $safe;
+  if (!move_uploaded_file($tmp, $dest)) { echo json_encode(['success'=>false,'error'=>'Falha ao salvar arquivo']); exit; }
+
+  // URL pública
+  $public = '/OKR_system/uploads/kr_evidencias/' . rawurlencode($id_kr) . '/' . rawurlencode($id_ms) . '/' . rawurlencode(basename($dest));
+
+  echo json_encode(['success'=>true,'file'=>['name'=>basename($dest),'url'=>$public]]);
+  exit;
+}
+
+/* ---------- APONTAMENTO: LISTAR EVIDÊNCIAS (por milestone) ---------- */
+if ($action === 'apont_file_list') {
+  $id_kr = $_GET['id_kr'] ?? '';
+  $id_ms = $_GET['id_ms'] ?? '';
+  if (!$id_kr || !$id_ms){ echo json_encode(['success'=>false,'error'=>'Parâmetros inválidos']); exit; }
+
+  $base = realpath(__DIR__ . '/../uploads/kr_evidencias/' . $id_kr . '/' . $id_ms);
+  $items = [];
+  if ($base && is_dir($base)) {
+    foreach (scandir($base) as $f) {
+      if ($f==='.'||$f==='..') continue;
+      $path = $base.'/'.$f;
+      if (is_file($path)) {
+        $items[] = [
+          'name'=>$f,
+          'url' => '/OKR_system/uploads/kr_evidencias/'.rawurlencode($id_kr).'/'.rawurlencode($id_ms).'/'.rawurlencode($f),
+          'size'=> filesize($path)
+        ];
+      }
+    }
+  }
+  echo json_encode(['success'=>true,'files'=>$items]);
+  exit;
+}
+
+/* ---------- APONTAMENTO: EXCLUIR EVIDÊNCIA (com justificativa) ---------- */
+if ($action === 'apont_file_delete') {
+  if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+  }
+  $id_kr = $_POST['id_kr'] ?? '';
+  $id_ms = $_POST['id_ms'] ?? '';
+  $name  = $_POST['name']  ?? '';
+  $just  = trim($_POST['justificativa'] ?? '');
+  if (!$id_kr || !$id_ms || !$name || $just===''){ echo json_encode(['success'=>false,'error'=>'Justificativa é obrigatória']); exit; }
+
+  $dir  = realpath(__DIR__ . '/../uploads/kr_evidencias/' . $id_kr . '/' . $id_ms);
+  $file = $dir ? $dir . '/' . basename($name) : null;
+  if (!$dir || !is_dir($dir) || !$file || !is_file($file)) {
+    echo json_encode(['success'=>false,'error'=>'Arquivo não encontrado']); exit;
+  }
+
+  // Log simples na timeline do KR (reutiliza helper, se quiser)
+  try { $addKrComment($pdo, $id_kr, (int)$_SESSION['user_id'], "Evidência removida de MS {$id_ms}. Motivo: ".$just); } catch(Throwable $e){}
+
+  if (!unlink($file)) { echo json_encode(['success'=>false,'error'=>'Não foi possível excluir']); exit; }
+  echo json_encode(['success'=>true]);
+  exit;
+}
+
+
   // Fallback
   echo json_encode(['success'=>false,'error'=>'Ação inválida']);
   exit;
@@ -1341,6 +1789,16 @@ $saldoObj = max(0, $aprovObj - $realObj);
     #btnSalvarIni i {
       color: #000 !important;
     }
+    /* MODAL */
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:3000; }
+    .modal.show{ display:flex; }
+    .modal-card{ width:1100px; max-width:95vw; background:#0f1420; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); color:#eaeef6; }
+    .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #1f2a3a; background:#0b101a; }
+    .modal-body{ padding:14px 16px; }
+    .modal-actions{ padding:12px 16px; border-top:1px solid #1f2a3a; display:flex; justify-content:flex-end; gap:10px; background:#0b101a; }
+    .modal.mini .modal-card{ width:520px; max-width:95vw; }
+    .modal.mini textarea{ width:100%; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; padding:10px; }
+
   </style>
 </head>
 <body>
@@ -1574,6 +2032,74 @@ $saldoObj = max(0, $aprovObj - $realObj);
   </aside>
 
 
+  <!-- MODAL: Apontamento -->
+  <div id="modalApont" class="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="apont_title">
+      <header class="modal-head">
+        <h3 id="apont_title"><i class="fa-regular fa-pen-to-square"></i> Apontamento do KR</h3>
+        <button class="btn btn-outline" type="button" onclick="showApontModal(false)">Fechar ✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="kr-banner" style="margin-bottom:10px;">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="title" id="ap_kr_titulo">KR —</div>
+            <div class="sub" id="ap_kr_sub">Carregando...</div>
+          </div>
+        </div>
+
+        <div class="chip" style="margin-bottom:10px;">
+          <i class="fa-solid fa-scale-balanced"></i><span id="ap_kr_meta">Meta: —</span>
+          &nbsp;|&nbsp;<i class="fa-solid fa-gauge"></i><span id="ap_kr_base">Baseline: —</span>
+          &nbsp;|&nbsp;<i class="fa-solid fa-ruler-horizontal"></i><span id="ap_kr_um">Unidade: —</span>
+        </div>
+
+        <input type="hidden" id="ap_id_kr">
+        <input type="hidden" id="ap_items_json">
+        <div class="table-wrap" style="margin-top:8px;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Milestone</th>
+                <th>Data</th>
+                <th>Esperado</th>
+                <th style="width:140px">Apontado</th>
+                <th style="width:24%">Justificativa</th>
+                <th style="white-space:nowrap">Evidência</th>
+                <th style="white-space:nowrap">Ver anexo</th>
+                <th style="white-space:nowrap">Salvar</th>
+              </tr>
+            </thead>
+            <tbody id="ap_rows">
+              <tr><td colspan="8" style="color:#9aa4b2">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- input único para upload (acionado por linha) -->
+        <input type="file" id="ap_file_input" style="display:none"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" type="button" onclick="showApontModal(false)">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI-MODAL: justificativa obrigatória -->
+  <div id="modalJust" class="modal mini" aria-hidden="true">
+    <div class="modal-card mini">
+      <header class="modal-head"><h3>Informe a justificativa</h3></header>
+      <div class="modal-body">
+        <textarea id="just_text" rows="4" placeholder="Explique o motivo..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" type="button" onclick="showJust(false)">Cancelar</button>
+        <button class="btn btn-primary" type="button" id="just_confirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Drawer: Alterar Status da Iniciativa -->
 <aside id="drawerIniStatus" class="drawer" aria-hidden="true">
   <header>
@@ -1634,6 +2160,10 @@ $saldoObj = max(0, $aprovObj - $realObj);
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    function showApontModal(show=true){ $('#modalApont')?.classList.toggle('show', show); }
+    function showJust(show=true){ $('#modalJust')?.classList.toggle('show', show); }
+  </script>
   <script>
     // ================== Utils ==================
     const currentUserId = <?= (int)$_SESSION['user_id'] ?>;
@@ -1882,6 +2412,207 @@ $saldoObj = max(0, $aprovObj - $realObj);
     }
 
 
+        // ====== Novo Apontamento ======
+    async function openApontModal(id){
+    // reset
+    $('#ap_id_kr').value = id;
+    $('#ap_rows').innerHTML = '<tr><td colspan="8" style="color:#9aa4b2">Carregando...</td></tr>';
+
+    // banner + dados
+    const res  = await fetch(`${SCRIPT}?ajax=apont_modal_data&id_kr=${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if(!data.success){ toast(data.error||'Falha ao carregar', false); return; }
+
+    $('#ap_kr_titulo').textContent = 'KR';
+    $('#ap_kr_sub').textContent    = data.kr?.descricao || '—';
+    $('#ap_kr_meta').textContent   = 'Meta: ' + (data.kr?.meta ?? '—');
+    $('#ap_kr_base').textContent   = 'Baseline: ' + (data.kr?.baseline ?? '—');
+    $('#ap_kr_um').textContent     = 'Unidade: ' + (data.kr?.unidade_medida ?? '—');
+
+    const tb = $('#ap_rows'); tb.innerHTML='';
+    const total = (data.milestones||[]).length || 0;
+
+    (data.milestones||[]).forEach((m, i)=>{
+      const dp   = toDDMMYYYY(m.data_prevista,'/');
+      const esp  = Number(m.valor_esperado||0);
+      const rea  = (m.valor_real===null||m.valor_real===undefined) ? null : Number(m.valor_real);
+      const idMs = (m.id_ms ?? '');
+      const ordem = m.ordem_label || ((i+1)+'/'+total);
+
+      tb.insertAdjacentHTML('beforeend', `
+        <tr data-idms="${idMs}" data-dref="${m.data_prevista}" data-esp="${esp}" data-has-real="${rea!==null}">
+          <td><strong>${ordem}</strong></td>
+          <td>${dp}</td>
+          <td>${fmtNum(esp)}</td>
+          <td><input type="number" step="0.0001" class="ap-real" value="${rea===null?'':rea}" placeholder="0,00"></td>
+          <td><input type="text" class="ap-just" placeholder="Justificativa (obrigatória se sobrescrever)"></td>
+          <td>
+            <button class="btn btn-outline btn-sm ap-add" type="button"><i class="fa-regular fa-paperclip"></i> Anexar</button>
+            <button class="btn btn-outline btn-sm ap-del" type="button" style="display:none"><i class="fa-regular fa-trash-can"></i> Excluir</button>
+          </td>
+          <td><button class="btn btn-outline btn-sm ap-list" type="button"><i class="fa-regular fa-eye"></i> Ver</button></td>
+          <td><button class="btn btn-primary btn-sm ap-save" type="button"><i class="fa-regular fa-floppy-disk"></i> Salvar</button></td>
+        </tr>
+      `);
+
+      // Estado inicial dos botões de evidência (verifica se já existe arquivo)
+      setTimeout(async ()=>{
+        const f = await fetch(`${SCRIPT}?ajax=apont_file_list&id_kr=${encodeURIComponent(id)}&id_ms=${encodeURIComponent(idMs)}`);
+        const j = await f.json();
+        const tr = tb.querySelector(`tr[data-idms="${CSS.escape(idMs)}"]`);
+        if (tr && j.success && (j.files||[]).length){
+          tr.querySelector('.ap-add').style.display = 'none';
+          tr.querySelector('.ap-del').style.display = '';
+        }
+      }, 0);
+    });
+
+      showApontModal(true);
+    }
+
+
+    // Mini-modal de justificativa: fluxo controlado
+    let _just_cb = null; // callback após confirmar
+    $('#just_confirm')?.addEventListener('click', ()=>{
+      const t = $('#just_text').value.trim();
+      if (!t){ toast('Justificativa é obrigatória.', false); return; }
+      const cb = _just_cb; _just_cb = null;
+      showJust(false);
+      $('#just_text').value='';
+      if (cb) cb(t);
+    });
+
+    // Handler único por delegação
+    document.addEventListener('click', async (e)=>{
+      const tr = e.target.closest('#ap_rows tr'); if (!tr) return;
+      const id_kr = $('#ap_id_kr').value;
+      const id_ms = tr.getAttribute('data-idms') || '';
+      const dref  = tr.getAttribute('data-dref') || null;
+      const esp   = Number(tr.getAttribute('data-esp') || 0);
+      const hasRealBefore = tr.getAttribute('data-has-real') === 'true';
+
+      // SALVAR
+      if (e.target.closest('.ap-save')) {
+        const val = tr.querySelector('.ap-real')?.value;
+        const justInput = tr.querySelector('.ap-just');
+        let just = justInput?.value.trim() || '';
+
+        // Se já tinha valor e está mudando => exigir justificativa
+        const prev = tr.querySelector('.ap-real')?.defaultValue;
+        const isOverwrite = (prev !== '' && val !== '' && Number(prev) != Number(val));
+        if (isOverwrite && !just) {
+          _just_cb = async (texto)=>{
+            tr.querySelector('.ap-just').value = texto;
+            await salvarLinhaApontamento({id_kr,id_ms,dref,valor:Number(val),just:texto, tr});
+          };
+          showJust(true);
+          return;
+        }
+
+        await salvarLinhaApontamento({id_kr,id_ms,dref,valor:Number(val),just, tr});
+        return;
+      }
+
+      // ANEXAR
+      if (e.target.closest('.ap-add')) {
+        const fi = $('#ap_file_input'); if (!fi) return;
+        fi.onchange = async ()=>{
+          if (!fi.files || !fi.files[0]) return;
+          const fd = new FormData();
+          fd.append('csrf_token', csrfToken);
+          fd.append('id_kr', id_kr);
+          fd.append('id_ms', id_ms);
+          fd.append('evidencia', fi.files[0]);
+          const res = await fetch(`${SCRIPT}?ajax=apont_file_upload`, {method:'POST', body:fd});
+          const j = await res.json();
+          if (!j.success){ toast(j.error||'Falha ao anexar', false); fi.value=''; return; }
+          toast('Evidência anexada!');
+          tr.querySelector('.ap-add').style.display = 'none';
+          tr.querySelector('.ap-del').style.display = '';
+          fi.value='';
+        };
+        fi.click();
+        return;
+      }
+
+      // EXCLUIR EVIDÊNCIA (com justificativa obrigatória)
+      if (e.target.closest('.ap-del')) {
+        _just_cb = async (texto)=>{
+          const fd = new FormData();
+          fd.append('csrf_token', csrfToken);
+          fd.append('id_kr', id_kr);
+          fd.append('id_ms', id_ms);
+          // se existir mais de um, você pode abrir a lista e escolher; aqui removemos o mais recente:
+          const lst = await fetch(`${SCRIPT}?ajax=apont_file_list&id_kr=${encodeURIComponent(id_kr)}&id_ms=${encodeURIComponent(id_ms)}`).then(r=>r.json());
+          const file = (lst.files||[]).slice(-1)[0];
+          if (!file){ toast('Nenhum anexo para excluir.', false); return; }
+          fd.append('name', file.name);
+          fd.append('justificativa', texto);
+          const res = await fetch(`${SCRIPT}?ajax=apont_file_delete`, {method:'POST', body:fd});
+          const j = await res.json();
+          if (!j.success){ toast(j.error||'Falha ao excluir', false); return; }
+          toast('Evidência excluída!');
+          tr.querySelector('.ap-add').style.display = '';
+          tr.querySelector('.ap-del').style.display = 'none';
+        };
+        showJust(true);
+        return;
+      }
+
+      // VER ANEXO(S)
+      if (e.target.closest('.ap-list')) {
+        const f = await fetch(`${SCRIPT}?ajax=apont_file_list&id_kr=${encodeURIComponent(id_kr)}&id_ms=${encodeURIComponent(id_ms)}`);
+        const j = await f.json();
+        if (!j.success){ toast(j.error||'Falha ao listar', false); return; }
+        if (!(j.files||[]).length){ toast('Sem anexos para este milestone.'); return; }
+        // abre em nova aba o mais recente; ou liste num mini-modal customizado
+        window.open(j.files.slice(-1)[0].url, '_blank');
+      }
+    });
+
+    // Função que salva 1 linha e reflete na UI imediatamente
+    async function salvarLinhaApontamento({id_kr,id_ms,dref,valor,just,tr}){
+      if (valor===undefined || valor===null || String(valor).trim()==='') {
+        toast('Informe o valor apontado.', false); return;
+      }
+      const items = [{
+        id_ms: id_ms || null,
+        data_prevista: dref,
+        valor_real: Number(valor),
+        dt_evidencia: new Date().toISOString().slice(0,10),
+        observacao: just || ''
+      }];
+      const fd = new FormData();
+      fd.append('csrf_token', csrfToken);
+      fd.append('id_kr', id_kr);
+      fd.append('items_json', JSON.stringify(items));
+
+      const res = await fetch(`${SCRIPT}?ajax=apont_save`, { method:'POST', body:fd });
+      const j = await res.json();
+      if (!j.success){ toast(j.error||'Falha ao salvar', false); return; }
+
+      // Atualiza linha (Real atual e Δ), zera justificativa do input
+      const esp  = Number(tr.getAttribute('data-esp')||0);
+      const novo = Number(valor);
+      tr.querySelector('.ap-real').defaultValue = String(novo);
+      tr.setAttribute('data-has-real','true');
+      tr.querySelector('.ap-just').value = '';
+      const deltaCell = tr.querySelector('td:nth-child(3)'); // cuidado com índices se mudar colunas
+      // Aqui atualizamos as colunas certas:
+      tr.children[2].textContent = fmtNum(esp);    // esperado (já estava)
+      // Coluna "Apontado" é o input (fica como está)
+      // Nada de alterar "Esperado"
+      // Dica: se você quiser mostrar "Real atual" numa coluna separada, crie e atualize aqui.
+
+      toast('Apontamento salvo!');
+
+      // opcional: recarregar o gráfico do KR já aberto
+      const open = document.querySelector('.kr-card.open');
+      const reloadId = open ? open.getAttribute('data-id') : id_kr;
+      if (reloadId) { 
+        await loadKrDetail(reloadId);
+      }
+    }
 
     async function loadKRs(){
       const cont = $('#krContainer');
@@ -2090,7 +2821,11 @@ $saldoObj = max(0, $aprovObj - $realObj);
       }
 
       const btnAp = e.target.closest('[data-act="apont"]');
-      if (btnAp){ toast('Conecte este botão ao fluxo de apontamentos.', false); return; }
+      if (btnAp){
+        const id = btnAp.getAttribute('data-id');
+        await openApontModal(id);
+        return;
+      }
 
       const btnDesp = e.target.closest('button[data-act="despesa"]');
       if (btnDesp){
@@ -2272,15 +3007,26 @@ $saldoObj = max(0, $aprovObj - $realObj);
           type: 'line',
           data: {
             labels: (data.chart.labels||[]).map(d => toDDMMYYYY(d,'/')),
-            datasets: [{
-              label: 'Esperado',
-              data: data.chart.esperado || [],
-              borderColor: '#f6c343',
-              backgroundColor: 'rgba(246,195,67,0.12)',
-              pointBackgroundColor: '#f6c343',
-              pointBorderColor: '#f6c343',
-              borderWidth: 2, pointRadius: 3, tension: 0.35, fill: false
-            }]
+            datasets: [
+                        {
+                          label: 'Esperado',
+                          data: data.chart.esperado || [],
+                          borderColor: '#e4eaf0ff',
+                          backgroundColor: 'rgba(246,195,67,0.12)',
+                          pointBackgroundColor: '#e4eaf0ff',
+                          pointBorderColor: '#e4eaf0ff',
+                          borderWidth: 2, pointRadius: 3, tension: 0.35, fill: false
+                        },
+                        {
+                          label: 'Realizado',
+                          data: (data.chart.real || []).map(v => v ?? null),
+                          borderColor: '#f6c343',
+                          backgroundColor: 'rgba(96,165,250,0.12)',
+                          pointBackgroundColor: '#f6c343',
+                          pointBorderColor: '#f6c343',
+                          borderWidth: 2, pointRadius: 3, tension: 0.35, fill: false
+                        }
+                      ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
