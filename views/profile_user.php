@@ -1,7 +1,7 @@
 <?php
 // views/profile_user.php
 
-// DEV ONLY (remova em produção)
+// ===== DEV ONLY (remova em produção) =====
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -10,28 +10,28 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
-// Gate
+// ===== Gate =====
 if (!isset($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');
   exit;
 }
 $id_user = (int)$_SESSION['user_id'];
 
-// CSRF
+// ===== CSRF =====
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
-// Config + helpers
+// ===== Config + helpers =====
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php'; // sendPasswordResetEmail
 
-// Conexão
+// ===== Conexão =====
 try {
   $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
   $pdoOptions = (isset($options) && is_array($options)) ? $options : [];
-  $pdoOptions = $pdoOptions + [
+  $pdoOptions += [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
@@ -57,16 +57,30 @@ function mask_email_local(string $email): string {
   $uMasked = mb_substr($u, 0, 1) . str_repeat('*', max(0, mb_strlen($u)-1));
   return $uMasked . '@' . $d;
 }
-function is_allowed_avatar_name(string $f): bool {
-  // somente nome de arquivo (sem path) e extensões permitidas
-  return (bool)preg_match('/^[a-z0-9_.-]+\.(png|jpe?g|webp)$/i', $f);
-}
 function gallery_file_exists(string $dir, string $file): bool {
+  if ($file === '') return false;
   return is_file(rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $file);
 }
 
-/* ---------- Carrega dados do usuário ---------- */
-$stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id_user = :id LIMIT 1");
+/* ---------- Descobre o ID do avatar default (por filename) ---------- */
+$defaultAvatarId = null;
+try {
+  $q = $pdo->prepare("SELECT id FROM avatars WHERE filename = :fn AND active = 1 LIMIT 1");
+  $q->execute([':fn' => $defaultFile]);
+  $tmp = $q->fetchColumn();
+  if ($tmp !== false) $defaultAvatarId = (int)$tmp;
+} catch (Throwable $e) {
+  // silencioso; fallback tratado abaixo
+}
+
+/* ---------- Carrega dados do usuário (com JOIN no avatar) ---------- */
+$stmt = $pdo->prepare("
+  SELECT u.*, a.filename AS avatar_filename
+  FROM usuarios u
+  LEFT JOIN avatars a ON a.id = u.avatar_id
+  WHERE u.id_user = :id
+  LIMIT 1
+");
 $stmt->execute([':id' => $id_user]);
 $user = $stmt->fetch() ?: [];
 
@@ -112,12 +126,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  // Remover avatar -> gravar default.png no banco + atualizar cache da sessão
+  // Remover avatar -> aplica avatar_id = (ID do default.png) OU NULL se não encontrado
   if ($action === 'remove_avatar') {
     try {
-      $st = $pdo->prepare("UPDATE usuarios SET avatar = :av, dt_alteracao = NOW(), id_user_alteracao = :u WHERE id_user = :id");
-      $st->execute([':av' => $defaultFile, ':u' => $id_user, ':id' => $id_user]);
-      $_SESSION['avatar_filename'] = $defaultFile; // <-- mantém header em sincronia imediatamente
+      if ($defaultAvatarId !== null) {
+        $st = $pdo->prepare("
+          UPDATE usuarios
+             SET avatar_id = :defid,
+                 dt_alteracao = NOW(),
+                 id_user_alteracao = :u
+           WHERE id_user = :id
+        ");
+        $st->execute([':defid' => $defaultAvatarId, ':u' => $id_user, ':id' => $id_user]);
+      } else {
+        // Fallback seguro (não deve ocorrer se a linha do default existe)
+        $st = $pdo->prepare("
+          UPDATE usuarios
+             SET avatar_id = NULL,
+                 dt_alteracao = NOW(),
+                 id_user_alteracao = :u
+           WHERE id_user = :id
+        ");
+        $st->execute([':u' => $id_user, ':id' => $id_user]);
+      }
+
+      // Mantém o header/UX em sincronia imediatamente
+      $_SESSION['avatar_filename'] = $defaultFile;
       $_SESSION['success_message'] = 'Avatar redefinido para o padrão.';
     } catch (Throwable $e) {
       $_SESSION['error_messages'][] = 'Falha ao aplicar avatar padrão.';
@@ -126,31 +160,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  // Escolher avatar da galeria
+  // Escolher avatar da galeria -> grava avatar_id (FK)
   if ($action === 'choose_avatar') {
-    $chosen = basename((string)($_POST['chosen_file'] ?? ''));
-    if ($chosen === '') {
+    $chosenId = (int)($_POST['chosen_id'] ?? 0);
+    if ($chosenId <= 0) {
       $_SESSION['error_messages'][] = 'Selecione um avatar.';
-      header('Location: ' . $_SERVER['REQUEST_URI']);
-      exit;
-    }
-    // Não permitir selecionar o default pela modal
-    if (strcasecmp($chosen, $defaultFile) === 0) {
-      $_SESSION['error_messages'][] = 'Este avatar é reservado como padrão.';
-      header('Location: ' . $_SERVER['REQUEST_URI']);
-      exit;
-    }
-    // Valida nome/ extensão e existência na galeria
-    if (!is_allowed_avatar_name($chosen) || !gallery_file_exists($defaultsDir, $chosen)) {
-      $_SESSION['error_messages'][] = 'Arquivo de avatar inválido.';
       header('Location: ' . $_SERVER['REQUEST_URI']);
       exit;
     }
 
     try {
-      $st = $pdo->prepare("UPDATE usuarios SET avatar = :av, dt_alteracao = NOW(), id_user_alteracao = :u WHERE id_user = :id");
-      $st->execute([':av' => $chosen, ':u' => $id_user, ':id' => $id_user]);
-      $_SESSION['avatar_filename'] = $chosen; // <-- cache p/ header
+      // Busca o avatar escolhido (ativo)
+      $av = $pdo->prepare("SELECT id, filename FROM avatars WHERE id = :id AND active = 1 LIMIT 1");
+      $av->execute([':id' => $chosenId]);
+      $row = $av->fetch();
+      if (!$row) {
+        $_SESSION['error_messages'][] = 'Avatar inválido ou inativo.';
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+      }
+      $filename = (string)$row['filename'];
+      if ($filename === '' || !gallery_file_exists($defaultsDir, $filename)) {
+        $_SESSION['error_messages'][] = 'Arquivo de avatar não encontrado no servidor.';
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+      }
+
+      $st = $pdo->prepare("
+        UPDATE usuarios
+           SET avatar_id = :aid,
+               dt_alteracao = NOW(),
+               id_user_alteracao = :u
+         WHERE id_user = :id
+      ");
+      $st->execute([':aid' => (int)$row['id'], ':u' => $id_user, ':id' => $id_user]);
+
+      $_SESSION['avatar_filename'] = $filename; // sincroniza header
       $_SESSION['success_message'] = 'Avatar aplicado com sucesso.';
     } catch (Throwable $e) {
       $_SESSION['error_messages'][] = 'Falha ao aplicar avatar.';
@@ -196,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ]);
       $pdo->commit();
       $_SESSION['success_message'] = 'Perfil salvo com sucesso.';
-      $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // novo token p/ o próximo POST
+      $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // novo token
     } catch (Throwable $e) {
       if ($pdo->inTransaction()) $pdo->rollBack();
       $_SESSION['error_messages'][] = 'Erro ao salvar perfil.';
@@ -207,7 +252,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------- Recarrega dados (GET após PRG) ---------- */
-$stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id_user = :id LIMIT 1");
+$stmt = $pdo->prepare("
+  SELECT u.*, a.filename AS avatar_filename
+  FROM usuarios u
+  LEFT JOIN avatars a ON a.id = u.avatar_id
+  WHERE u.id_user = :id
+  LIMIT 1
+");
 $stmt->execute([':id' => $id_user]);
 $user = $stmt->fetch() ?: [];
 
@@ -219,20 +270,23 @@ $telFmt = strlen($d) === 11
   ? sprintf('(%s) %s-%s', substr($d,0,2), substr($d,2,5), substr($d,7,4))
   : $raw;
 
-/* ---------- Avatar atual (mesma lógica do header) ---------- */
+/* ---------- Avatar atual ---------- */
 $avatarFilename = $defaultFile;
 
-// 1) Tenta cache de sessão
-if (!empty($_SESSION['avatar_filename']) && is_allowed_avatar_name($_SESSION['avatar_filename'])) {
-  $avatarFilename = $_SESSION['avatar_filename'];
+// 1) cache de sessão
+if (!empty($_SESSION['avatar_filename'])) {
+  $candidate = (string)$_SESSION['avatar_filename'];
+  if ($candidate !== '' && gallery_file_exists($defaultsDir, $candidate)) {
+    $avatarFilename = $candidate;
+  }
 }
-// 2) Senão, usa o banco
-elseif (!empty($user['avatar']) && is_allowed_avatar_name((string)$user['avatar'])) {
-  $avatarFilename = (string)$user['avatar'];
-  $_SESSION['avatar_filename'] = $avatarFilename; // cache
+// 2) filename via JOIN
+elseif (!empty($user['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$user['avatar_filename'])) {
+  $avatarFilename = (string)$user['avatar_filename'];
+  $_SESSION['avatar_filename'] = $avatarFilename;
 }
 
-// 3) Se o arquivo não existir fisicamente na galeria, força default
+// 3) fallback
 if (!gallery_file_exists($defaultsDir, $avatarFilename)) {
   $avatarFilename = $defaultFile;
   $_SESSION['avatar_filename'] = $defaultFile;
@@ -240,25 +294,91 @@ if (!gallery_file_exists($defaultsDir, $avatarFilename)) {
 
 $avatarUrl = $defaultsWeb . rawurlencode($avatarFilename);
 
-/* ---------- Lista de avatares da galeria (exclui default.png) ---------- */
-$avatarOptions = [];
-$files = glob($defaultsDir . '/*.{png,jpg,jpeg,webp}', GLOB_BRACE) ?: [];
-foreach ($files as $path) {
-  $bn = basename($path);
-  if (strcasecmp($bn, $defaultFile) === 0) continue; // não mostrar default
+/* ---------- AJAX: lista paginada de avatares (DB + sync da pasta) ---------- */
+if (($_GET['ajax'] ?? '') === 'avatar_list') {
+  if (!isset($_SESSION['user_id'])) { http_response_code(401); exit; }
+  header('Content-Type: application/json; charset=utf-8');
 
-  // Heurística simples de gênero pelo prefixo do arquivo
-  $gender = 'todos';
-  if (stripos($bn, 'fem') === 0)       $gender = 'feminino';
-  elseif (stripos($bn, 'user') === 0)  $gender = 'masculino';
+  $filter   = $_GET['filter'] ?? 'todos';
+  if (!in_array($filter, ['todos','masculino','feminino'], true)) $filter = 'todos';
 
-  $avatarOptions[] = [
-    'file'   => $bn,
-    'url'    => $defaultsWeb . rawurlencode($bn),
-    'gender' => $gender
-  ];
+  $page     = max(1, (int)($_GET['page'] ?? 1));
+  $pageSize = min(60, max(5, (int)($_GET['page_size'] ?? 15)));
+  $offset   = ($page - 1) * $pageSize;
+
+  try {
+    // --- SINCRONIZAÇÃO LEVE (cache 5 min via APCu) ---
+    $syncKey = 'avatars_sync_flag_' . md5($defaultsDir);
+    $doSync = true;
+    if (function_exists('apcu_fetch')) {
+      $doSync = (apcu_fetch($syncKey) === false);
+    }
+    if ($doSync) {
+      $files = glob($defaultsDir . '/*.{png,jpg,jpeg,webp}', GLOB_BRACE) ?: [];
+      $ins = $pdo->prepare("INSERT IGNORE INTO avatars (filename, gender, active) VALUES (:f, :g, 1)");
+      foreach ($files as $path) {
+        $bn = basename($path);
+        if (strcasecmp($bn, 'default.png') === 0) continue; // não listar default
+        $gender = 'todos';
+        if (stripos($bn, 'fem') === 0)      $gender = 'feminino';
+        elseif (stripos($bn, 'user') === 0) $gender = 'masculino';
+        $ins->execute([':f' => $bn, ':g' => $gender]);
+      }
+      if (function_exists('apcu_store')) apcu_store($syncKey, 1, 300);
+    }
+    // --- FIM SYNC ---
+
+    // COUNT + SELECT paginado
+    if ($filter === 'todos') {
+      $total = (int)$pdo->query("SELECT COUNT(*) FROM avatars WHERE active = 1")->fetchColumn();
+      $listStmt = $pdo->prepare("SELECT id, filename, gender
+                                   FROM avatars
+                                  WHERE active = 1
+                                  ORDER BY id
+                                  LIMIT :limit OFFSET :offset");
+    } else {
+      $countStmt = $pdo->prepare("SELECT COUNT(*) FROM avatars WHERE active = 1 AND gender = :g");
+      $countStmt->execute([':g' => $filter]);
+      $total = (int)$countStmt->fetchColumn();
+
+      $listStmt = $pdo->prepare("SELECT id, filename, gender
+                                   FROM avatars
+                                  WHERE active = 1 AND gender = :g
+                                  ORDER BY id
+                                  LIMIT :limit OFFSET :offset");
+      $listStmt->bindValue(':g', $filter);
+    }
+
+    $listStmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
+    $listStmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
+    $listStmt->execute();
+    $rows = $listStmt->fetchAll();
+
+    $items = [];
+    foreach ($rows as $r) {
+      $bn = (string)$r['filename'];
+      $thumbPath = $defaultsDir . '/_thumbs/' . $bn;
+      $url = is_file($thumbPath)
+        ? $defaultsWeb . '_thumbs/' . rawurlencode($bn)
+        : $defaultsWeb . rawurlencode($bn);
+
+      $items[] = [
+        'id'     => (int)$r['id'],
+        'file'   => $bn,
+        'url'    => $url,
+        'gender' => (string)$r['gender'],
+      ];
+    }
+
+    header('Cache-Control: private, max-age=300');
+    echo json_encode(['items' => $items, 'total' => $total], JSON_UNESCAPED_SLASHES);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['items' => [], 'total' => 0, 'error' => 'Falha ao consultar/sincronizar avatares']);
+  }
+  exit;
 }
-if ($avatarOptions) shuffle($avatarOptions);
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -355,7 +475,6 @@ if ($avatarOptions) shuffle($avatarOptions);
     .paginator{ display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
     .paginator .btn{ background:#0c1118; color:#e5e7eb; }
     .paginator .info{ color:#9aa4b2; font-size:.9rem; }
-
     .btn-link{ background:transparent; border:none; color:#93c5fd; text-decoration:underline; padding:0; cursor:pointer; }
   </style>
 </head>
@@ -482,12 +601,12 @@ if ($avatarOptions) shuffle($avatarOptions);
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="avatarModalTitle">
       <header>
         <h3 id="avatarModalTitle">Alterar avatar</h3>
-        <button class="btn-link" id="avatarModalClose" aria-label="Fechar">Fechar ✕</button>
+        <button type="button" class="btn-link" id="avatarModalClose" aria-label="Fechar">Fechar ✕</button>
       </header>
       <form id="avatarModalForm" method="post">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
         <input type="hidden" name="action" value="choose_avatar">
-        <input type="hidden" name="chosen_file" id="chosen_file" value="">
+        <input type="hidden" name="chosen_id" id="chosen_id" value="">
         <div class="modal-body">
 
           <div class="icon-filters" role="tablist" aria-label="Filtro gênero">
@@ -534,71 +653,97 @@ if ($avatarOptions) shuffle($avatarOptions);
     })();
 
     // ===== Modal Avatar (somente galeria) =====
-    const AVATARS = <?= json_encode($avatarOptions, JSON_UNESCAPED_SLASHES) ?>;
+    let TOTAL = 0; // preenchido pelo AJAX
 
-    const modal = document.getElementById('avatarModal');
-    const openBtn = document.getElementById('btnOpenAvatarModal');
-    const closeBtn = document.getElementById('avatarModalClose');
+    const backdrop  = document.getElementById('avatarModal');
+    const openBtn   = document.getElementById('btnOpenAvatarModal');
+    const closeBtn  = document.getElementById('avatarModalClose');
     const cancelBtn = document.getElementById('avatarCancel');
-    const form = document.getElementById('avatarModalForm');
-    const chosenInput = document.getElementById('chosen_file');
+    const form      = document.getElementById('avatarModalForm');
+    const chosenId  = document.getElementById('chosen_id');
 
-    function openModal(){ modal.classList.add('show'); modal.setAttribute('aria-hidden','false'); }
-    function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+    function openAvatarModal(){
+      backdrop.classList.add('show');
+      backdrop.setAttribute('aria-hidden','false');
+      page = 1;
+      fetchAndRender();
+    }
+    function closeAvatarModal(){
+      backdrop.classList.remove('show');
+      backdrop.setAttribute('aria-hidden','true');
+    }
 
-    openBtn && openBtn.addEventListener('click', openModal);
-    closeBtn && closeBtn.addEventListener('click', closeModal);
-    cancelBtn && cancelBtn.addEventListener('click', closeModal);
-    modal && modal.addEventListener('click', (e)=>{ if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && modal.classList.contains('show')) closeModal(); });
+    openBtn  && openBtn.addEventListener('click', openAvatarModal);
+    closeBtn && closeBtn.addEventListener('click', closeAvatarModal);
+    cancelBtn&& cancelBtn.addEventListener('click', closeAvatarModal);
+    backdrop && backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) closeAvatarModal(); });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && backdrop.classList.contains('show')) closeAvatarModal(); });
 
-    // Filtro & paginação
-    const grid = document.getElementById('avatarGrid');
+    // ===== Filtro & paginação (lazy via AJAX) =====
+    const grid   = document.getElementById('avatarGrid');
     const pgPrev = document.getElementById('pgPrev');
     const pgNext = document.getElementById('pgNext');
     const pgInfo = document.getElementById('pgInfo');
     const filterBtns = document.querySelectorAll('.chip-icon');
 
     let filter = 'todos';
-    let page = 1;
-    const PAGE_SIZE = 15; // 5x3
+    let page   = 1;
+    const PAGE_SIZE = 15;
 
-    function filtered(){
-      if (filter === 'todos') return AVATARS;
-      return AVATARS.filter(a => a.gender === filter);
-    }
-    function totalPages(){ const n = filtered().length; return Math.max(1, Math.ceil(n / PAGE_SIZE)); }
+    function totalPages(){ return Math.max(1, Math.ceil(TOTAL / PAGE_SIZE)); }
 
-    let selectedFile = '';
-    function render(){
-      const arr = filtered();
-      const tp = totalPages();
-      if (page > tp) page = tp;
-      const start = (page-1)*PAGE_SIZE;
-      const chunk = arr.slice(start, start+PAGE_SIZE);
-
+    function skeleton(n = PAGE_SIZE){
+      const frag = document.createDocumentFragment();
+      for (let i=0;i<n;i++){
+        const card = document.createElement('div');
+        card.className = 'avatar-card';
+        card.style.minHeight = '120px';
+        card.innerHTML = `<div style="width:60%;height:90px;border-radius:10px;background:#111826;opacity:.35;"></div>`;
+        frag.appendChild(card);
+      }
       grid.innerHTML = '';
-      chunk.forEach(item=>{
+      grid.appendChild(frag);
+    }
+
+    function render(items){
+      const frag = document.createDocumentFragment();
+      items.forEach(item=>{
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'avatar-card';
-        if (item.file === selectedFile) card.classList.add('selected');
         card.innerHTML = `
           <span class="badge-g">${item.gender === 'feminino' ? '♀' : (item.gender === 'masculino' ? '♂' : '⚤')}</span>
-          <img src="${item.url}" alt="Avatar ${item.file}">
+          <img loading="lazy" decoding="async" fetchpriority="low"
+               width="128" height="128"
+               src="${item.url}" alt="Avatar ${item.file}">
         `;
         card.addEventListener('click', ()=>{
-          selectedFile = item.file;
-          chosenInput.value = selectedFile;
+          chosenId.value = String(item.id);
           document.querySelectorAll('.avatar-card.selected').forEach(el=>el.classList.remove('selected'));
           card.classList.add('selected');
         });
-        grid.appendChild(card);
+        frag.appendChild(card);
       });
+      grid.innerHTML = '';
+      grid.appendChild(frag);
 
+      const tp = totalPages();
       pgInfo.textContent = 'Página ' + page + ' de ' + tp;
       pgPrev.disabled = (page<=1);
       pgNext.disabled = (page>=tp);
+    }
+
+    async function fetchAndRender(){
+      skeleton();
+      try{
+        const url = `?ajax=avatar_list&filter=${encodeURIComponent(filter)}&page=${page}&page_size=${PAGE_SIZE}`;
+        const res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
+        const data = await res.json();
+        TOTAL = data.total || 0;
+        render(data.items || []);
+      }catch(e){
+        grid.innerHTML = '<div style="color:#fca5a5">Falha ao carregar avatares.</div>';
+      }
     }
 
     filterBtns.forEach(b=>{
@@ -607,21 +752,18 @@ if ($avatarOptions) shuffle($avatarOptions);
         b.classList.add('active'); b.setAttribute('aria-selected','true');
         filter = b.dataset.filter;
         page = 1;
-        render();
+        fetchAndRender();
       });
     });
 
-    pgPrev.addEventListener('click', ()=>{ if (page>1){ page--; render(); } });
-    pgNext.addEventListener('click', ()=>{ if (page<totalPages()){ page++; render(); } });
+    pgPrev.addEventListener('click', ()=>{ if (page>1){ page--; fetchAndRender(); } });
+    pgNext.addEventListener('click', ()=>{ if (page<totalPages()){ page++; fetchAndRender(); } });
 
-    render(); // inicial
-
-    // Submit do modal
+    // seleção + submit (mantém)
     form.addEventListener('submit', function(e){
-      if (!chosenInput.value) {
+      if (!chosenId.value) {
         e.preventDefault();
         alert('Selecione um avatar da galeria.');
-        return false;
       }
     });
   </script>

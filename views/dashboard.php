@@ -170,7 +170,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
   exit;
 }
 
-// ====== Totais (AGORA filtrados por empresa) ======
 $stTotais = $pdo->prepare("
   SELECT
     (SELECT COUNT(*)
@@ -189,13 +188,27 @@ $stTotais = $pdo->prepare("
         AND (kr.dt_conclusao IS NOT NULL
              OR kr.status IN ('Concluído','Concluido','Completo','Finalizado'))) AS total_kr_done,
 
+    /* === KRs CRÍTICOS por milestone vencido === */
     (SELECT COUNT(*)
        FROM key_results kr
        JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
+       LEFT JOIN milestones_kr m
+              ON m.id_kr = kr.id_kr
+             AND m.data_ref = (
+                  SELECT MAX(m2.data_ref)
+                  FROM milestones_kr m2
+                  WHERE m2.id_kr = kr.id_kr
+                    AND m2.data_ref <= CURDATE()
+             )
       WHERE o.id_company = :cid
-        AND ( kr.status = 'Em Risco'
-              OR (kr.dt_conclusao IS NULL AND kr.data_fim IS NOT NULL AND kr.data_fim < CURDATE())
-              OR kr.farol IN ('vermelho','amarelo') )) AS total_kr_risk
+        /* considera apenas KRs ainda não concluídos */
+        AND (kr.dt_conclusao IS NULL
+             AND (kr.status IS NULL OR kr.status NOT IN ('Concluído','Concluido','Completo','Finalizado')))
+        /* tem milestone vencido... */
+        AND m.id_milestone IS NOT NULL
+        /* ...e está crítico: sem apontamento OU abaixo do esperado */
+        AND (m.valor_real_consolidado IS NULL OR m.valor_real_consolidado < m.valor_esperado)
+    ) AS total_kr_risk
 ");
 $stTotais->execute([':cid' => $companyId]);
 $totais = $stTotais->fetch();
@@ -205,23 +218,41 @@ $stPilares = $pdo->prepare("
   SELECT
     p.id_pilar,
     p.descricao_exibicao AS pilar_nome,
+
     COALESCE(COUNT(DISTINCT o.id_objetivo),0) AS objetivos,
-    COALESCE(COUNT(kr.id_kr),0) AS krs,
+    COALESCE(COUNT(kr.id_kr),0)               AS krs,
+
     COALESCE(SUM(CASE
       WHEN kr.dt_conclusao IS NOT NULL
         OR kr.status IN ('Concluído','Concluido','Completo','Finalizado') THEN 1
       ELSE 0 END),0) AS krs_concluidos,
-    COALESCE(SUM(CASE
-      WHEN kr.status = 'Em Risco'
-        OR (kr.dt_conclusao IS NULL AND kr.data_fim IS NOT NULL AND kr.data_fim < CURDATE())
-        OR kr.farol IN ('vermelho','amarelo') THEN 1
-      ELSE 0 END),0) AS krs_risco
+
+    /* === KRs CRÍTICOS por milestone vencido === */
+    COALESCE(SUM(
+      CASE
+        WHEN kr.dt_conclusao IS NULL
+         AND (kr.status IS NULL OR kr.status NOT IN ('Concluído','Concluido','Completo','Finalizado'))
+         AND m.id_milestone IS NOT NULL
+         AND (m.valor_real_consolidado IS NULL OR m.valor_real_consolidado < m.valor_esperado)
+        THEN 1 ELSE 0
+      END
+    ),0) AS krs_risco
+
   FROM dom_pilar_bsc p
   LEFT JOIN objetivos o
          ON o.pilar_bsc = p.id_pilar
         AND o.id_company = :cid
   LEFT JOIN key_results kr
          ON kr.id_objetivo = o.id_objetivo
+  /* último milestone vencido por KR (se existir) */
+  LEFT JOIN milestones_kr m
+         ON m.id_kr = kr.id_kr
+        AND m.data_ref = (
+             SELECT MAX(m2.data_ref)
+             FROM milestones_kr m2
+             WHERE m2.id_kr = kr.id_kr
+               AND m2.data_ref <= CURDATE()
+        )
   GROUP BY p.id_pilar, p.descricao_exibicao
   ORDER BY p.id_pilar
 ");

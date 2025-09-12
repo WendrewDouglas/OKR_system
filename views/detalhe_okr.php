@@ -319,6 +319,49 @@ if (isset($_GET['ajax'])) {
     }
 
     $rows = $st->fetchAll();
+
+    /* === ADD: detectar milestones + apontamentos para progresso === */
+    $msTable = null;
+    foreach (['milestones_kr','milestones'] as $t) {
+      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $msTable=$t; break; } catch(Throwable $e){}
+    }
+    $msCols = $msTable ? $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC) : [];
+    $hasMs  = function($n) use($msCols){ foreach($msCols as $c){ if (strcasecmp($c['Field'],$n)===0) return true; } return false; };
+
+    $msKr   = $msTable ? ($hasMs('id_kr') ? 'id_kr' : ($findKrIdCol($pdo,$msTable) ?: null)) : null;
+    $msDate = $msTable ? ($hasMs('data_ref') ? 'data_ref' : ($hasMs('dt_prevista') ? 'dt_prevista' : ($hasMs('data_prevista') ? 'data_prevista' : null))) : null;
+    $msExp  = $msTable ? ($hasMs('valor_esperado') ? 'valor_esperado' : ($hasMs('esperado') ? 'esperado' : null)) : null;
+    $msReal = $msTable ? ($hasMs('valor_real') ? 'valor_real' : ($hasMs('realizado') ? 'realizado' : ($hasMs('valor_real_consolidado') ? 'valor_real_consolidado' : null))) : null;
+
+    // Apontamentos (fallback quando não houver coluna "real" no milestone)
+    $apTable = null; $apKr=null; $apVal=null; $apWhen=null;
+    foreach (['apontamentos_kr','apontamentos'] as $t) {
+      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable=$t; break; } catch(Throwable $e){}
+    }
+    $getColAp = function(string $table, array $cands) use($pdo){
+      foreach($cands as $c){ try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if($st->fetch()) return $c; }catch(Throwable $e){} }
+      return null;
+    };
+    if ($apTable){
+      $apKr   = $getColAp($apTable, ['id_kr','kr_id','id_key_result','key_result_id']);
+      $apVal  = $getColAp($apTable, ['valor_real','valor']);
+      $apWhen = $getColAp($apTable, ['dt_apontamento','created_at','dt_criacao','data']);
+    }
+
+    // Statements preparadas para performance
+    $stExp = ($msTable && $msKr && $msDate && $msExp)
+      ? $pdo->prepare("SELECT `$msExp` FROM `$msTable` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1")
+      : null;
+
+    $stRealMs = ($msTable && $msKr && $msReal)
+      ? $pdo->prepare("SELECT `$msReal` FROM `$msTable` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ".
+                      ($msDate? "ORDER BY `$msDate` DESC ":"ORDER BY 1 LIMIT 1")." LIMIT 1")
+      : null;
+
+    $stRealAp = ($apTable && $apKr && $apVal)
+      ? $pdo->prepare("SELECT `$apVal` FROM `$apTable` WHERE `$apKr`=:id ".
+                      ($apWhen? "ORDER BY `$apWhen` DESC ":"")." LIMIT 1")
+      : null;
     $out = [];
     foreach ($rows as $r) {
       $nome = $r['responsavel_nome'] ?? null;
@@ -327,6 +370,47 @@ if (isset($_GET['ajax'])) {
         if ($txt !== '') $nome = ctype_digit($txt) ? ($getUserNameById($pdo,(int)$txt) ?: $txt) : $txt;
       }
       if (!$nome && !empty($r['kr_user_id'] ?? null)) $nome = $getUserNameById($pdo, (int)$r['kr_user_id']);
+
+            // === ADD: calcular progresso atual (%) e status (verde/vermelho) ===
+      $expNow  = null;   // valor esperado até hoje
+      $realNow = null;   // último apontado
+      if ($stExp)    { $stExp->execute(['id'=>$r['id_kr']]);  $expNow  = $stExp->fetchColumn(); }
+      if ($stRealMs) { $stRealMs->execute(['id'=>$r['id_kr']]); $realNow = $stRealMs->fetchColumn(); }
+      if ($realNow===false || $realNow===null) {
+        if ($stRealAp) { $stRealAp->execute(['id'=>$r['id_kr']]); $realNow = $stRealAp->fetchColumn(); }
+      }
+      $expNow  = is_numeric($expNow)  ? (float)$expNow  : null;
+      $realNow = is_numeric($realNow) ? (float)$realNow : null;
+
+      $base = is_numeric($r['baseline']) ? (float)$r['baseline'] : null;
+      $meta = is_numeric($r['meta'])     ? (float)$r['meta']     : null;
+
+      $pctAtual = null; $pctEsper = null; $ok = null;
+      if ($base !== null && $meta !== null && $meta != $base) {
+        // direção inferida por baseline->meta
+        $upTrend = $meta > $base;
+
+        if ($upTrend) {
+          if ($realNow!==null) $pctAtual = (($realNow - $base)/($meta - $base))*100;
+          if ($expNow !==null) $pctEsper = (($expNow  - $base)/($meta - $base))*100;
+          if ($realNow!==null && $expNow!==null) $ok = ($realNow >= $expNow);
+        } else {
+          if ($realNow!==null) $pctAtual = (($base - $realNow)/($base - $meta))*100;
+          if ($expNow !==null) $pctEsper = (($base - $expNow )/($base - $meta))*100;
+          if ($realNow!==null && $expNow!==null) $ok = ($realNow <= $expNow);
+        }
+
+        // Ajuste se houver "entre"/faixa na direção da métrica
+        $dir = strtolower((string)$r['direcao_metrica']);
+        if ($dir && preg_match('/entre|range|faixa/i',$dir) && $realNow!==null) {
+          $lo = min($base,$meta); $hi = max($base,$meta);
+          $ok = ($realNow >= $lo && $realNow <= $hi);
+          // percentuais permanecem com a mesma fórmula baseada em base→meta
+        }
+      }
+      $pctAtual = ($pctAtual===null? null : (int)round($pctAtual));
+      $pctEsper = ($pctEsper===null? null : (int)round($pctEsper));
+
 
       $out[] = [
         'id_kr' => $r['id_kr'],
@@ -343,6 +427,15 @@ if (isset($_GET['ajax'])) {
         'dt_novo_prazo' => $r['dt_novo_prazo'],
         'prazo_final' => $r['prazo_final'],
         'responsavel' => $nome ?: '—',
+
+        /* === ADD: progresso calculado === */
+        'progress' => [
+          'valor_atual'    => $realNow,
+          'valor_esperado' => $expNow,
+          'pct_atual'      => $pctAtual,   // inteiro (%)
+          'pct_esperado'   => $pctEsper,   // inteiro (%)
+          'ok'             => $ok          // true=verde, false=vermelho, null=indefinido
+        ]
       ];
     }
     echo json_encode(['success'=>true,'krs'=>$out]);
@@ -1641,6 +1734,17 @@ $saldoObj = max(0, $aprovObj - $realObj);
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
+    /* Chip de progresso (verde/vermelho) */
+    .meta-pill.prog-ok{
+      color:#22c55e;
+      background:#0c1f14;
+      border-color:#1a3d2a;
+    }
+    .meta-pill.prog-bad{
+      color:#f87171;
+      background:#1a0b0e;
+      border-color:#3b0d13;
+    }
     body{ background:#fff !important; color:#111; }
     :root{ --chat-w:0px; }
     .content{ background:transparent; }
@@ -1776,7 +1880,19 @@ $saldoObj = max(0, $aprovObj - $realObj);
     .orc-month .badge{ font-size:.7rem; border:1px solid #705e14; color:#ffec99; background:#3b320a; padding:2px 6px; border-radius:999px; }
     .orc-card{ background:#0e131a; border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:10px; }
     .orc-card-title{ font-weight:900; color:#eaeef6; margin-bottom:8px; display:flex; gap:8px; align-items:center; }
-    .table-wrap{ overflow:auto; }
+    /* ===== Modal de Apontamento: limitar altura da tabela ===== */
+    #modalApont .table-wrap{
+      /* o JS ajusta o max-height dinamicamente para 8 linhas */
+      overflow-y: auto;      /* garante a barra de rolagem vertical quando exceder */
+      overflow-x: hidden;    /* evita barra horizontal; a tabela já cuida do layout */
+    }
+
+    /* (opcional) fallback elegante se o JS não rodar por algum motivo */
+    @media (min-height: 500px){
+      #modalApont .table-wrap.fallback-cap {
+        max-height: 65vh;    /* não fica gigante; ainda assim mostra bastante conteúdo */
+      }
+    }
     .orc-two-cols{ display:grid; grid-template-columns:2fr 1fr; gap:10px; }
     @media (max-width:1000px){ .orc-two-cols{ grid-template-columns:1fr; } }
     .orc-list .item{ border:1px dashed #1f2a3a; border-radius:10px; padding:8px; margin-bottom:8px; color:#a6adbb; }
@@ -1842,16 +1958,8 @@ $saldoObj = max(0, $aprovObj - $realObj);
           <span class="pill" title="Aprovação"><i class="fa-regular fa-circle-check"></i><?= htmlspecialchars($g($objetivo,'status_aprovacao')) ?></span>
         </div>
 
-        <?php if ($g($objetivo,'observacoes','') !== '—'): ?>
-        <div class="obj-meta-pills" style="margin-top:8px">
-          <span class="pill" style="max-width:100%; white-space:normal;">
-            <i class="fa-regular fa-note-sticky"></i><strong>Obs.:</strong>&nbsp;<?= nl2br(htmlspecialchars($objetivo['observacoes'])) ?>
-          </span>
-        </div>
-        <?php endif; ?>
-
         <div class="obj-actions">
-          <a class="btn btn-outline" href="/OKR_system/objetivos_editar.php?id=<?= (int)$objetivo['id_objetivo'] ?>"><i class="fa-regular fa-pen-to-square"></i>&nbsp;Editar</a>
+          <a class="btn btn-outline" href="/OKR_system/views/objetivos_editar.php?id=<?= (int)$objetivo['id_objetivo'] ?>"><i class="fa-regular fa-pen-to-square"></i>&nbsp;Editar</a>
           <a class="btn btn-outline" href="/OKR_system/views/novo_key_result.php?id_objetivo=<?= (int)$objetivo['id_objetivo'] ?>"><i class="fa-solid fa-plus"></i>&nbsp;Novo KR</a>
           <button class="btn btn-outline" onclick="window.print()"><i class="fa-regular fa-file-lines"></i>&nbsp;Exportar</button>
         </div>
@@ -2179,6 +2287,41 @@ $saldoObj = max(0, $aprovObj - $realObj);
     function escapeHtml(s){ return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
     function truncate(s,n){ if(!s)return''; return s.length>n?s.slice(0,n-1)+'…':s; }
     function toast(msg, ok=true){ const t=document.createElement('div'); t.className='toast'+(ok?'':' error'); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+    // Limita a área visível da tabela do modal de apontamento a N linhas (default 8)
+    function capApontRows(maxRows = 8){
+      const wrap  = document.querySelector('#modalApont .table-wrap');
+      const table = document.querySelector('#modalApont .table');
+      const tbody = document.getElementById('ap_rows');
+      const thead = table ? table.querySelector('thead') : null;
+
+      if (!wrap || !tbody) return;
+
+      // Pega linhas visíveis (ignora a de "Carregando..." se ainda estiver)
+      const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.offsetParent !== null);
+      if (!rows.length){
+        // Sem linhas reais ainda: aplica um fallback suave e sai
+        wrap.classList.add('fallback-cap');
+        return;
+      } else {
+        wrap.classList.remove('fallback-cap');
+      }
+
+      // Escolhe uma linha de amostra para medir a altura real
+      let sample = rows.find(r => r.querySelector('td')) || rows[0];
+      const rowH    = sample.getBoundingClientRect().height || 56; // fallback ~56px
+      const headerH = thead ? (thead.getBoundingClientRect().height || 44) : 44;
+      const visible = Math.min(maxRows, rows.length);
+
+      // Altura máxima = cabeçalho + (altura de 8 linhas) + uma folguinha de 8px
+      const maxPx = Math.ceil(headerH + (rowH * visible) + 8);
+
+      wrap.style.maxHeight = maxPx + 'px';
+      // Só mostra barra quando realmente exceder
+      wrap.style.overflowY = rows.length > maxRows ? 'auto' : 'visible';
+    }
+
+    // Recalcula ao redimensionar a janela (mantém robusto)
+    window.addEventListener('resize', () => capApontRows(8));
     function toggleDrawer(sel, show=true){ const el=$(sel); if(!el) return; if(show){ el.classList.add('show'); } else { el.classList.remove('show'); } }
     function badgeFarol(v){
       v = (v||'').toLowerCase();
@@ -2430,6 +2573,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
     $('#ap_kr_um').textContent     = 'Unidade: ' + (data.kr?.unidade_medida ?? '—');
 
     const tb = $('#ap_rows'); tb.innerHTML='';
+    capApontRows(8);
     const total = (data.milestones||[]).length || 0;
 
     (data.milestones||[]).forEach((m, i)=>{
@@ -2617,16 +2761,26 @@ $saldoObj = max(0, $aprovObj - $realObj);
     async function loadKRs(){
       const cont = $('#krContainer');
       cont.innerHTML = `<div class="chip"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando KRs...</div>`;
+
       const res  = await fetch(`${SCRIPT}?ajax=load_krs&id_objetivo=${idObjetivo}`);
       const data = await res.json();
+
       if(!data.success){
         cont.innerHTML = `<div class="chip" style="background:#5b1b1b;color:#ffe4e6;border-color:#7a1020"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar</div>`;
         return;
       }
+
       cont.innerHTML = '';
       data.krs.forEach(kr=>{
         const id = kr.id_kr;
         const isCancel = (kr.status || '').toLowerCase().includes('cancel');
+
+        // === Progresso (%), vindo do backend; fallback seguro se não existir ===
+        const pct  = kr?.progress?.pct_atual      != null ? `${kr.progress.pct_atual}%`       : '—';
+        const pexp = kr?.progress?.pct_esperado   != null ? `${kr.progress.pct_esperado}%`    : '—';
+        const ok   = (kr?.progress?.ok === true) ? true : ((kr?.progress?.ok === false) ? false : null);
+        const progCls = ok === null ? 'white' : (ok ? 'prog-ok' : 'prog-bad'); // cores do chip
+
         cont.insertAdjacentHTML('beforeend', `
           <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
             <div class="kr-head">
@@ -2638,7 +2792,12 @@ $saldoObj = max(0, $aprovObj - $realObj);
                   <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
                   <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
                   <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
-                  <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
+
+                  <!-- === NOVO: chip de Progresso (%) substitui o chip de Baseline === -->
+                  <span class="meta-pill ${progCls}" title="Esperado: ${pexp} · Atual: ${pct}">
+                    <i class="fa-solid fa-chart-line"></i> Progresso: ${pct}
+                  </span>
+
                   <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
                 </div>
               </div>

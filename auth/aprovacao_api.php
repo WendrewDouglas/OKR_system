@@ -1,5 +1,5 @@
 <?php
-// auth/aprovacao_api.php — versão com permissões, IDs de aprovador e notificações
+// auth/aprovacao_api.php — versão com permissões, IDs de aprovador, notificações
 declare(strict_types=1);
 ini_set('display_errors',1);
 ini_set('display_startup_errors',1);
@@ -55,86 +55,133 @@ function allowedModules(PDO $pdo, string $uid, bool $isMaster): array {
   return array_values(array_unique($mods));
 }
 
+/* ===== helper join último movimento ===== */
+// [MOV] Subselect que pega o último movimento por referência & módulo
+function mov_join_sql(string $mod): string {
+  $mod = strtolower($mod);
+  return "
+    LEFT JOIN (
+      SELECT m.*
+      FROM aprovacao_movimentos m
+      JOIN (
+        SELECT MAX(id_movimento) AS id_movimento, tipo_estrutura, id_referencia
+        FROM aprovacao_movimentos
+        WHERE tipo_estrutura = '{$mod}'
+        GROUP BY tipo_estrutura, id_referencia
+      ) ult
+        ON ult.id_movimento = m.id_movimento
+    ) mov ON mov.tipo_estrutura = '{$mod}' AND mov.id_referencia = {ID_COL}
+  ";
+}
+
 /* ===== consultas ===== */
 function q_para_aprovar(PDO $pdo, array $mods): array {
   $rows = [];
   if (in_array('objetivo',$mods,true)) {
-    $sql = "SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
-            LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-            o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
-            DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-            DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-            o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc,
-            NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
-            FROM objetivos o
-            WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'";
+    $sql = "
+      SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
+             LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+             o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
+             DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+             DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+             o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc,
+             NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+             mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+      FROM objetivos o
+      ".str_replace('{ID_COL}','o.id_objetivo', mov_join_sql('objetivo'))."
+      WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'
+    ";
     $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
   }
   if (in_array('kr',$mods,true)) {
-    $sql = "SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
-            LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
-            k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
-            DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-            DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-            k.comentarios_aprovacao, NULL AS resumo,
-            k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc,
-            NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
-            FROM key_results k
-            LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
-            WHERE LOWER(COALESCE(k.status_aprovacao,''))='pendente'";
+    $sql = "
+      SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
+             LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
+             k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
+             DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+             DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+             k.comentarios_aprovacao, NULL AS resumo,
+             k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc,
+             NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+             mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+      FROM key_results k
+      LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
+      ".str_replace('{ID_COL}','k.id_kr', mov_join_sql('kr'))."
+      WHERE LOWER(COALESCE(k.status_aprovacao,''))='pendente'
+    ";
     $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
   }
   if (in_array('orcamento',$mods,true)) {
-    $sql = "SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
-            LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-            CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome,
-            o.id_user_criador AS usuario_criador_id,
-            DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-            DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-            o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
-            NULL AS objetivo_id, NULL AS objetivo_desc,
-            o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa
-            FROM orcamentos o
-            LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
-            WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'";
+    $sql = "
+      SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
+             LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+             CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome,
+             o.id_user_criador AS usuario_criador_id,
+             DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+             DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+             o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
+             NULL AS objetivo_id, NULL AS objetivo_desc,
+             o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+             mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+      FROM orcamentos o
+      LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
+      ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
+      WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'
+    ";
     $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
   }
-  foreach ($rows as &$r) $r['scope']='para_aprovar';
+  foreach ($rows as &$r) { $r['scope']='para_aprovar'; }
   return $rows;
 }
 
 function q_minhas(PDO $pdo, string $MEU_ID, string $MEU_NOME): array {
   $rows=[];
-  $st=$pdo->prepare("SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
-    LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-    o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-    DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc,
-    NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
-    FROM objetivos o WHERE (o.id_user_criador = :id OR (o.id_user_criador IS NULL AND o.usuario_criador=:nome))");
+
+  $st=$pdo->prepare("
+    SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
+           LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+           o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+           DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc,
+           NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+    FROM objetivos o
+    ".str_replace('{ID_COL}','o.id_objetivo', mov_join_sql('objetivo'))."
+    WHERE (o.id_user_criador = :id OR (o.id_user_criador IS NULL AND o.usuario_criador=:nome))
+  ");
   $st->execute([':id'=>$MEU_ID, ':nome'=>$MEU_NOME]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
-  $st=$pdo->prepare("SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
-    LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
-    k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-    DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    k.comentarios_aprovacao, NULL AS resumo, k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc,
-    NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
-    FROM key_results k LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
-    WHERE (k.id_user_criador = :id OR (k.id_user_criador IS NULL AND k.usuario_criador=:nome))");
+  $st=$pdo->prepare("
+    SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
+           LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
+           k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+           DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           k.comentarios_aprovacao, NULL AS resumo, k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc,
+           NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+    FROM key_results k
+    LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
+    ".str_replace('{ID_COL}','k.id_kr', mov_join_sql('kr'))."
+    WHERE (k.id_user_criador = :id OR (k.id_user_criador IS NULL AND k.usuario_criador=:nome))
+  ");
   $st->execute([':id'=>$MEU_ID, ':nome'=>$MEU_NOME]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
-  $st=$pdo->prepare("SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
-    LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-    CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-    DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
-    NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa
-    FROM orcamentos o LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
-    WHERE o.id_user_criador=:id");
+  $st=$pdo->prepare("
+    SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
+           LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+           CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+           DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
+           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+    FROM orcamentos o
+    LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
+    ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
+    WHERE o.id_user_criador=:id
+  ");
   $st->execute([':id'=>$MEU_ID]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
   foreach($rows as &$r){ $r['scope']='minhas'; if(!$r['usuario_criador_id']) $r['usuario_criador_id']=$MEU_ID; }
@@ -143,32 +190,52 @@ function q_minhas(PDO $pdo, string $MEU_ID, string $MEU_NOME): array {
 
 function q_reprovados_do_meu_usuario(PDO $pdo, string $MEU_ID, string $MEU_NOME): array {
   $rows=[];
-  $st=$pdo->prepare("SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
-    LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-    o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc, NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
+
+  $st=$pdo->prepare("
+    SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
+           LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+           o.usuario_criador AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           o.comentarios_aprovacao, NULL AS resumo, NULL AS objetivo_id, NULL AS objetivo_desc,
+           NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
     FROM objetivos o
-    WHERE LOWER(COALESCE(o.status_aprovacao,''))='reprovado' AND (o.id_user_criador=:id OR (o.id_user_criador IS NULL AND o.usuario_criador=:nome))");
+    ".str_replace('{ID_COL}','o.id_objetivo', mov_join_sql('objetivo'))."
+    WHERE LOWER(COALESCE(o.status_aprovacao,''))='reprovado'
+      AND (o.id_user_criador=:id OR (o.id_user_criador IS NULL AND o.usuario_criador=:nome))
+  ");
   $st->execute([':id'=>$MEU_ID, ':nome'=>$MEU_NOME]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
-  $st=$pdo->prepare("SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
-    LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
-    k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    k.comentarios_aprovacao, NULL AS resumo, k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc, NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa
-    FROM key_results k LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
-    WHERE LOWER(COALESCE(k.status_aprovacao,''))='reprovado' AND (k.id_user_criador=:id OR (k.id_user_criador IS NULL AND k.usuario_criador=:nome))");
+  $st=$pdo->prepare("
+    SELECT 'kr' AS module, k.id_kr AS id, k.descricao,
+           LOWER(COALESCE(k.status_aprovacao,'')) AS status_aprovacao,
+           k.usuario_criador AS usuario_criador_nome, k.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(k.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(k.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           k.comentarios_aprovacao, NULL AS resumo, k.id_objetivo AS objetivo_id, o.descricao AS objetivo_desc,
+           NULL AS id_iniciativa, NULL AS valor, NULL AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+    FROM key_results k
+    LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
+    ".str_replace('{ID_COL}','k.id_kr', mov_join_sql('kr'))."
+    WHERE LOWER(COALESCE(k.status_aprovacao,''))='reprovado'
+      AND (k.id_user_criador=:id OR (k.id_user_criador IS NULL AND k.usuario_criador=:nome))
+  ");
   $st->execute([':id'=>$MEU_ID, ':nome'=>$MEU_NOME]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
-  $st=$pdo->prepare("SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
-    LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
-    CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
-    DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-    o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
-    NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa
-    FROM orcamentos o LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
-    WHERE LOWER(COALESCE(o.status_aprovacao,''))='reprovado' AND o.id_user_criador=:id");
+  $st=$pdo->prepare("
+    SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
+           LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+           CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
+           DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
+           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+           mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
+    FROM orcamentos o
+    LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
+    ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
+    WHERE LOWER(COALESCE(o.status_aprovacao,''))='reprovado'
+      AND o.id_user_criador=:id
+  ");
   $st->execute([':id'=>$MEU_ID]); $rows=array_merge($rows,$st->fetchAll()?:[]);
 
   foreach($rows as &$r){ $r['scope']='reprovados'; if(!$r['usuario_criador_id']) $r['usuario_criador_id']=$MEU_ID; }
@@ -211,11 +278,22 @@ if ($method==='GET') {
   $rows = array_merge($rows, q_minhas($pdo, $MEU_ID, $MEU_NOME));
   $rows = array_merge($rows, q_reprovados_do_meu_usuario($pdo, $MEU_ID, $MEU_NOME));
 
+  // [MOV] normaliza payload de movimentos (decoda JSON)
+  foreach ($rows as &$r) {
+    $diff = [];
+    if (!empty($r['mov_campos_json'])) {
+      $tmp = json_decode($r['mov_campos_json'], true);
+      if (is_array($tmp)) $diff = $tmp;
+    }
+    $r['mov_diffs'] = $diff;
+    unset($r['mov_campos_json']);
+  }
+
   $stats = stats_pills($pdo, $MEU_ID, $MEU_NOME, $IS_APROVADOR, $mods);
   jexit(200, ['success'=>true,'stats'=>$stats,'rows'=>$rows]);
 }
 
-/* ===== POST actions ===== */
+/* ===== POST actions (inalterado) ===== */
 function norm($s){ return strtolower(trim((string)$s)); }
 $action = norm($_POST['action'] ?? '');
 $module = norm($_POST['module'] ?? '');
@@ -234,7 +312,6 @@ $decisao = ($action==='approve')?'aprovado':(($action==='reject')?'reprovado':'p
 
 $pdo->beginTransaction();
 try {
-  // para notificações depois do commit
   $ctx = ['module'=>$module,'id'=>$id,'acao'=>$action,'status'=>$decisao,'obs'=>$obs,'solicitante_id'=>$MEU_ID,'aprovador_id'=>null];
 
   $insFluxo = $pdo->prepare("
@@ -262,7 +339,6 @@ try {
       if ($st->rowCount()===0) throw new Exception('Estado não é mais pendente.');
       $ctx['aprovador_id'] = (int)$MEU_ID;
     }
-
   } elseif ($module==='kr') {
     if ($action==='resubmit') {
       $st=$pdo->prepare("UPDATE key_results SET status_aprovacao='pendente', aprovador=NULL, id_user_aprovador=NULL, dt_aprovacao=NULL
@@ -277,7 +353,6 @@ try {
       if ($st->rowCount()===0) throw new Exception('Estado não é mais pendente.');
       $ctx['aprovador_id'] = (int)$MEU_ID;
     }
-
   } else { // orcamento
     if ($action==='resubmit') {
       $st=$pdo->prepare("UPDATE orcamentos SET status_aprovacao='pendente', id_user_aprovador=NULL, dt_aprovacao=NULL
@@ -301,7 +376,6 @@ try {
 
   $pdo->commit();
 
-  // ===== notificações pós-commit =====
   notify_event($pdo, $ctx);
 
   jexit(200,['success'=>true]);
