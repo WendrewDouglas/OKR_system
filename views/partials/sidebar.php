@@ -105,7 +105,7 @@ $orgText       = ($orgName !== null && $orgName !== '') ? (string)$orgName : 'â€
 <!-- ===================== SIDEBAR ===================== -->
 <style>
 :root {
-  --sidebar-width: 250px;
+  --sidebar-width: 220px;
   --sidebar-collapsed: 60px;
   --transition-speed: 0.3s;
 }
@@ -127,9 +127,9 @@ body.collapsed .sidebar { width: var(--sidebar-collapsed); }
 .sidebar-header {
   width: 100%; display: flex; align-items: center; justify-content: center; height: 60px;
 }
-.sidebar-header .menu-toggle { font-size: 1.5rem; color: var(--bg2, #F1C40F); cursor: pointer; }
+.sidebar-header .menu-toggle { font-size: 1.0rem; color: var(--bg2, #F1C40F); cursor: pointer; }
 .sidebar-header .toggle-text {
-  margin-left: 0.5rem; color: var(--bg2, #F1C40F); font-size: 1rem; font-weight: 600;
+  margin-left: 0.5rem; color: var(--bg2, #F1C40F); font-size: 0.75rem; font-weight: 600;
   text-transform: uppercase; user-select: none; cursor: pointer;
 }
 body.collapsed .sidebar-header .toggle-text { display: none; }
@@ -140,7 +140,7 @@ body.collapsed .sidebar-header .toggle-text { display: none; }
 .sidebar .menu-item {
   display: flex; align-items: center; padding: 0.75rem 1rem; cursor: pointer;
   transition: background var(--transition-speed), color var(--transition-speed);
-  white-space: nowrap;
+  white-space: nowrap; font-size: 0.80rem;
   color: var(--bg2, #F1C40F);
 }
 .sidebar .menu-item:hover { background: var(--bg1-hover, #2B2B2B); }
@@ -162,7 +162,7 @@ body.collapsed .sidebar .menu-item { justify-content: center; }
 body.collapsed .sidebar .menu-item i.icon-main { margin-right: 0; }
 
 .submenu {
-  display: none; list-style: none; padding-left: 0; margin: 0; font-size: 0.85rem;
+  display: none; list-style: none; padding-left: 0; margin: 0; font-size: 0.75rem;
 }
 .submenu li {
   display: flex; align-items: center; padding: 0.25rem 2rem; cursor: pointer;

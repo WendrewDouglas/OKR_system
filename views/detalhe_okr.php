@@ -56,6 +56,13 @@ if (isset($_GET['ajax'])) {
       return $cache[$key];
     } catch (Throwable $e){ return $cache[$key] = false; }
   };
+  // Helper: limita percentuais entre 0% e 100%
+  $clampPct = static function($v){
+    if ($v === null) return null;
+    $v = (float)$v;
+    if (!is_finite($v)) return null;
+    return (int)round(max(0.0, min(100.0, $v)));
+  };
   $findKrUserIdCol = static function(PDO $pdo): ?string {
     try { $st = $pdo->query("SHOW COLUMNS FROM `key_results`"); }
     catch (Throwable $e) { return null; }
@@ -408,8 +415,11 @@ if (isset($_GET['ajax'])) {
           // percentuais permanecem com a mesma fórmula baseada em base→meta
         }
       }
-      $pctAtual = ($pctAtual===null? null : (int)round($pctAtual));
-      $pctEsper = ($pctEsper===null? null : (int)round($pctEsper));
+      // Garante as regras:
+      // 1) acima da meta => no máximo 100%
+      // 2) aquém da baseline => no mínimo 0%
+      $pctAtual = $clampPct($pctAtual);
+      $pctEsper = $clampPct($pctEsper);
 
 
       $out[] = [
@@ -441,6 +451,8 @@ if (isset($_GET['ajax'])) {
     echo json_encode(['success'=>true,'krs'=>$out]);
     exit;
   }
+
+  
 
   /* ---------- DETALHE DO KR ---------- */
   if ($action === 'kr_detail') {
@@ -1757,16 +1769,16 @@ $saldoObj = max(0, $aprovObj - $realObj);
     .crumbs i{ opacity:.8; }
     /* Header Objetivo */
     .obj-card{ position:relative; background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px 44px 16px 16px; box-shadow:var(--shadow); color:var(--text); overflow:hidden; }
-    .obj-title{ font-size:1.35rem; font-weight:900; margin:0 0 8px; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
+    .obj-title{ font-size:0.95rem; font-weight:700; margin:0 0 8px; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
     .obj-title i{ color:var(--gold); }
     .obj-meta-pills{ display:flex; flex-wrap:wrap; gap:8px; }
     .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color:#a6adbb; padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
     .pill i{ font-size:.9rem; opacity:.9; }
     .obj-actions{ display:flex; gap:10px; margin-top:12px; }
-    .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer; }
+    .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; }
     .btn:hover{ border-color:#2a3342; transform:translateY(-1px); transition:.15s; }
     .btn-primary{ background:#1f2937; }
-    .btn-outline{ background:transparent; }
+    .btn-outline{ background:transparent; font-size: 0.7rem; }
     .btn-sm{ padding:7px 10px; font-size:.86rem; border-radius:10px; }
     .btn-gold{ background:var(--gold); border-color:var(--gold); color:#1f2937; }
     .btn-gold:hover{ filter:brightness(0.95); }
@@ -1808,7 +1820,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
     .kr-list{ display:flex; flex-direction:column; gap:10px; }
     .kr-card{ background:#0f1420; border:1px solid var(--border); border-radius:14px; padding:10px 12px; box-shadow:var(--shadow); color:#eaeef6; }
     .kr-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-    .kr-title{ font-weight:800; display:flex; align-items:center; gap:8px; color: var(--gold); }
+    .kr-title{ font-weight:600; display:flex; align-items:center; gap:8px; color: var(--gold); }
     .meta-line{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
     .meta-pill{ display:inline-flex; align-items:center; gap:6px; background:#0b0f14; border:1px solid var(--border); color:#a6adbb; padding:5px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
     .meta-pill i{ font-size:.85rem; }
@@ -1890,7 +1902,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
     /* (opcional) fallback elegante se o JS não rodar por algum motivo */
     @media (min-height: 500px){
       #modalApont .table-wrap.fallback-cap {
-        max-height: 65vh;    /* não fica gigante; ainda assim mostra bastante conteúdo */
+        max-height: 50vh;    /* não fica gigante; ainda assim mostra bastante conteúdo */
       }
     }
     .orc-two-cols{ display:grid; grid-template-columns:2fr 1fr; gap:10px; }
@@ -1992,13 +2004,6 @@ $saldoObj = max(0, $aprovObj - $realObj);
           <div class="kpi-head"><span>Realizado / Saldo</span><div class="kpi-icon money"><i class="fa-solid fa-wallet"></i></div></div>
           <div class="kpi-value">R$ <?= number_format($realObj,2,',','.') ?> <span style="opacity:.7">/</span> R$ <?= number_format($saldoObj,2,',','.') ?></div>
         </div>
-      </section>
-
-      <!-- Filtros -->
-      <section class="filters">
-        <span style="font-size:.88rem; color:#555;"><i class="fa-solid fa-filter"></i> Filtros:</span>
-        <div id="chipsFilters" class="chips"></div>
-        <button class="btn btn-outline" id="btnClearFilters" style="margin-left:auto"><i class="fa-solid fa-broom"></i>&nbsp;Limpar filtros</button>
       </section>
 
       <!-- Lista de KRs -->
@@ -2770,16 +2775,30 @@ $saldoObj = max(0, $aprovObj - $realObj);
         return;
       }
 
+      // Acumuladores para o progresso do OBJETIVO (média dos KRs)
+      let sumAtual = 0, sumEsper = 0, n = 0;
+
+      const toNum = v => (v === null || v === undefined || v === '' || isNaN(v)) ? null : Number(v);
+
       cont.innerHTML = '';
       data.krs.forEach(kr=>{
         const id = kr.id_kr;
         const isCancel = (kr.status || '').toLowerCase().includes('cancel');
 
-        // === Progresso (%), vindo do backend; fallback seguro se não existir ===
-        const pct  = kr?.progress?.pct_atual      != null ? `${kr.progress.pct_atual}%`       : '—';
-        const pexp = kr?.progress?.pct_esperado   != null ? `${kr.progress.pct_esperado}%`    : '—';
-        const ok   = (kr?.progress?.ok === true) ? true : ((kr?.progress?.ok === false) ? false : null);
-        const progCls = ok === null ? 'white' : (ok ? 'prog-ok' : 'prog-bad'); // cores do chip
+        // Progresso do KR
+        const pctAtualNum = toNum(kr?.progress?.pct_atual);
+        const pctEsperNum = toNum(kr?.progress?.pct_esperado);
+        const okFlag = (kr?.progress?.ok === true) ? true : ((kr?.progress?.ok === false) ? false : null);
+
+        if (pctAtualNum !== null && pctEsperNum !== null) {
+          sumAtual += pctAtualNum;
+          sumEsper += pctEsperNum;
+          n++;
+        }
+
+        const pctLabel  = pctAtualNum !== null ? `${pctAtualNum}%` : '—';
+        const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
+        const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
 
         cont.insertAdjacentHTML('beforeend', `
           <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
@@ -2787,17 +2806,17 @@ $saldoObj = max(0, $aprovObj - $realObj);
               <div>
                 <div class="kr-title"><i class="fa-solid fa-flag"></i> KR${kr.key_result_num ? ' ' + kr.key_result_num : ''}: ${escapeHtml(truncate(kr.descricao||'', 160))}</div>
                 <div class="meta-line">
+                  <!-- PROGRESSO EM PRIMEIRO LUGAR -->
+                  <span class="meta-pill ${progCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
+                    <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
+                  </span>
+
                   <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
                   <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
                   <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
                   <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
                   <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
-
-                  <!-- === NOVO: chip de Progresso (%) substitui o chip de Baseline === -->
-                  <span class="meta-pill ${progCls}" title="Esperado: ${pexp} · Atual: ${pct}">
-                    <i class="fa-solid fa-chart-line"></i> Progresso: ${pct}
-                  </span>
-
+                  <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
                 </div>
               </div>
@@ -2815,7 +2834,110 @@ $saldoObj = max(0, $aprovObj - $realObj);
           </article>
         `);
       });
+      async function loadKRs(){
+      const cont = $('#krContainer');
+      cont.innerHTML = `<div class="chip"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando KRs...</div>`;
+
+      const res  = await fetch(`${SCRIPT}?ajax=load_krs&id_objetivo=${idObjetivo}`);
+      const data = await res.json();
+
+      if(!data.success){
+        cont.innerHTML = `<div class="chip" style="background:#5b1b1b;color:#ffe4e6;border-color:#7a1020"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar</div>`;
+        return;
+      }
+
+      // Acumuladores para o progresso do OBJETIVO (média dos KRs)
+      let sumAtual = 0, sumEsper = 0, n = 0;
+
+      const toNum = v => (v === null || v === undefined || v === '' || isNaN(v)) ? null : Number(v);
+
+      cont.innerHTML = '';
+      data.krs.forEach(kr=>{
+        const id = kr.id_kr;
+        const isCancel = (kr.status || '').toLowerCase().includes('cancel');
+
+        // Progresso do KR
+        const pctAtualNum = toNum(kr?.progress?.pct_atual);
+        const pctEsperNum = toNum(kr?.progress?.pct_esperado);
+        const okFlag = (kr?.progress?.ok === true) ? true : ((kr?.progress?.ok === false) ? false : null);
+
+        if (pctAtualNum !== null && pctEsperNum !== null) {
+          sumAtual += pctAtualNum;
+          sumEsper += pctEsperNum;
+          n++;
+        }
+
+        const pctLabel  = pctAtualNum !== null ? `${pctAtualNum}%` : '—';
+        const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
+        const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
+
+        cont.insertAdjacentHTML('beforeend', `
+          <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
+            <div class="kr-head">
+              <div>
+                <div class="kr-title"><i class="fa-solid fa-flag"></i> KR${kr.key_result_num ? ' ' + kr.key_result_num : ''}: ${escapeHtml(truncate(kr.descricao||'', 160))}</div>
+                <div class="meta-line">
+                  <!-- PROGRESSO EM PRIMEIRO LUGAR -->
+                  <span class="meta-pill ${progCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
+                    <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
+                  </span>
+
+                  <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
+                  <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
+                  <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
+                  <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
+                  <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
+                  <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
+                  <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
+                </div>
+              </div>
+              <div class="kr-actions">
+                <button class="btn btn-gold btn-sm" data-act="apont" data-id="${id}"><i class="fa-regular fa-pen-to-square"></i> Novo apontamento</button>
+                <button class="btn btn-outline btn-sm" data-act="nova" data-id="${id}"><i class="fa-solid fa-screwdriver-wrench"></i> Incluir iniciativa</button>
+                <button class="kr-toggle gold" title="Expandir" data-act="toggle" data-id="${id}">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+              </div>
+            </div>
+            <div class="kr-body">
+              ${renderTabs(id)}
+            </div>
+          </article>
+        `);
+      });
+
+      // ====== CHIP DE PROGRESSO DO OBJETIVO (média dos KRs) ======
+      const objPctAtual = n > 0 ? Math.round(sumAtual / n) : null;
+      const objPctEsper = n > 0 ? Math.round(sumEsper / n) : null;
+      const objOk       = (objPctAtual !== null && objPctEsper !== null) ? (objPctAtual >= objPctEsper) : null;
+
+      const objPctLabel = objPctAtual !== null ? `${objPctAtual}%` : '—';
+      const objExpLabel = objPctEsper !== null ? `${objPctEsper}%` : '—';
+      const objCls      = objOk === null ? 'white' : (objOk ? 'prog-ok' : 'prog-bad');
+
+      const metaBar = document.querySelector('.obj-meta-pills');
+      if (metaBar) {
+        // Atualiza se já existir; senão insere como primeiro chip
+        const existing = document.querySelector('#objProgChip');
+        const chipHTML = `
+          <span class="meta-pill ${objCls}" id="objProgChip" title="Esperado: ${objExpLabel} · Atual: ${objPctLabel}">
+            <i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${objPctLabel}
+          </span>
+        `;
+        if (existing) {
+          existing.classList.remove('prog-ok','prog-bad','white');
+          existing.classList.add(objCls);
+          existing.title = `Esperado: ${objExpLabel} · Atual: ${objPctLabel}`;
+          existing.innerHTML = `<i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${objPctLabel}`;
+          // garante que fique em primeiro
+          if (metaBar.firstElementChild !== existing) metaBar.insertBefore(existing, metaBar.firstChild);
+        } else {
+          metaBar.insertAdjacentHTML('afterbegin', chipHTML);
+        }
+      }
     }
+  }
+
 
     function renderTabs(id){
       return `
@@ -3553,6 +3675,71 @@ $saldoObj = max(0, $aprovObj - $realObj);
       });
       moBody.observe(document.body,{childList:true,subtree:true});
     });
-  </script>
+
+    // ID do objetivo disponível no PHP
+      const OBJ_ID = <?= (int)$id_objetivo ?>;
+
+      // Calcula médias e injeta/atualiza o chip no header do objetivo
+      function injectObjectiveProgressChip(krs) {
+        let sumAtual = 0, sumEsper = 0, nAtual = 0, nEsper = 0;
+
+        (krs || []).forEach(kr => {
+          const pa = kr?.progress?.pct_atual;
+          const pe = kr?.progress?.pct_esperado;
+          if (Number.isFinite(pa)) { sumAtual += Math.max(0, Math.min(100, pa)); nAtual++; }
+          if (Number.isFinite(pe)) { sumEsper += Math.max(0, Math.min(100, pe)); nEsper++; }
+        });
+
+        const objPctAtual = nAtual ? Math.round(sumAtual / nAtual) : null;
+        const objPctEsper = nEsper ? Math.round(sumEsper / nEsper) : null;
+        const objOk = (objPctAtual !== null && objPctEsper !== null)
+          ? (objPctAtual >= objPctEsper)
+          : null;
+
+        const metaBar = document.querySelector('.obj-meta-pills');
+        if (!metaBar) return;
+
+        const id = 'objProgChip';
+        const cls = objOk === null ? 'white' : (objOk ? 'prog-ok' : 'prog-bad');
+        const lblAtual = (objPctAtual === null) ? '—' : (objPctAtual + '%');
+        const lblEsper = (objPctEsper === null) ? '—' : (objPctEsper + '%');
+        const title    = `Esperado: ${lblEsper} · Atual: ${lblAtual}`;
+
+        const html = `
+          <span class="meta-pill ${cls}" id="${id}" title="${title}">
+            <i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${lblAtual}
+          </span>
+        `;
+
+        // Atualiza se já existir; senão, insere como PRIMEIRO chip do header
+        const existing = document.getElementById(id);
+        if (existing) {
+          existing.classList.remove('prog-ok','prog-bad','white');
+          existing.classList.add(cls);
+          existing.title = title;
+          existing.innerHTML = `<i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${lblAtual}`;
+          if (metaBar.firstElementChild !== existing) metaBar.insertBefore(existing, metaBar.firstChild);
+        } else {
+          metaBar.insertAdjacentHTML('afterbegin', html);
+        }
+      }
+
+      // Busca os KRs e aciona a função acima
+      async function refreshObjectiveProgressFromKRs() {
+        try {
+          const url = `/OKR_system/views/detalhe_okr.php?ajax=load_krs&id_objetivo=${OBJ_ID}`;
+          const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          const data = await resp.json();
+          if (data?.success && Array.isArray(data.krs)) {
+            injectObjectiveProgressChip(data.krs);
+          }
+        } catch (e) {
+          console.error('Falha ao atualizar chip de progresso do objetivo:', e);
+        }
+      }
+
+      // Garante que o header já existe no DOM
+      document.addEventListener('DOMContentLoaded', refreshObjectiveProgressFromKRs);
+    </script>
 </body>
 </html>

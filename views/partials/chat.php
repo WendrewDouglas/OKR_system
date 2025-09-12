@@ -51,7 +51,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
     bottom: 20px;
     width: 300px;
     height: 80vh;
-    background: #fff;
+    background: #ffffffff;
     box-shadow: -2px 0 5px rgba(0,0,0,0.1);
     border-radius: 8px;
     display: flex;
@@ -71,14 +71,16 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
 }
 .chat-header {
     padding: 10px;
-    background: #ededed;
+    background: #128C7E;
     font-weight: bold;
+    color: #fff;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 .chat-header button {
     background: transparent;
+    color: #fff;
     border: none;
     font-size: 1rem;
     cursor: pointer;
@@ -86,7 +88,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
 .chat-messages {
     flex: 1;
     padding: 10px;
-    background: #f9f9f9;
+    background: #202021;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -126,14 +128,15 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
     display: flex;
     align-items: center;
     padding: 10px;
-    border-top: 1px solid #ccc;
-    background: #fff;
+    border-top: 1px solid #747474ff;
+    background: #202021;
 }
 .chat-input input {
     flex: 1;
     padding: 0.75rem 1rem;
     font-size: 0.75rem;
-    border: 1px solid #ccc;
+    border: 1px solid #808080ff;
+    background: #dcf8c6;
     border-radius: 20px;
     outline: none;
     margin-right: 0.5rem;
