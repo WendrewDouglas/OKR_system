@@ -157,6 +157,23 @@ if (!$hasQuinzenal) {
     .form-card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; }
     .grid-2{ display:grid; grid-template-columns:2fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    /* Dois campos lado a lado (50% cada) */
+    .split{
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* duas colunas iguais */
+      gap: 10px;
+      align-items: center;
+    }
+    .split > * { min-width: 0; }      /* evita overflow dentro da célula */
+    .split select, .split input{
+      width: 100%;                    /* ocupa a largura da célula */
+    }
+
+    /* Em telas pequenas, empilha (opcional) */
+    @media (max-width: 600px){
+      .split{ grid-template-columns: 1fr; }
+    }
+
     @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
 
     label{ display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
@@ -167,8 +184,7 @@ if (!$hasQuinzenal) {
     .helper{ color:#9aa4b2; font-size:.85rem; }
 
     select.has-value{
-      border-color: var(--gold) !important;
-      box-shadow: 0 0 0 2px rgba(246,195,67,.15);
+      box-shadow: 0 0 0 2px rgba(221, 201, 23, 0.15);
     }
 
     .save-row{ display:flex; justify-content:center; margin-top:16px; }
@@ -361,7 +377,7 @@ if (!$hasQuinzenal) {
               <select id="natureza_kr" name="natureza_kr">
                 <option value="">Selecione...</option>
                 <?php foreach($naturezas as $n): ?>
-                  <option value="<?= htmlspecialchars($n['id_natureza'], ENT_QUOTES, 'UTF-8') ?>">
+                  <option value="<?= htmlspecialchars(trim($n['id_natureza']), ENT_QUOTES, 'UTF-8') ?>">
                     <?= htmlspecialchars($n['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?>
                   </option>
                 <?php endforeach; ?>
@@ -376,6 +392,8 @@ if (!$hasQuinzenal) {
                   <option value="<?= htmlspecialchars($t['id_tipo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
               </select>
+              <!-- abaixo do select de tipo_kr -->
+              <div id="tipo_help" class="note"></div>
             </div>
           </div>
 
@@ -393,25 +411,59 @@ if (!$hasQuinzenal) {
               </select>
             </div>
             <div id="ciclo_detalhe_wrapper">
-              <div id="ciclo_detalhe_anual" class="detalhe" style="display:none; margin-top:6px;">
-                <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
+            <!-- anual (igual) -->
+            <div id="ciclo_detalhe_anual" class="detalhe" style="display:none; margin-top:6px;">
+              <label for="ciclo_anual_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+              <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
+            </div>
+
+            <!-- semestral: ANO + PERÍODO -->
+            <div id="ciclo_detalhe_semestral" class="detalhe" style="display:none; margin-top:6px;">
+              <label for="ciclo_sem_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+              <div class="split">
+                <select id="ciclo_sem_ano" name="ciclo_sem_ano"></select>
+                <select id="ciclo_sem_per" name="ciclo_sem_per">
+                  <option value="">Selecione o período…</option>
+                  <option value="S1">1º Semestre</option>
+                  <option value="S2">2º Semestre</option>
+                </select>
               </div>
-              <div id="ciclo_detalhe_semestral" class="detalhe" style="display:none; margin-top:6px;">
-                <select id="ciclo_semestral" name="ciclo_semestral"></select>
+            </div>
+
+            <!-- trimestral: ANO + PERÍODO -->
+            <div id="ciclo_detalhe_trimestral" class="detalhe" style="margin-top:6px;">
+              <label for="ciclo_tri_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+              <div class="split">
+                <select id="ciclo_tri_ano" name="ciclo_tri_ano"></select>
+                <select id="ciclo_tri_per" name="ciclo_tri_per">
+                  <option value="">Selecione o período…</option>
+                  <option value="Q1">1º Quarter</option>
+                  <option value="Q2">2º Quarter</option>
+                  <option value="Q3">3º Quarter</option>
+                  <option value="Q4">4º Quarter</option>
+                </select>
               </div>
-              <div id="ciclo_detalhe_trimestral" class="detalhe" style="margin-top:6px;">
-                <select id="ciclo_trimestral" name="ciclo_trimestral"></select>
+            </div>
+
+            <!-- bimestral: ANO + PERÍODO (pares de meses do ano escolhido) -->
+            <div id="ciclo_detalhe_bimestral" class="detalhe" style="display:none; margin-top:6px;">
+              <label for="ciclo_bim_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+              <div class="split">
+                <select id="ciclo_bim_ano" name="ciclo_bim_ano"></select>
+                <select id="ciclo_bim_per" name="ciclo_bim_per"></select>
               </div>
-              <div id="ciclo_detalhe_bimestral" class="detalhe" style="display:none; margin-top:6px;">
-                <select id="ciclo_bimestral" name="ciclo_bimestral"></select>
-              </div>
-              <div id="ciclo_detalhe_mensal" class="detalhe" style="display:none; margin-top:6px;" >
+            </div>
+
+            <!-- mensal e personalizado permanecem iguais -->
+              <div id="ciclo_detalhe_mensal" class="detalhe" style="display:none; margin-top:6px;">
+                <label for="ciclo_mensal_mes"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
                 <div class="split">
                   <select id="ciclo_mensal_mes" name="ciclo_mensal_mes"></select>
                   <select id="ciclo_mensal_ano" name="ciclo_mensal_ano"></select>
                 </div>
               </div>
               <div id="ciclo_detalhe_personalizado" class="detalhe" style="display:none; margin-top:6px;">
+                <label for="ciclo_pers_inicio"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
                 <div class="split">
                   <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
                   <input type="month" id="ciclo_pers_fim" name="ciclo_pers_fim">
@@ -448,7 +500,7 @@ if (!$hasQuinzenal) {
               <div class="note">Se não escolher, será aplicado “Não Iniciado”.</div>
             </div>
             <div>
-              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Responsável pelo KR</label>
+              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Envolvidos no KR</label>
               <select id="responsavel_kr" name="responsavel">
                 <option value="">Selecione...</option>
                 <?php foreach($users as $u): ?>
@@ -555,6 +607,51 @@ if (!$hasQuinzenal) {
   </div>
 
   <script>
+  const TYPE_HELP = {
+    'alavanca':    'Explica ~80% do valor do ciclo. Alto impacto e virada de chave.',
+    'habilitador': 'Prepara o terreno (capacidade, dados, compliance, infraestrutura). Leads que viram Alavanca se provarem impacto.',
+    'guardiao':    'Saúde contínua (risco/segurança/continuidade). Geralmente KPI com faixa; só puxa orçamento ao cruzar a borda.'
+  };
+  function applyTipoHelp(){
+    const v = (document.querySelector('#tipo_kr')?.value || '').toLowerCase();
+    const el = document.querySelector('#tipo_help');
+    if (el) el.textContent = TYPE_HELP[v] || '';
+  }
+  document.querySelector('#tipo_kr')?.addEventListener('change', applyTipoHelp);
+  applyTipoHelp();
+
+  // helper no topo do script (perto das outras utils)
+  function normNat(n){
+    n = String(n||'')
+          .trim()
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+          .replace(/\s+/g,'_')                             // espaço -> underscore
+          .replace(/[^a-z0-9_]/g,'');                      // remove lixo
+
+    // Constante (reta)
+    if (['acumulativo','acumulativa','acumulativo_constante','acumulado_constante','constante'].includes(n))
+      return 'acumulativo_constante';
+
+    // Exponencial (aceita truncado e sinônimos)
+    if (
+      n === 'acumulativo_exponencial' ||
+      n === 'acumulativo_exponenc' ||
+      n.startsWith('acumulativo_exponen') ||  // pega "acumulativo_exponen", "acumulativo_exponencial" etc.
+      n === 'acumulado_exponencial' ||
+      n === 'exponencial' ||
+      n === 'expo'
+    ){
+      return 'acumulativo_exponencial';
+    }
+
+    // Demais
+    if (['binario','binaria'].includes(n)) return 'binario';
+    if (['pontual','flutuante'].includes(n)) return 'pontual';
+    return n;
+  }
+
+
   // ========= Utilidades =========
   const $  = (s, r=document)=>r.querySelector(s);
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
@@ -584,8 +681,9 @@ if (!$hasQuinzenal) {
   function lastDayOfMonth(year, monthIndex0){ return new Date(year, monthIndex0+1, 0).getDate(); }
 
   function computePeriodFromCycle(){
-    const tipo = ($('#ciclo_tipo')?.value || 'trimestral').toLowerCase();
-    const nowY = new Date().getFullYear();
+    const tipo = ($('#ciclo_tipo')?.value || 'trimestral').trim().toLowerCase();
+    const now = new Date();
+    const nowY = now.getFullYear();
     let start, end;
 
     if (tipo === 'anual') {
@@ -594,39 +692,34 @@ if (!$hasQuinzenal) {
       end   = new Date(y, 11, lastDayOfMonth(y,11));
     }
     else if (tipo === 'semestral') {
-      const v = $('#ciclo_semestral')?.value || '';
-      const m = v.match(/^S([12])\/(\d{4})$/);
-      if (m) {
-        const s = m[1] === '1' ? 0 : 6;
-        const y = parseInt(m[2],10);
-        start = new Date(y, s, 1);
-        const endMonth = s === 0 ? 5 : 11;
-        end   = new Date(y, endMonth, lastDayOfMonth(y,endMonth));
-      }
+      const y   = parseInt($('#ciclo_sem_ano')?.value || nowY, 10);
+      const per = ($('#ciclo_sem_per')?.value || '').toUpperCase();
+      if (per === 'S1') { start = new Date(y, 0, 1); end = new Date(y, 5, lastDayOfMonth(y,5)); }
+      else if (per === 'S2') { start = new Date(y, 6, 1); end = new Date(y, 11, lastDayOfMonth(y,11)); }
     }
     else if (tipo === 'trimestral') {
-      const v = $('#ciclo_trimestral')?.value || '';
-      const m = v.match(/^Q([1-4])\/(\d{4})$/);
-      if (m) {
-        const q = parseInt(m[1],10);
-        const y = parseInt(m[2],10);
-        const startMonth = (q-1)*3;
-        const endMonth   = startMonth+2;
-        start = new Date(y, startMonth, 1);
-        end   = new Date(y, endMonth, lastDayOfMonth(y,endMonth));
+      const y   = parseInt($('#ciclo_tri_ano')?.value || nowY, 10);
+      const per = ($('#ciclo_tri_per')?.value || '').toUpperCase();
+      const map = { Q1:0, Q2:3, Q3:6, Q4:9 };
+      if (map.hasOwnProperty(per)) {
+        const sm = map[per];
+        const em = sm+2;
+        start = new Date(y, sm, 1);
+        end   = new Date(y, em, lastDayOfMonth(y,em));
       }
     }
     else if (tipo === 'bimestral') {
-      const v = $('#ciclo_bimestral')?.value || '';
-      const m = v.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      const y   = parseInt($('#ciclo_bim_ano')?.value || nowY, 10);
+      const per = $('#ciclo_bim_per')?.value || ''; // formato "01-02", "03-04"...
+      const m = per.match(/^(\d{2})-(\d{2})$/);
       if (m) {
-        const m1 = parseInt(m[1],10)-1, m2 = parseInt(m[2],10)-1, y = parseInt(m[3],10);
+        const m1 = parseInt(m[1],10)-1, m2 = parseInt(m[2],10)-1;
         start = new Date(y, m1, 1);
         end   = new Date(y, m2, lastDayOfMonth(y,m2));
       }
     }
     else if (tipo === 'mensal') {
-      const mm = parseInt($('#ciclo_mensal_mes')?.value || (new Date().getMonth()+1), 10)-1;
+      const mm = parseInt($('#ciclo_mensal_mes')?.value || (now.getMonth()+1), 10)-1;
       const yy = parseInt($('#ciclo_mensal_ano')?.value || nowY, 10);
       start = new Date(yy, mm, 1);
       end   = new Date(yy, mm, lastDayOfMonth(yy,mm));
@@ -644,8 +737,9 @@ if (!$hasQuinzenal) {
       }
     }
 
+    // fallback (trimestre corrente) se algo não estiver selecionado ainda
     if (!start || !end) {
-      const d = new Date(), m = d.getMonth()+1, y = d.getFullYear();
+      const m = now.getMonth()+1, y = nowY;
       const q = m<=3?1:m<=6?2:m<=9?3:4;
       const sm = (q-1)*3, em = sm+2;
       start = new Date(y, sm, 1);
@@ -666,29 +760,40 @@ if (!$hasQuinzenal) {
     const targetFirst = new Date(first.getFullYear(), first.getMonth() + stepMonths, 1);
     return endOfMonth(targetFirst);
   }
+
   function gerarSerieDatas(startISO, endISO, freq){
     const out = [];
     if(!startISO || !endISO) return out;
+
     const start = new Date(startISO);
     const end   = new Date(endISO);
-    const f = (freq||'').toLowerCase();
 
-    const pushUnique = (d)=>{
+    // normaliza acentos e caixa: "diário" -> "diario"
+    const f = (freq || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    const pushUnique = (d) => {
       const iso = toISODate(d);
-      if(out.length===0 || out[out.length-1]!==iso){ out.push(iso); }
+      if(out.length === 0 || out[out.length-1] !== iso){ out.push(iso); }
     };
 
-    if (f==='semanal' || f==='quinzenal'){
-      const stepDays = (f==='semanal')?7:15;
+    // Frequências em dias
+    if (f === 'diario' || f === 'semanal' || f === 'quinzenal') {
+      const stepDays = f === 'diario' ? 1 : (f === 'semanal' ? 7 : 15);
       let d = new Date(start);
-      d.setDate(d.getDate()+stepDays);
+      d.setDate(d.getDate() + stepDays);
       while (d < end) {
         pushUnique(d);
-        d.setDate(d.getDate()+stepDays);
+        d.setDate(d.getDate() + stepDays);
       }
+      // sempre garante o fim do período como último marco
       pushUnique(end);
-    } else {
-      const stepMonths = ({mensal:1,bimestral:2,trimestral:3,semestral:6,anual:12}[f] || 1);
+    }
+    // Frequência em meses (resta "mensal")
+    else {
+      const stepMonths = 1; // mensal
       const firstEnd = endOfMonthOffsetFromStart(start, stepMonths);
       if (firstEnd > end){
         pushUnique(end);
@@ -699,7 +804,8 @@ if (!$hasQuinzenal) {
         pushUnique(end);
       }
     }
-    if (out.length===0) out.push(toISODate(new Date(endISO)));
+
+    if (out.length === 0) out.push(toISODate(new Date(endISO)));
     return out;
   }
 
@@ -713,29 +819,57 @@ if (!$hasQuinzenal) {
     const N = datas.length;
     const out = [];
     const isInt = unidadeRequerInteiro(unidade);
-    const round = (v)=> isInt ? Math.round(v) : Math.round(v*100)/100;
+    const round = v => isInt ? Math.round(v) : Math.round(v*100)/100;
 
-    const acum = (naturezaSlug==='acumulativa' || naturezaSlug==='acumulativo');
-    const bin  = (naturezaSlug==='binario' || naturezaSlug==='binária' || naturezaSlug==='binaria');
-    const maiorMelhor = String(direcao||'').toUpperCase() !== 'MENOR_MELHOR';
+    naturezaSlug = normNat(naturezaSlug);
+    const isBin   = (naturezaSlug === 'binario');
+    const isConst = (naturezaSlug === 'acumulativo_constante');
+    const isExpo  = (naturezaSlug === 'acumulativo_exponencial');
 
-    for (let i=1; i<=N; i++){
-      let esp = 0;
-      if (bin){
-        esp = (i===N) ? 1 : 0;
+    const delta = meta - baseline;
+
+    // r adaptativo para suavizar conforme a quantidade de marcos
+    function expoR(n){
+      if (n <= 4)  return 1.8;
+      if (n <= 8)  return 1.5;
+      if (n <= 16) return 1.3;
+      if (n <= 32) return 1.2;
+      return 1.12; // diário longo
+    }
+
+    if (N === 0) return out;
+
+    for (let i = 1; i <= N; i++){
+      let progress;
+
+      if (isBin){
+        progress = (i === N) ? 1 : 0;
       }
-      else if (acum){
-        if (maiorMelhor){
-          esp = baseline + (meta - baseline) * (i/N);
+      else if (isConst){
+        // linear (reta)
+        progress = i / N;
+      }
+      else if (isExpo){
+        // fração acumulada de uma PG normalizada:
+        // progress_i = (r^i - 1) / (r^N - 1)
+        const r = expoR(N);
+        if (Math.abs(r - 1) < 1e-9){
+          progress = i / N; // fallback linear (não deve ocorrer)
         } else {
-          esp = baseline - (baseline - meta) * (i/N);
+          const r_i = Math.pow(r, i);
+          const r_N = Math.pow(r, N);
+          progress = (r_i - 1) / (r_N - 1);
         }
       }
       else {
-        esp = (i===N) ? meta : 0;
+        // pontual (flutuante): só “vale” no fim
+        progress = (i === N) ? 1 : 0;
       }
-      out.push(round(esp));
+
+      const v = baseline + delta * progress;
+      out.push(round(v));
     }
+
     return out;
   }
 
@@ -765,16 +899,16 @@ if (!$hasQuinzenal) {
     if ($('#frequencia_apontamento')?.value) $('#frequencia_apontamento').classList.add('has-value');
   }
 
-  const NAT_HELP = {
-    'acumulativo': 'Acumulativo (monotônico): progride de forma cumulativa — só sobe ou só desce (ex.: faturamento acumulado, quitação de dívidas).',
-    'acumulativa': 'Acumulativo (monotônico): progride de forma cumulativa — só sobe ou só desce (ex.: faturamento acumulado, quitação de dívidas).',
-    'pontual': 'Pontual (flutuante): indicador que pode subir ou descer entre medições (ex.: taxa de conversão, NPS).',
-    'binario': 'Binário (feito/não feito): realização discreta — ou foi atingido, ou não (ex.: lançar o app, fechar o contrato X).'
-  };
+const NAT_HELP = {
+  'acumulativo_constante': 'Acumulativo (Constante): avanço linear e monotônico da baseline até a meta.',
+  'acumulativo_exponencial': 'Acumulativo (Exponencial): avanço monotônico com aceleração (início lento, fim rápido).',
+  'pontual': 'Pontual (flutuante): pode subir e descer entre medições (ex.: taxa de conversão, NPS).',
+  'binario': 'Binário (feito/não feito): ou atinge (1) ao final, ou não.'
+};
 
   function applyNaturezaBehavior(){
     const sel = $('#natureza_kr');
-    const val = (sel?.value || '').toLowerCase();
+    const val = normNat(sel?.value || '');
     const help = $('#natureza_help');
     if (help){ help.textContent = NAT_HELP[val] || ''; }
 
@@ -806,7 +940,8 @@ if (!$hasQuinzenal) {
     const base = parseFloat($('#baseline')?.value||'');
     const meta = parseFloat($('#meta')?.value||'');
     const naturezaRaw = ($('#natureza_kr')?.value||'').toLowerCase();
-    const naturezaSlug = naturezaRaw==='acumulativo' ? 'acumulativa' : naturezaRaw;
+    const naturezaSlug = normNat(naturezaRaw);
+    console.debug('[KR] natureza:', JSON.stringify(naturezaRaw), '→', naturezaSlug);
     const direcao = $('#direcao_metrica')?.value || '';
     const unidade = $('#unidade_medida')?.value || '';
 
@@ -883,7 +1018,7 @@ if (!$hasQuinzenal) {
     };
 
     function toggleDetail(){
-      const v = (tipoCiclo?.value || 'trimestral').toLowerCase();
+      const v = (tipoCiclo?.value || 'trimestral').trim().toLowerCase();
       Object.entries(boxes).forEach(([k,el])=>{ if(!el) return; el.style.display = (k===v) ? '' : 'none'; });
       ensurePeriodFields();
       renderMilestonesPreview();
@@ -892,58 +1027,96 @@ if (!$hasQuinzenal) {
     (function populateCycleDetails(){
       const anoAtual = new Date().getFullYear();
 
+      // helpers
+      const fillYears = (sel, start=anoAtual, span=5) => {
+        if (!sel) return;
+        sel.innerHTML = '';
+        for(let y=start; y<=start+span; y++){
+          sel.add(new Option(String(y), String(y)));
+        }
+        if (!sel.value) sel.value = String(anoAtual);
+      };
+
+      const buildBimOptions = (selPer, year) => {
+        if (!selPer) return;
+        selPer.innerHTML = '';
+        for(let i=0;i<12;i+=2){
+          const d1=new Date(year,i), d2=new Date(year,i+1);
+          const m1=d1.toLocaleString('pt-BR',{month:'short'}), m2=d2.toLocaleString('pt-BR',{month:'short'});
+          const lbl=`${m1.charAt(0).toUpperCase()+m1.slice(1)}–${m2.charAt(0).toUpperCase()+m2.slice(1)}`;
+          const val=`${String(i+1).padStart(2,'0')}-${String(i+2).padStart(2,'0')}`;
+          selPer.add(new Option(lbl, val));
+        }
+      };
+
+      // anual (igual)
       const sAnual = $('#ciclo_anual_ano');
-      if (sAnual){ for(let y=anoAtual; y<=anoAtual+5; y++) sAnual.add(new Option(String(y), String(y))); }
+      fillYears(sAnual);
 
-      const sSem = $('#ciclo_semestral');
-      if (sSem){
-        for(let y=anoAtual; y<=anoAtual+5; y++){
-          sSem.add(new Option(`1º Sem/${y}` , `S1/${y}`));
-          sSem.add(new Option(`2º Sem/${y}` , `S2/${y}`));
-        }
+      // semestral
+      const sSemAno = $('#ciclo_sem_ano');
+      const sSemPer = $('#ciclo_sem_per');
+      fillYears(sSemAno);
+      if (sSemPer && !sSemPer.value){
+        const nowM = new Date().getMonth()+1;
+        sSemPer.value = (nowM<=6) ? 'S1' : 'S2';
       }
 
-      const sTri = $('#ciclo_trimestral');
-      if (sTri){
-        ['Q1','Q2','Q3','Q4'].forEach(q=>{
-          for(let y=anoAtual; y<=anoAtual+5; y++) sTri.add(new Option(`${q}/${y}`, `${q}/${y}`));
-        });
-        if(!sTri.value){
-          const m=new Date().getMonth()+1; const q=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
-          const opt=[...sTri.options].find(o=>o.value.startsWith(q+'/')); if(opt) sTri.value=opt.value;
-        }
+      // trimestral
+      const sTriAno = $('#ciclo_tri_ano');
+      const sTriPer = $('#ciclo_tri_per');
+      fillYears(sTriAno);
+      if (sTriPer && !sTriPer.value){
+        const m=new Date().getMonth()+1;
+        sTriPer.value = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
       }
 
-      const sBim=$('#ciclo_bimestral');
-      if (sBim){
-        for(let y=anoAtual; y<=anoAtual+5; y++){
-          for(let i=0;i<12;i+=2){
-            const d1=new Date(y,i), d2=new Date(y,i+1);
-            const m1=d1.toLocaleString('pt-BR',{month:'short'}); const m2=d2.toLocaleString('pt-BR',{month:'short'});
-            const lbl=`${m1.charAt(0).toUpperCase()+m1.slice(1)}–${m2.charAt(0).toUpperCase()+m2.slice(1)}/${y}`;
-            const val=`${String(d1.getMonth()+1).padStart(2,'0')}-${String(d2.getMonth()+1).padStart(2,'0')}-${y}`;
-            sBim.add(new Option(lbl,val));
-          }
-        }
-      }
+      // bimestral
+      const sBimAno = $('#ciclo_bim_ano');
+      const sBimPer = $('#ciclo_bim_per');
+      fillYears(sBimAno);
+      buildBimOptions(sBimPer, parseInt(sBimAno?.value || anoAtual,10));
 
-      const sMes=$('#ciclo_mensal_mes'), sAno=$('#ciclo_mensal_ano');
-      if (sMes && sAno){
-        const meses=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-        meses.forEach((m,i)=>sMes.add(new Option(m,String(i+1).padStart(2,'0'))));
-        for(let y=anoAtual; y<=anoAtual+5; y++) sAno.add(new Option(String(y), String(y)));
-        if(!sMes.value) sMes.value=String(new Date().getMonth()+1).padStart(2,'0');
-        if(!sAno.value) sAno.value=String(anoAtual);
-      }
+      // trocou ano do bimestral → refaz períodos
+      sBimAno?.addEventListener('change', ()=>{
+        buildBimOptions(sBimPer, parseInt(sBimAno.value,10));
+        ensurePeriodFields(); renderMilestonesPreview();
+      });
 
+      // toggle blocks por tipo
+      const tipoCiclo = $('#ciclo_tipo');
+      const boxes = {
+        anual: $('#ciclo_detalhe_anual'),
+        semestral: $('#ciclo_detalhe_semestral'),
+        trimestral: $('#ciclo_detalhe_trimestral'),
+        bimestral: $('#ciclo_detalhe_bimestral'),
+        mensal: $('#ciclo_detalhe_mensal'),
+        personalizado: $('#ciclo_detalhe_personalizado'),
+      };
+      function toggleDetail(){
+        const v = (tipoCiclo?.value || 'trimestral').toLowerCase();
+        Object.entries(boxes).forEach(([k,el])=>{ if(!el) return; el.style.display = (k===v) ? '' : 'none'; });
+        ensurePeriodFields();
+        renderMilestonesPreview();
+      }
       toggleDetail();
       if (tipoCiclo && !tipoCiclo.value) { tipoCiclo.value='trimestral'; toggleDetail(); }
       tipoCiclo?.addEventListener('change', toggleDetail);
 
-      ['#ciclo_anual_ano','#ciclo_semestral','#ciclo_trimestral','#ciclo_bimestral',
-       '#ciclo_mensal_mes','#ciclo_mensal_ano','#ciclo_pers_inicio','#ciclo_pers_fim']
-       .forEach(sel => { const el=$(sel); el && el.addEventListener('change', ()=>{ ensurePeriodFields(); renderMilestonesPreview(); }); });
+      // listeners que recalculam período/preview
+      [
+        '#ciclo_anual_ano',
+        '#ciclo_sem_ano','#ciclo_sem_per',
+        '#ciclo_tri_ano','#ciclo_tri_per',
+        '#ciclo_bim_ano','#ciclo_bim_per',
+        '#ciclo_mensal_mes','#ciclo_mensal_ano',
+        '#ciclo_pers_inicio','#ciclo_pers_fim'
+      ].forEach(sel => {
+        const el = $(sel);
+        el && el.addEventListener('change', ()=>{ ensurePeriodFields(); renderMilestonesPreview(); });
+      });
 
+      // frequência
       $('#frequencia_apontamento')?.addEventListener('change', e=>{
         if(e.target.value) e.target.classList.add('has-value'); else e.target.classList.remove('has-value');
         updateBadges();
@@ -966,9 +1139,39 @@ if (!$hasQuinzenal) {
 
     function setLoading(on){ on ? show(loadOv) : hide(loadOv); }
 
+    // Adicione uma vez no script (acima das funções avaliarKR/salvarKR)
+    function appendCycleAliases(fd){
+      const tipo = ($('#ciclo_tipo')?.value || '').trim().toLowerCase();
+
+      if (tipo === 'semestral'){
+        const ano = ($('#ciclo_sem_ano')?.value || '').trim();
+        const per = ($('#ciclo_sem_per')?.value || '').trim().toUpperCase(); // "S1" | "S2"
+        if (ano && (per === 'S1' || per === 'S2')) {
+          // *** backend espera exatamente isso:
+          fd.set('ciclo_semestral', `${per}/${ano}`);
+        }
+      } else if (tipo === 'trimestral'){
+        const ano = ($('#ciclo_tri_ano')?.value || '').trim();
+        const per = ($('#ciclo_tri_per')?.value || '').trim().toUpperCase(); // "Q1".."Q4"
+        if (ano && /^Q[1-4]$/.test(per)) {
+          // *** backend espera exatamente isso:
+          fd.set('ciclo_trimestral', `${per}/${ano}`);
+        }
+      } else if (tipo === 'bimestral'){
+        const ano = ($('#ciclo_bim_ano')?.value || '').trim();
+        const per = ($('#ciclo_bim_per')?.value || '').trim(); // "01-02", "03-04"...
+        if (ano && /^\d{2}-\d{2}$/.test(per)) {
+          // *** backend espera exatamente isso:
+          fd.set('ciclo_bimestral', `${per}-${ano}`); // MM-MM-YYYY
+        }
+      }
+    }
+
+
     async function avaliarKR(){
       ensurePeriodFields();
       const fd = new FormData($('#krForm'));
+      appendCycleAliases(fd);
       fd.append('evaluate','1');
       setLoading(true);
       try{
@@ -1005,6 +1208,7 @@ if (!$hasQuinzenal) {
       ensurePeriodFields();
       ensureDefaultStatus();
       const fd = new FormData($('#krForm'));
+      appendCycleAliases(fd);
       fd.delete('evaluate');
       setLoading(true);
       try{

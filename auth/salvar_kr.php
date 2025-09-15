@@ -68,6 +68,19 @@ app_log('info', 'POST recebido em salvar_kr', [
     'mode' => isset($_POST['evaluate']) && $_POST['evaluate']==='1' ? 'evaluate' : 'save'
 ]);
 
+app_log('info', 'POST ciclo debug', [
+  'ciclo_tipo'        => $_POST['ciclo_tipo'] ?? null,
+  'ciclo_semestral'   => $_POST['ciclo_semestral'] ?? null,
+  'ciclo_sem_ano'     => $_POST['ciclo_sem_ano'] ?? null,
+  'ciclo_sem_per'     => $_POST['ciclo_sem_per'] ?? null,
+  'ciclo_trimestral'  => $_POST['ciclo_trimestral'] ?? null,
+  'ciclo_tri_ano'     => $_POST['ciclo_tri_ano'] ?? null,
+  'ciclo_tri_per'     => $_POST['ciclo_tri_per'] ?? null,
+  'ciclo_bimestral'   => $_POST['ciclo_bimestral'] ?? null,
+  'ciclo_bim_ano'     => $_POST['ciclo_bim_ano'] ?? null,
+  'ciclo_bim_per'     => $_POST['ciclo_bim_per'] ?? null,
+]);
+
 // 4) Autenticação
 if (!isset($_SESSION['user_id'])) {
     app_log('warning', 'Requisição bloqueada', ['reason'=>'unauthorized']);
@@ -146,6 +159,33 @@ function calcularDatasCiclo(string $tipo, array $d): array {
     }
     return [$ini, $fim];
 }
+
+$tipo_ciclo = trim($_POST['ciclo_tipo'] ?? '');
+
+if ($tipo_ciclo === 'semestral' && empty($_POST['ciclo_semestral'])) {
+    $per = strtoupper(trim($_POST['ciclo_sem_per'] ?? '')); // S1|S2
+    $ano = trim($_POST['ciclo_sem_ano'] ?? '');
+    if (in_array($per, ['S1','S2'], true) && ctype_digit($ano)) {
+        $_POST['ciclo_semestral'] = "$per/$ano";
+    }
+}
+
+if ($tipo_ciclo === 'trimestral' && empty($_POST['ciclo_trimestral'])) {
+    $per = strtoupper(trim($_POST['ciclo_tri_per'] ?? '')); // Q1..Q4
+    $ano = trim($_POST['ciclo_tri_ano'] ?? '');
+    if (preg_match('/^Q[1-4]$/', $per) && ctype_digit($ano)) {
+        $_POST['ciclo_trimestral'] = "$per/$ano";
+    }
+}
+
+if ($tipo_ciclo === 'bimestral' && empty($_POST['ciclo_bimestral'])) {
+    $per = trim($_POST['ciclo_bim_per'] ?? ''); // 01-02 etc
+    $ano = trim($_POST['ciclo_bim_ano'] ?? '');
+    if (preg_match('/^\d{2}-\d{2}$/', $per) && ctype_digit($ano)) {
+        $_POST['ciclo_bimestral'] = "$per-$ano";
+    }
+}
+
 
 function validarObrigatorios(string $modo, array $post): array {
     $errors = [];
@@ -315,23 +355,50 @@ function ensureFrequenciaDominio(PDO $pdo, string $slug): void {
 }
 
 // Natureza com suporte a Binário (binaria)
-function inferirNatureza(PDO $pdo, $naturezaRaw): string {
-    $val = strtolower(trim((string)$naturezaRaw));
-    if ($val === 'acumulativa' || $val === 'acumulativo') return 'acumulativa';
-    if ($val === 'pontual') return 'pontual';
-    if ($val === 'binario' || $val === 'binária' || $val === 'binaria' || $val === 'binário') return 'binaria';
+// helpers: slug igual ao front
+function _slugify_nat(string $s): string {
+    $s = trim($s);
+    $s = mb_strtolower($s, 'UTF-8');
+    $s = iconv('UTF-8','ASCII//TRANSLIT',$s);
+    $s = preg_replace('/\s+/', '_', $s);
+    $s = preg_replace('/[^a-z0-9_]/', '', $s);
 
+    if (in_array($s, ['acumulativo','acumulativa','acumulativo_constante','acumulado_constante','constante'], true))
+        return 'acumulativo_constante';
+
+    if ($s === 'acumulativo_exponencial' || $s === 'acumulado_exponencial' || $s === 'exponencial' || $s === 'expo' || str_starts_with($s, 'acumulativo_exponen'))
+        return 'acumulativo_exponencial';
+
+    if (in_array($s, ['binario','binaria'], true)) return 'binario';
+    if (in_array($s, ['pontual','flutuante'], true)) return 'pontual';
+    return $s;
+}
+
+/** Preserva o slug do front: 'acumulativo_constante' | 'acumulativo_exponencial' | 'pontual' | 'binario' */
+function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
+    $val  = (string)$naturezaRaw;
+    $slug = _slugify_nat($val);
+    if (in_array($slug, ['acumulativo_constante','acumulativo_exponencial','pontual','binario'], true)) {
+        return $slug;
+    }
+
+    // Se vier id (numérico), derive pelo texto do domínio
     if (ctype_digit($val)) {
         try {
             $st = $pdo->prepare("SELECT descricao_exibicao FROM dom_natureza_kr WHERE id_natureza = ? LIMIT 1");
             $st->execute([$val]);
-            $desc = strtolower(trim((string)$st->fetchColumn()));
-            if (strpos($desc, 'bin') !== false)       return 'binaria';
-            if (strpos($desc, 'pontual') !== false)   return 'pontual';
-            if (strpos($desc, 'acumula') !== false)   return 'acumulativa';
+            $desc = $st->fetchColumn();
+            if ($desc) {
+                $slug2 = _slugify_nat((string)$desc);
+                if (in_array($slug2, ['acumulativo_constante','acumulativo_exponencial','pontual','binario'], true)) {
+                    return $slug2;
+                }
+            }
         } catch (Throwable $e) {}
     }
-    return 'acumulativa';
+
+    // Fallback conservador
+    return 'acumulativo_constante';
 }
 
 function unidadeRequerInteiro(?string $u): bool {
@@ -408,33 +475,62 @@ function gerarMilestonesParaKR(
     $isIntUnit = unidadeRequerInteiro($unidade_medida);
     $roundFn = function($v) use ($isIntUnit) { return $isIntUnit ? (int)round($v, 0) : round($v, 2); };
 
-    $acumulativo = ($naturezaSlug === 'acumulativa');
-    $binario     = ($naturezaSlug === 'binaria' || $naturezaSlug === 'binario');
-    $maiorMelhor = (strtoupper(trim((string)$direcao)) !== 'MENOR_MELHOR');
+    // normaliza slug como no front
+    $slug = _slugify_nat($naturezaSlug);
+    $isBin   = ($slug === 'binario' || $slug === 'binaria');
+    $isConst = ($slug === 'acumulativo_constante' || $slug === 'acumulativa'); // compat antigo
+    $isExpo  = ($slug === 'acumulativo_exponencial');
+
+    // delta já se encarrega da direção (maior_melhor ou menor_melhor)
+    $delta = $meta - $baseline;
+
+    // mesmo r adaptativo do front
+    $expoR = function(int $n): float {
+        if ($n <= 4)  return 1.8;
+        if ($n <= 8)  return 1.5;
+        if ($n <= 16) return 1.3;
+        if ($n <= 32) return 1.2;
+        return 1.12;
+    };
 
     for ($i = 1; $i <= $N; $i++) {
-        $dataRef = $datas[$i-1];
-        if ($binario) {
-            // 0 até o penúltimo, 1 no último
-            $esp = ($i === $N) ? 1 : 0;
-        } elseif ($acumulativo) {
-            // progressão linear
-            $esp = $maiorMelhor
-                ? $baseline + ($meta - $baseline) * ($i / $N)
-                : $baseline - ($baseline - $meta) * ($i / $N);
-        } else {
-            // pontual: 0 até penúltimo, meta no último
-            $esp = ($i === $N) ? $meta : 0;
+        $progress = 0.0;
+
+        if ($isBin) {
+            $progress = ($i === $N) ? 1.0 : 0.0;
+        } elseif ($isConst) {
+            $progress = $N > 0 ? ($i / $N) : 1.0;
+        } elseif ($isExpo) {
+            $r = $expoR($N);
+            if (abs($r - 1.0) < 1e-9) {
+                $progress = $N > 0 ? ($i / $N) : 1.0;
+            } else {
+                $progress = (pow($r, $i) - 1.0) / (pow($r, $N) - 1.0);
+            }
+        } else { // pontual
+            $progress = ($i === $N) ? 1.0 : 0.0;
         }
+
+        $valor = $baseline + $delta * $progress;
         $ins->execute([
             ':id_kr'          => $id_kr,
             ':num_ordem'      => $i,
-            ':data_ref'       => $dataRef,
-            ':valor_esperado' => $roundFn($esp),
+            ':data_ref'       => $datas[$i-1],
+            ':valor_esperado' => $roundFn($valor),
         ]);
     }
+
     return $N;
 }
+
+app_log('info', 'Gerar milestones (natureza/direcao)', [
+  'slug' => $naturezaSlug,
+  'direcao' => $direcao_metrica,
+  'baseline' => $baseline,
+  'meta' => $meta,
+  'freq' => $freqSlug
+]);
+
 
 /** Normaliza STATUS para um id válido em dom_status_kr */
 function normalizarStatus(PDO $pdo, $raw): ?string {
@@ -578,7 +674,8 @@ $usuario_ult_alteracao = (string)$_SESSION['user_id'];
 
 // Normalizações
 $freqSlug      = normalizarFrequencia($pdo, $tipo_frequencia_in);
-$naturezaSlug  = inferirNatureza($pdo, $natureza_kr_in);
+$naturezaSlug  = inferirNaturezaSlug($pdo, $natureza_kr_in);
+app_log('info', 'Natureza slug', ['slug'=>$naturezaSlug]);
 $statusNorm    = normalizarStatus($pdo, $status);
 
 // garante a linha no domínio para não quebrar FK (inclui quinzenal)
