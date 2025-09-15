@@ -464,27 +464,38 @@ function gerarMilestonesParaKR(
     $datas = gerarSerieDatas($data_inicio, $data_fim, $freqSlug);
     $N = count($datas);
 
-    $del = $pdo->prepare("DELETE FROM {$table} WHERE id_kr = :id_kr");
-    $del->execute([':id_kr' => $id_kr]);
+    // zera anteriores
+    $pdo->prepare("DELETE FROM {$table} WHERE id_kr = :id_kr")
+        ->execute([':id_kr' => $id_kr]);
 
+    // agora inserimos também min/max
     $ins = $pdo->prepare("
-        INSERT INTO {$table} (id_kr, num_ordem, data_ref, valor_esperado, gerado_automatico, editado_manual, bloqueado_para_edicao)
-        VALUES (:id_kr, :num_ordem, :data_ref, :valor_esperado, 1, 0, 0)
+        INSERT INTO {$table} (
+          id_kr, num_ordem, data_ref,
+          valor_esperado, valor_esperado_min, valor_esperado_max,
+          gerado_automatico, editado_manual, bloqueado_para_edicao
+        )
+        VALUES (
+          :id_kr, :num_ordem, :data_ref,
+          :valor_esperado, :valor_esperado_min, :valor_esperado_max,
+          1, 0, 0
+        )
     ");
 
     $isIntUnit = unidadeRequerInteiro($unidade_medida);
-    $roundFn = function($v) use ($isIntUnit) { return $isIntUnit ? (int)round($v, 0) : round($v, 2); };
+    $roundFn = function($v) use ($isIntUnit) {
+        return $isIntUnit ? (int)round($v, 0) : round($v, 2);
+    };
 
-    // normaliza slug como no front
+    // normaliza natureza
     $slug = _slugify_nat($naturezaSlug);
     $isBin   = ($slug === 'binario' || $slug === 'binaria');
-    $isConst = ($slug === 'acumulativo_constante' || $slug === 'acumulativa'); // compat antigo
+    $isConst = ($slug === 'acumulativo_constante' || $slug === 'acumulativa');
     $isExpo  = ($slug === 'acumulativo_exponencial');
 
-    // delta já se encarrega da direção (maior_melhor ou menor_melhor)
+    $isIntervalo = strtoupper((string)$direcao) === 'INTERVALO_IDEAL';
     $delta = $meta - $baseline;
 
-    // mesmo r adaptativo do front
     $expoR = function(int $n): float {
         if ($n <= 4)  return 1.8;
         if ($n <= 8)  return 1.5;
@@ -494,29 +505,47 @@ function gerarMilestonesParaKR(
     };
 
     for ($i = 1; $i <= $N; $i++) {
-        $progress = 0.0;
+        $dataRef = $datas[$i-1];
 
+        if ($isIntervalo) {
+    $lo  = $roundFn(min($baseline, $meta));
+    $hi  = $roundFn(max($baseline, $meta));
+    $mid = $roundFn(($lo + $hi) / 2); // <<< preenche o NOT NULL
+
+    $ins->execute([
+        ':id_kr'              => $id_kr,
+        ':num_ordem'          => $i,
+        ':data_ref'           => $dataRef,
+        ':valor_esperado'     => $mid,      // <<< NÃO NULO
+        ':valor_esperado_min' => $lo,
+        ':valor_esperado_max' => $hi,
+    ]);
+    continue;
+}
+
+
+        // comportamento antigo (uma única série esperada)
+        $progress = 0.0;
         if ($isBin) {
             $progress = ($i === $N) ? 1.0 : 0.0;
         } elseif ($isConst) {
             $progress = $N > 0 ? ($i / $N) : 1.0;
         } elseif ($isExpo) {
             $r = $expoR($N);
-            if (abs($r - 1.0) < 1e-9) {
-                $progress = $N > 0 ? ($i / $N) : 1.0;
-            } else {
-                $progress = (pow($r, $i) - 1.0) / (pow($r, $N) - 1.0);
-            }
+            if (abs($r - 1.0) < 1e-9) $progress = $N > 0 ? ($i / $N) : 1.0;
+            else $progress = (pow($r, $i) - 1.0) / (pow($r, $N) - 1.0);
         } else { // pontual
             $progress = ($i === $N) ? 1.0 : 0.0;
         }
 
-        $valor = $baseline + $delta * $progress;
+        $valor = $roundFn($baseline + $delta * $progress);
         $ins->execute([
-            ':id_kr'          => $id_kr,
-            ':num_ordem'      => $i,
-            ':data_ref'       => $datas[$i-1],
-            ':valor_esperado' => $roundFn($valor),
+            ':id_kr'              => $id_kr,
+            ':num_ordem'          => $i,
+            ':data_ref'           => $dataRef,
+            ':valor_esperado'     => $valor,
+            ':valor_esperado_min' => null,
+            ':valor_esperado_max' => null,
         ]);
     }
 
@@ -524,11 +553,11 @@ function gerarMilestonesParaKR(
 }
 
 app_log('info', 'Gerar milestones (natureza/direcao)', [
-  'slug' => $naturezaSlug,
-  'direcao' => $direcao_metrica,
+  'slug'     => $naturezaSlug,
+  'direcao'  => $direcao_metrica,
   'baseline' => $baseline,
-  'meta' => $meta,
-  'freq' => $freqSlug
+  'meta'     => $meta,
+  'freq'     => $freqSlug
 ]);
 
 
@@ -684,7 +713,7 @@ ensureFrequenciaDominio($pdo, $freqSlug);
 app_log('info', 'Normalizações', ['freq'=>$freqSlug, 'natureza'=>$naturezaSlug, 'status_raw'=>$status, 'status_norm'=>$statusNorm]);
 
 // Coerção server-side para binário (robustez: baseline 0, meta 1)
-if ($naturezaSlug === 'binaria') {
+if ($naturezaSlug === 'binario') { // aceita só o slug normalizado
     $baseline = 0.0;
     $meta     = 1.0;
     app_log('info', 'Coerção binária aplicada', ['baseline'=>$baseline,'meta'=>$meta]);

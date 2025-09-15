@@ -506,6 +506,13 @@ $realCol = $has('valor_real') ? 'valor_real'
          : ($has('valor_apontado') ? 'valor_apontado'
          : ($has('resultado') ? 'resultado' : null))));
 
+// NOVO: limites min/max do intervalo ideal (se existirem)
+$minCol = $has('valor_esperado_min') ? 'valor_esperado_min'
+        : ($has('esperado_min') ? 'esperado_min' : null);
+
+$maxCol = $has('valor_esperado_max') ? 'valor_esperado_max'
+        : ($has('esperado_max') ? 'esperado_max' : null);
+
 $evidCol = $has('dt_evidencia') ? 'dt_evidencia'
          : ($has('data_evidencia') ? 'data_evidencia'
          : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
@@ -526,6 +533,10 @@ $apRef  = $apTable ? $getCol($apTable, ['data_ref','data_prevista']) : null;
 /* Query base dos milestones */
 $sqlMs = "SELECT ms.`$dateCol` AS data_prevista,
                  ms.`$expCol`  AS valor_esperado";
+
+// NOVO: min/max (ou NULL se não existirem)
+$sqlMs .= ($minCol ? ", ms.`$minCol` AS valor_esperado_min" : ", NULL AS valor_esperado_min");
+$sqlMs .= ($maxCol ? ", ms.`$maxCol` AS valor_esperado_max" : ", NULL AS valor_esperado_max");
 
 /* Se tivermos coluna "real" no milestone, trazemos; senão criaremos via subselect */
 if ($realCol) {
@@ -576,12 +587,26 @@ if ((!$realCol || !$milestones) && $apTable && $apKr && $apVal && ($apMs || $apR
   unset($m);
 }
 
-/* Monta as séries do gráfico */
-$labels = []; $esp = []; $real = [];
+/* Monta as séries do gráfico (agora com min/max) */
+$labels = []; $mid = []; $real = []; $minArr = []; $maxArr = [];
 foreach ($milestones as $m) {
   $labels[] = $m['data_prevista'];
-  $esp[]    = (float)($m['valor_esperado'] ?? 0);
-  $real[]   = ($m['valor_real'] === null || $m['valor_real'] === '') ? null : (float)$m['valor_real'];
+
+  $min = isset($m['valor_esperado_min']) ? $m['valor_esperado_min'] : null;
+  $max = isset($m['valor_esperado_max']) ? $m['valor_esperado_max'] : null;
+  $val = isset($m['valor_esperado'])     ? $m['valor_esperado']     : null;
+
+  // Fallbacks:
+  // - se min/max vierem nulos, usa o esperado como ambos
+  if ($min === null && $max === null && $val !== null) { $min = $val; $max = $val; }
+  // - se o esperado não vier, mas min/max vierem: média
+  if ($val === null && $min !== null && $max !== null) { $val = ($min + $max) / 2; }
+
+  $minArr[] = ($min === null ? null : (float)$min);
+  $maxArr[] = ($max === null ? null : (float)$max);
+  $mid[]    = ($val === null ? null : (float)$val);
+
+  $real[] = ($m['valor_real'] === null || $m['valor_real'] === '') ? null : (float)$m['valor_real'];
 }
 
     // agregados
@@ -619,7 +644,13 @@ foreach ($milestones as $m) {
       'success'=>true,
       'kr'=>$kr,
       'milestones'=>$milestones,
-      'chart'=>['labels'=>$labels,'esperado'=>$esp,'real'=>$real],
+      'chart'=>[
+        'labels'=>$labels,
+        'min'=>$minArr,
+        'max'=>$maxArr,
+        'esperado'=>$mid, // compat: mantemos "esperado" como a linha média
+        'real'=>$real
+      ],
       'agregados'=>[
         'iniciativas'=>$tIni,
         'orcamento'=>['aprovado'=>$aprov,'realizado'=>$realiz,'saldo'=>max(0,$aprov-$realiz)],
@@ -2274,6 +2305,10 @@ $saldoObj = max(0, $aprovObj - $realObj);
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
+    Chart.defaults.font.family = 'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    Chart.defaults.color = '#a6adbb';
+  </script>
+  <script>
     function showApontModal(show=true){ $('#modalApont')?.classList.toggle('show', show); }
     function showJust(show=true){ $('#modalJust')?.classList.toggle('show', show); }
   </script>
@@ -3281,49 +3316,179 @@ $saldoObj = max(0, $aprovObj - $realObj);
       if(!data.success){ toast('Erro ao carregar KR', false); return; }
 
       // Gráfico (Esperado)
+      // === Curva-S / Faixa ideal ===
       const ctx = document.getElementById(`scurve_${id}`);
-      if(ctx){
-        if(charts[id]) charts[id].destroy();
+      if (ctx) {
+        if (charts[id]) charts[id].destroy();
+
+        // Base
+        const labels   = (data.chart.labels || []).map(d => toDDMMYYYY(d,'/'));
+        const realData = (data.chart.real   || []).map(v => v ?? null);
+        const unidade  = data.kr?.unidade_medida ? ' ' + data.kr.unidade_medida : '';
+
+        // Intervalo ideal: detectar pelo campo DIREÇÃO (é o que o backend manda)
+        const dirText = (data.kr?.direcao_metrica || '').toLowerCase();
+        const saysInterval = /intervalo|entre|faixa/.test(dirText);
+
+        // Séries min/max vindas do backend
+        const minArrRaw = data.chart?.min ?? null;
+        const maxArrRaw = data.chart?.max ?? null;
+
+        const toNumOrNull = v => (v===null||v===undefined||v==='') ? null : Number(v);
+        const expandTo = (src, len) => {
+          if (!Array.isArray(src)) return Array(len).fill(null);
+          const arr = src.map(toNumOrNull);
+          if (arr.length === len) return arr;
+          if (arr.length === 1)   return Array(len).fill(arr[0]);
+          if (arr.length < len)   return arr.concat(Array(len - arr.length).fill(arr[arr.length-1]));
+          return arr.slice(0, len);
+        };
+
+        // Só ativa o modo faixa se o KR disser que é intervalo E existir algum ponto válido em min/max
+        const hasRangeData = Array.isArray(minArrRaw) && Array.isArray(maxArrRaw) &&
+          (minArrRaw.some(v => v!=null && v!=='') || maxArrRaw.some(v => v!=null && v!==''));
+        const useRange = saysInterval && hasRangeData;
+
+        let minArr = useRange ? expandTo(minArrRaw, labels.length) : null;
+        let maxArr = useRange ? expandTo(maxArrRaw, labels.length) : null;
+
+        if (useRange) {
+          // garante min <= max por ponto
+          for (let i=0;i<labels.length;i++){
+            const a=minArr[i], b=maxArr[i];
+            if (a!=null && b!=null && a>b) { minArr[i]=b; maxArr[i]=a; }
+          }
+        }
+
+        // Datasets: em intervalo ideal mostramos Min e Max (e Realizado). NÃO mostramos "Esperado" (que é a média).
+        const datasets = useRange ? [
+          {
+            label: 'Mínimo ideal',
+            data: minArr,
+            borderColor: '#60a5fa',
+            pointBackgroundColor: '#60a5fa',
+            pointBorderColor: '#60a5fa',
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.35,
+            fill: false,
+            borderDash: [4,4],
+            spanGaps: true
+          },
+          {
+            label: 'Máximo ideal',
+            data: maxArr,
+            borderColor: '#60a5fa',
+            pointBackgroundColor: '#60a5fa',
+            pointBorderColor: '#60a5fa',
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.35,
+            fill: '-1', // preenche ENTRE Máximo e Mínimo
+            backgroundColor: 'rgba(96,165,250,0.12)',
+            spanGaps: true
+          },
+          {
+            label: 'Realizado',
+            data: realData,
+            borderColor: '#f6c343',
+            backgroundColor: 'rgba(246,195,67,0.12)',
+            pointBackgroundColor: '#f6c343',
+            pointBorderColor: '#f6c343',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.35,
+            fill: false,
+            spanGaps: true
+          }
+        ] : [
+          // modo padrão (não-intervalo): Esperado + Realizado
+          {
+            label: 'Esperado',
+            data: data.chart.esperado || [],
+            borderColor: '#e4eaf0ff',
+            backgroundColor: 'rgba(246,195,67,0.12)',
+            pointBackgroundColor: '#e4eaf0ff',
+            pointBorderColor: '#e4eaf0ff',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.35,
+            fill: false,
+            borderDash: [6,4]
+          },
+          {
+            label: 'Realizado',
+            data: realData,
+            borderColor: '#f6c343',
+            backgroundColor: 'rgba(96,165,250,0.12)',
+            pointBackgroundColor: '#f6c343',
+            pointBorderColor: '#f6c343',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.35,
+            fill: false,
+            spanGaps: true
+          }
+        ];
+
+        // Eixo Y: auto-ajuste quando for faixa
+        let yOpts = {
+          beginAtZero: true,
+          ticks: { color: '#a6adbb', callback: v => fmtNum(v) },
+          grid:  { color: 'rgba(255,255,255,0.06)' }
+        };
+        if (useRange) {
+          const vals = [...minArr, ...maxArr, ...realData].filter(v => Number.isFinite(v));
+          if (vals.length) {
+            const lo = Math.min(...vals), hi = Math.max(...vals);
+            const pad = (hi - lo) * 0.05 || 1;
+            yOpts = {
+              ticks: { color:'#a6adbb', callback: v => fmtNum(v) },
+              grid:  { color:'rgba(255,255,255,0.06)' },
+              suggestedMin: lo - pad,
+              suggestedMax: hi + pad
+            };
+          }
+        }
+
+        const titleText = useRange ? 'Curva "S" (faixa ideal)' : 'Curva "S" de progresso';
+
         charts[id] = new Chart(ctx, {
           type: 'line',
-          data: {
-            labels: (data.chart.labels||[]).map(d => toDDMMYYYY(d,'/')),
-            datasets: [
-                        {
-                          label: 'Esperado',
-                          data: data.chart.esperado || [],
-                          borderColor: '#e4eaf0ff',
-                          backgroundColor: 'rgba(246,195,67,0.12)',
-                          pointBackgroundColor: '#e4eaf0ff',
-                          pointBorderColor: '#e4eaf0ff',
-                          borderWidth: 2, pointRadius: 3, tension: 0.35, fill: false
-                        },
-                        {
-                          label: 'Realizado',
-                          data: (data.chart.real || []).map(v => v ?? null),
-                          borderColor: '#f6c343',
-                          backgroundColor: 'rgba(96,165,250,0.12)',
-                          pointBackgroundColor: '#f6c343',
-                          pointBorderColor: '#f6c343',
-                          borderWidth: 2, pointRadius: 3, tension: 0.35, fill: false
-                        }
-                      ]
-          },
+          data: { labels, datasets },
           options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-              legend: { display: false },
-              title: { display: true, text: 'Curva "S" de progresso', color: '#eaeef6', font: { weight: 'bold', size: 14 } },
+              legend: { display: true },
+              title: { display: true, text: titleText, color: '#eaeef6', font: { weight: 'bold', size: 14 } },
               tooltip: {
                 callbacks: {
                   title: (items)=> items.length ? `Milestone: ${items[0].label}` : '',
-                  label: (item)=> `Esperado: ${fmtNum(item.parsed.y)}`
+                  label: (item)=> `${item.dataset.label}: ${fmtNum(item.parsed.y)}${unidade}`,
+                  afterBody(items){
+                    if (useRange) {
+                      const min = items.find(i => i.dataset.label === 'Mínimo ideal')?.parsed?.y;
+                      const max = items.find(i => i.dataset.label === 'Máximo ideal')?.parsed?.y;
+                      const r   = items.find(i => i.dataset.label === 'Realizado')?.parsed?.y;
+                      if (min == null || max == null || r == null) return '';
+                      if (r >= min && r <= max) return 'Dentro do ideal';
+                      const diff = r < min ? (min - r) : (r - max);
+                      return `Fora do ideal por ${fmtNum(diff)}${unidade}`;
+                    }
+                    if (items.length < 2) return '';
+                    const e = items.find(i => i.dataset.label === 'Esperado')?.parsed?.y;
+                    const r = items.find(i => i.dataset.label === 'Realizado')?.parsed?.y;
+                    if (e == null || r == null) return '';
+                    return `Δ: ${fmtNum(r - e)}${unidade}`;
+                  }
                 }
               }
             },
             scales: {
               x: { ticks: { color: '#a6adbb' }, grid: { color: 'rgba(255,255,255,0.06)' } },
-              y: { beginAtZero: true, ticks: { color: '#a6adbb' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+              y: yOpts
             }
           }
         });
@@ -3483,44 +3648,67 @@ $saldoObj = max(0, $aprovObj - $realObj);
         const acumReal  = (data.series||[]).map(s=>s.real_acum||0);
 
         if (orcCharts[id]) { try{ orcCharts[id].destroy(); }catch(e){} }
+
         orcCharts[id] = new Chart(chartEl, {
-          type: 'bar',
+          type: 'bar', // tipo base; datasets podem virar 'line' no toggle
           data: {
             labels,
             datasets: [
-              { label:'Planejado', data: mensalPlan, backgroundColor:'rgba(246,195,67,0.35)', borderColor:'#f6c343', borderWidth:1 },
-              { label:'Realizado', data: mensalReal, backgroundColor:'rgba(96,165,250,0.35)', borderColor:'#60a5fa', borderWidth:1 }
+              { label:'Planejado', data: mensalPlan, backgroundColor:'rgba(246,195,67,0.35)', borderColor:'#f6c343', borderWidth:1, type: 'bar' },
+              { label:'Realizado', data: mensalReal, backgroundColor:'rgba(96,165,250,0.35)', borderColor:'#60a5fa', borderWidth:1, type: 'bar' }
             ]
           },
           options: {
-            responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ labels:{ color:'#cbd5e1' } } },
+            responsive:true,
+            maintainAspectRatio:false,
+            interaction: { mode:'index', intersect:false },
+            animation: { duration: 200 },
+            plugins:{
+              legend:{ labels:{ color:'#cbd5e1' } },
+              tooltip:{
+                callbacks:{
+                  label: (item)=> `${item.dataset.label}: ${fmtBRL(item.parsed.y)}`
+                }
+              }
+            },
             scales:{
-              x:{ ticks:{ color:'#a6adbb' }, grid:{ color:'rgba(255,255,255,.06)' } },
-              y:{ ticks:{ color:'#a6adbb' }, grid:{ color:'rgba(255,255,255,.06)' }, beginAtZero:true }
+              x:{ ticks:{ color:'#a6adbb', maxRotation: 0 }, grid:{ color:'rgba(255,255,255,.06)' } },
+              y:{
+                beginAtZero:true,
+                ticks:{ color:'#a6adbb', callback: (v)=> fmtBRL(v) },
+                grid:{ color:'rgba(255,255,255,.06)' }
+              }
             }
           }
         });
-
         // toggle mensal/acum
         const seg = document.querySelector(`.segmented[data-scope="${id}"]`);
         if (seg && !seg.dataset.bound){
           seg.dataset.bound = '1';
+
+          const setMode = (mode) => {
+            const isAcum = mode === 'acum';
+
+            // troca os dados
+            orcCharts[id].data.datasets[0].data = isAcum ? acumPlan : mensalPlan;
+            orcCharts[id].data.datasets[1].data = isAcum ? acumReal : mensalReal;
+
+            // troca o “tipo” dos datasets (mais estável do que mudar chart.config.type)
+            orcCharts[id].data.datasets.forEach(ds => {
+              ds.type = isAcum ? 'line' : 'bar';
+              ds.borderWidth = isAcum ? 2 : 1;
+              // opcional: remove fill quando vira linha
+              ds.fill = !isAcum;
+            });
+
+            orcCharts[id].update();
+          };
+
           seg.addEventListener('click', (e)=>{
             const b = e.target.closest('button[data-mode]'); if(!b) return;
             seg.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
             b.classList.add('active');
-            const mode = b.getAttribute('data-mode');
-            const ds0 = orcCharts[id].data.datasets[0];
-            const ds1 = orcCharts[id].data.datasets[1];
-            if (mode==='acum'){
-              orcCharts[id].config.type='line';
-              ds0.data = acumPlan; ds1.data = acumReal;
-            } else {
-              orcCharts[id].config.type='bar';
-              ds0.data = mensalPlan; ds1.data = mensalReal;
-            }
-            orcCharts[id].update();
+            setMode(b.getAttribute('data-mode'));
           });
         }
 

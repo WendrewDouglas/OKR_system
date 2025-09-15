@@ -160,16 +160,15 @@ if (!$hasQuinzenal) {
     /* Dois campos lado a lado (50% cada) */
     .split{
       display: grid;
-      grid-template-columns: 1fr 1fr; /* duas colunas iguais */
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
       align-items: center;
     }
-    .split > * { min-width: 0; }      /* evita overflow dentro da célula */
+    .split > * { min-width: 0; }
     .split select, .split input{
-      width: 100%;                    /* ocupa a largura da célula */
+      width: 100%;
     }
 
-    /* Em telas pequenas, empilha (opcional) */
     @media (max-width: 600px){
       .split{ grid-template-columns: 1fr; }
     }
@@ -392,7 +391,6 @@ if (!$hasQuinzenal) {
                   <option value="<?= htmlspecialchars($t['id_tipo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
               </select>
-              <!-- abaixo do select de tipo_kr -->
               <div id="tipo_help" class="note"></div>
             </div>
           </div>
@@ -445,7 +443,7 @@ if (!$hasQuinzenal) {
               </div>
             </div>
 
-            <!-- bimestral: ANO + PERÍODO (pares de meses do ano escolhido) -->
+            <!-- bimestral: ANO + PERÍODO -->
             <div id="ciclo_detalhe_bimestral" class="detalhe" style="display:none; margin-top:6px;">
               <label for="ciclo_bim_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
               <div class="split">
@@ -520,7 +518,7 @@ if (!$hasQuinzenal) {
 
           <!-- Prévia Milestones -->
           <div class="ms-preview" id="msPreview" style="display:none;">
-            <header><i class="fa-solid fa-flask"></i> Prévia de milestones (datas de referência e valor esperado)</header>
+            <header id="msHeader"><i class="fa-solid fa-flask"></i> Prévia de milestones (datas de referência e valor esperado)</header>
             <div class="muted" style="padding:8px 12px;">A prévia usa a mesma lógica do backend. Valores inteiros para unidades discretas (ex.: unid, itens, ord…).</div>
             <div style="max-height:280px; overflow:auto;">
               <table class="ms-table" id="msTable">
@@ -609,8 +607,8 @@ if (!$hasQuinzenal) {
   <script>
   const TYPE_HELP = {
     'alavanca':    'Explica ~80% do valor do ciclo. Alto impacto e virada de chave.',
-    'habilitador': 'Prepara o terreno (capacidade, dados, compliance, infraestrutura). Leads que viram Alavanca se provarem impacto.',
-    'guardiao':    'Saúde contínua (risco/segurança/continuidade). Geralmente KPI com faixa; só puxa orçamento ao cruzar a borda.'
+    'habilitador': 'Prepara o terreno (capacidade, dados, compliance, infraestrutura).',
+    'guardiao':    'Saúde contínua (risco/segurança/continuidade).'
   };
   function applyTipoHelp(){
     const v = (document.querySelector('#tipo_kr')?.value || '').toLowerCase();
@@ -620,37 +618,26 @@ if (!$hasQuinzenal) {
   document.querySelector('#tipo_kr')?.addEventListener('change', applyTipoHelp);
   applyTipoHelp();
 
-  // helper no topo do script (perto das outras utils)
+  // ===== helpers de normalização =====
   function normNat(n){
     n = String(n||'')
-          .trim()
-          .toLowerCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
-          .replace(/\s+/g,'_')                             // espaço -> underscore
-          .replace(/[^a-z0-9_]/g,'');                      // remove lixo
-
-    // Constante (reta)
+      .trim()
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/\s+/g,'_')
+      .replace(/[^a-z0-9_]/g,'');
     if (['acumulativo','acumulativa','acumulativo_constante','acumulado_constante','constante'].includes(n))
       return 'acumulativo_constante';
-
-    // Exponencial (aceita truncado e sinônimos)
     if (
-      n === 'acumulativo_exponencial' ||
-      n === 'acumulativo_exponenc' ||
-      n.startsWith('acumulativo_exponen') ||  // pega "acumulativo_exponen", "acumulativo_exponencial" etc.
-      n === 'acumulado_exponencial' ||
-      n === 'exponencial' ||
-      n === 'expo'
-    ){
-      return 'acumulativo_exponencial';
-    }
-
-    // Demais
+      n === 'acumulativo_exponencial' || n === 'acumulativo_exponenc' ||
+      n.startsWith('acumulativo_exponen') || n === 'acumulado_exponencial' ||
+      n === 'exponencial' || n === 'expo'
+    ) return 'acumulativo_exponencial';
     if (['binario','binaria'].includes(n)) return 'binario';
     if (['pontual','flutuante'].includes(n)) return 'pontual';
     return n;
   }
-
+  const strip = (s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 
   // ========= Utilidades =========
   const $  = (s, r=document)=>r.querySelector(s);
@@ -664,7 +651,6 @@ if (!$hasQuinzenal) {
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
   function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
   function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-  function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
 
   // ========= IA helpers =========
   function scoreToQuality(score){
@@ -710,7 +696,7 @@ if (!$hasQuinzenal) {
     }
     else if (tipo === 'bimestral') {
       const y   = parseInt($('#ciclo_bim_ano')?.value || nowY, 10);
-      const per = $('#ciclo_bim_per')?.value || ''; // formato "01-02", "03-04"...
+      const per = $('#ciclo_bim_per')?.value || '';
       const m = per.match(/^(\d{2})-(\d{2})$/);
       if (m) {
         const m1 = parseInt(m[1],10)-1, m2 = parseInt(m[2],10)-1;
@@ -737,7 +723,7 @@ if (!$hasQuinzenal) {
       }
     }
 
-    // fallback (trimestre corrente) se algo não estiver selecionado ainda
+    // fallback (trimestre corrente)
     if (!start || !end) {
       const m = now.getMonth()+1, y = nowY;
       const q = m<=3?1:m<=6?2:m<=9?3:4;
@@ -768,7 +754,6 @@ if (!$hasQuinzenal) {
     const start = new Date(startISO);
     const end   = new Date(endISO);
 
-    // normaliza acentos e caixa: "diário" -> "diario"
     const f = (freq || '')
       .toLowerCase()
       .normalize('NFD')
@@ -776,26 +761,23 @@ if (!$hasQuinzenal) {
 
     const pushUnique = (d) => {
       const iso = toISODate(d);
-      if(out.length === 0 || out[out.length-1] !== iso){ out.push(iso); }
+      if (out.length === 0 || out[out.length-1] !== iso) out.push(iso);
     };
 
-    // Frequências em dias
-    if (f === 'diario' || f === 'semanal' || f === 'quinzenal') {
-      const stepDays = f === 'diario' ? 1 : (f === 'semanal' ? 7 : 15);
+    // Semanal / Quinzenal (igual ao backend: +7d / +15d)
+    if (f === 'semanal' || f === 'quinzenal') {
+      const stepDays = (f === 'semanal') ? 7 : 15;
       let d = new Date(start);
       d.setDate(d.getDate() + stepDays);
-      while (d < end) {
-        pushUnique(d);
-        d.setDate(d.getDate() + stepDays);
-      }
-      // sempre garante o fim do período como último marco
+      while (d < end) { pushUnique(d); d.setDate(d.getDate() + stepDays); }
       pushUnique(end);
-    }
-    // Frequência em meses (resta "mensal")
-    else {
-      const stepMonths = 1; // mensal
+    } else {
+      // >>> AQUI O MAPEAMENTO QUE FALTAVA <<<
+      const map = { mensal:1, bimestral:2, trimestral:3, semestral:6, anual:12 };
+      const stepMonths = map[f] ?? 1;
+
       const firstEnd = endOfMonthOffsetFromStart(start, stepMonths);
-      if (firstEnd > end){
+      if (firstEnd > end) {
         pushUnique(end);
       } else {
         pushUnique(firstEnd);
@@ -828,13 +810,12 @@ if (!$hasQuinzenal) {
 
     const delta = meta - baseline;
 
-    // r adaptativo para suavizar conforme a quantidade de marcos
     function expoR(n){
       if (n <= 4)  return 1.8;
       if (n <= 8)  return 1.5;
       if (n <= 16) return 1.3;
       if (n <= 32) return 1.2;
-      return 1.12; // diário longo
+      return 1.12;
     }
 
     if (N === 0) return out;
@@ -846,15 +827,12 @@ if (!$hasQuinzenal) {
         progress = (i === N) ? 1 : 0;
       }
       else if (isConst){
-        // linear (reta)
         progress = i / N;
       }
       else if (isExpo){
-        // fração acumulada de uma PG normalizada:
-        // progress_i = (r^i - 1) / (r^N - 1)
         const r = expoR(N);
         if (Math.abs(r - 1) < 1e-9){
-          progress = i / N; // fallback linear (não deve ocorrer)
+          progress = i / N;
         } else {
           const r_i = Math.pow(r, i);
           const r_N = Math.pow(r, N);
@@ -862,7 +840,6 @@ if (!$hasQuinzenal) {
         }
       }
       else {
-        // pontual (flutuante): só “vale” no fim
         progress = (i === N) ? 1 : 0;
       }
 
@@ -899,12 +876,12 @@ if (!$hasQuinzenal) {
     if ($('#frequencia_apontamento')?.value) $('#frequencia_apontamento').classList.add('has-value');
   }
 
-const NAT_HELP = {
-  'acumulativo_constante': 'Acumulativo (Constante): avanço linear e monotônico da baseline até a meta.',
-  'acumulativo_exponencial': 'Acumulativo (Exponencial): avanço monotônico com aceleração (início lento, fim rápido).',
-  'pontual': 'Pontual (flutuante): pode subir e descer entre medições (ex.: taxa de conversão, NPS).',
-  'binario': 'Binário (feito/não feito): ou atinge (1) ao final, ou não.'
-};
+  const NAT_HELP = {
+    'acumulativo_constante': 'Acumulativo (Constante): avanço linear e monotônico da baseline até a meta.',
+    'acumulativo_exponencial': 'Acumulativo (Exponencial): avanço monotônico com aceleração (início lento, fim rápido).',
+    'pontual': 'Pontual (flutuante): pode subir e descer entre medições (ex.: taxa de conversão, NPS).',
+    'binario': 'Binário (feito/não feito): ou atinge (1) ao final, ou não.'
+  };
 
   function applyNaturezaBehavior(){
     const sel = $('#natureza_kr');
@@ -932,6 +909,51 @@ const NAT_HELP = {
     if (firstValid){ sel.value = firstValid.value; sel.classList.add('has-value'); }
   }
 
+  // ===== NOVO: selecionar Natureza "Pontual" com base no texto/slug =====
+  function selectNaturezaBySlug(slug){
+    const sel = $('#natureza_kr');
+    if (!sel) return false;
+    const slugNorm = strip(slug);
+    let matched = false;
+
+    for (const opt of sel.options){
+      const vNorm = strip(opt.value);
+      const tNorm = strip(opt.textContent || opt.label || '');
+      // casa se value já for 'pontual' (casos onde o domínio usa string) ou o rótulo contém 'pontual'
+      if (vNorm === slugNorm || tNorm.includes(slugNorm)){
+        opt.selected = true;
+        matched = true;
+        break;
+      }
+    }
+    if (matched){
+      sel.classList.add('has-value');
+      applyNaturezaBehavior();
+    }
+    return matched;
+  }
+
+  // ===== NOVO: quando Direção = INTERVALO_IDEAL, força Natureza = Pontual e bloqueia seletor =====
+  function onDirecaoChange(){
+    const dir = ($('#direcao_metrica')?.value || '').toUpperCase();
+    const natSel = $('#natureza_kr');
+
+    if (dir === 'INTERVALO_IDEAL'){
+      // força "pontual"
+      const ok = selectNaturezaBySlug('pontual');
+      if (ok && natSel){
+        natSel.setAttribute('data-autofix','1');
+        natSel.disabled = true; // opcional (evita inconsistência)
+      }
+    } else if (natSel && natSel.getAttribute('data-autofix') === '1'){
+      // libera novamente caso o usuário mude a direção
+      natSel.disabled = false;
+      natSel.removeAttribute('data-autofix');
+    }
+
+    renderMilestonesPreview();
+  }
+
   function renderMilestonesPreview(){
     const freq = ($('#frequencia_apontamento')?.value || '').toLowerCase();
     const { startISO, endISO } = computePeriodFromCycle();
@@ -941,49 +963,186 @@ const NAT_HELP = {
     const meta = parseFloat($('#meta')?.value||'');
     const naturezaRaw = ($('#natureza_kr')?.value||'').toLowerCase();
     const naturezaSlug = normNat(naturezaRaw);
-    console.debug('[KR] natureza:', JSON.stringify(naturezaRaw), '→', naturezaSlug);
-    const direcao = $('#direcao_metrica')?.value || '';
+    const direcao = ($('#direcao_metrica')?.value || '').toUpperCase();
     const unidade = $('#unidade_medida')?.value || '';
 
     const tbody = $('#msTable tbody');
     const wrapper = $('#msPreview');
+    const thead = $('#msTable thead');
+    const headerTitle = $('#msHeader');
 
     if (!freq || !datas.length || isNaN(base) || isNaN(meta)) {
       if (wrapper) wrapper.style.display='none';
       return;
     }
 
-    const esperados = calcularEsperados(datas, base, meta, naturezaSlug, direcao, unidade);
+    const isInt = unidadeRequerInteiro(unidade);
+    const nf = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
+    const fmt = v => isInt ? Math.round(v) : Number(nf.format(Number(v))).toString().replace('.', ',');
+
 
     tbody.innerHTML = '';
-    datas.forEach((d, i)=>{
-      const tr = document.createElement('tr');
-      const td1 = document.createElement('td'); td1.textContent = String(i+1);
-      const td2 = document.createElement('td'); td2.textContent = d;
-      const td3 = document.createElement('td'); td3.className='right'; td3.textContent = String(esperados[i]);
-      tr.append(td1,td2,td3);
-      tbody.appendChild(tr);
-    });
+
+    if (direcao === 'INTERVALO_IDEAL'){
+      // Duas linhas constantes: limites do intervalo
+      const lo = fmt(Math.min(base, meta));
+      const hi = fmt(Math.max(base, meta));
+
+      if (thead){
+        thead.innerHTML = `
+          <tr>
+            <th>#</th>
+            <th>Data ref.</th>
+            <th class="right">Esperado (min)</th>
+            <th class="right">Esperado (max)</th>
+          </tr>`;
+      }
+      if (headerTitle){
+        headerTitle.innerHTML = '<i class="fa-solid fa-flask"></i> Prévia de milestones (faixa ideal: min/max)';
+      }
+
+      datas.forEach((d, i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${d}</td>
+          <td class="right">${lo}</td>
+          <td class="right">${hi}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } else {
+      // Comportamento normal (uma linha de esperado)
+      if (thead){
+        thead.innerHTML = `
+          <tr>
+            <th>#</th>
+            <th>Data ref.</th>
+            <th class="right">Esperado</th>
+          </tr>`;
+      }
+      if (headerTitle){
+        headerTitle.innerHTML = '<i class="fa-solid fa-flask"></i> Prévia de milestones (datas de referência e valor esperado)';
+      }
+
+      const esperados = calcularEsperados(datas, base, meta, naturezaSlug, direcao, unidade);
+
+            datas.forEach((d, i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${d}</td>
+          <td class="right">${String(esperados[i])}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
     wrapper.style.display = 'block';
     updateBadges();
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // Chat lateral
-    (function setupChatObservers(){
-      const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-      const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-      function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-      function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-      function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-      const chat=findChatEl(); if(chat){ const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
-    })();
+  // ===== Avaliação/Salvar (inalterado) =====
+  function setLoading(on){ on ? show($('#loadingOverlay')) : hide($('#loadingOverlay')); }
 
-    const form = $('#krForm');
-    const loadOv = $('#loadingOverlay');
-    const evalOv = $('#evaluationOverlay');
-    const saveOv = $('#saveMessageOverlay');
+  // Back-compat com o backend: envia aliases de ciclo conforme o tipo escolhido
+  function appendCycleAliases(fd){
+    const tipo = ($('#ciclo_tipo')?.value || '').trim().toLowerCase();
+
+    if (tipo === 'semestral'){
+      const ano = ($('#ciclo_sem_ano')?.value || '').trim();
+      const per = ($('#ciclo_sem_per')?.value || '').trim().toUpperCase(); // "S1" | "S2"
+      if (ano && (per === 'S1' || per === 'S2')) {
+        fd.set('ciclo_semestral', `${per}/${ano}`);
+      }
+    } else if (tipo === 'trimestral'){
+      const ano = ($('#ciclo_tri_ano')?.value || '').trim();
+      const per = ($('#ciclo_tri_per')?.value || '').trim().toUpperCase(); // "Q1".."Q4"
+      if (ano && /^Q[1-4]$/.test(per)) {
+        fd.set('ciclo_trimestral', `${per}/${ano}`);
+      }
+    } else if (tipo === 'bimestral'){
+      const ano = ($('#ciclo_bim_ano')?.value || '').trim();
+      const per = ($('#ciclo_bim_per')?.value || '').trim(); // "01-02", "03-04"...
+      if (ano && /^\d{2}-\d{2}$/.test(per)) {
+        fd.set('ciclo_bimestral', `${per}-${ano}`); // MM-MM-YYYY
+      }
+    }
+  }
+
+  async function avaliarKR(){
+    ensurePeriodFields();
+    const fd = new FormData($('#krForm'));
+    appendCycleAliases(fd);
+    fd.append('evaluate','1');
+    setLoading(true);
+    try{
+      const res = await fetch($('#krForm').action, { method:'POST', body:fd });
+      const data = await res.json().catch(()=> ({}));
+      setLoading(false);
+
+      if(res.status===422 && Array.isArray(data.errors)){
+        const lista = data.errors.map(e=>`• ${e.message}`).join('\n');
+        alert(`Por favor, corrija os campos obrigatórios:\n\n${lista}`);
+        return;
+      }
+      if(!res.ok || typeof data.score==='undefined' || typeof data.justification==='undefined'){
+        alert(data.error || 'Falha na avaliação IA.');
+        return;
+      }
+      $('#score_ia').value = data.score;
+      $('#justificativa_ia').value = data.justification;
+
+      $('#scoreValue').textContent = data.score;
+      $('#justificationText').textContent = data.justification;
+      const q=scoreToQuality(Number(data.score));
+      $('#qualityBadge').textContent=q.label;
+      $('#qualityBadge').className='quality-badge '+q.cls;
+
+      show($('#evaluationOverlay'));
+    }catch(err){
+      setLoading(false);
+      alert(err?.message || 'Falha na avaliação IA. Tente novamente.');
+    }
+  }
+
+  async function salvarKR(){
+    ensurePeriodFields();
+    ensureDefaultStatus();
+    const fd = new FormData($('#krForm'));
+    appendCycleAliases(fd);
+    fd.delete('evaluate');
+    setLoading(true);
+    try{
+      const res = await fetch($('#krForm').action, { method:'POST', body:fd });
+      const data = await res.json().catch(()=> ({}));
+      setLoading(false);
+      if(res.ok && data?.success){
+        const el = $('#saveAiMessage');
+        if(el){
+          const idKR = data.id_kr ? `<strong>${data.id_kr}</strong>` : 'Seu Key Result';
+          el.innerHTML = `${idKR} foi salvo com sucesso.<br>Vou submetê-lo à aprovação e te aviso quando houver feedback.`;
+        }
+        show($('#saveMessageOverlay'));
+      } else {
+        throw new Error(data?.error || 'Erro ao salvar Key Result.');
+      }
+    }catch(err){
+      setLoading(false);
+      alert(err?.message || 'Erro de rede ao salvar.');
+    }
+  }
+
+  // ===== Setup de interface =====
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // Ajuste de layout quando o chat lateral abrir/fechar
+    const chat = findChatEl();
+    if (chat){
+      const mo=new MutationObserver(()=>updateChatWidth());
+      mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
+      window.addEventListener('resize',updateChatWidth);
+      updateChatWidth();
+    }
 
     // Objetivo -> status + badge
     const selObj = $('#id_objetivo');
@@ -1004,30 +1163,13 @@ const NAT_HELP = {
         if (badge) badge.style.display = 'none';
       }
     }
-    if (selObj) { selObj.addEventListener('change', updateStatusObjetivo); if (selObj.value) updateStatusObjetivo(); }
+    selObj?.addEventListener('change', updateStatusObjetivo);
+    if (selObj?.value) updateStatusObjetivo();
 
-    // Ciclos
-    const tipoCiclo = $('#ciclo_tipo');
-    const boxes = {
-      anual: $('#ciclo_detalhe_anual'),
-      semestral: $('#ciclo_detalhe_semestral'),
-      trimestral: $('#ciclo_detalhe_trimestral'),
-      bimestral: $('#ciclo_detalhe_bimestral'),
-      mensal: $('#ciclo_detalhe_mensal'),
-      personalizado: $('#ciclo_detalhe_personalizado'),
-    };
-
-    function toggleDetail(){
-      const v = (tipoCiclo?.value || 'trimestral').trim().toLowerCase();
-      Object.entries(boxes).forEach(([k,el])=>{ if(!el) return; el.style.display = (k===v) ? '' : 'none'; });
-      ensurePeriodFields();
-      renderMilestonesPreview();
-    }
-
+    // Popular detalhes de ciclo e listeners (mesma lógica anterior)
     (function populateCycleDetails(){
       const anoAtual = new Date().getFullYear();
 
-      // helpers
       const fillYears = (sel, start=anoAtual, span=5) => {
         if (!sel) return;
         sel.innerHTML = '';
@@ -1049,41 +1191,32 @@ const NAT_HELP = {
         }
       };
 
-      // anual (igual)
-      const sAnual = $('#ciclo_anual_ano');
-      fillYears(sAnual);
+      // anual
+      fillYears($('#ciclo_anual_ano'));
 
       // semestral
-      const sSemAno = $('#ciclo_sem_ano');
-      const sSemPer = $('#ciclo_sem_per');
-      fillYears(sSemAno);
-      if (sSemPer && !sSemPer.value){
+      fillYears($('#ciclo_sem_ano'));
+      if ($('#ciclo_sem_per') && !$('#ciclo_sem_per').value){
         const nowM = new Date().getMonth()+1;
-        sSemPer.value = (nowM<=6) ? 'S1' : 'S2';
+        $('#ciclo_sem_per').value = (nowM<=6) ? 'S1' : 'S2';
       }
 
       // trimestral
-      const sTriAno = $('#ciclo_tri_ano');
-      const sTriPer = $('#ciclo_tri_per');
-      fillYears(sTriAno);
-      if (sTriPer && !sTriPer.value){
+      fillYears($('#ciclo_tri_ano'));
+      if ($('#ciclo_tri_per') && !$('#ciclo_tri_per').value){
         const m=new Date().getMonth()+1;
-        sTriPer.value = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
+        $('#ciclo_tri_per').value = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
       }
 
       // bimestral
-      const sBimAno = $('#ciclo_bim_ano');
-      const sBimPer = $('#ciclo_bim_per');
-      fillYears(sBimAno);
-      buildBimOptions(sBimPer, parseInt(sBimAno?.value || anoAtual,10));
-
-      // trocou ano do bimestral → refaz períodos
-      sBimAno?.addEventListener('change', ()=>{
-        buildBimOptions(sBimPer, parseInt(sBimAno.value,10));
+      fillYears($('#ciclo_bim_ano'));
+      buildBimOptions($('#ciclo_bim_per'), parseInt($('#ciclo_bim_ano')?.value || anoAtual,10));
+      $('#ciclo_bim_ano')?.addEventListener('change', ()=>{
+        buildBimOptions($('#ciclo_bim_per'), parseInt($('#ciclo_bim_ano').value,10));
         ensurePeriodFields(); renderMilestonesPreview();
       });
 
-      // toggle blocks por tipo
+      // Toggle dos blocos por tipo
       const tipoCiclo = $('#ciclo_tipo');
       const boxes = {
         anual: $('#ciclo_detalhe_anual'),
@@ -1122,13 +1255,15 @@ const NAT_HELP = {
         updateBadges();
         renderMilestonesPreview();
       });
-
-      ensurePeriodFields();
     })();
 
     // Natureza (ajuda + binário)
     $('#natureza_kr')?.addEventListener('change', applyNaturezaBehavior);
     applyNaturezaBehavior();
+
+    // Direção (força Pontual quando INTERVALO_IDEAL)
+    $('#direcao_metrica')?.addEventListener('change', onDirecaoChange);
+    onDirecaoChange(); // garante estado correto no load
 
     // Status default
     ensureDefaultStatus();
@@ -1137,108 +1272,17 @@ const NAT_HELP = {
     ['#baseline','#meta','#unidade_medida','#direcao_metrica']
       .forEach(sel=>{ const el=$(sel); el && el.addEventListener('input', renderMilestonesPreview); });
 
-    function setLoading(on){ on ? show(loadOv) : hide(loadOv); }
-
-    // Adicione uma vez no script (acima das funções avaliarKR/salvarKR)
-    function appendCycleAliases(fd){
-      const tipo = ($('#ciclo_tipo')?.value || '').trim().toLowerCase();
-
-      if (tipo === 'semestral'){
-        const ano = ($('#ciclo_sem_ano')?.value || '').trim();
-        const per = ($('#ciclo_sem_per')?.value || '').trim().toUpperCase(); // "S1" | "S2"
-        if (ano && (per === 'S1' || per === 'S2')) {
-          // *** backend espera exatamente isso:
-          fd.set('ciclo_semestral', `${per}/${ano}`);
-        }
-      } else if (tipo === 'trimestral'){
-        const ano = ($('#ciclo_tri_ano')?.value || '').trim();
-        const per = ($('#ciclo_tri_per')?.value || '').trim().toUpperCase(); // "Q1".."Q4"
-        if (ano && /^Q[1-4]$/.test(per)) {
-          // *** backend espera exatamente isso:
-          fd.set('ciclo_trimestral', `${per}/${ano}`);
-        }
-      } else if (tipo === 'bimestral'){
-        const ano = ($('#ciclo_bim_ano')?.value || '').trim();
-        const per = ($('#ciclo_bim_per')?.value || '').trim(); // "01-02", "03-04"...
-        if (ano && /^\d{2}-\d{2}$/.test(per)) {
-          // *** backend espera exatamente isso:
-          fd.set('ciclo_bimestral', `${per}-${ano}`); // MM-MM-YYYY
-        }
-      }
-    }
-
-
-    async function avaliarKR(){
-      ensurePeriodFields();
-      const fd = new FormData($('#krForm'));
-      appendCycleAliases(fd);
-      fd.append('evaluate','1');
-      setLoading(true);
-      try{
-        const res = await fetch($('#krForm').action, { method:'POST', body:fd });
-        const data = await res.json().catch(()=> ({}));
-        setLoading(false);
-
-        if(res.status===422 && Array.isArray(data.errors)){
-          const lista = data.errors.map(e=>`• ${e.message}`).join('\n');
-          alert(`Por favor, corrija os campos obrigatórios:\n\n${lista}`);
-          return;
-        }
-        if(!res.ok || typeof data.score==='undefined' || typeof data.justification==='undefined'){
-          alert(data.error || 'Falha na avaliação IA.');
-          return;
-        }
-        $('#score_ia').value = data.score;
-        $('#justificativa_ia').value = data.justification;
-
-        $('#scoreValue').textContent = data.score;
-        $('#justificationText').textContent = data.justification;
-        const q=scoreToQuality(Number(data.score));
-        $('#qualityBadge').textContent=q.label;
-        $('#qualityBadge').className='quality-badge '+q.cls;
-
-        show($('#evaluationOverlay'));
-      }catch(err){
-        setLoading(false);
-        alert(err?.message || 'Falha na avaliação IA. Tente novamente.');
-      }
-    }
-
-    async function salvarKR(){
-      ensurePeriodFields();
-      ensureDefaultStatus();
-      const fd = new FormData($('#krForm'));
-      appendCycleAliases(fd);
-      fd.delete('evaluate');
-      setLoading(true);
-      try{
-        const res = await fetch($('#krForm').action, { method:'POST', body:fd });
-        const data = await res.json().catch(()=> ({}));
-        setLoading(false);
-        if(res.ok && data?.success){
-          const el = $('#saveAiMessage');
-          if(el){
-            const idKR = data.id_kr ? `<strong>${data.id_kr}</strong>` : 'Seu Key Result';
-            el.innerHTML = `${idKR} foi salvo com sucesso.<br>Vou submetê-lo à aprovação e te aviso quando houver feedback.`;
-          }
-          show($('#saveMessageOverlay'));
-        } else {
-          throw new Error(data?.error || 'Erro ao salvar Key Result.');
-        }
-      }catch(err){
-        setLoading(false);
-        alert(err?.message || 'Erro de rede ao salvar.');
-      }
-    }
-
+    // Submissão/overlays
     $('#krForm')?.addEventListener('submit', (e)=>{ e.preventDefault(); avaliarKR(); });
     $('#confirmSave')?.addEventListener('click', ()=>{ hide($('#evaluationOverlay')); salvarKR(); });
     $('#editKR')?.addEventListener('click', ()=> hide($('#evaluationOverlay')));
     $('#closeSaveMsg')?.addEventListener('click', ()=> window.location.reload());
 
     // Prévia inicial
+    ensurePeriodFields();
     renderMilestonesPreview();
   });
   </script>
 </body>
 </html>
+
