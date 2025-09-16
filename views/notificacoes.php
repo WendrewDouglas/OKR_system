@@ -76,7 +76,7 @@ function card(n){
           ${n.lida?'<span class="badge">lida</span>':'<span class="badge">não lida</span>'}
         </div>
         <div class="msg">${n.mensagem}</div>
-        <div class="meta"><i class="fa-regular fa-clock"></i> ${n.dt_criado_fmt} ${n.url?` • <a href="${n.url}">abrir</a>`:''}</div>
+        <div class="meta"><i class="fa-regular fa-clock"></i> ${n.dt_criado_fmt}</div>
       </div>
       <div class="actions">
         ${n.lida?'':'<button class="btn btnRead">Marcar como lida</button>'}

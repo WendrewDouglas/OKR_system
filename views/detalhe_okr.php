@@ -301,6 +301,7 @@ if (isset($_GET['ajax'])) {
         {$c('direcao_metrica')} AS direcao_metrica,
         {$c('data_fim')} AS data_fim,
         {$c('dt_novo_prazo')} AS dt_novo_prazo,
+        {$c('margem_confianca')} AS margem_tolerancia,
         $prazoExpr AS prazo_final
     ";
     $join = "";
@@ -339,6 +340,64 @@ if (isset($_GET['ajax'])) {
     $msDate = $msTable ? ($hasMs('data_ref') ? 'data_ref' : ($hasMs('dt_prevista') ? 'dt_prevista' : ($hasMs('data_prevista') ? 'data_prevista' : null))) : null;
     $msExp  = $msTable ? ($hasMs('valor_esperado') ? 'valor_esperado' : ($hasMs('esperado') ? 'esperado' : null)) : null;
     $msReal = $msTable ? ($hasMs('valor_real') ? 'valor_real' : ($hasMs('realizado') ? 'realizado' : ($hasMs('valor_real_consolidado') ? 'valor_real_consolidado' : null))) : null;
+
+        // Colunas extras do milestone p/ a nova lógica
+    $msId  = $msTable ? ($hasMs('id_milestone') ? 'id_milestone' : ($hasMs('id_ms') ? 'id_ms' : ($hasMs('id') ? 'id' : null))) : null;
+    $msMin = $msTable ? ($hasMs('valor_esperado_min') ? 'valor_esperado_min' : ($hasMs('esperado_min') ? 'esperado_min' : null)) : null;
+    $msMax = $msTable ? ($hasMs('valor_esperado_max') ? 'valor_esperado_max' : ($hasMs('esperado_max') ? 'esperado_max' : null)) : null;
+    $msCnt = $msTable ? ($hasMs('qtde_apontamentos') ? 'qtde_apontamentos' : null) : null;
+
+    // SELECT do milestone exatamente no dia D (YYYY-MM-DD) e do passado mais próximo
+    $selBase = "SELECT `$msDate` AS data_ref, `$msExp` AS E, "
+              .($msMin? "`$msMin` AS E_min,":"NULL AS E_min,")
+              .($msMax? "`$msMax` AS E_max,":"NULL AS E_max,")
+              .($msReal? "`$msReal` AS R,":"NULL AS R,")
+              .($msCnt? "`$msCnt` AS cnt,":"NULL AS cnt,")
+              .($msId ? "`$msId` AS id_ms":"NULL AS id_ms")
+              ." FROM `$msTable` WHERE `$msKr`=:id ";
+
+    $stRefHoje = ($msTable && $msKr && $msDate && $msExp)
+      ? $pdo->prepare($selBase . " AND `$msDate` = :d ORDER BY `$msDate` DESC LIMIT 1")
+      : null;
+
+    $stRefPast = ($msTable && $msKr && $msDate && $msExp)
+      ? $pdo->prepare($selBase . " AND `$msDate` < :d ORDER BY `$msDate` DESC LIMIT 1")
+      : null;
+
+    // Se existir tabela de apontamentos, deixar pronto um contador por MS ou por data_ref
+    $stApCntByMs  = null;
+    $stApCntByRef = null;
+    if ($apTable && $apKr) {
+      if ($apMs) {
+        $stApCntByMs  = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apMs`=:ms");
+      } elseif ($apRef) {
+        $stApCntByRef = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apRef`=:d");
+      }
+    }
+
+    // helper: checar se há apontamento no MS (R não-nulo, ou cnt>0, ou há linhas em apontamentos)
+    $hasApont = function(array $msRow, string $krId) use($stApCntByMs,$stApCntByRef){
+      $r   = $msRow['R']   ?? null;
+      $cnt = (int)($msRow['cnt'] ?? 0);
+      if ($r !== null && $r !== '' ) return true;
+      if ($cnt > 0) return true;
+      if ($stApCntByMs && !empty($msRow['id_ms'])) {
+        $stApCntByMs->execute(['kr'=>$krId, 'ms'=>$msRow['id_ms']]);
+        return ((int)$stApCntByMs->fetchColumn()) > 0;
+      }
+      if ($stApCntByRef && !empty($msRow['data_ref'])) {
+        $stApCntByRef->execute(['kr'=>$krId, 'd'=>$msRow['data_ref']]);
+        return ((int)$stApCntByRef->fetchColumn()) > 0;
+      }
+      return false;
+    };
+
+    // helper: dividir com proteção (den==0 vira "muito ruim")
+    $rel = function($num, $den){
+      $den = (float)$den;
+      if (!is_finite($den) || abs($den) < 1e-12) return 1e9; // enorme => pinta vermelho
+      return $num / $den;
+    };
 
     // Apontamentos (fallback quando não houver coluna "real" no milestone)
     $apTable = null; $apKr=null; $apVal=null; $apWhen=null;
@@ -421,6 +480,92 @@ if (isset($_GET['ajax'])) {
       $pctAtual = $clampPct($pctAtual);
       $pctEsper = $clampPct($pctEsper);
 
+      
+      // === NOVO: Farol de confiança do KR baseado no "MS de referência" ===
+      $hoje = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+
+      // Tenta pegar o MS de hoje e o passado mais próximo
+      $msHoje = null; $msPast = null;
+      if ($stRefHoje) { $stRefHoje->execute(['id'=>$r['id_kr'], 'd'=>$hoje]); $msHoje = $stRefHoje->fetch(PDO::FETCH_ASSOC) ?: null; }
+      if ($stRefPast) { $stRefPast->execute(['id'=>$r['id_kr'], 'd'=>$hoje]); $msPast = $stRefPast->fetch(PDO::FETCH_ASSOC) ?: null; }
+
+      $ref   = null;     // MS de referência
+      $rjust = '';       // motivo/rota de seleção
+      if ($msHoje) {
+        if ($hasApont($msHoje, $r['id_kr'])) { $ref=$msHoje; $rjust='hoje'; }
+        elseif ($msPast) { $ref=$msPast; $rjust='fallback_hoje_sem_apont_usa_passado'; }
+        else { $ref=null; $rjust='sem_referencia'; }
+      } else {
+        if ($msPast) { $ref=$msPast; $rjust='passado'; }
+        else { $ref=null; $rjust='sem_referencia'; }
+      }
+
+      $farol_auto = 'vermelho';
+      $farol_calc = ['s'=>null, 'm'=>null, 'dir'=>null];
+
+      if ($ref === null) {
+        $farol_auto = 'vermelho'; // sem referência histórica
+      } else {
+        // curto-circuito por falta de apontamento
+        if (!$hasApont($ref, $r['id_kr'])) {
+          $farol_auto = 'vermelho';
+        } else {
+          // parâmetros do cálculo
+          $E     = is_numeric($ref['E']     ?? null) ? (float)$ref['E']     : null;
+          $Emin  = is_numeric($ref['E_min'] ?? null) ? (float)$ref['E_min'] : null;
+          $Emax  = is_numeric($ref['E_max'] ?? null) ? (float)$ref['E_max'] : null;
+          $R     = is_numeric($ref['R']     ?? null) ? (float)$ref['R']     : null;
+
+          // margem (coluna em KR se existir); aceita 10 (10%) ou 0.10
+          $m = null;
+          if (isset($r['margem_tolerancia']) && is_numeric($r['margem_tolerancia'])) $m = (float)$r['margem_tolerancia'];
+          elseif (isset($r['margem']) && is_numeric($r['margem'])) $m = (float)$r['margem'];
+          if ($m === null || $m <= 0) $m = 0.10;
+          if ($m > 1.0) $m = $m / 100.0;
+
+          // direção
+          $dirRaw = strtolower((string)($r['direcao_metrica'] ?? ''));
+          $dir = 'maior'; // default
+          if (preg_match('/menor/', $dirRaw)) $dir = 'menor';
+          if (preg_match('/entre|interval|faixa|range/', $dirRaw)) $dir = 'intervalo';
+
+          $s = null; // desvio relativo ruim (>=0)
+
+          if ($R === null) {
+            // Por segurança, se chegou até aqui sem R válido, trata como muito ruim
+            $s = 1e9;
+          } else if ($dir === 'intervalo' && $Emin !== null && $Emax !== null && $Emin <= $Emax) {
+            if ($R >= $Emin && $R <= $Emax) {
+              $s = 0.0;
+            } elseif ($R < $Emin) {
+              $s = $rel(($Emin - $R), ($Emin == 0 ? 1e-12 : $Emin));
+            } else { // $R > $Emax
+              $s = $rel(($R - $Emax), ($Emax == 0 ? 1e-12 : $Emax));
+            }
+          } else if ($dir === 'menor' && $E !== null) {
+            // menor melhor: s = max(0, (R - E)/E)
+            $s = max(0.0, $rel(($R - $E), ($E == 0 ? 1e-12 : $E)));
+          } else if ($E !== null) {
+            // maior melhor (padrão): s = max(0, (E - R)/E)
+            $s = max(0.0, $rel(($E - $R), ($E == 0 ? 1e-12 : $E)));
+          } else {
+            $s = 1e9; // sem E válido, considera muito ruim
+          }
+
+          // mapeamento de cor (bordas inclusivas)
+          if ($s <= $m + 1e-12) {
+            $farol_auto = 'verde';
+          } else if ($s <= 3*$m + 1e-12) {
+            $farol_auto = 'amarelo';
+          } else {
+            $farol_auto = 'vermelho';
+          }
+
+          $farol_calc = ['s'=>$s, 'm'=>$m, 'dir'=>$dir];
+        }
+      }
+
+
 
       $out[] = [
         'id_kr' => $r['id_kr'],
@@ -445,14 +590,25 @@ if (isset($_GET['ajax'])) {
           'pct_atual'      => $pctAtual,   // inteiro (%)
           'pct_esperado'   => $pctEsper,   // inteiro (%)
           'ok'             => $ok          // true=verde, false=vermelho, null=indefinido
-        ]
+        ],
+        'farol_auto'   => $farol_auto,    // 'verde' | 'amarelo' | 'vermelho'
+        'farol_reason' => $rjust,         // explicação da referência usada
+        'ref_milestone'=> [
+          'data' => $ref['data_ref'] ?? null,
+          'id_ms'=> $ref['id_ms'] ?? null,
+          'E'    => isset($ref['E'])     ? (float)$ref['E']     : null,
+          'E_min'=> isset($ref['E_min']) ? (float)$ref['E_min'] : null,
+          'E_max'=> isset($ref['E_max']) ? (float)$ref['E_max'] : null,
+          'R'    => isset($ref['R'])     ? (float)$ref['R']     : null,
+          'tem_apontamento' => ($ref ? $hasApont($ref, $r['id_kr']) : false)
+        ],
+        'farol_calc'   => $farol_calc
       ];
     }
     echo json_encode(['success'=>true,'krs'=>$out]);
     exit;
   }
 
-  
 
   /* ---------- DETALHE DO KR ---------- */
   if ($action === 'kr_detail') {
@@ -1788,6 +1944,11 @@ $saldoObj = max(0, $aprovObj - $realObj);
       background:#1a0b0e;
       border-color:#3b0d13;
     }
+    .meta-pill.prog-warn{
+      color:#fbbf24;
+      background:#1f1a0b;
+      border-color:#4a3b0a;
+    }
     body{ background:#fff !important; color:#111; }
     :root{ --chat-w:0px; }
     .content{ background:transparent; }
@@ -1851,7 +2012,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
     .kr-list{ display:flex; flex-direction:column; gap:10px; }
     .kr-card{ background:#0f1420; border:1px solid var(--border); border-radius:14px; padding:10px 12px; box-shadow:var(--shadow); color:#eaeef6; }
     .kr-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-    .kr-title{ font-weight:600; display:flex; align-items:center; gap:8px; color: var(--gold); }
+    .kr-title{ font-weight:600; display:flex; align-items:center; gap:8px; color: #fff; font-size: 15px;}
     .meta-line{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
     .meta-pill{ display:inline-flex; align-items:center; gap:6px; background:#0b0f14; border:1px solid var(--border); color:#a6adbb; padding:5px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
     .meta-pill i{ font-size:.85rem; }
@@ -2010,8 +2171,14 @@ $saldoObj = max(0, $aprovObj - $realObj);
         <div class="obj-dates">
           <span class="pill" title="Data de criação"><i class="fa-regular fa-calendar-plus"></i><?= htmlspecialchars($g($objetivo,'dt_criacao')) ?></span>
           <span class="pill" title="Prazo"><i class="fa-regular fa-calendar-days"></i><?= htmlspecialchars($g($objetivo,'dt_prazo')) ?></span>
+
+          <!-- TROCA AQUI: Farol do objetivo -->
+          <span class="pill meta-pill white" id="objFarolPill" title="Farol do objetivo">
+            <i class="fa-solid fa-traffic-light"></i>
+            <span id="objFarolLabel">—</span>
+          </span>
+
           <span class="pill" title="Conclusão"><i class="fa-solid fa-flag-checkered"></i><?= htmlspecialchars($g($objetivo,'dt_conclusao')) ?></span>
-          <span class="pill" title="Qualidade"><i class="fa-regular fa-gem"></i><?= htmlspecialchars($g($objetivo,'qualidade')) ?></span>
         </div>
       </section>
 
@@ -2019,8 +2186,8 @@ $saldoObj = max(0, $aprovObj - $realObj);
       <section class="kpi-grid">
         <div class="kpi">
           <div class="kpi-head"><span>KRs</span><div class="kpi-icon"><i class="fa-solid fa-list-check"></i></div></div>
-          <div class="kpi-value"><?= (int)$kpi['total_krs'] ?></div>
-          <div class="kpi-sub">Críticos: <strong><?= (int)$kpi['criticos'] ?></strong> · Em risco: <strong><?= (int)$kpi['em_risco'] ?></strong></div>
+          <div class="kpi-value" id="kpiTotalKrs"><?= (int)$kpi['total_krs'] ?></div>
+          <div class="kpi-sub">Críticos: <strong id="kpiCriticos"><?= (int)$kpi['criticos'] ?></strong> · Em risco: <strong id="kpiRisco"><?= (int)$kpi['em_risco'] ?></strong></div>
         </div>
         <div class="kpi">
           <div class="kpi-head"><span>Iniciativas</span><div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div></div>
@@ -2193,8 +2360,8 @@ $saldoObj = max(0, $aprovObj - $realObj);
         </div>
 
         <div class="chip" style="margin-bottom:10px;">
-          <i class="fa-solid fa-scale-balanced"></i><span id="ap_kr_meta">Meta: —</span>
-          &nbsp;|&nbsp;<i class="fa-solid fa-gauge"></i><span id="ap_kr_base">Baseline: —</span>
+          <i class="fa-solid fa-gauge"></i><span id="ap_kr_base">Baseline: —</span>
+          &nbsp;|&nbsp;<i class="fa-solid fa-scale-balanced"></i><span id="ap_kr_meta">Meta: —</span>
           &nbsp;|&nbsp;<i class="fa-solid fa-ruler-horizontal"></i><span id="ap_kr_um">Unidade: —</span>
         </div>
 
@@ -2835,6 +3002,26 @@ $saldoObj = max(0, $aprovObj - $realObj);
         const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
         const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
 
+        // === NOVO: farol baseado na lógica do backend (farol_auto) com fallback ===
+        const farolAuto      = (kr.farol_auto || kr.farol || 'neutro').toLowerCase();
+        const farolAutoCls   = farolAuto === 'verde'   ? 'prog-ok'
+                              : farolAuto === 'amarelo'? 'prog-warn'
+                              : farolAuto === 'vermelho'? 'prog-bad'
+                              : 'white';
+        const farolAutoLabel = farolAuto === 'verde'   ? 'No trilho'
+                              : farolAuto === 'amarelo'? 'Atenção'
+                              : farolAuto === 'vermelho'? 'Crítico'
+                              : '—';
+
+        // tooltip do farol (mostra MS de referência, s e m se existirem)
+        const sVal   = kr?.farol_calc?.s;
+        const mVal   = kr?.farol_calc?.m;
+        const sTxt   = (typeof sVal === 'number' && isFinite(sVal)) ? sVal.toFixed(3) : '—';
+        const mTxt   = (typeof mVal === 'number' && isFinite(mVal)) ? mVal.toFixed(3) : '—';
+        const refDt  = kr?.ref_milestone?.data || '—';
+        const refAp  = kr?.ref_milestone?.tem_apontamento ? 'com apontamento' : 'sem apontamento';
+        const farolTitle = `Ref: ${refDt} · ${refAp} · s=${sTxt} · m=${mTxt}`;
+
         cont.insertAdjacentHTML('beforeend', `
           <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
             <div class="kr-head">
@@ -2846,12 +3033,16 @@ $saldoObj = max(0, $aprovObj - $realObj);
                     <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
                   </span>
 
+                  <!-- === TROCA: farol dinâmico (novo) em vez do badge antigo === -->
+                  <span class="meta-pill ${farolAutoCls}" title="${escapeHtml(farolTitle)}">
+                    <i class="fa-solid fa-traffic-light"></i> ${farolAutoLabel}
+                  </span>
+
                   <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
                   <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
-                  <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
                   <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
-                  <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
+                  <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
                 </div>
               </div>
@@ -3878,6 +4069,35 @@ $saldoObj = max(0, $aprovObj - $realObj);
           if (Number.isFinite(pe)) { sumEsper += Math.max(0, Math.min(100, pe)); nEsper++; }
         });
 
+        const criticos = resp.krs.filter(k => k.farol_auto === 'vermelho').length;
+        const risco    = resp.krs.filter(k => k.farol_auto === 'amarelo').length;
+
+        const elTot  = document.getElementById('kpiTotalKrs');
+        const elCri  = document.getElementById('kpiCriticos');
+        const elRis  = document.getElementById('kpiRisco');
+
+        // === Farol do objetivo: vermelho se existir KR vermelho; senão amarelo se existir KR amarelo; senão verde
+        const objPill = document.getElementById('objFarolPill');
+        const objLbl  = document.getElementById('objFarolLabel');
+
+        if (objPill && objLbl) {
+          // remove estados anteriores
+          objPill.classList.remove('prog-ok','prog-warn','prog-bad','white');
+
+          let cls = 'prog-ok';
+          let txt = 'No trilho';
+          if (criticos > 0) { cls = 'prog-bad';  txt = 'Crítico'; }
+          else if (risco > 0) { cls = 'prog-warn'; txt = 'Atenção'; }
+
+          objPill.classList.add(cls);
+          objLbl.textContent = txt;
+          objPill.title = `Farol do objetivo — KRs vermelhos: ${criticos}, amarelos: ${risco}`;
+        }
+
+        if (elTot) elTot.textContent = resp.krs.length;
+        if (elCri) elCri.textContent = criticos;
+        if (elRis) elRis.textContent = risco;
+
         const objPctAtual = nAtual ? Math.round(sumAtual / nAtual) : null;
         const objPctEsper = nEsper ? Math.round(sumEsper / nEsper) : null;
         const objOk = (objPctAtual !== null && objPctEsper !== null)
@@ -3929,5 +4149,50 @@ $saldoObj = max(0, $aprovObj - $realObj);
       // Garante que o header já existe no DOM
       document.addEventListener('DOMContentLoaded', refreshObjectiveProgressFromKRs);
     </script>
+    <script>
+    // Recarrega a página sempre que QUALQUER modal (.modal) for fechado (perder a classe .show)
+    (function () {
+      function watchModals(root = document) {
+        const modals = root.querySelectorAll('.modal');
+        if (!modals.length) return;
+
+        let reloading = false;
+        const obs = new MutationObserver(muts => {
+          if (reloading) return;
+          for (const m of muts) {
+            if (m.type !== 'attributes' || m.attributeName !== 'class') continue;
+            const el = m.target;
+            const hadShow = (m.oldValue || '').split(/\s+/).includes('show');
+            const hasShow = el.classList.contains('show');
+            // Foi de aberto (com .show) para fechado (sem .show)? Recarrega.
+            if (hadShow && !hasShow) {
+              reloading = true;
+              setTimeout(() => location.reload(), 30); // pequeno delay para terminar animações/POSTs
+              break;
+            }
+          }
+        });
+
+        modals.forEach(el => {
+          obs.observe(el, { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+        });
+      }
+
+      // Observa os modais já presentes
+      watchModals();
+
+      // (Opcional) Se você cria modais dinamicamente, observa novas inserções
+      new MutationObserver(muList => {
+        for (const mu of muList) {
+          mu.addedNodes?.forEach(n => {
+            if (n.nodeType === 1 && n.matches?.('.modal')) {
+              watchModals(document);
+            }
+          });
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    })();
+    </script>
+
 </body>
 </html>
