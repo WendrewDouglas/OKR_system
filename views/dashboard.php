@@ -254,7 +254,7 @@ $stPilares = $pdo->prepare("
                AND m2.data_ref <= CURDATE()
         )
   GROUP BY p.id_pilar, p.descricao_exibicao
-  ORDER BY p.id_pilar
+  ORDER BY p.ordem_pilar
 ");
 $stPilares->execute([':cid' => $companyId]);
 $pilares = $stPilares->fetchAll();
@@ -269,6 +269,139 @@ function first_upper_rest_lower(string $s): string {
   $first = mb_strtoupper(mb_substr($s, 0, 1, 'UTF-8'), 'UTF-8');
   return $first . mb_substr($s, 1, null, 'UTF-8');
 }
+
+// =====================[NOVO - PROGRESSO DOS PILARES COMO NO RELATÓRIO]=====================
+$tableExists = static function(PDO $pdo, string $t): bool { try{ $pdo->query("SHOW COLUMNS FROM `$t`"); return true; }catch(Throwable){ return false; } };
+$colExists   = static function(PDO $pdo, string $t, string $c): bool { try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$t` LIKE :c"); $st->execute([':c'=>$c]); return (bool)$st->fetch(); }catch(Throwable){ return false; } };
+$normPilar   = static function($s){ $s=mb_strtolower(trim((string)$s),'UTF-8'); $s=str_replace(['processos internos','cliente'],['processos','clientes'],$s); return $s; };
+$clamp       = static function($v){ if($v===null||!is_numeric($v)) return null; $v=(float)$v; return (int)max(0,min(100,round($v))); };
+
+/** Ícones/cores iguais ao relatorios_okrs */
+$PILLAR_COLORS = [ // [NOVO - CORES]
+  'aprendizado'=>'#8e44ad',
+  'processos'  =>'#2980b9',
+  'clientes'   =>'#27ae60',
+  'financeiro' =>'#f39c12'
+];
+$PILLAR_ICONS = [ // [NOVO - ÍCONES]
+  'aprendizado'=>'fa-solid fa-graduation-cap',
+  'processos'  =>'fa-solid fa-gears',
+  'clientes'   =>'fa-solid fa-users',
+  'financeiro' =>'fa-solid fa-coins'
+];
+
+// Mapa pilar -> média (calculada)
+$pillarMedia = [];
+
+// Busca objetivos da empresa (id + pilar nominal)
+$stObj = $pdo->prepare("SELECT id_objetivo, pilar_bsc FROM objetivos WHERE id_company = :cid");
+$stObj->execute([':cid'=>$companyId]);
+$objsAll = $stObj->fetchAll();
+
+if ($objsAll) {
+  $objIds = array_column($objsAll, 'id_objetivo');
+  $objPilarKey = [];
+  foreach ($objsAll as $o) {
+    $objPilarKey[(int)$o['id_objetivo']] = $normPilar($o['pilar_bsc'] ?? '');
+  }
+
+  $in = implode(',', array_fill(0, count($objIds), '?'));
+
+  // Colunas opcionais
+  $selKR = function(string $c) use ($colExists, $pdo) {
+    return $colExists($pdo,'key_results',$c) ? "kr.`$c`" : "NULL";
+  };
+  $stKR = $pdo->prepare("
+    SELECT kr.id_kr, kr.id_objetivo,
+           {$selKR('baseline')} AS baseline,
+           {$selKR('meta')}     AS meta
+    FROM key_results kr
+    WHERE kr.id_objetivo IN ($in)
+  ");
+  $stKR->execute($objIds);
+  $krsAll = $stKR->fetchAll();
+
+  // Descobrir tabelas de milestones/apontamentos (iguais ao relatório)
+  $msT=null; if($tableExists($pdo,'milestones_kr')) $msT='milestones_kr'; else if($tableExists($pdo,'milestones')) $msT='milestones';
+  $apT=null; if($tableExists($pdo,'apontamentos_kr')) $apT='apontamentos_kr'; else if($tableExists($pdo,'apontamentos')) $apT='apontamentos';
+
+  $msKr=$msDate=$msExp=$msReal=null; $apKr=$apVal=$apWhen=null;
+  $findCol=function(PDO $pdo,string $table,array $opts){ foreach($opts as $c){ try{$st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute([':c'=>$c]); if($st->fetch()) return $c; }catch(Throwable){} } return null; };
+
+  if ($msT){
+    $msKr   = $findCol($pdo,$msT,['id_kr','kr_id','id_key_result','key_result_id']);
+    $msDate = $findCol($pdo,$msT,['data_ref','dt_prevista','data_prevista','data','dt']);
+    $msExp  = $findCol($pdo,$msT,['valor_esperado','esperado','target','meta']);
+    $msReal = $findCol($pdo,$msT,['valor_real_consolidado','valor_real','realizado','resultado','alcancado']);
+  }
+  if ($apT){
+    $apKr   = $findCol($pdo,$apT,['id_kr','kr_id','id_key_result','key_result_id']);
+    $apVal  = $findCol($pdo,$apT,['valor_real','valor','resultado']);
+    $apWhen = $findCol($pdo,$apT,['dt_apontamento','created_at','dt_criacao','data','dt']);
+  }
+
+  $stExp    = ($msT && $msKr && $msDate && $msExp) ? $pdo->prepare("SELECT `$msExp` FROM `$msT` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1") : null;
+  $stRealMs = ($msT && $msKr && $msReal)          ? $pdo->prepare("SELECT `$msReal` FROM `$msT` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ORDER BY ".($msDate? "`$msDate` DESC":"1")." LIMIT 1") : null;
+  $stRealAp = ($apT && $apKr && $apVal)           ? $pdo->prepare("SELECT `$apVal` FROM `$apT` WHERE `$apKr`=:id ORDER BY ".($apWhen? "`$apWhen` DESC":"1")." LIMIT 1") : null;
+
+  // Agregadores
+  $objVals = []; // id_objetivo => [valores%...]
+  foreach ($krsAll as $kr) {
+    $oid = (int)$kr['id_objetivo'];
+    if (!isset($objVals[$oid])) $objVals[$oid] = [];
+
+    $base = is_numeric($kr['baseline']) ? (float)$kr['baseline'] : null;
+    $meta = is_numeric($kr['meta'])     ? (float)$kr['meta']     : null;
+
+    $expNow = null; $realNow = null;
+    if ($stExp){    $stExp->execute([':id'=>$kr['id_kr']]);    $expNow  = $stExp->fetchColumn(); }
+    if ($stRealMs){ $stRealMs->execute([':id'=>$kr['id_kr']]); $realNow = $stRealMs->fetchColumn(); }
+    if (($realNow===false || $realNow===null) && $stRealAp){
+      $stRealAp->execute([':id'=>$kr['id_kr']]); $realNow = $stRealAp->fetchColumn();
+    }
+
+    $pctAtual = null;
+    if ($base!==null && $meta!==null && $meta!=$base){
+      if ($meta > $base){ // crescer
+        if (is_numeric($realNow)) $pctAtual = (($realNow-$base)/($meta-$base))*100.0;
+      } else { // diminuir
+        if (is_numeric($realNow)) $pctAtual = (($base-$realNow)/($base-$meta))*100.0;
+      }
+      $pctAtual = $clamp($pctAtual);
+    }
+
+    if ($pctAtual!==null) $objVals[$oid][] = $pctAtual;
+  }
+
+  // Média por objetivo
+  $objPct = []; // id_objetivo => pct
+  foreach ($objVals as $oid => $vals) {
+    if (count($vals)) { $objPct[$oid] = (int)round(array_sum($vals)/count($vals)); }
+  }
+
+  // Média por pilar (média dos objetivos com pct)
+  $pAgg = []; // pkey => ['sum'=>..,'cnt'=>..]
+  foreach ($objPct as $oid => $pctVal) {
+    $pkey = $objPilarKey[$oid] ?? '';
+    if (!$pkey) continue;
+    if (!isset($pAgg[$pkey])) $pAgg[$pkey] = ['sum'=>0,'cnt'=>0];
+    $pAgg[$pkey]['sum'] += $pctVal;
+    $pAgg[$pkey]['cnt']++;
+  }
+  foreach ($pAgg as $k => $acc) {
+    $pillarMedia[$k] = $acc['cnt'] ? (int)round($acc['sum']/$acc['cnt']) : null;
+  }
+}
+
+// Anexa 'media_pct' a cada pilar retornado acima
+foreach ($pilares as &$p) {
+  $key = $normPilar($p['id_pilar'] ?? '');
+  $p['__pkey']     = $key;
+  $p['media_pct']  = $pillarMedia[$key] ?? null; // pode ser null se não há dados suficientes
+}
+unset($p);
+// ====================[FIM NOVO - PROGRESSO/CORES/ÍCONES DOS PILARES]======================
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -351,7 +484,14 @@ function first_upper_rest_lower(string $s): string {
     .stat .value{ font-size:1.25rem; font-weight:800; letter-spacing:.2px; color: var(--text); }
     .progress-wrap{ margin-top:10px; }
     .progress-label{ display:flex; align-items:center; justify-content:space-between; font-size:.85rem; color:var(--muted); margin-bottom:6px;}
-    .progress-bar{ width:100%; height:10px; background:#0b0f14; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+    .progress-bar{
+      width:100%;
+      height:10px;
+      background:#fff; /* trilho branco */
+      border:1px solid var(--border);
+      border-radius:999px;
+      overflow:hidden;
+    }
     .progress-fill{ height:100%; width:0%; background: linear-gradient(90deg, var(--gold), var(--green)); border-right:1px solid rgba(255,255,255,.15); transition: width 1s ease-in-out; }
 
     .risk-badge{ display:inline-flex; align-items:center; gap:6px; background: rgba(239,68,68,.12); color: #fecaca; border:1px solid rgba(239,68,68,.35); padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:700; }
@@ -430,12 +570,19 @@ function first_upper_rest_lower(string $s): string {
       <!-- Pilares BSC -->
       <section class="pillars">
         <?php foreach ($pilares as $p):
-          $pctPilar = pct((int)$p['krs_concluidos'], (int)$p['krs']);
+          // [NOVO] usa a média por pilar (mesma lógica do relatorio)
+          $pctPilar = is_null($p['media_pct']) ? 0 : (int)$p['media_pct'];
+
+          // [NOVO] ícone e cor iguais ao relatório
+          $pKey  = $p['__pkey'] ?: '';
+          $pColor = $PILLAR_COLORS[$pKey] ?? '#60a5fa';
+          $pIcon  = $PILLAR_ICONS[$pKey]  ?? 'fa-solid fa-layer-group';
         ?>
         <div class="pillar-card">
           <div class="pillar-header">
             <div class="pillar-title">
-              <i class="fa-solid fa-layer-group"></i>
+              <!-- [NOVO] ícone com cor do pilar -->
+              <i class="<?= htmlspecialchars($pIcon) ?>" style="color: <?= htmlspecialchars($pColor) ?>;"></i>
               <span><?= htmlspecialchars($p['pilar_nome'] ?: 'Pilar') ?></span>
             </div>
           </div>
@@ -460,8 +607,9 @@ function first_upper_rest_lower(string $s): string {
               <span>Progresso do pilar</span>
               <strong><span class="progress-pct"><?= $pctPilar ?></span>%</strong>
             </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width:0%" data-final="<?= $pctPilar ?>"></div>
+            <div class="progress-bar" style="background:#5C5F63 !important;">
+              <!-- [NOVO] cor do preenchimento igual ao pilar -->
+              <div class="progress-fill" style="width:0%; background: <?= htmlspecialchars($pColor) ?>;" data-final="<?= $pctPilar ?>"></div>
             </div>
           </div>
 
