@@ -268,7 +268,7 @@ body.collapsed .sidebar-footer .org { display: none; }
         <li class="<?= $isRelOKRs ? 'active' : '' ?>"
             data-href="/OKR_system/views/relatorios_okrs.php"
             onclick="onSubmenuClick(this)">
-          <i class="fas fa-clipboard-list"></i><span>Relatório Personalizado</span>
+          <i class="fas fa-clipboard-list"></i><span>One-Page</span>
         </li>
 
         <!-- Sumário Executivo -> corrige o active/href -->
