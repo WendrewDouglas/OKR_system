@@ -140,6 +140,7 @@ function pilar_color(string $pilar): string {
         display:flex;             /* NOVO */
         flex-direction:column;    /* NOVO */
         font-weight:400;
+        height: 100%;
       }
       .okr-card:hover{ transform: translateY(-2px); border-color:#293140; }
 
@@ -219,7 +220,10 @@ function pilar_color(string $pilar): string {
       .dot.gray{ background: #6b7280; }
 
       .okr-footer{
-        margin-top:auto; display:flex; justify-content:center;
+        margin-top: auto;        /* empurra pro fundo */
+        display: flex;
+        justify-content: center; /* centraliza horizontal */
+        padding-top: .75rem;     /* opcional: respiro */ 
       }
 
       .btn-detail{

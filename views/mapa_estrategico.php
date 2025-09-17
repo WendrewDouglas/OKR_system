@@ -46,6 +46,18 @@ function pill_text_color(string $hex): string {
   return ($lum > 160) ? '#111' : '#fff';
 }
 
+function hex_to_rgb(string $hex): array {
+  $h = ltrim($hex,'#');
+  if (strlen($h)===3) $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2];
+  return [hexdec(substr($h,0,2)), hexdec(substr($h,2,2)), hexdec(substr($h,4,2))];
+}
+function rgba(string $hex, float $alpha): string {
+  [$r,$g,$b] = hex_to_rgb($hex);
+  $a = max(0,min(1,$alpha));
+  return "rgba($r,$g,$b,$a)";
+}
+
+
 // Conexão
 $pdo = null;
 try{
@@ -88,32 +100,48 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['action'])) {
     if ($action==='create_link') {
       $src = (int)($_POST['src'] ?? 0);
       $dst = (int)($_POST['dst'] ?? 0);
-      if ($src<=0 || $dst<=0 || $src===$dst) json_out(['ok'=>false,'msg'=>'Par inválido']);
+      // novo: justificativa obrigatória, limitada
+      $just = trim((string)($_POST['justificativa'] ?? ''));
+      $just = mb_substr($just, 0, 2000, 'UTF-8'); // limite de segurança
 
+      if ($src<=0 || $dst<=0 || $src===$dst) json_out(['ok'=>false,'msg'=>'Par inválido']);
+      if ($just==='') json_out(['ok'=>false,'msg'=>'Informe a justificativa da ligação']);
+
+      // valida se ambos objetivos pertencem à empresa
       $chk = $pdo->prepare("SELECT COUNT(*) FROM objetivos WHERE id_objetivo IN (:s,:d) AND id_company=:c");
       $chk->execute([':s'=>$src,':d'=>$dst,':c'=>$companyId]);
       if ((int)$chk->fetchColumn()!==2) json_out(['ok'=>false,'msg'=>'Objetivo fora da empresa']);
 
       $pdo->beginTransaction();
+
+      // já existe? se inativo, reativa E atualiza a justificativa
       $sel = $pdo->prepare("SELECT id_link, ativo FROM objetivo_links WHERE id_company=:c AND id_src=:s AND id_dst=:d LIMIT 1");
       $sel->execute([':c'=>$companyId,':s'=>$src,':d'=>$dst]);
       $row = $sel->fetch();
+
       if ($row) {
         if ((int)$row['ativo']===0) {
-          $upd = $pdo->prepare("UPDATE objetivo_links SET ativo=1, atualizado_em=NOW() WHERE id_link=:id");
-          $upd->execute([':id'=>$row['id_link']]);
+          $upd = $pdo->prepare("
+            UPDATE objetivo_links
+              SET ativo=1, justificativa=:j, atualizado_em=NOW()
+            WHERE id_link=:id
+          ");
+          $upd->execute([':j'=>$just, ':id'=>$row['id_link']]);
           $pdo->commit();
-          json_out(['ok'=>true,'id_link'=>(int)$row['id_link'],'reactivated'=>true]);
+          json_out(['ok'=>true,'id_link'=>(int)$row['id_link'],'reactivated'=>true,'justificativa'=>$just]);
         } else {
           $pdo->rollBack();
           json_out(['ok'=>false,'msg'=>'Ligação já existe']);
         }
       } else {
-        $ins = $pdo->prepare("INSERT INTO objetivo_links (id_company,id_src,id_dst,ativo,criado_por) VALUES (:c,:s,:d,1,:u)");
-        $ins->execute([':c'=>$companyId,':s'=>$src,':d'=>$dst,':u'=>$userId]);
+        $ins = $pdo->prepare("
+          INSERT INTO objetivo_links (id_company,id_src,id_dst,justificativa,ativo,criado_por)
+          VALUES (:c,:s,:d,:j,1,:u)
+        ");
+        $ins->execute([':c'=>$companyId,':s'=>$src,':d'=>$dst,':j'=>$just,':u'=>$userId]);
         $id = (int)$pdo->lastInsertId();
         $pdo->commit();
-        json_out(['ok'=>true,'id_link'=>$id]);
+        json_out(['ok'=>true,'id_link'=>$id,'justificativa'=>$just]);
       }
     }
 
@@ -238,8 +266,15 @@ $msTable=null; foreach(['milestones_kr','milestones'] as $t) if($pdo && table_ex
 if ($pdo && $msTable){
   $mc = cols($pdo,$msTable);
   $COL_EXP = null; foreach(['valor_esperado','esperado','target','meta'] as $c) if(hascol($mc,$c)){$COL_EXP=$c; break;}
-  $COL_REAL= null; foreach(['valor_real','realizado','resultado','alcancado'] as $c) if(hascol($mc,$c)){$COL_REAL=$c; break;}
-  $COL_ORD = null; foreach(['num_ordem','data_ref','dt_prevista','data_prevista','data','dt','competencia'] as $c) if(hascol($mc,$c)){$COL_ORD=$c; break;}
+  $COL_REAL = null;
+  foreach (['valor_real_consolidado','valor_real','realizado','resultado','alcancado'] as $c) {
+    if (hascol($mc,$c)) { $COL_REAL=$c; break; }
+  }
+  $COL_ORD = null;
+  foreach (['data_ref','num_ordem','dt_prevista','data_prevista','data','dt','competencia'] as $c) {
+    if (hascol($mc,$c)) { $COL_ORD=$c; break; }
+  }
+
 
   if ($COL_EXP && $COL_ORD){
     $ordAsc  = "`$COL_ORD` ASC";
@@ -252,6 +287,12 @@ if ($pdo && $msTable){
     $SUB_REAL = "(SELECT $REAL FROM `$msTable` mmu WHERE mmu.id_kr=kr.id_kr AND $REAL IS NOT NULL ORDER BY $ordDesc LIMIT 1)";
 
     // Só KRs da company
+    // status a desconsiderar no progresso
+    $EXC = " AND (kr.status IS NULL OR LOWER(kr.status) NOT IN (
+      'não iniciado','nao iniciado','nao-iniciado','não-iniciado',
+      'cancelado','cancelada','cancelled'
+    ))";
+
     $sqlCountKR = "
       SELECT kr.id_objetivo, COUNT(*) AS qtd_kr
       FROM key_results kr
@@ -259,6 +300,7 @@ if ($pdo && $msTable){
       WHERE o.id_company = :cid
       GROUP BY kr.id_objetivo
     ";
+
     $sqlProgKR  = "
       SELECT kr.id_objetivo,
         CASE WHEN (($SUB_META) - ($SUB_BASE)) <> 0 THEN
@@ -269,24 +311,33 @@ if ($pdo && $msTable){
       FROM key_results kr
       JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
       WHERE o.id_company = :cid
+      $EXC
     ";
+
     $sqlSum = "
       SELECT o.id_objetivo,
-             COALESCE(c.qtd_kr,0) AS qtd_kr,
-             COALESCE(avgp.progresso,0) AS progresso
+            COALESCE(c.qtd_kr,0) AS qtd_kr,
+            avgp.progresso        AS progresso,         -- pode ser NULL quando todos os KRs foram desconsiderados
+            COALESCE(avgp.qtd_considerados,0) AS qtd_considerados
       FROM objetivos o
       LEFT JOIN ($sqlCountKR) c ON c.id_objetivo=o.id_objetivo
-      LEFT JOIN (SELECT id_objetivo, AVG(progresso_kr) AS progresso FROM ($sqlProgKR) t GROUP BY id_objetivo) avgp
-        ON avgp.id_objetivo=o.id_objetivo
+      LEFT JOIN (
+        SELECT id_objetivo,
+              AVG(progresso_kr) AS progresso,
+              COUNT(*)          AS qtd_considerados
+        FROM ($sqlProgKR) t
+        GROUP BY id_objetivo
+      ) avgp ON avgp.id_objetivo=o.id_objetivo
       WHERE o.id_company = :cid
     ";
     $st = $pdo->prepare($sqlSum);
     $st->execute([':cid'=>$companyId]);
     foreach($st as $row){
       $metrics[$row['id_objetivo']] = [
-        'qtd_kr'=>(int)$row['qtd_kr'],
-        'progresso'=>(float)$row['progresso'],
-        'krs_sem_apont_mes'=>0
+        'qtd_kr'           => (int)$row['qtd_kr'],
+        'progresso'        => isset($row['progresso']) ? (float)$row['progresso'] : null, // deixa NULL quando não há KR considerado
+        'krs_sem_apont_mes'=> 0,
+        'qtd_considerados' => (int)$row['qtd_considerados'],
       ];
     }
   } else {
@@ -297,10 +348,114 @@ if ($pdo && $msTable){
   }
 }
 
+/* ======================= Faróis (KR e Objetivo) ======================= */
+$farolKR = [];          // id_kr => cinza|verde|amarelo|vermelho
+$farolObj = [];         // id_objetivo => cinza|verde|amarelo|vermelho
+
+if ($pdo && $msTable){
+  $mc = cols($pdo, $msTable);
+  $COL_EXP     = null; foreach(['valor_esperado','esperado','target','meta'] as $c) if(hascol($mc,$c)){$COL_EXP=$c;break;}
+  $COL_REAL = null;
+  foreach (['valor_real_consolidado','valor_real','realizado','resultado','alcancado'] as $c) {
+    if (hascol($mc,$c)) { $COL_REAL=$c; break; }
+  }
+  $COL_ORD = null;
+  foreach (['data_ref','num_ordem','dt_prevista','data_prevista','data','dt','competencia'] as $c) {
+    if (hascol($mc,$c)) { $COL_ORD=$c; break; }
+  }
+  $COL_EXP_MIN = null; foreach(['valor_esperado_min','esperado_min','minimo'] as $c) if(hascol($mc,$c)){$COL_EXP_MIN=$c;break;}
+  $COL_EXP_MAX = null; foreach(['valor_esperado_max','esperado_max','maximo'] as $c) if(hascol($mc,$c)){$COL_EXP_MAX=$c;break;}
+
+  $kc = cols($pdo,'key_results');
+  $COL_DIR = null; foreach(['direcao_metrica','direcao','direction'] as $c) if(in_array($c,$kc,true)){$COL_DIR=$c;break;}
+
+  if ($COL_EXP && $COL_ORD){
+    $ordDesc = "`$COL_ORD` DESC";
+    $EXP     = "`$COL_EXP`";
+    $REAL    = $COL_REAL ? "`$COL_REAL`" : "NULL";
+    $MIN     = $COL_EXP_MIN ? "`$COL_EXP_MIN`" : "NULL";
+    $MAX     = $COL_EXP_MAX ? "`$COL_EXP_MAX`" : "NULL";
+    $LAST_WH = "mm.id_kr=kr.id_kr AND mm.`$COL_ORD`<=CURDATE()";
+
+    $SUB_ESP = "(SELECT $EXP  FROM `$msTable` mm WHERE $LAST_WH ORDER BY $ordDesc LIMIT 1)";
+    $SUB_REAL= "(SELECT $REAL FROM `$msTable` mm WHERE $LAST_WH ORDER BY $ordDesc LIMIT 1)";
+    $SUB_MIN = "(SELECT $MIN  FROM `$msTable` mm WHERE $LAST_WH ORDER BY $ordDesc LIMIT 1)";
+    $SUB_MAX = "(SELECT $MAX  FROM `$msTable` mm WHERE $LAST_WH ORDER BY $ordDesc LIMIT 1)";
+
+    $sql = "
+      SELECT kr.id_kr, kr.id_objetivo,
+             ".($COL_DIR ? "LOWER(kr.`$COL_DIR`)" : "NULL")." AS dir,
+             $SUB_REAL AS v_real, $SUB_ESP AS v_esp,
+             $SUB_MIN  AS v_min,  $SUB_MAX AS v_max
+      FROM key_results kr
+      JOIN objetivos o ON o.id_objetivo=kr.id_objetivo
+      WHERE o.id_company=:cid
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute([':cid'=>$companyId]);
+
+    while($r = $st->fetch()){
+      $idkr = (string)$r['id_kr']; $idobj = (int)$r['id_objetivo'];
+      $dir  = $r['dir'] ?: 'maior'; // fallback
+      $real = is_null($r['v_real']) ? null : (float)$r['v_real'];
+      $esp  = is_null($r['v_esp'])  ? null : (float)$r['v_esp'];
+      $vmin = is_null($r['v_min'])  ? null : (float)$r['v_min'];
+      $vmax = is_null($r['v_max'])  ? null : (float)$r['v_max'];
+
+      // Sem milestone <= hoje
+      if (is_null($esp) && is_null($vmin) && is_null($vmax)){
+        $farol = 'cinza';
+      } else if (is_null($real)){
+        // Sem apontamento até o último milestone válido => crítico
+        $farol = 'vermelho';
+      } else if (!is_null($vmin) && !is_null($vmax)){
+        // Intervalo ideal
+        if ($real >= $vmin && $real <= $vmax) $farol = 'verde';
+        else {
+          $margem = max(0.0, ($vmax - $vmin) * 0.05); // 5% de tolerância = amarelo
+          if ($real >= ($vmin-$margem) && $real <= ($vmax+$margem)) $farol='amarelo';
+          else $farol='vermelho';
+        }
+      } else {
+        // Direção maior/menor (fallback = maior)
+        if ($dir==='menor'){
+          if ($real <= $esp) $farol='verde';
+          else if ($real <= $esp*1.10) $farol='amarelo';
+          else $farol='vermelho';
+        } else {
+          if ($real >= $esp) $farol='verde';
+          else if ($real >= $esp*0.90) $farol='amarelo';
+          else $farol='vermelho';
+        }
+      }
+
+      $farolKR[$idkr] = $farol;
+
+      // Agrega no objetivo
+      $curr = $farolObj[$idobj] ?? null;
+      if ($curr === 'vermelho') { /* mantém vermelho */ }
+      else if ($farol === 'vermelho') $farolObj[$idobj] = 'vermelho';
+      else if ($farol === 'amarelo')  $farolObj[$idobj] = ($curr==='vermelho'?'vermelho':'amarelo');
+      else if ($farol === 'verde')    $farolObj[$idobj] = ($curr?:'verde');
+      else if (!$curr)                $farolObj[$idobj] = 'cinza';
+    }
+
+    // Objetivos sem KRs => cinza
+    // Objetivos sem agregação calculada => cinza
+    foreach ($objetivos as $o){
+      $ido=(int)$o['id_objetivo'];
+      if (!isset($farolObj[$ido])) {
+        $farolObj[$ido] = 'cinza';
+      }
+    }
+  }
+}
+
+
 // ====== Carregar ligações desta empresa ======
 $links = [];
 if ($pdo && table_exists($pdo,'objetivo_links')) {
-  $st = $pdo->prepare("SELECT id_link, id_src, id_dst, ativo FROM objetivo_links WHERE id_company=:c");
+  $st = $pdo->prepare("SELECT id_link, id_src, id_dst, ativo, justificativa FROM objetivo_links WHERE id_company=:c");
   $st->execute([':c'=>$companyId]);
   foreach($st as $r){
     $links[] = [
@@ -308,6 +463,7 @@ if ($pdo && table_exists($pdo,'objetivo_links')) {
       'src'    =>(int)$r['id_src'],
       'dst'    =>(int)$r['id_dst'],
       'ativo'  =>(int)$r['ativo'],
+      'justificativa' => (string)$r['justificativa'],
     ];
   }
 }
@@ -422,20 +578,57 @@ $totalPil = count($pilares);
       display:grid;
       gap:6px;
       grid-template-rows:auto auto 1fr;
-      overflow:hidden;
-      max-height:110px;
+      overflow:visible;        /* não corta o conteúdo interno */
+      max-height:none;         /* altura livre para o título crescer */
+      grid-template-rows:auto auto auto; /* filas naturais (evita "1fr" esticar) */
       transition:transform .2s ease, box-shadow .2s ease, max-height .25s ease;
     }
-    .card:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(0,0,0,.35); max-height: 320px; }
-
+    .card:hover{
+      transform:translateY(-3px);
+      box-shadow:0 12px 28px rgba(0,0,0,.35);
+      /* sem max-height aqui */
+    }
     .title{
       font-weight:600; letter-spacing:.05px; line-height:1.25;
       font-size:.70rem;
-      display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+      display:block;                /* sem webkit-box */
+      white-space:normal;
+      overflow:visible;             /* não esconde o texto */
     }
 
-    .progress{ height:6px; background:#0f172a; border:1px solid #1f2a44; border-radius:5px; overflow:hidden; }
-    .progress .bar{ height:100%; background:var(--bar, #60a5fa); transition:width .35s ease; }
+    .progress{
+      position: relative;
+      height:6px;
+      background: var(--track, rgba(15,23,42,.18));
+      border:1px solid var(--track-border, rgba(31,42,68,.35));
+      border-radius:5px;
+      overflow:hidden;
+    }
+    .progress .bar{
+      position: relative;
+      height:100%;
+      background: var(--bar, #60a5fa);
+      transition: width .35s ease;
+      z-index: 1;
+    }
+
+    /* ===== Linha abaixo da barra: chips dono + farol ===== */
+    .progress-meta{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:6px;
+      flex-wrap:nowrap;       /* mantém na mesma linha */
+      white-space:nowrap;
+    }
+    .progress-meta .badge.owner{
+      flex:1 1 auto;          /* ocupa o espaço disponível */
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis; /* reticências se precisar */
+    }
+    /* O chip de farol usa as classes de cor já existentes (b-green, b-warn, b-red, b-gray) */
+    .badge.farol{ flex:0 0 auto; }
 
     .more{ display:grid; gap:6px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease; }
     .card:hover .more{ opacity:1; max-height:220px; }
@@ -464,7 +657,7 @@ $totalPil = count($pilares);
       filter:url(#neonGlow);
       stroke-opacity:1;
       mix-blend-mode:normal;
-      pointer-events:auto; /* permite clicar na linha */
+      pointer-events:auto;
     }
     .link-path.inactive{
       stroke-dasharray:6 6;
@@ -478,11 +671,20 @@ $totalPil = count($pilares);
     .card.link-src { outline:2px dashed #60a5fa; outline-offset:2px; }
     .card.link-dst { outline:2px dashed #22c55e; outline-offset:2px; }
 
-    /* AÇÕES DO CABEÇALHO (botão + instrução) */
     .head-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     .link-hint{ display:none; color:#cbd5e1; font-size:.9rem; line-height:1.3; max-width:420px; text-align:right; }
 
-    /* ====== Modal (UX de confirmação) ====== */
+    .just-box{
+      white-space:pre-wrap;
+      background:#0c1118;
+      border:1px dashed #1f2635;
+      padding:8px;
+      border-radius:10px;
+      color:#cbd5e1;
+    }
+
+
+    /* ====== Modal ====== */
     .modal-backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.55); display:none;
       align-items:center; justify-content:center; z-index:60;
@@ -501,13 +703,15 @@ $totalPil = count($pilares);
     .btn-danger{ background:#ef4444; border:1px solid #7f1d1d; color:#fff; padding:9px 14px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn-subtle:hover, .btn-primary:hover, .btn-danger:hover{ transform:translateY(-1px); }
 
-    /* Toast simples */
+    /* Toast */
     .toast{
       position:fixed; right:18px; bottom:18px; background:#0c1118; color:#eaeef6; border:1px solid #1f2635;
       border-radius:12px; padding:10px 12px; font-weight:700; box-shadow:var(--shadow); display:none; z-index:70;
     }
     .toast.ok{ border-color:#14532d; background:rgba(34,197,94,.12); color:#a7f3d0; }
     .toast.err{ border-color:#7f1d1d; background:rgba(239,68,68,.12); color:#fecaca; }
+
+    .b-red{ background:rgba(239,68,68,.12); border-color:#7f1d1d; color:#fecaca; }
   </style>
 </head>
 <body>
@@ -529,7 +733,7 @@ $totalPil = count($pilares);
         <div class="head-top">
           <h1 class="head-title"><i class="fa-solid fa-sitemap"></i> Mapa Estratégico</h1>
 
-          <!-- AÇÕES DO CABEÇALHO (à direita) -->
+        <!-- AÇÕES DO CABEÇALHO -->
           <div class="head-actions">
             <button id="btnLinkMode" class="btn">
               <i class="fa-solid fa-share-nodes"></i> Ligar objetivos
@@ -547,33 +751,38 @@ $totalPil = count($pilares);
       </section>
 
       <?php
-      // Ícones por pilar
       $iconMap = [
-        'financeiro'                  => 'fa-solid fa-coins',
-        'cliente'                     => 'fa-solid fa-users',
-        'clientes'                    => 'fa-solid fa-users',
-        'processos'                   => 'fa-solid fa-gears',
-        'processos internos'          => 'fa-solid fa-gears',
-        'aprendizado'                 => 'fa-solid fa-graduation-cap',
-        'aprendizado e crescimento'   => 'fa-solid fa-graduation-cap',
+        'financeiro' => 'fa-solid fa-coins',
+        'cliente' => 'fa-solid fa-users',
+        'clientes' => 'fa-solid fa-users',
+        'processos' => 'fa-solid fa-gears',
+        'processos internos' => 'fa-solid fa-gears',
+        'aprendizado' => 'fa-solid fa-graduation-cap',
+        'aprendizado e crescimento' => 'fa-solid fa-graduation-cap',
       ];
       ?>
 
-      <!-- Container que envolve APENAS os pilares (overlay relativo a ele) -->
       <div id="pillarsContainer">
         <?php
         foreach ($pilares as $pillKey => $info):
           $objs = array_values(array_filter($objetivos, fn($o)=> slug($o['pilar']) === $pillKey));
-          $acc=0; $n=0;
-          foreach($objs as $o){ if(isset($metrics[$o['id_objetivo']])){ $acc += (float)$metrics[$o['id_objetivo']]['progresso']; $n++; } }
-          $pilarProg = $n ? round($acc/$n,1) : 0.0;
+          $acc = 0; $n = 0;
+          foreach ($objs as $o) {
+            $m = $metrics[$o['id_objetivo']] ?? null;
+            if (!$m) continue;
+            // só considera objetivos que tenham pelo menos 1 KR considerado
+            if (!empty($m['qtd_considerados']) && $m['progresso'] !== null) {
+              $acc += (float)$m['progresso'];
+              $n++;
+            }
+          }
+          $pilarProg = $n ? round($acc / $n, 1) : 0.0;
 
           $iconClass = $iconMap[$pillKey] ?? 'fa-solid fa-layer-group';
           $chipFg = pill_text_color($info['cor']);
         ?>
         <section class="pilar">
           <div class="pilar-row">
-            <!-- Trilho FORA: mini-card na coluna esquerda -->
             <aside class="pilar-info" aria-label="Pilar <?= h($info['titulo']) ?>">
               <div class="pilar-info-card" style="border-left:6px solid <?= h($info['cor']) ?>;">
                 <div class="pilar-title">
@@ -592,7 +801,6 @@ $totalPil = count($pilares);
               </div>
             </aside>
 
-            <!-- À direita: container escuro com a grid de objetivos -->
             <div class="pilar-wrap" style="border-left:6px solid <?= h($info['cor']) ?>;">
               <div class="cards-grid" data-cards="<?= h($pillKey) ?>">
                 <?php if (!$objs): ?>
@@ -604,6 +812,21 @@ $totalPil = count($pilares);
                   $statusBadge = $status==='concluído' ? 'b-green' : ($status==='em andamento' ? 'b-blue' : 'b-gray');
                   $detailUrl = "/OKR_system/views/detalhe_okr.php?id=" . urlencode((string)$obj['id_objetivo']);
                   $dono = $usuarios[(string)$obj['dono']] ?? $obj['dono'];
+
+                  $farol = $farolObj[(int)$obj['id_objetivo']] ?? 'cinza';
+                  $farolBadge = match($farol){
+                    'vermelho' => 'b-red',
+                    'amarelo'  => 'b-warn',
+                    'verde'    => 'b-green',
+                    default    => 'b-gray'
+                  };
+                   $farolTextMap = [
+                    'vermelho' => 'Crítico',
+                    'amarelo'  => 'Atenção',
+                    'verde'    => 'No trilho',
+                    'cinza'    => '-',
+                  ];
+                  $farolText = $farolTextMap[$farol] ?? '-';
                 ?>
                 <article
                   id="obj-<?= (int)$obj['id_objetivo'] ?>"
@@ -611,22 +834,33 @@ $totalPil = count($pilares);
                   data-obj-id="<?= (int)$obj['id_objetivo'] ?>"
                   data-pilar-color="<?= h($info['cor']) ?>"
                   data-text="<?= h(mb_strtolower($obj['descricao'],'UTF-8')) ?>"
-                  style="--bar: <?= h($info['cor']) ?>">
+                  style="--bar: <?= h($info['cor']) ?>; --track: <?= h(rgba($info['cor'], .18)) ?>; --track-border: <?= h(rgba($info['cor'], .35)) ?>;">
                   <div class="title"><?= h(normalizeText($obj['descricao'])) ?></div>
-                  <div class="progress" title="Progresso do objetivo">
+
+                  <div class="progress" title="Progresso do objetivo" style="--pct: <?= (float)$prog ?>%;">
                     <div class="bar" style="width: <?= (float)$prog ?>%"></div>
                   </div>
+
+                  <!-- Chips na mesma linha: Dono + Farol -->
+                  <div class="progress-meta">
+                    <span class="badge owner"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
+                    <span class="badge prog-chip">
+                      <i class="fa-solid fa-gauge"></i>
+                      Prog: <strong class="prog-val"><?= number_format((float)$prog,1,',','.') ?>%</strong>
+                    </span>
+                    <span class="badge farol <?= $farolBadge ?>"><i class="fa-regular fa-lightbulb"></i> Farol: <?= h(ucfirst($farolText)) ?></span>
+                  </div>
+
                   <div class="more">
-                    <div class="row"><div>KR: <strong><?= (int)$m['qtd_kr'] ?></strong></div><div>Prog: <strong><?= number_format($prog,1,',','.') ?>%</strong></div></div>
                     <div class="badges">
-                      <span class="badge"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
-                      <span class="badge <?= $statusBadge ?>">Farol: <?= h(ucfirst($status)) ?></span>
+                      <span class="badge b-gray"><i class="fa-solid fa-list-check"></i> KR: <strong><?= (int)$m['qtd_kr'] ?></strong></span>
                       <?php if(!empty($obj['tipo'])): ?><span class="badge b-type"><?= h(normalizeText($obj['tipo'])) ?></span><?php endif; ?>
                       <?php if(!empty($obj['dt_prazo'])):
                         try{ $prazo=(new DateTime($obj['dt_prazo']))->format('d/m/Y'); }catch(Throwable){ $prazo='Data inválida'; }
                         ?><span class="badge b-gray"><i class="fa-regular fa-calendar"></i> <?= h($prazo) ?></span><?php endif; ?>
                     </div>
                   </div>
+
                   <a class="link" href="<?= h($detailUrl) ?>" title="Abrir objetivo"></a>
                 </article>
                 <?php endforeach; endif; ?>
@@ -635,7 +869,7 @@ $totalPil = count($pilares);
           </div>
         </section>
         <?php endforeach; ?>
-        <!-- Overlay para as setas -->
+
         <div id="linksLayerWrap" aria-hidden="true">
           <svg id="linksLayer"></svg>
         </div>
@@ -661,6 +895,8 @@ $totalPil = count($pilares);
   <div id="toast" class="toast" role="status"></div>
 
 <script>
+  function esc(s){ const d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
+
   // ===== Busca de objetivos por texto
   const q = document.getElementById('q');
   if (q){
@@ -728,7 +964,6 @@ $totalPil = count($pilares);
     return d;
   }
 
-  // Marker por cor (garante ponta = cor da linha, com brilho)
   function getMarkerForColor(color){
     const safe = String(color).replace(/[^a-zA-Z0-9]/g,'_');
     const id = 'arrowHead_' + safe;
@@ -772,7 +1007,6 @@ $totalPil = count($pilares);
     return { top, left, width:r.width, height:r.height };
   }
 
-  // Âncoras utilitárias
   function anchorPoint(el, where='center'){
     const rect = getOffset(el);
     const cx = rect.left + rect.width/2;
@@ -784,8 +1018,7 @@ $totalPil = count($pilares);
     return { x: cx, y: cy };
   }
 
-  // Curva Bezier vertical com controle por âncora
-  function bezierAnchored(p1, p2, a1/*top|bottom*/, a2/*top|bottom*/){
+  function bezierAnchored(p1, p2, a1, a2){
     const vy = p2.y - p1.y;
     const dy = Math.max(40, Math.abs(vy) * 0.35);
     const c1 = { x: p1.x, y: (a1==='top') ? (p1.y - dy) : (p1.y + dy) };
@@ -813,20 +1046,14 @@ $totalPil = count($pilares);
       if (!srcEl || !dstEl) return;
       if (srcEl.style.display==='none' || dstEl.style.display==='none') return;
 
-      // --- Regra de ancoragem:
-      // 1) Mesmo pilar: topo -> topo
-      // 2) Pilares diferentes: ligar base do MAIS ALTO ao topo do MAIS BAIXO (independe da direção)
-      //    (a seta sempre aponta para o "destino" pois o marker está no fim do path)
       let aStart = 'top', aEnd = 'top';
       if (!samePillar(srcEl, dstEl)){
         const r1 = getOffset(srcEl);
         const r2 = getOffset(dstEl);
         const srcIsAbove = r1.top <= r2.top;
         if (srcIsAbove){
-          // src acima, dst abaixo => base do de cima -> topo do de baixo
           aStart = 'bottom'; aEnd = 'top';
         } else {
-          // src abaixo, dst acima => topo do de baixo -> base do de cima
           aStart = 'top'; aEnd = 'bottom';
         }
       }
@@ -841,13 +1068,12 @@ $totalPil = count($pilares);
       path.setAttribute('d', d);
       path.setAttribute('class', 'link-path' + (link.ativo ? '' : ' inactive'));
       path.setAttribute('stroke', color);
-      path.setAttribute('marker-end', getMarkerForColor(color)); // ponta = cor da linha (neon)
+      path.setAttribute('marker-end', getMarkerForColor(color));
       path.dataset.linkId = String(link.id_link);
       path.dataset.ativo  = String(link.ativo ?? 1);
       path.addEventListener('click', (ev)=>{ ev.stopPropagation(); showLinkActions(link); });
       svg.appendChild(path);
 
-      // handle no meio (clicável)
       const mid = { x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 };
       const handle = document.createElementNS('http://www.w3.org/2000/svg','circle');
       handle.setAttribute('cx', mid.x);
@@ -932,16 +1158,19 @@ $totalPil = count($pilares);
     const srcName = (window.__objTitles||{})[link.src] || ('#'+link.src);
     const dstName = (window.__objTitles||{})[link.dst] || ('#'+link.dst);
     const statusLabel = link.ativo ? '<span style="color:#a7f3d0">Ativa</span>' : '<span style="color:#fecaca">Inativa</span>';
+    const jus = esc(link.justificativa || '');
 
     openModal({
       title: 'Gerenciar ligação',
       html: `
-        <div style="display:grid; gap:8px;">
-          <div><strong>Origem:</strong> ${srcName}</div>
-          <div><strong>Destino:</strong> ${dstName}</div>
+        <div style="display:grid; gap:10px;">
+          <div><strong>Origem:</strong> ${esc(srcName)}</div>
+          <div><strong>Destino:</strong> ${esc(dstName)}</div>
           <div><strong>Status:</strong> ${statusLabel}</div>
-          <div style="margin-top:6px; font-size:.9rem; color:#94a3b8;">
-            Escolha a ação desejada. Você pode ativar/inativar ou excluir permanentemente esta ligação.
+          <div><strong>Justificativa:</strong></div>
+          <div class="just-box">${jus || '<em style="color:#94a3b8">—</em>'}</div>
+          <div style="margin-top:4px; font-size:.9rem; color:#94a3b8;">
+            Você pode ativar/inativar ou excluir permanentemente esta ligação.
           </div>
         </div>
       `,
@@ -950,7 +1179,7 @@ $totalPil = count($pilares);
           ? { label:'Inativar', className:'btn-subtle', onClick:()=>toggleLink(link.id_link, false) }
           : { label:'Reativar', className:'btn-primary', onClick:()=>toggleLink(link.id_link, true) },
         { label:'Excluir', className:'btn-danger', onClick:()=>confirmDelete(link) },
-        { label:'Cancelar', className:'btn-subtle', onClick:()=>closeModal() },
+        { label:'Fechar', className:'btn-subtle', onClick:()=>closeModal() },
       ]
     });
   }
@@ -977,7 +1206,7 @@ $totalPil = count($pilares);
     });
   }
 
-  // ===== Modo ligação (origem -> destino)
+  // ===== Modo ligação
   let linkMode = false;
   let srcSel = null;
 
@@ -1009,16 +1238,67 @@ $totalPil = count($pilares);
       if (dst===srcSel) return;
       card.classList.add('link-dst');
 
-      postForm({action:'create_link', src:srcSel, dst:dst, csrf_token:'<?= $csrf ?>'})
-        .then(res=>{
-          if (!res.ok) { toast(res.msg||'Falha ao criar ligação', false); }
-          else {
-            window.__links.push({id_link: res.id_link, src: srcSel, dst: dst, ativo:1});
-            drawLinks();
-            toast('Ligação criada', true);
-          }
-          setLinkMode(false);
-        }).catch(()=>{ toast('Erro ao criar ligação', false); setLinkMode(false); });
+      // Abre modal pedindo justificativa
+      const srcName = (window.__objTitles||{})[srcSel] || ('#'+srcSel);
+      const dstName = (window.__objTitles||{})[dst]   || ('#'+dst);
+
+      openModal({
+        title: 'Criar ligação',
+        html: `
+          <div style="display:grid; gap:8px;">
+            <div><strong>Origem:</strong> ${esc(srcName)}</div>
+            <div><strong>Destino:</strong> ${esc(dstName)}</div>
+            <label style="margin-top:6px; font-weight:700;">Justificativa (obrigatória)</label>
+            <textarea id="linkJustInput" rows="4" style="width:100%; resize:vertical; padding:8px; border-radius:8px; border:1px solid #1f2635; background:#0c1118; color:#eaeef6;"></textarea>
+            <div id="linkJustCount" style="text-align:right; font-size:.85rem; color:#94a3b8;">0 / 2000</div>
+          </div>
+        `,
+        actions: [
+          { label:'Cancelar', className:'btn-subtle', onClick:()=>{ closeModal(); setLinkMode(false); } },
+          { label:'Criar ligação', className:'btn-primary', onClick:()=>{
+              const ta = document.getElementById('linkJustInput');
+              const raw = (ta?.value||'').trim();
+              if (!raw){ ta?.focus(); return toast('Informe a justificativa', false); }
+              const just = raw.length>2000 ? raw.slice(0,2000) : raw;
+
+              postForm({action:'create_link', src:srcSel, dst:dst, justificativa:just, csrf_token:'<?= $csrf ?>'})
+                .then(res=>{
+                  if (!res.ok) { toast(res.msg||'Falha ao criar ligação', false); }
+                  else {
+                    // atualiza (se já existia inativa) ou inclui
+                    const existing = (window.__links||[]).find(x=>x.src===srcSel && x.dst===dst);
+                    if (existing){
+                      existing.ativo = 1;
+                      existing.id_link = res.id_link || existing.id_link;
+                      existing.justificativa = res.justificativa ?? just;
+                    } else {
+                      (window.__links|| (window.__links=[])).push({
+                        id_link: res.id_link,
+                        src: srcSel,
+                        dst: dst,
+                        ativo: 1,
+                        justificativa: res.justificativa ?? just
+                      });
+                    }
+                    drawLinks();
+                    toast('Ligação criada', true);
+                  }
+                  closeModal();
+                  setLinkMode(false);
+                })
+                .catch(()=>{ toast('Erro ao criar ligação', false); closeModal(); setLinkMode(false); });
+            } }
+        ]
+      });
+
+      // contador de caracteres
+      const ta = document.getElementById('linkJustInput');
+      const cnt = document.getElementById('linkJustCount');
+      if (ta && cnt){
+        const upd=()=>{ cnt.textContent = `${ta.value.length} / 2000`; }
+        ta.addEventListener('input', upd); upd();
+        ta.focus();
+      }
     }
   }
 
@@ -1029,17 +1309,135 @@ $totalPil = count($pilares);
     });
   }
 
-  // Redesenhar em eventos relevantes
   const pillars = document.getElementById('pillarsContainer');
   const ro = new ResizeObserver(()=>drawLinks());
   ro.observe(pillars);
   window.addEventListener('resize', drawLinks);
   window.addEventListener('scroll', drawLinks, {passive:true});
 
-  // Init
+  function normalizeNoAccents(s){
+    return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function isNotStartedKR(kr){
+    const s = normalizeNoAccents(String(kr?.status || '').toLowerCase());
+    // cobre “não iniciado”, “nao-iniciado”, “planejado(a)”, “not started)”
+    return s.includes('nao iniciado') || s.includes('nao-iniciado') ||
+          s.includes('planejad') || s.includes('not started');
+  }
+
+  // === mesmo cálculo da barra, mas garantindo que KR "não iniciado" seja ignorado ===
+  function computeObjectiveProgress(krs){
+    let sA = 0, nA = 0;
+    for (const kr of (krs || [])) {
+      if (isNotStartedKR(kr)) continue;                 // <-- ignora
+      const pa = kr?.progress?.pct_atual;
+      if (Number.isFinite(pa)) {
+        sA += Math.max(0, Math.min(100, pa));
+        nA++;
+      }
+    }
+    const pctA = nA ? Math.round(sA / nA) : null;
+    return { pctA };
+  }
+
+  function setCardProgressChip(card, pct){
+    const el = card.querySelector('.prog-chip .prog-val');
+    if (!el) return;
+    el.textContent = (pct==null)
+      ? '—'
+      : (pct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%');
+  }
+
+  function setCardProgress(card, pct){
+    const bar = card.querySelector('.progress .bar');
+    const a = pct == null ? NaN : Math.max(0, Math.min(100, Number(pct)));
+    if (bar) bar.style.width = (Number.isFinite(a) ? a : 0) + '%';
+
+    // guarda o progresso correto no card (para agregação do pilar)
+    if (Number.isFinite(a)) {
+      card.dataset.prog = a.toFixed(1);   // ex.: "73.2"
+    } else {
+      delete card.dataset.prog;           // sem KR considerado
+    }
+
+    // reprocessa apenas o pilar deste card
+    recomputePillarForCard(card);
+  }
+
+  function recomputePillar(section){
+    const cards = section.querySelectorAll('.cards-grid .card');
+    let sum = 0, n = 0;
+    cards.forEach(card => {
+      const v = parseFloat(card.dataset.prog);
+      if (Number.isFinite(v)) { sum += v; n++; }   // só conta objetivos com progresso válido
+    });
+
+    const pill = section.querySelector('.pilar-info-card .progress-pill');
+    if (pill){
+      const pct = n ? (sum / n) : 0;
+      pill.textContent = pct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+    }
+  }
+
+  function recomputePillarForCard(card){
+    const section = card.closest('section.pilar');
+    if (section) recomputePillar(section);
+  }
+
+  function recomputeAllPillars(){
+    document.querySelectorAll('section.pilar').forEach(recomputePillar);
+  }
+
+
+  function setCardFarol(card, farol){
+    // badge: <span class="badge farol b-..."> Farol: ...</span>
+    const badge = card.querySelector('.badge.farol');
+    if (!badge) return;
+
+    // normaliza
+    const f = String(farol||'cinza').toLowerCase();
+    let cls='b-gray', txt='-';
+    if (f==='verde'){ cls='b-green'; txt='No trilho'; }
+    else if (f==='amarelo'){ cls='b-warn'; txt='Atenção'; }
+    else if (f==='vermelho'){ cls='b-red'; txt='Crítico'; }
+
+    badge.classList.remove('b-green','b-warn','b-red','b-gray');
+    badge.classList.add(cls);
+    // mantém o ícone, troca apenas o texto após ele
+    const icon = badge.querySelector('i')?.outerHTML || '';
+    badge.innerHTML = icon + ' Farol: ' + txt;
+  }
+
+  async function refreshCardFromAjax(card){
+    const id = card.getAttribute('data-obj-id');
+    if (!id) return;
+    try{
+      const url  = `/OKR_system/views/detalhe_okr.php?ajax=load_krs&id_objetivo=${encodeURIComponent(id)}`;
+      const resp = await fetch(url, { headers:{'Accept':'application/json'} });
+      const data = await resp.json();
+      if (data?.success && Array.isArray(data.krs)) {
+        const prog = computeObjectiveProgress(data.krs);
+        setCardProgress(card, prog.pctA);      // barra
+        setCardProgressChip(card, prog.pctA);  // chip "Prog:"
+        setCardFarol(card, data.obj_farol);    // farol
+      }
+    } catch(e){
+      console.error('Falha ao carregar dados do objetivo', id, e);
+    }
+  }
+
+
   document.addEventListener('DOMContentLoaded', ()=>{
     bindCardClicks();
-    setTimeout(drawLinks, 80);
+
+    // alinha cálculo com "Meus OKRs"
+    document.querySelectorAll('.cards-grid .card').forEach(card=>{
+      refreshCardFromAjax(card);
+    });
+
+    // passada de segurança (caso algumas respostas AJAX demorem)
+      setTimeout(recomputeAllPillars, 600);
   });
 </script>
 </body>

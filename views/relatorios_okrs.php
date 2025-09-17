@@ -1,7 +1,7 @@
 <?php
 // views/relatorios_okrs.php — One-page executivo de OKRs (BSC + Ranking + Objetivos + Orçamento)
-// Atual: numeração de objetivos, KPI líder/pior com layout unificado + descrição clamp 3 linhas,
-// chips menores, orçamento compacto, % em Realizado/Saldo, e sparkline com orçado (pontilhado) x realizado (curvo).
+// Revisão: corrige médias por pilar/objetivo e KPI geral considerando somente KRs iniciados (exclui "não iniciado" / "cancelado"),
+// e aplica cor de farol ao chip numérico do objetivo.
 
 declare(strict_types=1);
 ini_set('display_errors',1); ini_set('display_startup_errors',1); error_reporting(E_ALL);
@@ -27,6 +27,24 @@ if (isset($_GET['ajax'])) {
   $colExists   = static function(PDO $pdo, string $t, string $c): bool { try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$t` LIKE :c"); $st->execute([':c'=>$c]); return (bool)$st->fetch(); }catch(Throwable){ return false; } };
   $normP = static function($s){ $s=mb_strtolower(trim((string)$s),'UTF-8'); $s=str_replace(['processos internos','cliente'],['processos','clientes'],$s); return $s; };
   $clamp = static function(?float $v): ?int { if($v===null||!is_finite($v)) return null; return (int)max(0, min(100, round($v))); };
+  $noacc = static function(string $s): string {
+    $s = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$s);
+    return mb_strtolower(trim(preg_replace('/\s+/',' ',$s) ?? ''),'UTF-8');
+  };
+  $isKRDesconsiderado = static function(?string $status) use ($noacc): bool {
+    if($status===null || $status==='') return false;
+    $st = $noacc($status);
+    // Conjuntos mais comuns para "não iniciado" e "cancelado"
+    $notStarted = ['nao iniciado','não iniciado','nao-iniciado','não-iniciado','not started','planejado','to do','todo','backlog','draft'];
+    $cancelled  = ['cancelado','cancelada','cancelled','canceled','abortado','abortada'];
+    foreach($notStarted as $n){ if($st===$n) return true; }
+    foreach($cancelled as $c){ if($st===$c) return true; }
+    // Heurísticas
+    if (strpos($st,'cancel')!==false) return true;
+    if (strpos($st,'nao inicia')!==false || strpos($st,'não inicia')!==false) return true;
+    if (strpos($st,'not start')!==false) return true;
+    return false;
+  };
 
   $PILLAR_ORDER  = ['aprendizado','processos','clientes','financeiro'];
   $PILLAR_COLORS = ['aprendizado'=>'#8e44ad','processos'=>'#2980b9','clientes'=>'#27ae60','financeiro'=>'#f39c12'];
@@ -71,7 +89,7 @@ if (isset($_GET['ajax'])) {
       $objs=$stO->fetchAll();
 
       if(!$objs){
-        $pilares=[]; foreach($PILLAR_ORDER as $p){ $pilares[]=['pilar'=>$p,'media'=>null, 'krs'=>0,'krs_criticos'=>0, 'count_obj'=>0,'color'=>$PILLAR_COLORS[$p]]; }
+        $pilares=[]; foreach($PILLAR_ORDER as $p){ $pilares[]=['pilar'=>$p,'media'=>null,'krs'=>0,'krs_criticos'=>0,'count_obj'=>0,'color'=>$PILLAR_COLORS[$p]]; }
         echo json_encode(['success'=>true,'items'=>[],'kpi'=>['objetivos'=>0,'media'=>null],'pilares'=>$pilares,'rank'=>[],'budget'=>['aprovado'=>0,'realizado'=>0,'saldo'=>0,'series_acc'=>[],'series_acc_plan'=>[]]]); exit;
       }
 
@@ -80,10 +98,12 @@ if (isset($_GET['ajax'])) {
 
       $findCol=function(PDO $pdo,string $table,array $opts){ foreach($opts as $c){ try{$st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute([':c'=>$c]); if($st->fetch()) return $c; }catch(Throwable){} } return null; };
 
-      // KR base + descrição
+      // ===== KR base + campos dinâmicos =====
       $selKRCols = fn($n)=> $colExists($pdo,'key_results',$n) ? "kr.`$n`" : "NULL";
       $prazoParts=[]; foreach(['dt_novo_prazo','data_fim','dt_prazo','data_limite','dt_limite','prazo','deadline'] as $pc){ if($colExists($pdo,'key_results',$pc)) $prazoParts[]="kr.`$pc`"; }
       $prazoExpr=$prazoParts? "COALESCE(".implode(',',$prazoParts).")":"NULL";
+
+      $krStatusCol = $findCol($pdo,'key_results',['status','situacao','state','situacao_kr','status_kr']);
 
       $stKR=$pdo->prepare("
         SELECT kr.id_kr, kr.id_objetivo,
@@ -91,24 +111,35 @@ if (isset($_GET['ajax'])) {
                {$selKRCols('baseline')} AS baseline,
                {$selKRCols('meta')}     AS meta,
                {$selKRCols('direcao_metrica')} AS direcao_metrica,
-               $prazoExpr AS prazo_final
+               $prazoExpr AS prazo_final,
+               ".($krStatusCol ? "kr.`$krStatusCol` AS status_kr" : "NULL AS status_kr")."
         FROM key_results kr
         WHERE kr.id_objetivo IN ($in)
       ");
       $stKR->execute($objIds);
       $krs=$stKR->fetchAll();
 
-      // Milestones / Apontamentos (opcionais)
+      // ===== Milestones / Apontamentos (opcionais) =====
       $msT = $tableExists($pdo,'milestones_kr') ? 'milestones_kr' : ($tableExists($pdo,'milestones')?'milestones':null);
       $apT = $tableExists($pdo,'apontamentos_kr') ? 'apontamentos_kr' : ($tableExists($pdo,'apontamentos')?'apontamentos':null);
-      $msKr=$msDate=$msExp=$msReal=null; $apKr=$apVal=$apWhen=null;
-      if($msT){ $msKr=$findCol($pdo,$msT,['id_kr','kr_id','id_key_result','key_result_id']); $msDate=$findCol($pdo,$msT,['data_ref','dt_prevista','data_prevista','data','dt']); $msExp=$findCol($pdo,$msT,['valor_esperado','esperado','target','meta']); $msReal=$findCol($pdo,$msT,['valor_real','realizado','resultado','alcancado']); }
-      if($apT){ $apKr=$findCol($pdo,$apT,['id_kr','kr_id','id_key_result','key_result_id']); $apVal=$findCol($pdo,$apT,['valor_real','valor','resultado']); $apWhen=$findCol($pdo,$apT,['dt_apontamento','created_at','dt_criacao','data','dt']); }
-      $stExp = ($msT && $msKr && $msDate && $msExp) ? $pdo->prepare("SELECT `$msExp` FROM `$msT` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1") : null;
-      $stRealMs = ($msT && $msKr && $msReal) ? $pdo->prepare("SELECT `$msReal` FROM `$msT` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ORDER BY ".($msDate? "`$msDate` DESC":"1")." LIMIT 1") : null;
-      $stRealAp = ($apT && $apKr && $apVal) ? $pdo->prepare("SELECT `$apVal` FROM `$apT` WHERE `$apKr`=:id ORDER BY ".($apWhen? "`$apWhen` DESC":"1")." LIMIT 1") : null;
 
-      $byObj=[]; $objKrCount=[]; $pCount=[]; $pAgg=[]; $valsObj=[];
+      $msKr=$msDate=$msExp=$msReal=$msMin=$msMax=null;
+      if($msT){
+        $msKr  = $findCol($pdo,$msT,['id_kr','kr_id','id_key_result','key_result_id']);
+        $msDate= $findCol($pdo,$msT,['data_ref','dt_prevista','data_prevista','data','dt','competencia']);
+        $msExp = $findCol($pdo,$msT,['valor_esperado','esperado','target','meta']);
+        $msReal= $findCol($pdo,$msT,['valor_real_consolidado','valor_real','realizado','resultado','alcancado']);
+        $msMin = $findCol($pdo,$msT,['valor_esperado_min','esperado_min','minimo']);
+        $msMax = $findCol($pdo,$msT,['valor_esperado_max','esperado_max','maximo']);
+      }
+
+      $stExp   = ($msT && $msKr && $msDate && $msExp) ? $pdo->prepare("SELECT `$msExp` FROM `$msT` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1") : null;
+      $stReal  = ($msT && $msKr && $msReal)           ? $pdo->prepare("SELECT `$msReal` FROM `$msT` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ORDER BY ".($msDate? "`$msDate` DESC":"1")." LIMIT 1") : null;
+      $stMin   = ($msT && $msKr && $msDate && $msMin) ? $pdo->prepare("SELECT `$msMin`  FROM `$msT` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1") : null;
+      $stMax   = ($msT && $msKr && $msDate && $msMax) ? $pdo->prepare("SELECT `$msMax`  FROM `$msT` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1") : null;
+
+      // ===== Acumuladores =====
+      $byObj=[]; $pAgg=[]; $pCount=[];
       foreach($objs as $o){
         $p = $normP($o['pilar_bsc'] ?: '');
         $byObj[$o['id_objetivo']] = [
@@ -119,85 +150,141 @@ if (isset($_GET['ajax'])) {
           'dono_id'=> (int)$o['dono'],
           'dono'=> trim(($o['dono_nome']?:'').' '.($o['dono_sobrenome']?:'')) ?: ($o['dono'] ?? '—'),
           'prazo'=> $o['dt_prazo'] ?: null,
+          // agregadores para objetivo
+          '__sum'=>0.0,'__cnt'=>0,
           'pct'=>null,
           'krs'=>['verde'=>0,'amarelo'=>0,'vermelho'=>0],
+          'kr_total'=>0,'kr_red'=>0,
           'kr_list'=>[]
         ];
-        $objKrCount[$o['id_objetivo']] = ['total'=>0,'red'=>0];
         $pCount[$p] = ($pCount[$p] ?? 0) + 1;
+        if(!isset($pAgg[$p])) $pAgg[$p]=['sum'=>0.0,'cnt'=>0,'krs'=>0,'krs_crit'=>0];
       }
 
-      $totalKrs = 0;
-      $totalKrsCrit = 0;
+      $totalKrs=0; $totalKrsCrit=0;
+      $allKRsum=0.0; $allKRcnt=0;
 
       foreach($krs as $r){
-        $totalKrs++;
         $oid=(int)$r['id_objetivo']; if(!isset($byObj[$oid])) continue;
-        $objKrCount[$oid]['total']++;
 
-        $expNow=null; $realNow=null;
-        if($stExp){ $stExp->execute([':id'=>$r['id_kr']]); $expNow=$stExp->fetchColumn(); }
-        if($stRealMs){ $stRealMs->execute([':id'=>$r['id_kr']]); $realNow=$stRealMs->fetchColumn(); }
-        if(($realNow===false || $realNow===null) && $stRealAp){ $stRealAp->execute([':id'=>$r['id_kr']]); $realNow=$stRealAp->fetchColumn(); }
+        // ===== Esperado/Real/Min/Max no marco atual =====
+        $expNow=$realNow=$vmin=$vmax=null;
+        if($stExp){  $stExp->execute([':id'=>$r['id_kr']]);  $expNow = $stExp->fetchColumn(); }
+        if($stReal){ $stReal->execute([':id'=>$r['id_kr']]); $realNow = $stReal->fetchColumn(); }
+        if($stMin){  $stMin->execute([':id'=>$r['id_kr']]);  $vmin   = $stMin->fetchColumn(); }
+        if($stMax){  $stMax->execute([':id'=>$r['id_kr']]);  $vmax   = $stMax->fetchColumn(); }
+
+        $expNow = is_numeric($expNow) ? (float)$expNow : null;
+        $realNow= is_numeric($realNow)? (float)$realNow: null;
+        $vmin   = is_numeric($vmin)   ? (float)$vmin   : null;
+        $vmax   = is_numeric($vmax)   ? (float)$vmax   : null;
 
         $base=is_numeric($r['baseline'])?(float)$r['baseline']:null;
         $meta=is_numeric($r['meta'])?(float)$r['meta']:null;
 
-        $pctAtual=null; $pctEsper=null; $farol='cinza';
-        if($base!==null && $meta!==null && $meta!=$base){
-          $up = $meta>$base;
-          if($up){ if(is_numeric($realNow)) $pctAtual=(($realNow-$base)/($meta-$base))*100; if(is_numeric($expNow)) $pctEsper=(($expNow-$base)/($meta-$base))*100; }
-          else   { if(is_numeric($realNow)) $pctAtual=(($base-$realNow)/($base-$meta))*100; if(is_numeric($expNow)) $pctEsper=(($base-$expNow)/($base-$meta))*100; }
-          $pctAtual=$clamp($pctAtual); $pctEsper=$clamp($pctEsper);
-          if($pctAtual!==null && $pctEsper!==null){
-            $delta=$pctEsper-$pctAtual;
-            $farol = ($delta<=0?'verde':($delta<=10?'amarelo':'vermelho'));
+        // direção: fallback "maior"
+        $dir = mb_strtolower(trim((string)$r['direcao_metrica']),'UTF-8') ?: 'maior';
+
+        // ===== FAROL =====
+        $farol='cinza';
+        if ($expNow===null && $vmin===null && $vmax===null) {
+          $farol = 'cinza';
+        } else if ($realNow===null) {
+          $farol = 'vermelho';
+        } else if ($vmin!==null && $vmax!==null) {
+          if ($realNow >= $vmin && $realNow <= $vmax) {
+            $farol = 'verde';
+          } else {
+            $margem = max(0.0, ($vmax - $vmin) * 0.05);
+            $farol = ($realNow >= ($vmin - $margem) && $realNow <= ($vmax + $margem)) ? 'amarelo' : 'vermelho';
+          }
+        } else {
+          if ($dir === 'menor') {
+            if ($realNow <= $expNow)          $farol = 'verde';
+            else if ($realNow <= $expNow*1.10)$farol = 'amarelo';
+            else                               $farol = 'vermelho';
+          } else {
+            if ($realNow >= $expNow)          $farol = 'verde';
+            else if ($realNow >= $expNow*0.90)$farol = 'amarelo';
+            else                               $farol = 'vermelho';
           }
         }
-        if($farol!=='cinza'){
-          $byObj[$oid]['krs'][$farol]++;
-          if($farol==='vermelho') $objKrCount[$oid]['red']++;
-        }
-        if(!isset($byObj[$oid]['__vals'])) $byObj[$oid]['__vals']=[];
-        if($pctAtual!==null) $byObj[$oid]['__vals'][]=$pctAtual;
 
+        // ===== % de avanço do KR (0–100) =====
+        $pctAtual=null;
+        if($base!==null && $meta!==null && $meta!=$base && is_numeric($realNow)){
+          $up = $meta>$base;
+          $pctAtual = $up ? (($realNow-$base)/($meta-$base))*100 : (($base-$realNow)/($base-$meta))*100;
+          $pctAtual = $clamp($pctAtual);
+        }
+
+        // ===== Filtro de status (excluir "não iniciado"/"cancelado") =====
+        $krStatus = $r['status_kr'] ?? null;
+        $desconsiderar = $isKRDesconsiderado(is_string($krStatus)?$krStatus:null);
+
+        // Lista exibida sempre mostra farol/pct (pct pode ser null se não aplicável)
         $byObj[$oid]['kr_list'][] = [
-          'label' => (string)$r['label'],
-          'pct'   => $pctAtual,
-          'farol' => $farol
+          'label'=>(string)($r['label']??''),
+          'pct'  =>$desconsiderar? null : $pctAtual,
+          'farol'=>$desconsiderar? 'cinza' : $farol
         ];
-      }
 
-      foreach($byObj as $id=>&$o){
-        $o['pct'] = (!empty($o['__vals'])) ? (int)round(array_sum($o['__vals'])/count($o['__vals'])) : null;
-        unset($o['__vals']);
-        $o['kr_total'] = $objKrCount[$id]['total'] ?? 0;
-        $o['kr_red']   = $objKrCount[$id]['red']   ?? 0;
-        if($o['pct']!==null) $valsObj[]=$o['pct'];
-
-        $p = $o['pilar'];
-        if(in_array($p,$PILLAR_ORDER,true) && $o['pct']!==null){
-          if(!isset($pAgg[$p])) $pAgg[$p]=['sum'=>0,'cnt'=>0];
-          $pAgg[$p]['sum']+=$o['pct']; $pAgg[$p]['cnt']++;
+        if($desconsiderar){
+          continue; // <<< NÃO entra nas médias/contagens
         }
-        $totalKrsCrit += (int)($o['kr_red'] ?? 0);
-      }
-      unset($o);
 
+        // Contagens globais e por objetivo/pilar
+        $totalKrs++;
+        if($farol==='vermelho'){ $totalKrsCrit++; }
+
+        if($pctAtual!==null){
+          $allKRsum += $pctAtual; $allKRcnt++;
+          $byObj[$oid]['__sum'] += $pctAtual; $byObj[$oid]['__cnt']++;
+          $p = $byObj[$oid]['pilar'];
+          $pAgg[$p]['sum'] += $pctAtual; $pAgg[$p]['cnt']++;
+        }
+
+        // Farol por objetivo
+        if($farol!=='cinza'){
+          $byObj[$oid]['krs'][$farol]++; 
+          if($farol==='vermelho') $byObj[$oid]['kr_red']++;
+        }
+        $byObj[$oid]['kr_total']++;
+      }
+
+      // ===== Consolida objetivos e farol do objetivo =====
+      foreach($byObj as &$o){
+        $o['pct'] = ($o['__cnt']>0) ? (int)round($o['__sum']/$o['__cnt']) : null;
+        $o['farol_obj'] = $o['krs']['vermelho']>0 ? 'vermelho'
+                        : ($o['krs']['amarelo']>0 ? 'amarelo'
+                        : ($o['krs']['verde']>0   ? 'verde' : 'cinza'));
+        unset($o['__sum'],$o['__cnt']);
+      } unset($o);
+
+      // ===== KPIs =====
       $kpi = [
         'objetivos'=>count($byObj),
-        'media'    => ($valsObj?(int)round(array_sum($valsObj)/count($valsObj)):null),
+        // Média geral = média de TODOS os KRs válidos (exclui não iniciados/cancelados)
+        'media'    => ($allKRcnt>0 ? (int)round($allKRsum/$allKRcnt) : null),
         'krs'      => $totalKrs,
         'krs_criticos' => $totalKrsCrit
       ];
 
+      // ===== Pilares (média com base em KRs válidos) =====
       $pilares=[];
       foreach($PILLAR_ORDER as $p){
-        $media = (isset($pAgg[$p]) && $pAgg[$p]['cnt']) ? (int)round($pAgg[$p]['sum']/$pAgg[$p]['cnt']) : null;
-        $pilares[]=['pilar'=>$p,'media'=>$media,'count_obj'=> (int)($pCount[$p] ?? 0), 'color'=>$PILLAR_COLORS[$p]];
+        $media = ($pAgg[$p]['cnt']??0)>0 ? (int)round($pAgg[$p]['sum']/$pAgg[$p]['cnt']) : null;
+        $pilares[]=[
+          'pilar'=>$p,
+          'media'=>$media,
+          'krs'=> (int)($pAgg[$p]['cnt']??0),
+          'krs_criticos'=> (int)($pAgg[$p]['krs_crit']??0),
+          'count_obj'=> (int)($pCount[$p] ?? 0),
+          'color'=>$PILLAR_COLORS[$p]
+        ];
       }
 
-      // Ranking por dono
+      // ===== Ranking por dono (mantido) =====
       $rankMap=[];
       foreach($byObj as $o){
         $id=$o['dono_id'] ?: 0; $nm=$o['dono'] ?: '—';
@@ -210,7 +297,7 @@ if (isset($_GET['ajax'])) {
       $rank = array_values(array_map(function($r){ $r['media']=$r['cnt']?(int)round($r['sum']/$r['cnt']):0; unset($r['sum'],$r['cnt']); return $r; }, $rankMap));
       usort($rank, fn($a,$b)=>$b['media']<=>$a['media']);
 
-      // Ordem reversa por pilar
+      // ===== Ordenação dos objetivos (padrão reverso de pilar + nome) =====
       $items = array_values($byObj);
       $order = array_flip(['financeiro','clientes','processos','aprendizado']);
       usort($items, function($a,$b) use ($order){
@@ -220,13 +307,12 @@ if (isset($_GET['ajax'])) {
       });
       $items = array_slice($items,0,16);
 
-      // ======= Resumo de orçamento + séries mensais acumuladas =======
+      // ===== Budget (inalterado) =====
       $budget = ['aprovado'=>0,'realizado'=>0,'saldo'=>0,'series_acc'=>[],'series_acc_plan'=>[]];
       if ($tableExists($pdo,'orcamentos')) {
         $dateStart = $dtIni; $dateEnd = $dtFim;
         $bindB = [':dini'=>$dateStart, ':dfim'=>$dateEnd, ':cid'=>$idCompany];
 
-        // Orçado (aprovado) total
         $stA=$pdo->prepare("
           SELECT COALESCE(SUM(o.valor),0)
           FROM orcamentos o
@@ -236,7 +322,6 @@ if (isset($_GET['ajax'])) {
           WHERE o.data_desembolso BETWEEN :dini AND :dfim AND obj.id_company=:cid
         "); $stA->execute($bindB); $budget['aprovado']=(float)$stA->fetchColumn();
 
-        // Realizado total
         $stR=$pdo->prepare("
           SELECT COALESCE(SUM(od.valor),0)
           FROM orcamentos_detalhes od
@@ -247,7 +332,6 @@ if (isset($_GET['ajax'])) {
           WHERE od.data_pagamento BETWEEN :dini AND :dfim AND obj.id_company=:cid
         "); $stR->execute($bindB); $budget['realizado']=(float)$stR->fetchColumn();
 
-        // Séries mensais (planejado e realizado)
         $stPlan=$pdo->prepare("
           SELECT DATE_FORMAT(o.data_desembolso,'%Y-%m') AS comp, SUM(o.valor) AS v
           FROM orcamentos o
@@ -363,39 +447,16 @@ try{
     .kpi-desc{ font-size:.62rem; font-weight:600; color:#cbd5e1; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; line-height:1.1; max-height: calc(1.1em * 3); }
     .kpi-desc:hover{ -webkit-line-clamp:unset; max-height:none; }
 
-    /* Objetivos + KRs juntos, bonito e compacto */
     .kpi-counts{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .kpi-counts .big{ font-size:1.24rem; font-weight:900; }
 
-    /* Barra de progresso (Média de progresso) */
-    .kpi-progress{
-      height:6px; background:#0b1018; border:1px solid #223047;
-      border-radius:999px; overflow:hidden; margin-top:4px;
-    }
-    .kpi-progress > span{
-      display:block; height:100%; background:#22c55e; /* verde */
-      width:0%; transition:width .7s ease;
-    }
+    .kpi-progress{ height:6px; background:#0b1018; border:1px solid #223047; border-radius:999px; overflow:hidden; margin-top:4px; }
+    .kpi-progress > span{ display:block; height:100%; background:#22c55e; width:0%; transition:width .7s ease; }
 
-    /* número grande padronizado (usaremos em Objetivos e na Média) */
-    .kpi-big{
-      font-size: 1.6rem;   /* ↑ maior que antes */
-      font-weight: 900;
-      line-height: 1;
-    }
-
-    /* bloco dos contadores no card "Objetivos" */
-    .kpi-counts{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-
-    /* chip vermelho para críticos */
-    .chip-danger{
-      border-color:#7f1d1d !important;
-      background:#111318 !important;
-      color:#fca5a5 !important;
-    }
+    .kpi-big{ font-size: 1.6rem; font-weight: 900; line-height: 1; }
+    .chip-danger{ border-color:#7f1d1d !important; background:#111318 !important; color:#fca5a5 !important; }
     .chip-danger i{ color:#ef4444 !important; }
 
-    /* ===== BSC (esq) + Ranking (dir) ===== */
     .row-analytics{ display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
 
     /* ===== BSC ===== */
@@ -404,28 +465,17 @@ try{
     .bsc-chart{ display:grid; grid-template-columns:38px 1fr; gap:8px; align-items:end; height:200px; position:relative; }
     .bsc-y{ display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; height:100%; padding:2px 0; font-size:.68rem; color:#94a3b8; }
     .bsc-plot{ position:relative; height:100%; }
-    .bsc-grid{
-      position:absolute; inset:0 0 22px 0;
-      background:
+    .bsc-grid{ position:absolute; inset:0 0 22px 0; background:
         linear-gradient(to top, rgba(255,255,255,.08) 0 1px, transparent 1px) 0 0/100% 25%,
-        linear-gradient(to top, rgba(255,255,255,.04) 0 1px, transparent 1px) 0 0/100% 5%;
-      pointer-events:none; border-radius:8px 8px 0 0;
-    }
+        linear-gradient(to top, rgba(255,255,255,.04) 0 1px, transparent 1px) 0 0/100% 5%; pointer-events:none; border-radius:8px 8px 0 0; }
     .bsc-cols{ position:absolute; inset:0 0 22px 0; display:flex; align-items:flex-end; justify-content:space-around; gap:8px; padding:0 6px; }
     .bsc-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; min-width:46px; height:100%; }
-    .bsc-bar{
-      width:30px; min-width:26px; height:0%;
-      background: var(--col,#60a5fa);
-      border:1px solid rgba(255,255,255,.18); border-bottom-color: rgba(255,255,255,.28);
-      border-radius:8px 8px 6px 6px;
-      transition:height .9s cubic-bezier(.2,.7,.2,1);
-      position:relative;
-    }
-    .bsc-bar::after{
-      content: attr(data-val) '%'; position:absolute; left:50%; transform:translate(-50%,6px); top:-18px;
+    .bsc-bar{ width:30px; min-width:26px; height:0%; background: var(--col,#60a5fa);
+      border:1px solid rgba(255,255,255,.18); border-bottom-color: rgba(255,255,255,.28); border-radius:8px 8px 6px 6px;
+      transition:height .9s cubic-bezier(.2,.7,.2,1); position:relative; }
+    .bsc-bar::after{ content: attr(data-val) '%'; position:absolute; left:50%; transform:translate(-50%,6px); top:-18px;
       background:#0c1118; border:1px solid #1f2a44; border-radius:6px; padding:1px 4px; font-size:.62rem; font-weight:900; color:#eaeef6;
-      opacity:0; transition:opacity .4s ease, transform .4s ease; pointer-events:none;
-    }
+      opacity:0; transition:opacity .4s ease, transform .4s ease; pointer-events:none; }
     .bsc-bar.show::after{ opacity:1; transform:translate(-50%,0); }
     .bsc-labels{ position:absolute; left:0; right:0; bottom:0; height:22px; display:flex; align-items:center; justify-content:space-around; gap:8px; padding:0 6px; }
     .bsc-label{ font-size:.7rem; color:#cbd5e1; text-align:center; width:58px; line-height:1.05; }
@@ -447,7 +497,7 @@ try{
     .rank .bar > span{ display:block; height:100%; background:#22c55e; width:0%; transition:width .6s ease; }
     .rank .val{ text-align:right; font-weight:900; font-size:.8rem; width:46px; }
 
-    /* ===== Objetivos compactos ===== */
+    /* ===== Objetivos ===== */
     .obj-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .obj-card{ background:#0f1420; border:1px solid var(--border); border-radius:8px; padding:8px; color:#eaeef6; min-height:118px; display:flex; flex-direction:column; gap:6px; overflow:hidden; transition:max-height .25s ease; position:relative; }
     .obj-card:hover{ max-height:320px; }
@@ -462,36 +512,34 @@ try{
     .tiny-dots .dot{ width:8px; height:8px; min-width:8px; border-radius:50%; display:inline-block; border:1px solid #1f2a44; }
     .dot.g{ background:#22c55e; } .dot.y{ background:#f59e0b; } .dot.r{ background:#ef4444; } .dot.c{ background:#9ca3af; }
 
-    /* Hover: resumo de KRs */
     .obj-more{ display:none; font-size:.66rem; color:#cbd5e1; gap:4px; }
     .obj-card:hover .obj-more{ display:grid; }
-    .kr-line{ display:flex; align-items:center; gap:6px; }
-    .kr-line .kr-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; }
-    .kr-dot.g{ background:#22c55e; } .kr-dot.y{ background:#f59e0b; } .kr-dot.r{ background:#ef4444; } .kr-dot.c{ background:#9ca3af; }
-    .kr-line .kr-txt{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .kr-line .kr-val{ font-weight:800; }
 
-    /* ===== Resumo de orçamento ===== */
+    /* KR com quebra de linha e % fixo à direita */
+    .kr-line{ display:flex; align-items:flex-start; gap:6px; }
+    .kr-line .kr-dot{
+      width:7px; height:7px; border-radius:50%; display:inline-block;
+      margin-top: 2px; /* alinha com o início do texto quando quebra */
+    }
+    .kr-dot.g{ background:#22c55e; } .kr-dot.y{ background:#f59e0b; } .kr-dot.r{ background:#ef4444; } .kr-dot.c{ background:#9ca3af; }
+
+    /* permite quebrar em várias linhas, sem estourar o card */
+    .kr-line .kr-txt{
+      flex: 1 1 auto; min-width: 0;
+      white-space: normal; word-break: break-word; overflow: hidden;
+    }
+    /* mantém o percentual colado na direita e sem quebra */
+    .kr-line .kr-val{ flex: 0 0 auto; white-space: nowrap; margin-left:6px; }
+    /* ===== Orçamento ===== */
     .bmini{ background:#0f1420; border:1px solid var(--border); border-radius:8px; padding:8px; color:#eaeef6; }
     .bmini h3{ margin:0 0 6px; font-size:.85rem; display:flex; align-items:center; gap:8px; }
-    .bmini-grid{
-      display:grid;
-      /* somatório das três colunas (3fr) == largura do gráfico (3fr) → metades iguais */
-      grid-template-columns: 1fr 1fr 1fr 3fr;
-      gap:6px;
-      align-items:stretch;
-    }
-    .bmini .k{ background:#0b1018; border:1px solid #223047; border-radius:6px; padding:6px 8px; position:relative; height:72px; display:flex; flex-direction:column; justify-content:flex-start; gap: 4px; box-sizing: border-box;}
+    .bmini-grid{ display:grid; grid-template-columns: 1fr 1fr 1fr 3fr; gap:6px; align-items:stretch; }
+    .bmini .k{ background:#0b1018; border:1px solid #223047; border-radius:6px; padding:6px 8px; position:relative; height:72px; display:flex; flex-direction:column; justify-content:flex-start; gap:4px; box-sizing:border-box;}
     .bmini .k .lab{ color:#a6adbb; font-size:.60rem; margin-bottom:2px; line-height:1.1;}
     .bmini .k .val{ font-size:.78rem; font-weight:900; line-height:1.1;}
     .corner-pct{ position:absolute; right:4px; bottom:2px; font-size:.54rem; color:#a6adbb; font-weight:800; }
 
-    /* layout: 3 KPIs na metade esquerda, gráfico ocupa metade direita inteira */
-    .bmini .k:nth-child(1){ grid-column:1; }
-    .bmini .k:nth-child(2){ grid-column:2; }
-    .bmini .k:nth-child(3){ grid-column:3; }
     .bmini .k:nth-child(4){ grid-column:4; grid-row:1; display:flex; flex-direction:column; }
-    .bmini .k:nth-child(4) .lab{ margin-bottom: 4px; }
     .spark-wrap{ display:flex; align-items:center; justify-content:center; height:38px; min-height:38px; overflow: hidden;}
     .spark { width:100%; height:100%; display: block;}
 
@@ -518,13 +566,13 @@ try{
       .obj-grid{ grid-template-columns: repeat(4, 1fr) !important; }
       .tiny-dots .dot{ border-color:transparent !important; }
 
-        .bmini-grid{ gap:6px !itant; }
-        .bmini .k{ padding:6px 8px !important; border-radius:6px !important; height:68px !important; }
-        .bmini .k .lab{ font-size:.58rem !important; margin-bottom:2px !important; line-height:1.1 !important; }
-        .bmini .k .val{ font-size:.72rem !important; line-height:1.1 !important; }
-        .corner-pct{ font-size:.52rem !important; right:4px !important; bottom:2px !important; }
-        .spark-wrap{ height:36px !important; }
-        .spark{ height:28px !important; }
+      .bmini-grid{ gap:6px !itant; }  /* <-- '!important' */
+      .bmini .k{ padding:6px 8px !important; border-radius:6px !important; height:68px !important; }
+      .bmini .k .lab{ font-size:.58rem !important; margin-bottom:2px !important; line-height:1.1 !important; }
+      .bmini .k .val{ font-size:.72rem !important; line-height:1.1 !important; }
+      .corner-pct{ font-size:.52rem !important; right:4px !important; bottom:2px !important; }
+      .spark-wrap{ height:36px !important; }
+      .spark{ height:28px !important; }
 
       #printFooter{ display:block !important; position:fixed; left:0; right:0; bottom:0; font-size:.68rem; color:#334155; }
     }
@@ -580,7 +628,7 @@ try{
               <span>Média de progresso</span><i class="fa-solid fa-gauge-high"></i>
             </div>
             <div class="kpi-value" id="kpi_media">—%</div>
-            <div class="kpi-progress" id="kpi_media_bar"><span></span></div> <!-- NOVO -->
+            <div class="kpi-progress" id="kpi_media_bar"><span></span></div>
           </div>
           <div class="kpi"><div class="kpi-head"><span>Objetivo líder</span><i class="fa-solid fa-trophy"></i></div><div class="kpi-value" id="kpi_lider">—</div></div>
           <div class="kpi"><div class="kpi-head"><span>Pior objetivo</span><i class="fa-regular fa-face-frown"></i></div><div class="kpi-value" id="kpi_pior">—</div></div>
@@ -627,10 +675,12 @@ try{
       <section class="bmini" id="budget_mini">
         <h3><i class="fa-solid fa-coins"></i> Resumo de orçamento</h3>
         <div class="bmini-grid">
+          <!-- REPOSto: este card faltava -->
           <div class="k">
             <div class="lab">Orçado (Aprovado)</div>
             <div class="val" id="b_aprov">—</div>
           </div>
+
           <div class="k">
             <div class="lab">Realizado</div>
             <div class="val" id="b_real">—</div>
@@ -643,11 +693,12 @@ try{
           </div>
           <div class="k">
             <div class="lab">Evolução anual (acum.)</div>
-            <div class="spark-wrap"><svg id="b_spark" class="spark" viewBox="0 0 300 120" preserveAspectRatio="none"></svg></div>
+            <div class="spark-wrap">
+              <svg id="b_spark" class="spark" viewBox="0 0 300 120" preserveAspectRatio="none"></svg>
+            </div>
           </div>
         </div>
       </section>
-
       <div id="printFooter" data-user="<?= htmlspecialchars($exportUserName, ENT_QUOTES, 'UTF-8') ?>"></div>
 
       <?php include __DIR__ . '/partials/chat.php'; ?>
@@ -662,12 +713,14 @@ try{
   const PILLAR_ORDER_REVERSED = ['financeiro','clientes','processos','aprendizado'];
   const PILLAR_ICONS  = { 'aprendizado':'fa-solid fa-graduation-cap', 'processos':'fa-solid fa-gears', 'clientes':'fa-solid fa-users', 'financeiro':'fa-solid fa-coins' };
 
+  const FAROL_COLORS = { verde:'#22c55e', amarelo:'#f59e0b', vermelho:'#ef4444', cinza:'#9ca3af' };
+
   // estado do toggle do ranking (true: melhor→pior | false: pior→melhor)
   let __rankOrderDesc = true;
   let __rankData = [];
   let __rankPosMap = new Map(); // id -> posição (1 = melhor)
 
-
+  // Filtros
   $('#btnAplicar').addEventListener('click', ()=>{
     const filtros = {
       dt_inicio: $('#f_dt_ini').value || null,
@@ -680,6 +733,7 @@ try{
     carregar(filtros);
   });
 
+  // Exportar (print) — garante que barras estejam “fixas” no PDF
   $('#btnPrint').addEventListener('click', ()=>{
     finalizeChartsForPrint();
     const f = $('#printFooter');
@@ -690,23 +744,24 @@ try{
     window.print();
   });
 
-  // toggle do ranking
+  // Toggle do ranking
   document.addEventListener('click', (e)=>{
     const btn = e.target.closest('#rankToggle');
     if(!btn) return;
     __rankOrderDesc = !__rankOrderDesc;
-    // atualiza rótulo e ícone
     const lab = $('#rank_order_label');
     const ico = $('#rankToggleIcon');
     btn.setAttribute('aria-pressed', __rankOrderDesc ? 'true' : 'false');
     if(lab) lab.textContent = __rankOrderDesc ? 'melhor → pior' : 'pior → melhor';
     if(ico) ico.className = __rankOrderDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide';
-    drawRanking(); // re-renderiza
+    drawRanking();
   });
 
+  // Ajustes antes de imprimir
   window.matchMedia && window.matchMedia('print').addEventListener('change', e=>{ if(e.matches) finalizeChartsForPrint(); });
   window.addEventListener('beforeprint', finalizeChartsForPrint);
 
+  // Primeira carga
   carregar({});
 
   function carregar(filtros){
@@ -715,14 +770,14 @@ try{
       .then(data=>{
         if(!data.success) throw new Error(data.error||'Falha');
 
-        // Ordena os objetivos uma vez e numera
+        // Ordena os objetivos e numera (map id -> índice)
         const itemsOrdered = orderItems(data.items||[]);
         const idxMap = new Map(); itemsOrdered.forEach((o,i)=> idxMap.set(o.id, i+1));
         window.__objIndexMap = idxMap;
 
         renderKPIs(itemsOrdered, data);
         renderBSC(data.pilares||[]);
-        renderRanking(data.rank||[]); // guarda dados e desenha
+        renderRanking(data.rank||[]);
         renderObjetivos(itemsOrdered);
         renderBudget(data.budget||{});
       })
@@ -736,10 +791,11 @@ try{
     return arr;
   }
 
+  // ========= KPIs =========
   function renderKPIs(itemsOrdered, data){
-    const objN     = data.kpi.objetivos ?? 0;
-    const krN      = data.kpi.krs ?? 0;
-    const krCritN  = data.kpi.krs_criticos ?? 0;
+    const objN     = data.kpi?.objetivos ?? 0;
+    const krN      = data.kpi?.krs ?? 0;
+    const krCritN  = data.kpi?.krs_criticos ?? 0;
 
     $('#kpi_obj').innerHTML = `
       <div class="kpi-counts">
@@ -750,17 +806,21 @@ try{
         </span>
       </div>
     `;
-    const mediaPct = data.kpi.media ?? 0;
-    $('#kpi_media').innerHTML = `<span class="kpi-big">${mediaPct}%</span>`;
 
-    // anima a barrinha (já existente no card)
+    // Média geral = média de TODOS os KRs válidos (exclui cancelados/não iniciados)
+    const mediaPct = (data.kpi?.media ?? null);
+    const mediaTxt = (mediaPct===null || isNaN(mediaPct)) ? '—' : `${mediaPct}%`;
+    $('#kpi_media').innerHTML = `<span class="kpi-big">${mediaTxt}</span>`;
+
+    // Barrinha animada
     const bar = $('#kpi_media_bar > span');
     if (bar){
-      const v = Math.max(0, Math.min(100, parseInt(mediaPct,10) || 0));
+      const v = (mediaPct===null || isNaN(mediaPct)) ? 0 : Math.max(0, Math.min(100, parseInt(mediaPct,10) || 0));
       bar.style.width = '0%';
       requestAnimationFrame(()=> setTimeout(()=> { bar.style.width = v + '%'; }, 20));
     }
 
+    // Líder / Pior considerando somente objetivos com pct != null
     const valid = (itemsOrdered||[]).filter(it => it.pct !== null && it.pct !== undefined);
     if (valid.length){
       const best = [...valid].sort((a,b)=> b.pct - a.pct)[0];
@@ -772,7 +832,6 @@ try{
       const pKey = String(best.pilar||'').toLowerCase();
       const icon = PILLAR_ICONS[pKey] || 'fa-solid fa-layer-group';
       const color = PILLAR_COLORS[pKey] || '#60a5fa';
-      const donoFirst = (best.dono||'—').toString().trim().split(/\s+/)[0] || '—';
       $('#kpi_lider').innerHTML = `
         <div class="kpi-obj">
           <i class="${icon}" style="color:${color}"></i>
@@ -781,13 +840,13 @@ try{
         </div>
         <div class="kpi-desc" title="${esc(best.nome||'—')}">${esc(best.nome||'—')}</div>
       `;
-      // WORST (mesmo formato do líder)
+
+      // WORST
       const worstIdx = (window.__objIndexMap && window.__objIndexMap.get(worst.id)) || 1;
       const objNoW = String(worstIdx).padStart(2,'0');
       const pKeyW = String(worst.pilar||'').toLowerCase();
       const iconW = PILLAR_ICONS[pKeyW] || 'fa-solid fa-layer-group';
       const colorW= PILLAR_COLORS[pKeyW] || '#60a5fa';
-      const donoFirstW = (worst.dono||'—').toString().trim().split(/\s+/)[0] || '—';
       $('#kpi_pior').innerHTML = `
         <div class="kpi-obj">
           <i class="${iconW}" style="color:${colorW}"></i>
@@ -802,7 +861,7 @@ try{
     }
   }
 
-  /* ===== BSC ===== */
+  // ========= BSC (média por pilar com KRs válidos) =========
   function renderBSC(pilares){
     const by = {}; (pilares||[]).forEach(p=>{ if(!p) return; by[(p.pilar||'').toLowerCase()] = p; });
 
@@ -811,8 +870,8 @@ try{
 
     PILLAR_ORDER.forEach(key=>{
       const p = by[key] || { pilar:key, media:null, count_obj:0, color:PILLAR_COLORS[key] };
-      const val = (p.media===null || isNaN(p.media)) ? 0 : Math.max(0, Math.min(100, parseInt(p.media,10)));
-      const empty = (p.media===null);
+      const empty = (p.media===null || isNaN(p.media));
+      const val = empty ? 0 : Math.max(0, Math.min(100, parseInt(p.media,10)));
 
       const col = document.createElement('div'); col.className='bsc-col';
       col.innerHTML = `<div class="bsc-bar ${empty?'empty':''}" style="--col:${p.color || PILLAR_COLORS[key]};" data-val="${empty?'—':val}"></div>`;
@@ -826,7 +885,7 @@ try{
     });
   }
 
-  /* ===== Ranking ===== */
+  // ========= Ranking =========
   function avatarHTML(userId){
     const PNG  = `/OKR_system/assets/img/avatars/${userId}.png`;
     const JPG  = `/OKR_system/assets/img/avatars/${userId}.jpg`;
@@ -836,11 +895,8 @@ try{
 
   function renderRanking(lista){
     __rankData = Array.isArray(lista) ? lista.slice() : [];
-
-    // mapa de posições originais (sempre considerando a ordem "melhor → pior" vinda do backend)
     __rankPosMap = new Map(__rankData.map((r,i)=>[(r.id ?? r.dono_id ?? i), i+1]));
 
-    // atualiza UI do toggle
     const lab = $('#rank_order_label');
     const ico = $('#rankToggleIcon');
     const btn = $('#rankToggle');
@@ -851,7 +907,6 @@ try{
     drawRanking();
   }
 
-
   function drawRanking(){
     const box = $('#rank_list'); 
     box.innerHTML='';
@@ -859,7 +914,6 @@ try{
     const base = (__rankData || []).slice();
     const orderedFull = __rankOrderDesc ? base : base.slice().reverse();
 
-    // mostramos só os 10 visíveis
     const visible = orderedFull.slice(0, 10);
     const visibleTotal = visible.length;
 
@@ -869,16 +923,10 @@ try{
 
       const id = r.id ?? r.dono_id ?? 0;
 
-      // posição REAL no ranking completo (1 = melhor) — usada para medalhas
       const posReal = __rankPosMap.get(id) || (idx + 1);
-
-      // posição EXIBIDA deve acompanhar a ordem visível (toggle):
-      // - melhor→pior: 1º, 2º, 3º...
-      // - pior→melhor: 10º, 9º, 8º... (dentro do subset visível)
       const posDisplay = __rankOrderDesc ? (idx + 1) : (visibleTotal - idx);
       const posStr = posDisplay + 'º';
 
-      // medalhas por colocação REAL
       const color = posReal === 1 ? '#f6c343' : posReal === 2 ? '#c0c0c0' : posReal === 3 ? '#cd7f32' : '#ffffff';
 
       const ava = avatarHTML(id);
@@ -906,24 +954,42 @@ try{
     });
   }
 
-  /* ===== Objetivos (numeração + chips menores/primeiro nome) ===== */
+  // ========= Objetivos =========
   function pillarColor(key){ return PILLAR_COLORS[String(key).toLowerCase()] || '#60a5fa'; }
   function pillarIcon(key){ return PILLAR_ICONS[String(key).toLowerCase()] || 'fa-solid fa-layer-group'; }
+  function contrastText(hex){
+    // contraste simples para amarelo
+    if(!hex) return '#fff';
+    const c = hex.replace('#','');
+    const r = parseInt(c.substring(0,2),16);
+    const g = parseInt(c.substring(2,4),16);
+    const b = parseInt(c.substring(4,6),16);
+    const yiq = ((r*299)+(g*587)+(b*114))/1000;
+    return yiq >= 200 ? '#0b0f14' : '#ffffff';
+  }
 
   function renderObjetivos(items){
     const grid = $('#obj_grid'); grid.innerHTML='';
     (items||[]).forEach((o, i)=>{
       const idx = (window.__objIndexMap && window.__objIndexMap.get(o.id)) || (i+1);
       const objNo = String(idx).padStart(2,'0');
-      const pct = o.pct!==null ? o.pct : 0;
+
       const pKey = String(o.pilar||'').toLowerCase();
       const color = pillarColor(pKey);
       const icon  = pillarIcon(pKey);
       const donoFirst = (o.dono||'—').toString().trim().split(/\s+/)[0] || '—';
 
+      const farol = (o.farol_obj || 'cinza');
+      const farolCol = FAROL_COLORS[farol] || FAROL_COLORS.cinza;
+      const farolTxt = contrastText(farolCol);
+
+      const pct = (o.pct===null || o.pct===undefined) ? null : Number(o.pct);
+      const pctTxt = (pct===null || isNaN(pct)) ? '—' : `${pct}%`;
+      const pctWidth = (pct===null || isNaN(pct)) ? 0 : Math.max(0, Math.min(100, pct));
+
       const more = (o.kr_list||[]).slice(0,5).map(kr=>{
         const cls = kr.farol==='verde'?'g':(kr.farol==='amarelo'?'y':(kr.farol==='vermelho'?'r':'c'));
-        const vp = (kr.pct===null || kr.pct===undefined) ? '—' : (kr.pct+'%');
+        const vp = (kr.pct===null || kr.pct===undefined || isNaN(kr.pct)) ? '—' : (kr.pct+'%');
         return `<div class="kr-line"><span class="kr-dot ${cls}"></span><span class="kr-txt" title="${esc(kr.label||'KR')}">${esc(kr.label||'KR')}</span><span class="kr-val">${vp}</span></div>`;
       }).join('');
 
@@ -931,15 +997,15 @@ try{
       card.style.borderLeft = `6px solid ${color}`;
 
       card.innerHTML = `
-        <span class="obj-badge">OBJ ${objNo}</span>
+        <span class="obj-badge" style="background:${farolCol}; color:${farolTxt}; border-color:${farolCol}" title="Farol do objetivo">${'OBJ '+objNo}</span>
         <div class="obj-title"><i class="${icon}" style="color:${color}"></i> ${esc(o.nome||'Objetivo')}</div>
         <div class="obj-meta">
           <span class="pill"><i class="fa-regular fa-user"></i> ${esc(donoFirst)}</span>
           <span class="pill"><i class="fa-regular fa-calendar-days"></i> ${esc(o.prazo||'—')}</span>
         </div>
-        <div class="obj-prog"><span style="background:${color}; width:${pct}%"></span></div>
+        <div class="obj-prog"><span style="background:${color}; width:${pctWidth}%"></span></div>
         <div class="obj-foot">
-          <span><strong>${pct}%</strong></span>
+          <span><strong>${pctTxt}</strong></span>
           <span class="tiny-dots" title="KRs: 🟢 verde | 🟡 amarelo | 🔴 vermelho">
             <span class="dot g"></span> ${o.krs?.verde ?? 0}
             <span class="dot y" style="margin-left:6px"></span> ${o.krs?.amarelo ?? 0}
@@ -949,11 +1015,11 @@ try{
         ${ more ? `<div class="obj-more">${more}</div>` : '' }
       `;
       grid.appendChild(card);
-      requestAnimationFrame(()=>{ const bar=card.querySelector('.obj-prog > span'); setTimeout(()=> bar.style.width = `${pct}%`, 10); });
+      requestAnimationFrame(()=>{ const bar=card.querySelector('.obj-prog > span'); setTimeout(()=> bar.style.width = `${pctWidth}%`, 10); });
     });
   }
 
-  /* ===== Orçamento: valores compactos + % canto + sparkline acumulado (orçado x realizado) ===== */
+  // ========= Orçamento =========
   function renderBudget(b){
     const brl = (x)=> (Number(x)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const ap = Number(b.aprovado||0), re=Number(b.realizado||0), sa=Math.max(0, Number(b.saldo||0));
@@ -974,15 +1040,13 @@ try{
 
     const rect = svg.getBoundingClientRect();
     const wCss = Math.floor(rect.width)  || 300;
-    const hCss = Math.floor(rect.height) || 80;   // usa a altura real do card
+    const hCss = Math.floor(rect.height) || 80;
     const w = Math.max(160, wCss);
     const h = Math.max(28,  hCss);
     svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
 
-    /* paddings proporcionais para alturas baixas (evita encostar no fundo) */
     const padX = Math.max(16, Math.round(w * 0.08));
     const padY = Math.max(6,  Math.min(14, Math.round(h * 0.18)));
-    // Mesma escala de X (meses) — assumindo mesmo range nos dois arrays:
     const N = Math.max(plan.length, real.length);
     const dx = (w - 2*padX) / Math.max(N-1,1);
 
@@ -1009,7 +1073,7 @@ try{
       return d;
     };
 
-    // Grade sutil
+    // linha base
     const base = document.createElementNS('http://www.w3.org/2000/svg','line');
     base.setAttribute('x1', padX); base.setAttribute('x2', w-padX);
     base.setAttribute('y1', toY(0)); base.setAttribute('y2', toY(0));
@@ -1039,7 +1103,7 @@ try{
       svg.appendChild(pthR);
     }
 
-    // Rótulos início/fim (MM/AAAA) — fora do plot (à esquerda e à direita)
+    // Rótulos início/fim (MM/AAAA)
     try {
       var headYMPlan = (Array.isArray(plan) && plan.length && plan[0] && plan[0].ym) ? String(plan[0].ym) : '';
       var headYMReal = (Array.isArray(real) && real.length && real[0] && real[0].ym) ? String(real[0].ym) : '';
@@ -1089,7 +1153,7 @@ try{
     }
   }
 
-  /* ===== Utilitários ===== */
+  // ========= Utilitários =========
   function labelPillar(k){
     switch(String(k).toLowerCase()){
       case 'aprendizado': return 'Aprendizado';
@@ -1114,7 +1178,7 @@ try{
     document.querySelectorAll('.kpi-progress > span').forEach(s=>{ const w = s.style.width || '0%'; s.style.width = w; });
   }
 
-  // Ajuste com chat lateral (se existir)
+  // ========= Ajuste de largura com chat lateral =========
   const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
   const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
