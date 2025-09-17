@@ -364,22 +364,41 @@ if (isset($_GET['ajax'])) {
       ? $pdo->prepare($selBase . " AND `$msDate` < :d ORDER BY `$msDate` DESC LIMIT 1")
       : null;
 
-    // Se existir tabela de apontamentos, deixar pronto um contador por MS ou por data_ref
+
+    // Apontamentos (fallback quando não houver coluna "real" no milestone)
+    $apTable = null; $apKr=null; $apVal=null; $apWhen=null;
+    foreach (['apontamentos_kr','apontamentos'] as $t) {
+      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable=$t; break; } catch(Throwable $e){}
+    }
+    $getColAp = function(string $table, array $cands) use($pdo){
+      foreach($cands as $c){ try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if($st->fetch()) return $c; }catch(Throwable $e){} }
+      return null;
+    };
+    if ($apTable){
+      $apKr   = $getColAp($apTable, ['id_kr','kr_id','id_key_result','key_result_id']);
+      $apVal  = $getColAp($apTable, ['valor_real','valor']);
+      $apWhen = $getColAp($apTable, ['dt_apontamento','created_at','dt_criacao','data']);
+    }
+
+
+    // ===== Agora sim: preparar contadores de apontamento por MS/ref =====
     $stApCntByMs  = null;
     $stApCntByRef = null;
     if ($apTable && $apKr) {
+      $apMs  = $getColAp($apTable, ['id_milestone','id_ms']); // se existir
       if ($apMs) {
         $stApCntByMs  = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apMs`=:ms");
-      } elseif ($apRef) {
+      } elseif (!empty($apRef = $getColAp($apTable, ['data_ref','data_prevista']))) {
         $stApCntByRef = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apRef`=:d");
       }
     }
 
-    // helper: checar se há apontamento no MS (R não-nulo, ou cnt>0, ou há linhas em apontamentos)
-    $hasApont = function(array $msRow, string $krId) use($stApCntByMs,$stApCntByRef){
+    /* helper: tem apontamento nesse MS?
+      - R não nulo, ou cnt>0, ou existe linha em apontamentos (por id_ms ou data_ref) */
+    $hasApont = function(array $msRow, string $krId) use (&$stApCntByMs, &$stApCntByRef){
       $r   = $msRow['R']   ?? null;
       $cnt = (int)($msRow['cnt'] ?? 0);
-      if ($r !== null && $r !== '' ) return true;
+      if ($r !== null && $r !== '') return true;
       if ($cnt > 0) return true;
       if ($stApCntByMs && !empty($msRow['id_ms'])) {
         $stApCntByMs->execute(['kr'=>$krId, 'ms'=>$msRow['id_ms']]);
@@ -398,21 +417,6 @@ if (isset($_GET['ajax'])) {
       if (!is_finite($den) || abs($den) < 1e-12) return 1e9; // enorme => pinta vermelho
       return $num / $den;
     };
-
-    // Apontamentos (fallback quando não houver coluna "real" no milestone)
-    $apTable = null; $apKr=null; $apVal=null; $apWhen=null;
-    foreach (['apontamentos_kr','apontamentos'] as $t) {
-      try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable=$t; break; } catch(Throwable $e){}
-    }
-    $getColAp = function(string $table, array $cands) use($pdo){
-      foreach($cands as $c){ try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if($st->fetch()) return $c; }catch(Throwable $e){} }
-      return null;
-    };
-    if ($apTable){
-      $apKr   = $getColAp($apTable, ['id_kr','kr_id','id_key_result','key_result_id']);
-      $apVal  = $getColAp($apTable, ['valor_real','valor']);
-      $apWhen = $getColAp($apTable, ['dt_apontamento','created_at','dt_criacao','data']);
-    }
 
     // Statements preparadas para performance
     $stExp = ($msTable && $msKr && $msDate && $msExp)
@@ -500,17 +504,17 @@ if (isset($_GET['ajax'])) {
         else { $ref=null; $rjust='sem_referencia'; }
       }
 
-      $farol_auto = 'vermelho';
+      $has_ms_before_today = (bool)$msPast;
+
+      $farol_auto = null; // default: sem referência => cinza no front
       $farol_calc = ['s'=>null, 'm'=>null, 'dir'=>null];
 
       if ($ref === null) {
-        $farol_auto = 'vermelho'; // sem referência histórica
+        // sem MS hoje e sem MS passado => mantém null (cinza)
       } else {
-        // curto-circuito por falta de apontamento
         if (!$hasApont($ref, $r['id_kr'])) {
-          $farol_auto = 'vermelho';
-        } else {
-          // parâmetros do cálculo
+          $farol_auto = 'vermelho'; // tem referência, mas sem apontamento => crítico
+        } else {          // parâmetros do cálculo
           $E     = is_numeric($ref['E']     ?? null) ? (float)$ref['E']     : null;
           $Emin  = is_numeric($ref['E_min'] ?? null) ? (float)$ref['E_min'] : null;
           $Emax  = is_numeric($ref['E_max'] ?? null) ? (float)$ref['E_max'] : null;
@@ -565,8 +569,6 @@ if (isset($_GET['ajax'])) {
         }
       }
 
-
-
       $out[] = [
         'id_kr' => $r['id_kr'],
         'key_result_num' => $r['key_result_num'],
@@ -582,6 +584,7 @@ if (isset($_GET['ajax'])) {
         'dt_novo_prazo' => $r['dt_novo_prazo'],
         'prazo_final' => $r['prazo_final'],
         'responsavel' => $nome ?: '—',
+        'has_ms_before_today' => $has_ms_before_today,
 
         /* === ADD: progresso calculado === */
         'progress' => [
@@ -605,7 +608,59 @@ if (isset($_GET['ajax'])) {
         'farol_calc'   => $farol_calc
       ];
     }
-    echo json_encode(['success'=>true,'krs'=>$out]);
+
+    // normalize farol label -> 'vermelho' | 'amarelo' | 'verde' | 'neutro'
+    $normalizeFarol = static function ($s) {
+      $s = trim(mb_strtolower((string)$s));
+      $s = str_replace(['_', '-'], ' ', $s);
+      $s2 = @iconv('UTF-8','ASCII//TRANSLIT',$s); // tira acento
+      if ($s2 !== false && $s2 !== null) $s = $s2;
+      $s = preg_replace('/\s+/', ' ', $s);
+
+      // “sem apontamento” vira neutro
+      if ($s === '' || $s === 'sem apontamento' || $s === 'neutro' || $s === 'cinza') return 'neutro';
+
+      // vermelho
+      if (preg_match('/vermelh|critic|fora.*trilh|atras|off ?track/', $s)) return 'vermelho';
+
+      // amarelo
+      if (preg_match('/amar|aten|risco|alert/', $s)) return 'amarelo';
+
+      // verde
+      if (preg_match('/verd|no ?trilho|on ?track|ok/', $s)) return 'verde';
+
+      return 'neutro';
+    };
+
+
+    // ===== FAROL AGREGADO DO OBJETIVO (V > A > Vd), ignorando KRs cancelados =====
+    $agg = ['verde'=>0,'amarelo'=>0,'vermelho'=>0,'neutro'=>0,'considerados'=>0];
+    foreach ($out as $kr) {
+      $status = strtolower((string)($kr['status'] ?? ''));
+      if (strpos($status,'cancel') !== false) continue; // ignora cancelados
+
+      // use somente o farol calculado; se vier vazio/null, trate como 'neutro'
+      $fRaw = (string)($kr['farol_auto'] ?? '');
+      $f    = $normalizeFarol($fRaw);
+
+      if     ($f === 'vermelho') $agg['vermelho']++;
+      elseif ($f === 'amarelo')  $agg['amarelo']++;
+      elseif ($f === 'verde')    $agg['verde']++;
+      else                       $agg['neutro']++;
+
+      $agg['considerados']++;
+    }
+    if ($agg['vermelho'] > 0)      $farol_obj = 'vermelho';
+    elseif ($agg['amarelo'] > 0)   $farol_obj = 'amarelo';
+    elseif ($agg['verde'] > 0)     $farol_obj = 'verde';
+    else                            $farol_obj = 'sem_apontamento';
+    
+    echo json_encode([
+      'success'=>true,
+      'krs'=>$out,
+      'obj_farol'=>$farol_obj,
+      'farol_agg'=>$agg
+    ]);
     exit;
   }
 
@@ -1874,15 +1929,6 @@ $st->execute(['id'=>$id_objetivo]);
 $objetivo = $st->fetch();
 if (!$objetivo) { http_response_code(404); die('Objetivo não encontrado.'); }
 
-$stK = $pdo->prepare("
-  SELECT COUNT(*) AS total_krs,
-         SUM(CASE WHEN kr.`farol`='vermelho' THEN 1 ELSE 0 END) AS criticos,
-         SUM(CASE WHEN kr.`farol`='amarelo' THEN 1 ELSE 0 END) AS em_risco
-  FROM `key_results` kr WHERE kr.`id_objetivo`=:id
-");
-$stK->execute(['id'=>$id_objetivo]);
-$kpi = $stK->fetch() ?: ['total_krs'=>0,'criticos'=>0,'em_risco'=>0];
-
 $stI = $pdo->prepare("SELECT COUNT(*) AS total FROM `iniciativas` i INNER JOIN `key_results` kr ON kr.`id_kr`=i.`id_kr` WHERE kr.`id_objetivo`=:id");
 $stI->execute(['id'=>$id_objetivo]);
 $tIni = (int)($stI->fetch()['total'] ?? 0);
@@ -2172,7 +2218,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
           <span class="pill" title="Data de criação"><i class="fa-regular fa-calendar-plus"></i><?= htmlspecialchars($g($objetivo,'dt_criacao')) ?></span>
           <span class="pill" title="Prazo"><i class="fa-regular fa-calendar-days"></i><?= htmlspecialchars($g($objetivo,'dt_prazo')) ?></span>
 
-          <!-- TROCA AQUI: Farol do objetivo -->
+          <!-- Farol do objetivo (dinâmico) -->
           <span class="pill meta-pill white" id="objFarolPill" title="Farol do objetivo">
             <i class="fa-solid fa-traffic-light"></i>
             <span id="objFarolLabel">—</span>
@@ -2181,6 +2227,43 @@ $saldoObj = max(0, $aprovObj - $realObj);
           <span class="pill" title="Conclusão"><i class="fa-solid fa-flag-checkered"></i><?= htmlspecialchars($g($objetivo,'dt_conclusao')) ?></span>
         </div>
       </section>
+
+      <script>
+      (function(){
+        const idObj = <?= (int)$objetivo['id_objetivo'] ?>;
+        const pill  = document.getElementById('objFarolPill');
+        const label = document.getElementById('objFarolLabel');
+
+        fetch('<?= htmlspecialchars(basename(__FILE__), ENT_QUOTES) ?>?ajax=load_krs&id_objetivo=' + idObj)
+          .then(r => r.json())
+          .then(json => {
+            if (!json || !json.success) return;
+            const farol = String(json.obj_farol || 'sem_apontamento').toLowerCase();
+            const mapLabel = {
+              verde: 'No trilho',
+              amarelo: 'Atenção',
+              vermelho: 'Crítico',
+              neutro: '-',
+              sem_apontamento: 'Sem apontamento'
+            };
+
+            // Atualiza texto e título
+            const txt = mapLabel[farol] || 'Sem apontamento';
+            label.textContent = txt;
+            pill.title = 'Farol do objetivo: ' + txt;
+            pill.dataset.farol = farol;
+
+            // Aplica cor (reutilizando suas classes .prog-ok/.prog-warn/.prog-bad)
+            pill.classList.remove('white','prog-ok','prog-warn','prog-bad');
+            if (farol === 'verde')      pill.classList.add('prog-ok');
+            else if (farol === 'amarelo') pill.classList.add('prog-warn');
+            else if (farol === 'vermelho') pill.classList.add('prog-bad');
+            else                          pill.classList.add('white'); // neutro/sem apontamento
+          })
+          .catch(() => { /* mantém o placeholder em caso de erro */ });
+      })();
+      </script>
+
 
       <!-- KPIs -->
       <section class="kpi-grid">
@@ -3022,6 +3105,19 @@ $saldoObj = max(0, $aprovObj - $realObj);
         const refAp  = kr?.ref_milestone?.tem_apontamento ? 'com apontamento' : 'sem apontamento';
         const farolTitle = `Ref: ${refDt} · ${refAp} · s=${sTxt} · m=${mTxt}`;
 
+      const hasPast = kr.has_ms_before_today === true
+                  || ['passado','fallback_hoje_sem_apont_usa_passado'].includes(kr.farol_reason);
+
+      const farolCls  = !hasPast ? 'white'
+                    : (kr.farol_auto === 'verde'   ? 'prog-ok'
+                    :  kr.farol_auto === 'amarelo' ? 'prog-warn'
+                    :  'prog-bad');
+
+      const farolText = !hasPast ? 'Farol'
+                    : (kr.farol_auto
+                          ? kr.farol_auto.charAt(0).toUpperCase()+kr.farol_auto.slice(1)
+                          : '—');
+
         cont.insertAdjacentHTML('beforeend', `
           <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
             <div class="kr-head">
@@ -3029,7 +3125,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
                 <div class="kr-title"><i class="fa-solid fa-flag"></i> KR${kr.key_result_num ? ' ' + kr.key_result_num : ''}: ${escapeHtml(truncate(kr.descricao||'', 160))}</div>
                 <div class="meta-line">
                   <!-- PROGRESSO EM PRIMEIRO LUGAR -->
-                  <span class="meta-pill ${progCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
+                  <span class="meta-pill ${farolAutoCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
                     <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
                   </span>
 
@@ -3110,7 +3206,9 @@ $saldoObj = max(0, $aprovObj - $realObj);
 
                   <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
                   <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
-                  <span class="meta-pill" title="Farol">${badgeFarol(kr.farol)}</span>
+                  <span class="meta-pill ${farolCls}" title="Farol">
+                    <i class="fa-solid fa-traffic-light"></i> ${farolText}
+                  </span>
                   <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
                   <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
                   <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
@@ -3161,6 +3259,23 @@ $saldoObj = max(0, $aprovObj - $realObj);
           metaBar.insertAdjacentHTML('afterbegin', chipHTML);
         }
       }
+      // ====== FAROL DO OBJETIVO (do backend) ======
+      {
+        const pill  = document.getElementById('objFarolPill');
+        const label = document.getElementById('objFarolLabel');
+        if (pill && label) {
+          pill.classList.remove('prog-ok','prog-warn','prog-bad','white');
+          switch ((data.obj_farol || '').toLowerCase()) {
+            case 'vermelho': pill.classList.add('prog-bad');  label.textContent = 'Vermelho'; break;
+            case 'amarelo':  pill.classList.add('prog-warn'); label.textContent = 'Amarelo';  break;
+            case 'verde':    pill.classList.add('prog-ok');   label.textContent = 'Verde';    break;
+            default:         pill.classList.add('white');     label.textContent = 'Sem apontamento';
+          }
+          // debug opcional:
+          console.debug('Farol OBJ:', data.obj_farol, data.farol_agg);
+        }
+      }
+
     }
   }
 
@@ -4193,6 +4308,32 @@ $saldoObj = max(0, $aprovObj - $realObj);
       }).observe(document.body, { childList: true, subtree: true });
     })();
     </script>
+    <script>
+      (async () => {
+        const idObj = <?= json_encode($id_objetivo) ?>;
+        const res = await fetch(`<?= basename(__FILE__) ?>?ajax=load_krs&id_objetivo=${idObj}`);
+        const json = await res.json();
+        if (!json.success) return;
+
+        // KPIs dinâmicos
+        const agg = json.farol_agg || {};
+        document.querySelector('[data-kpi="total_krs"]').textContent = agg.considerados ?? 0;
+        document.querySelector('[data-kpi="criticos"]').textContent  = agg.vermelho ?? 0;
+        document.querySelector('[data-kpi="em_risco"]').textContent  = agg.amarelo ?? 0;
+
+        // Farol do objetivo (pior cor)
+        const farol = json.obj_farol || 'sem_apontamento';
+        const el = document.getElementById('obj-farol');
+        el.dataset.farol = farol;           // mantém o valor semânticamente
+        el.classList.remove('verde','amarelo','vermelho','neutro','sem_apontamento');
+        el.classList.add(farol);            // sua CSS pinta pela classe
+
+        // Se você renderiza a lista de KRs no front, prefira usar kr.farol_auto
+        // e NUNCA exibir kr.farol do BD:
+        // json.krs.forEach(kr => renderKR({ ...kr, farol: kr.farol_auto }));
+      })();
+      </script>
+
 
 </body>
 </html>
