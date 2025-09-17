@@ -405,11 +405,12 @@ function pilar_color(string $pilar): string {
                               <span class="chip-val"><?= h($statusTxt) ?></span>
                             </span>
 
-                            <span class="chip <?= $farolClass ?>" aria-label="Farol de confiança: <?= h($farolTxt) ?>">
-                              <span class="dot <?= $farolDotClass ?>" aria-hidden="true"></span>
+                            <!-- Farol (dinâmico, via load_krs) -->
+                            <span class="chip neutral farol-chip" aria-label="Farol de confiança">
+                              <span class="dot gray" aria-hidden="true"></span>
                               <span class="chip-label">Farol</span>
                               <span class="chip-sep">·</span>
-                              <span class="chip-val"><?= h($farolTxt) ?></span>
+                              <span class="chip-val">—</span>
                             </span>
                           </div>
 
@@ -492,9 +493,53 @@ function pilar_color(string $pilar): string {
         }
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.okr-card').forEach(loadCardProgress);
-      });
+      function paintFarol(card, farol){
+      const chip = card.querySelector('.farol-chip');
+      if (!chip) return;
+      const dot = chip.querySelector('.dot');
+      const val = chip.querySelector('.chip-val');
+
+      // normaliza
+      const f = String(farol || 'sem_apontamento').toLowerCase();
+      let cls = 'neutral', dotCls = 'gray', txt = '--';
+      if (f === 'verde')        { cls = 'ok';     dotCls = 'green';  txt = 'No trilho'; }
+      else if (f === 'amarelo') { cls = 'warn';   dotCls = 'yellow'; txt = 'Atenção'; }
+      else if (f === 'vermelho'){ cls = 'danger'; dotCls = 'red';    txt = 'Crítico'; }
+
+      chip.classList.remove('ok','warn','danger','neutral');
+      chip.classList.add(cls);
+      dot.className = 'dot ' + dotCls;
+      val.textContent = txt;
+      chip.setAttribute('aria-label', 'Farol de confiança: ' + txt);
+      chip.title = 'Farol de confiança: ' + txt;
+    }
+
+    async function loadCardProgress(card){
+      const objId = card.dataset.id;
+      const progEl = card.querySelector('.okr-prog');
+      if (!objId) return;
+
+      try{
+        const url  = `/OKR_system/views/detalhe_okr.php?ajax=load_krs&id_objetivo=${encodeURIComponent(objId)}`;
+        const resp = await fetch(url, { headers:{'Accept':'application/json'} });
+        const data = await resp.json();
+        if (data?.success && Array.isArray(data.krs)) {
+          // progresso (já existia)
+          if (progEl){
+            const prog = computeObjectiveProgress(data.krs);
+            paintProgress(progEl, prog);
+          }
+          // farol agregado do objetivo (pior KR)
+          paintFarol(card, data.obj_farol);
+        }
+      } catch(e){
+        console.error('Falha ao carregar dados do objetivo', objId, e);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.okr-card').forEach(loadCardProgress);
+    });
     </script>
 </body>
 </html>
