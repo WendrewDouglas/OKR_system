@@ -1,297 +1,229 @@
 <?php
-// views/profile_user.php
-session_start();
+// /OKR_system/views/password_reset.php
+declare(strict_types=1);
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/functions.php';
 
-// Conexão PDO com exceções
-try {
-    $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4";
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    http_response_code(500);
-    die('Erro ao conectar ao banco.');
-}
-
-// Verifica login
-if (!isset($_SESSION['id_user'])) {
-    header('Location: login.php');
-    exit;
-}
-$id = $_SESSION['id_user'];
-
-// Gera CSRF token
+// CSRF
 if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$errors  = [];
-$success = '';
+// Helpers
+function json_error_and_exit(int $code, string $msg): void {
+  http_response_code($code);
+  echo $msg;
+  exit;
+}
 
-// Trata submissão do form
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // CSRF
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
-        $errors[] = 'Token inválido. Recarregue a página e tente novamente.';
-    } else {
-        // Sanitização
-        $primeiro_nome  = trim($_POST['primeiro_nome'] ?? '');
-        $ultimo_nome    = trim($_POST['ultimo_nome'] ?? '');
-        $telefone       = trim($_POST['telefone'] ?? '');
-        $empresa        = trim($_POST['empresa'] ?? '');
-        $faixa          = trim($_POST['faixa_qtd_funcionarios'] ?? '');
-        $login_novo     = trim($_POST['login'] ?? '');
-        $senha_nova     = $_POST['senha_nova'] ?? '';
-        $senha_conf     = $_POST['senha_confirma'] ?? '';
+// Conexão PDO
+try {
+  $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+  $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+} catch (Throwable $e) {
+  json_error_and_exit(500, 'Erro ao conectar ao banco.');
+}
 
-        if ($primeiro_nome === '') {
-            $errors[] = 'O primeiro nome é obrigatório.';
-        }
-        if ($login_novo === '') {
-            $errors[] = 'O login não pode ficar em branco.';
-        }
+// Normaliza entradas
+function norm_hex(?string $s): string {
+  $s = is_string($s) ? trim($s) : '';
+  return strtolower($s);
+}
 
-        if (empty($errors)) {
-            try {
-                $pdo->beginTransaction();
+// --- Lê parâmetros (GET para exibir form / POST para trocar a senha) ---
+$method   = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$selector = $method === 'POST' ? ($_POST['selector'] ?? '') : ($_GET['selector'] ?? '');
+$verifier = $method === 'POST' ? ($_POST['verifier'] ?? '') : ($_GET['verifier'] ?? '');
+$selector = norm_hex($selector);
+$verifier = norm_hex($verifier);
 
-                // Upload de avatar
-                $imagemUrl = null;
-                if (!empty($_FILES['avatar']['name'])) {
-                    $file = $_FILES['avatar'];
-                    if ($file['error'] === UPLOAD_ERR_OK) {
-                        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                        $mime  = finfo_file($finfo, $file['tmp_name']);
-                        finfo_close($finfo);
-                        $allowed = ['image/jpeg'=>'jpg','image/png'=>'png'];
-                        if (!isset($allowed[$mime])) {
-                            throw new Exception('Avatar deve ser JPG ou PNG.');
-                        }
-                        if ($file['size'] > 2*1024*1024) {
-                            throw new Exception('Avatar deve ter no máximo 2MB.');
-                        }
-                        $ext      = $allowed[$mime];
-                        $novoNome = "avatar_{$id}_" . time() . ".{$ext}";
-                        $destino  = __DIR__ . "/uploads/avatars/{$novoNome}";
-                        if (!move_uploaded_file($file['tmp_name'], $destino)) {
-                            throw new Exception('Falha ao mover arquivo.');
-                        }
-                        $imagemUrl = "/uploads/avatars/{$novoNome}";
-                    } else {
-                        throw new Exception('Erro no upload do avatar.');
-                    }
-                }
+// Valida formato mínimo
+$selectorOk = (bool)preg_match('/^[a-f0-9]{32}$/', $selector); // CHAR(32) na tabela
+// Observação: dependendo da sua generateSelectorVerifier(), o verifier pode ter 32 ou 64 hex.
+// Como no request você salvou verifier_hash como CHAR(64), aqui aceitamos 32..64 hex e normalizamos.
+$verifierOk = (bool)preg_match('/^[a-f0-9]{32,64}$/', $verifier);
 
-                // Atualiza usuários
-                $sql = "UPDATE usuarios SET
-                            primeiro_nome = :primeiro_nome,
-                            ultimo_nome   = :ultimo_nome,
-                            telefone      = :telefone,
-                            empresa       = :empresa,
-                            faixa_qtd_funcionarios = :faixa,
-                            dt_alteracao  = NOW(),
-                            id_user_alteracao = :alterador
-                        " . ($imagemUrl ? ", imagem_url = :imagem_url" : "") . "
-                        WHERE id_user = :id";
-                $stmt = $pdo->prepare($sql);
-                $stmt->bindValue(':primeiro_nome', $primeiro_nome);
-                $stmt->bindValue(':ultimo_nome',   $ultimo_nome ?: null);
-                $stmt->bindValue(':telefone',      $telefone ?: null);
-                $stmt->bindValue(':empresa',       $empresa ?: null);
-                $stmt->bindValue(':faixa',         $faixa ?: null);
-                if ($imagemUrl) {
-                    $stmt->bindValue(':imagem_url', $imagemUrl);
-                }
-                $stmt->bindValue(':alterador', $id, PDO::PARAM_INT);
-                $stmt->bindValue(':id',        $id, PDO::PARAM_INT);
-                $stmt->execute();
+if (!$selectorOk || !$verifierOk) {
+  // Link quebrado/copied errado
+  $invalid = true;
+} else {
+  // Busca o reset por selector
+  $st = $pdo->prepare("
+    SELECT id_reset, user_id, verifier_hash, expira_em, used_at
+      FROM usuarios_password_resets
+     WHERE selector = :sel
+     LIMIT 1
+  ");
+  $st->execute([':sel' => $selector]);
+  $reset = $st->fetch(PDO::FETCH_ASSOC);
+  $invalid = !$reset;
+}
 
-                // Verifica unicidade de login
-                $chk = $pdo->prepare("
-                    SELECT COUNT(*) FROM usuarios_credenciais
-                     WHERE login = :login AND id_user <> :id
-                ");
-                $chk->execute([':login'=>$login_novo, ':id'=>$id]);
-                if ($chk->fetchColumn() > 0) {
-                    throw new Exception('Login já em uso por outro usuário.');
-                }
-                // Atualiza login
-                $upd = $pdo->prepare("
-                    UPDATE usuarios_credenciais
-                       SET login = :login
-                     WHERE id_user = :id
-                ");
-                $upd->execute([':login'=>$login_novo, ':id'=>$id]);
+if (!$invalid && $reset) {
+  // Verifica expiração/uso
+  if (!empty($reset['used_at'])) {
+    $invalid = true;
+  } elseif (strtotime($reset['expira_em']) < time()) {
+    $invalid = true;
+  } else {
+    // Compara hash do verifier. Usamos a MESMA função do request.
+    // 1) Preferência: hashVerifier() (se foi usada no request)
+    $hashA = function_exists('hashVerifier')
+      ? hashVerifier($verifier)
+      : hash_hmac('sha256', $verifier, APP_TOKEN_PEPPER);
 
-                // Atualiza senha, se informada
-                if ($senha_nova !== '') {
-                    if ($senha_nova !== $senha_conf) {
-                        throw new Exception('A confirmação da senha não confere.');
-                    }
-                    $hash = password_hash($senha_nova, PASSWORD_BCRYPT);
-                    $upw  = $pdo->prepare("
-                        UPDATE usuarios_credenciais
-                           SET senha_hash = :hash
-                         WHERE id_user = :id
-                    ");
-                    $upw->execute([':hash'=>$hash, ':id'=>$id]);
-                }
+    // 2) Fallback de compatibilidade (se no request foi usado sha256(pepa+verifier)):
+    $hashB = hash('sha256', APP_TOKEN_PEPPER . $verifier);
 
-                $pdo->commit();
-                $success = 'Perfil atualizado com sucesso.';
-                // Regenera token
-                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $errors[] = $e->getMessage();
-            }
-        }
+    if (!hash_equals($reset['verifier_hash'], $hashA) && !hash_equals($reset['verifier_hash'], $hashB)) {
+      $invalid = true;
     }
+  }
 }
 
-// Busca dados do usuário
-$stmt = $pdo->prepare("
-    SELECT u.*, uc.login, uc.dt_ultimo_login
-      FROM usuarios u
-      JOIN usuarios_credenciais uc ON uc.id_user = u.id_user
-     WHERE u.id_user = :id
-");
-$stmt->execute([':id'=>$id]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+// POST = tentar trocar a senha
+if ($method === 'POST') {
+  // Falha de CSRF ou link inválido → mensagem padrão
+  $csrfSess = $_SESSION['csrf_token'] ?? '';
+  $csrfPost = $_POST['csrf_token'] ?? '';
+  if (!$csrfSess || !hash_equals($csrfSess, (string)$csrfPost) || $invalid) {
+    $_SESSION['reset_error'] = 'Link inválido ou expirado. Solicite novo link.';
+    header('Location: /OKR_system/views/password_reset.php?selector=' . urlencode($selector) . '&verifier=' . urlencode($verifier));
+    exit;
+  }
+
+  // Valida senhas
+  $senha = (string)($_POST['senha'] ?? '');
+  $conf  = (string)($_POST['senha_confirm'] ?? '');
+
+  // Política mínima (ajuste se quiser igual ao cadastro)
+  $senhaRegex = '/(?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*\W).*$/';
+  if (!preg_match($senhaRegex, $senha)) {
+    $_SESSION['reset_error'] = 'A nova senha não atende aos requisitos mínimos.';
+    header('Location: /OKR_system/views/password_reset.php?selector=' . urlencode($selector) . '&verifier=' . urlencode($verifier));
+    exit;
+  }
+  if ($senha !== $conf) {
+    $_SESSION['reset_error'] = 'As senhas não coincidem.';
+    header('Location: /OKR_system/views/password_reset.php?selector=' . urlencode($selector) . '&verifier=' . urlencode($verifier));
+    exit;
+  }
+
+  // Tudo ok: troca a senha e marca o reset como usado
+  try {
+    $pdo->beginTransaction();
+
+    // 1) Atualiza/insere credencial
+    $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
+    $hash = password_hash($senha, $algo);
+
+    $upCred = $pdo->prepare("
+      INSERT INTO usuarios_credenciais (id_user, senha_hash)
+      VALUES (:uid, :hash)
+      ON DUPLICATE KEY UPDATE senha_hash = VALUES(senha_hash)
+    ");
+    $upCred->execute([':uid' => (int)$reset['user_id'], ':hash' => $hash]);
+
+    // 2) Marca reset como usado e guarda IP/UA
+    $ipUse = substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45);
+    $uaUse = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 255);
+    $upReset = $pdo->prepare("
+      UPDATE usuarios_password_resets
+         SET used_at = NOW(), ip_use = :ip, user_agent_use = :ua
+       WHERE id_reset = :id
+    ");
+    $upReset->execute([':ip' => $ipUse, ':ua' => $uaUse, ':id' => (int)$reset['id_reset']]);
+
+    // 3) (Opcional) Apaga outros resets pendentes do mesmo usuário
+    $pdo->prepare("
+      DELETE FROM usuarios_password_resets
+       WHERE user_id = :uid AND id_reset <> :id
+    ")->execute([':uid' => (int)$reset['user_id'], ':id' => (int)$reset['id_reset']]);
+
+    $pdo->commit();
+
+    // Mensagem de sucesso e redireciona ao login
+    $_SESSION['success_message'] = 'Senha alterada com sucesso. Faça login com a nova senha.';
+    header('Location: /OKR_system/views/login.php');
+    exit;
+
+  } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('PASSWORD_RESET_TX_FAIL: ' . $e->getMessage());
+    $_SESSION['reset_error'] = 'Falha ao alterar a senha. Tente novamente mais tarde.';
+    header('Location: /OKR_system/views/password_reset.php?selector=' . urlencode($selector) . '&verifier=' . urlencode($verifier));
+    exit;
+  }
+}
+
+// GET = exibir tela
+$flashError = $_SESSION['reset_error'] ?? '';
+unset($_SESSION['reset_error']);
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Meu Perfil – OKR System</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redefinir Senha – OKR System</title>
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
 </head>
-<body>
-  <?php include __DIR__ . '/partials/header.php'; ?>
-  <?php include __DIR__ . '/partials/sidebar.php'; ?>
+<body class="fullscreen-center">
 
-  <main class="content">
-    <div class="container p-4">
-      <h1>Meu Perfil</h1>
+  <div class="login-card">
+    <div class="login-illustration"><!-- ilustração --></div>
 
-      <?php if ($success): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-      <?php endif; ?>
-      <?php if ($errors): ?>
-        <div class="alert alert-danger"><ul>
-          <?php foreach ($errors as $err): ?>
-            <li><?= htmlspecialchars($err) ?></li>
-          <?php endforeach; ?>
-        </ul></div>
-      <?php endif; ?>
+    <div class="login-form-wrapper">
+      <a href="https://planningbi.com.br/" aria-label="Ir para página inicial">
+        <img src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg"
+             alt="Logo" class="logo">
+      </a>
 
-      <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-
-        <div class="row">
-          <div class="col-md-8">
-            <!-- Dados Pessoais -->
-            <div class="card mb-4">
-              <div class="card-header">Dados Pessoais</div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <label class="form-label">Primeiro Nome *</label>
-                  <input type="text" name="primeiro_nome" class="form-control" required
-                         value="<?= htmlspecialchars($user['primeiro_nome']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Último Nome</label>
-                  <input type="text" name="ultimo_nome" class="form-control"
-                         value="<?= htmlspecialchars($user['ultimo_nome']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Telefone</label>
-                  <input type="text" name="telefone" class="form-control"
-                         value="<?= htmlspecialchars($user['telefone']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Empresa</label>
-                  <input type="text" name="empresa" class="form-control"
-                         value="<?= htmlspecialchars($user['empresa']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Faixa de Funcionários</label>
-                  <input type="text" name="faixa_qtd_funcionarios" class="form-control"
-                         value="<?= htmlspecialchars($user['faixa_qtd_funcionarios']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">E-mail Corporativo</label>
-                  <input type="email" class="form-control" readonly
-                         value="<?= htmlspecialchars($user['email_corporativo']) ?>">
-                </div>
-              </div>
-            </div>
-
-            <!-- Credenciais -->
-            <div class="card mb-4">
-              <div class="card-header">Credenciais</div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <label class="form-label">Login *</label>
-                  <input type="text" name="login" class="form-control" required
-                         value="<?= htmlspecialchars($user['login']) ?>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Senha Nova</label>
-                  <input type="password" name="senha_nova" class="form-control">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Confirmar Senha</label>
-                  <input type="password" name="senha_confirma" class="form-control">
-                </div>
-                <small class="text-muted">Deixe em branco para não alterar.</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <!-- Avatar -->
-            <div class="card mb-4">
-              <div class="card-header">Foto de Perfil</div>
-              <div class="card-body text-center">
-                <img src="<?= htmlspecialchars($user['imagem_url'] ?: '/assets/img/default-avatar.png') ?>"
-                     class="img-fluid rounded-circle mb-3" style="max-width:150px;" alt="Avatar">
-                <div class="mb-3">
-                  <label class="form-label">Alterar Avatar</label>
-                  <input type="file" name="avatar" class="form-control">
-                </div>
-              </div>
-            </div>
-            <!-- Metadados -->
-            <div class="card">
-              <div class="card-header">Último Acesso</div>
-              <div class="card-body">
-                <p><strong>Data:</strong> <?= htmlspecialchars($user['dt_ultimo_login']) ?></p>
-              </div>
-            </div>
-          </div>
+      <?php if ($invalid): ?>
+        <div class="error-message" style="margin-top:1rem;">
+          Link inválido ou expirado. Solicite novo link.
         </div>
+        <div style="margin-top:1rem;">
+          <a class="btn btn-secondary w-100" href="/OKR_system/views/password_reset_request.php">Voltar para recuperar senha</a>
+        </div>
+      <?php else: ?>
+        <form action="/OKR_system/views/password_reset.php" method="POST" novalidate>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
+          <input type="hidden" name="selector"   value="<?= htmlspecialchars($selector, ENT_QUOTES) ?>">
+          <input type="hidden" name="verifier"   value="<?= htmlspecialchars($verifier, ENT_QUOTES) ?>">
 
-        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-      </form>
+          <div class="mb-3">
+            <label for="senha" class="form-label">Nova senha</label>
+            <input type="password" id="senha" name="senha" class="form-control" placeholder="Crie uma nova senha" required>
+            <small class="text-muted">Mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="senha_confirm" class="form-label">Confirmar nova senha</label>
+            <input type="password" id="senha_confirm" name="senha_confirm" class="form-control" placeholder="Repita a senha" required>
+          </div>
+
+          <?php if (!empty($flashError)): ?>
+            <div class="error-message" style="margin: .5rem 0 1rem 0;"><?= htmlspecialchars($flashError) ?></div>
+          <?php endif; ?>
+
+          <div class="mb-3">
+            <button type="submit" class="btn btn-primary w-100">Salvar nova senha</button>
+          </div>
+          <div>
+            <a href="/OKR_system/views/login.php" class="password-reset-link">Voltar ao login</a>
+          </div>
+        </form>
+      <?php endif; ?>
     </div>
-  </main>
+  </div>
 
-  <script>
-    // Toggle senha
-    document.querySelectorAll('input[type="password"]').forEach(input => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = '👁️';
-      btn.classList.add('toggle-password');
-      input.parentNode.appendChild(btn);
-      btn.addEventListener('click', () => {
-        input.type = input.type === 'password' ? 'text' : 'password';
-        btn.textContent = input.type === 'password' ? '👁️' : '🙈';
-      });
-    });
-  </script>
 </body>
 </html>

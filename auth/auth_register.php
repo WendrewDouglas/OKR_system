@@ -15,6 +15,11 @@ session_start();
 
 require_once __DIR__ . '/bootstrap_logging.php';
 
+$ip = substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45);
+$captchaToken = $_POST['g-recaptcha-response'] ?? $_POST['h-captcha-response'] ?? $_POST['captcha_token'] ?? null;
+verifyCaptchaOrFail($captchaToken, $ip);
+
+
 /* ===================================
    Helpers de redirecionamento/flash
    =================================== */

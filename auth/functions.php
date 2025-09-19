@@ -41,6 +41,120 @@ function smtp_resolved_host(string $host): string {
     return SMTP_FORCE_IPV4 ? gethostbyname($host) : $host;
 }
 
+if (!function_exists('generateSelectorVerifier')) {
+    function generateSelectorVerifier(): array {
+        // selector de 16 bytes (32 hex) e verifier de 32 bytes (64 hex)
+        $selector = bin2hex(random_bytes(16));
+        $verifier = bin2hex(random_bytes(32));
+        return [$selector, $verifier];
+    }
+}
+
+if (!function_exists('hashVerifier')) {
+    function hashVerifier(string $verifier): string {
+        // hash consistente com pepper (não reversível)
+        return hash('sha256', APP_TOKEN_PEPPER . $verifier);
+    }
+}
+
+if (!function_exists('verifyCaptchaOrFail')) {
+    function verifyCaptchaOrFail(?string $token, string $ip): void {
+        if (CAPTCHA_PROVIDER === 'off') return;
+
+        if (!$token) {
+            throw new RuntimeException('Verificação anti-robô falhou.');
+        }
+
+        $url = (CAPTCHA_PROVIDER === 'recaptcha')
+            ? 'https://www.google.com/recaptcha/api/siteverify'
+            : 'https://hcaptcha.com/siteverify';
+
+        $post = http_build_query([
+            'secret'   => CAPTCHA_SECRET,
+            'response' => $token,
+            'remoteip' => $ip,
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $post,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+        ]);
+        $resp = curl_exec($ch);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false) {
+            throw new RuntimeException('Falha ao verificar CAPTCHA: ' . $err);
+        }
+
+        $data = json_decode($resp, true);
+        $ok = (bool)($data['success'] ?? false);
+
+        // reCAPTCHA v3: considerar a pontuação
+        if (CAPTCHA_PROVIDER === 'recaptcha' && array_key_exists('score', $data)) {
+            $ok = $ok && ((float)$data['score'] >= (float)RECAPTCHA_MIN_SCORE);
+        }
+
+        if (!$ok) {
+            throw new RuntimeException('Verificação anti-robô inválida.');
+        }
+    }
+}
+
+if (!function_exists('passwordPolicyCheck')) {
+    function passwordPolicyCheck(string $pwd): array {
+        // ajuste conforme sua regra de cadastro; mínimo recomendado: 10+
+        $ok = (mb_strlen($pwd) >= 10);
+        return ['ok' => $ok, 'msg' => $ok ? '' : 'A senha deve ter ao menos 10 caracteres.'];
+    }
+}
+
+if (!function_exists('bestPasswordHash')) {
+    function bestPasswordHash(string $pwd): string {
+        if (defined('PASSWORD_ARGON2ID')) {
+            // custos razoáveis; ajuste conforme o host
+            return password_hash($pwd, PASSWORD_ARGON2ID, [
+                'memory_cost' => 1 << 17, // 128 MB
+                'time_cost'   => 3,
+                'threads'     => 2,
+            ]);
+        }
+        return password_hash($pwd, PASSWORD_DEFAULT);
+    }
+}
+
+if (!function_exists('rateLimitResetRequestOrFail')) {
+    function rateLimitResetRequestOrFail(PDO $pdo, ?int $userId, string $ip): void {
+        // Limites sugeridos: 3 por usuário/15min e 10 por IP/15min
+        $st = $pdo->prepare("
+            SELECT COUNT(*) FROM usuarios_password_resets
+            WHERE ip_request = ? AND created_at >= (NOW() - INTERVAL 15 MINUTE)
+        ");
+        $st->execute([$ip]);
+        $cntIp = (int)$st->fetchColumn();
+        if ($cntIp >= 10) {
+            throw new RuntimeException('Muitos pedidos recentes. Tente novamente em alguns minutos.');
+        }
+
+        if ($userId !== null) {
+            $st = $pdo->prepare("
+                SELECT COUNT(*) FROM usuarios_password_resets
+                WHERE user_id = ? AND created_at >= (NOW() - INTERVAL 15 MINUTE)
+            ");
+            $st->execute([$userId]);
+            $cntUser = (int)$st->fetchColumn();
+            if ($cntUser >= 3) {
+                throw new RuntimeException('Muitos pedidos recentes. Tente novamente em alguns minutos.');
+            }
+        }
+    }
+}
+
+
+
 /* ---------- Wrapper de envio ---------- */
 function sendTransactionalMail(
     string $to,
@@ -157,28 +271,29 @@ function sendTransactionalMail(
 }
 
 /* ---------- E-mails específicos ---------- */
-function sendPasswordResetEmail(string $to, string $token): bool {
+function sendPasswordResetEmail(string $to, string $selector, string $verifier): bool {
     $subject = 'Recuperação de senha – OKR System';
-    $link    = 'https://planningbi.com.br/OKR_system/views/password_reset.php?token=' . urlencode($token);
+
+    // Monte a URL com selector + verifier (HTTPS!)
+    $base   = 'https://planningbi.com.br/OKR_system/views/password_reset.php';
+    $query  = http_build_query(['selector' => $selector, 'verifier' => $verifier]);
+    $link   = $base . '?' . $query;
 
     $html = <<<HTML
     <html>
     <head><meta charset="UTF-8"><title>Recuperação de Senha</title></head>
     <body style="font-family:Arial,Helvetica,sans-serif; font-size:15px; color:#111">
       <p>Olá,</p>
-      <p>Clicando no link abaixo você poderá redefinir sua senha do OKR System:</p>
-      <p><a href="{$link}">Redefinir minha senha</a></p>
-      <p>Este link expira em 1 hora.</p>
-      <p>Se não foi você quem solicitou, ignore esta mensagem.</p>
+      <p>Use o link abaixo para redefinir sua senha do OKR System (expira em 1 hora):</p>
+      <p><a href="{$link}" target="_blank" rel="noopener">Redefinir minha senha</a></p>
+      <p>Se você não solicitou, pode ignorar este aviso com segurança.</p>
       <hr style="border:none; border-top:1px solid #eee; margin:16px 0">
       <p>PlanningBI – OKR System</p>
-    </body>
-    </html>
+    </body></html>
     HTML;
 
-    // From padrão: a própria mailbox autenticada
-    $from    = defined('SMTP_FROM') ? SMTP_FROM : 'no-reply@planningbi.com.br';
-    $fromName= defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'OKR System';
+    $from     = defined('SMTP_FROM')      ? SMTP_FROM      : 'no-reply@planningbi.com.br';
+    $fromName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'OKR System';
 
     return sendTransactionalMail($to, $subject, $html, $from, $fromName);
 }

@@ -1,0 +1,289 @@
+<!-- wp:pagelayer/pl-post-props {"post_password":"","post_sticky":"","post_category":"","post_tags":"","featured_image":0,"post_excerpt":"","comment_status":"","ping_status":"","post_parent":0,"menu_order":0,"pagelayer-id":"cbd4163"} /-->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_margin":["40px","0px","0px","0px"],"ele_id":"consultoria","pagelayer-id":"dmh6811"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","overlay_hover_delay":"400","pagelayer-id":"rtl3868"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#111111","heading_typo":"Red Hat Text,40,,500,,,Solid,,Uppercase,,","animation":"fadeInDown","animation_delay":"600","pagelayer-id":"bbl5068"} -->
+nossos serviços
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"10","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"40k5468"} /-->
+
+<!-- wp:pagelayer/pl-text {"ele_custom_pos":"true","ele_custom_width":"800px","ele_align":"50%","ele_align_mobile":"0%","animation":"fadeInUp","animation_delay":"600","ele_css":"{{element}} .pagelayer-text-holder p{font-family:poppins; font-weight:500; color:#757575;line-height:1.8;}","pagelayer-id":"afh9108"} -->
+<p [object NamedNodeMap]>Aceleramos a transformação estratégica do seu negócio com consultoria completa, presença em conselhos, treinamentos em dados e tecnologia, além de uma plataforma exclusiva para gestão de <strong>OKRs</strong> e <strong>BSC</strong>. Tudo para construir uma organização orientada a dados e de alta performance.</p>
+<!-- /wp:pagelayer/pl-text -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_margin":["0px","0px","0px","0px"],"pagelayer-id":"bcj7553"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"jnt1344"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-chess-knight","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Consultoria em Planejamento Estratégico","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInUp","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"fzd1399"} -->
+<p [object NamedNodeMap]>Implantamos OKRs e BSC de ponta a ponta, conduzindo workshops de criação, rituais de acompanhamento e encerramento de ciclos de forma completa e estruturada.</p>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"vrc4716"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-chalkboard-teacher","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Plataforma Especializada para OKR e BSC","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInRight","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"rda5937"} -->
+<p [object NamedNodeMap]>Plataforma SaaS white-label, adaptável à identidade da sua empresa, para gestão ágil e integrada de OKRs, BSC, indicadores, mapas estratégicos e planos de ação.</p>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"nuq3968"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-balance-scale","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Representação em Conselhos Deliberativos","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInLeft","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"ujt5231"} -->
+<p [object NamedNodeMap]>Atuamos como representantes estratégicos em conselhos, com foco em tecnologia, IA, BI e automação, agregando visão técnica e de negócios para decisões mais assertivas.</p>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_margin":"40px,0px,0px,0px","ele_margin_tablet":"0px,0px,0px,0px","pagelayer-id":"pav2991"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"nn28308"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-brain","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Treinamentos de IA para Negócios","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInUp","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"1eg5917"} -->
+<p [object NamedNodeMap]>Programas do nível básico ao avançado sobre Inteligência Artificial aplicada ao ambiente corporativo, preparando equipes para inovar com segurança e visão estratégica.</p>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"yfa7746"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-chart-line","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Treinamentos de BI para Negócios","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInRight","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"8m24908"} -->
+<blockquote data-start="1931" data-end="2124"><p data-start="1933" data-end="2124">Capacitações segmentadas por área (produção, finanças, controladoria, logística, transportes, etc.), trazendo o Business Intelligence de forma prática e direcionada à realidade de cada setor.</p>
+</blockquote>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"moc9907"} -->
+<!-- wp:pagelayer/pl-iconbox {"service_icon":"fas fa-bullhorn","service_icon_color":"#ff9100ff","service_icon_font_size":"50","service_icon_hover_delay":"400","service_heading":"Treinamento de Storytelling com Dados","service_title_spacing":"20,0,10,0","service_heading_color":"#212121ff","service_heading_typo":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","heading_delay":"400","service_btn_hover_delay":"400","ele_padding":"25px,25px,25px,25px","border_color":"#000000ff","animation":"fadeInRight","animation_delay":"600","ele_css":"{{element}} .pagelayer-service-text p{font-family:poppins; font-weight:500;color:#757575;}","pagelayer-id":"8ie7299"} -->
+<blockquote data-start="1475" data-end="1616"><p data-start="1477" data-end="1616">Capacitação prática para transformar dados em narrativas claras, persuasivas e impactantes, melhorando a comunicação e a tomada de decisão.</p>
+</blockquote>
+<!-- /wp:pagelayer/pl-iconbox -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_bg_type":"color","ele_bg_color":"#212121ff","ele_margin":["0px","0px","0px","0px"],"ele_padding":["50px","0px","0px","0px"],"ele_id":"system","pagelayer-id":"aze9634"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","overlay_hover_delay":"400","pagelayer-id":"xmq3071"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#111111","heading_typo":{"font-family":"Red Hat Text","font-size":"40","font-weight":"500","text-decoration-style":"solid","text-transform":"uppercase"},"heading_typo_tablet":{"font-size":"40"},"heading_typo_mobile":{"font-size":"32"},"animation":"fadeInDown","animation_delay":"600","pagelayer-id":"4ml2672"} -->
+<span style="color:#ffffff;">PLATAFORMA OKR MANAGEMENT</span>
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"10","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"aq16878"} /-->
+
+<!-- wp:pagelayer/pl-text {"ele_custom_pos":"true","ele_custom_width":"100%","ele_align":"50%","animation":"fadeInUp","animation_delay":"600","ele_css":"{{element}} .pagelayer-text-holder p{font-family:poppins; font-weight:500; color:#757575;line-height:1.8;}","pagelayer-id":"c882265"} -->
+<p [object NamedNodeMap]><span style="text-align: start;">Crie, acompanhe e encerro ciclos de OKRs conectados ao seu BSC com total autonomia, apoio visual e inteligência.</span><br><span style="text-align: start;">A IA treinada atua como um </span><span data-start="1108" data-end="1130" style="font-weight: 700; border: 0px; font-variant-numeric: inherit; font-variant-east-asian: inherit; font-variant-alternates: inherit; font-variant-position: inherit; font-variant-emoji: inherit; font-stretch: inherit; line-height: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; vertical-align: baseline; text-align: start;">OKR Master digital</span><span style="text-align: start;">, guiando sua empresa em cada passo — da criação à execução, passando por acompanhamentos, feedbacks e cerimônias de encerramento.</span></p>
+<!-- /wp:pagelayer/pl-text -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_bg_type":"color","ele_bg_color":"#212121ff","ele_margin":["0px","0px","0px","0px"],"ele_padding":["40px","40px","40px","40px"],"pagelayer-id":"enh4059"} -->
+<!-- wp:pagelayer/pl-col {"content_pos":"center","widget_space":"15","col":"6","overlay_hover_delay":"400","ele_padding":"0px,0px,0px,0px","animation":"fadeInLeft","animation_delay":"600","pagelayer-id":"1of4406"} -->
+<!-- wp:pagelayer/pl-heading {"color":"#111111","heading_typo":"Red Hat Text,30,,500,,,Solid,,Uppercase,,","heading_typo_mobile":",030,,,,,Solid,1.4,,,","pagelayer-id":"ymt9510"} -->
+<span style="color: rgb(255, 145, 0);">EXPERIêNCIA GRÁTIs</span>
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-text {"ele_padding":"15px,15px,15px,0px","ele_custom_pos":"true","ele_custom_width":"800px","ele_css":"{{element}} .pagelayer-text-holder p{font-family:poppins; font-weight:500; color:#757575;line-height:1.8;}","pagelayer-id":"v6x3231"} -->
+<p [object NamedNodeMap]>Tenha acesso gratuito por um ciclo trimestral completo à nossa plataforma SaaS de gestão estratégica com ambiente white-label e IA integrada.</p>
+<!-- /wp:pagelayer/pl-text -->
+
+<!-- wp:pagelayer/pl-list {"list_color":"#e7e7e7ff","list_typo":{"font-style":"italic"},"icon_color":"#ff9100ff","icon_size":17,"icon_border_type":"","ele_margin_mobile":["0px","0px","0px","-40px"],"ele_padding":["0px","0px","0px","50px"],"ele_custom_pos":"true","ele_align_mobile":"0%","pagelayer-id":"6wi5402"} -->
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-brain","pagelayer-id":"a9t8685"} -->
+IA treinada com metodologia OKR Master
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-pencil-alt","pagelayer-id":"hhv9039"} -->
+Ambiente 100% white-label e personalizável
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-bezier-curve","pagelayer-id":"vwk4796"} -->
+Integração total entre OKR + BSC + Orçamento
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-map","pagelayer-id":"g2g6448"} -->
+Mapa estratégico dinâmico por pilar
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-crosshairs","pagelayer-id":"ajr9526"} -->
+Painéis de acompanhamento por gestor/setor
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-bell","pagelayer-id":"psr7084"} -->
+Alertas automáticos e insights inteligentes
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-bookmark","pagelayer-id":"qbh1855"} -->
+Relatórios visuais de progresso e confiança
+<!-- /wp:pagelayer/pl-list-item -->
+<!-- /wp:pagelayer/pl-list -->
+
+<!-- wp:pagelayer/pl-btn {"text":"Quero Testar Grátis","link":"https://planningbi.com.br/OKR_system/cadastro_site","btn_typo":"Poppins,16,,,,,Solid,,,,","align_mobile":"center","type":"pagelayer-btn-custom","size":"pagelayer-btn-custom","btn_custom_size":"25","btn_hover":"","btn_bg_color":"#ff4300ff","btn_hover_delay":"400","btn_bg_color_hover":"#000000ff","icon_spacing":"5","btn_border_type":"solid","btn_border_width":"0,0,0,0","btn_border_radius":["10","10","10","10"],"ele_margin":"15px,0px,0px,0px","ele_padding":"0px,0px,0px,0px","pagelayer-id":"57i5351","tmpAtts":{"link":"https://planningbi.com.br/OKR_system/cadastro_site"}} /-->
+
+<!-- wp:pagelayer/pl-btn {"text":"Saber mais sobre o sistema","link":"https://planningbi.com.br/OKR_system/cadastro_site","btn_typo":{"font-family":"Poppins","font-size":"14","font-style":"italic","text-decoration-style":"solid"},"align_mobile":"center","type":"pagelayer-btn-custom","size":"pagelayer-btn-custom","btn_custom_size":1,"btn_hover":"hover","btn_bg_color":"#818a9100","btn_color":"#ff9100ff","btn_hover_delay":"400","btn_bg_color_hover":"#000000ff","btn_color_hover":"#ffffffff","icon_spacing":"5","btn_border_color":"#42414f00","ele_margin":["-10px","0px","0px","0px"],"pagelayer-id":"ldd1957","tmpAtts":{"link":"https://planningbi.com.br/OKR_system/cadastro_site"}} /-->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"6","overlay_hover_delay":"400","pagelayer-id":"qke1095"} -->
+<!-- wp:pagelayer/pl-image {"id":88,"img_hover_delay":"400","ele_margin_tablet":"20px,0px,0px,0px","animation":"fadeInUp","animation_delay":"600","ele_hover_anim":"bounce-in","pagelayer-id":"25e9857","tmpAtts":{"id-full-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom.png","id-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-150x150.png","id-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-300x300.png","id-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-768x768.png","id-large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-1024x1024.png","id-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom.png","id-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom.png","id-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-300x300.png","id-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-600x600.png","id-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom-100x100.png","id-url":"https://planningbi.com.br/wp-content/uploads/2025/07/note-wendrew-Photoroom.png","id-alt":"MOCKUP_SYSTEM","id-title":"note wendrew-Photoroom","id-link":"https://planningbi.com.br/note-wendrew-photoroom/","id-caption":"Mockup do sistema de OKR"}} -->
+<p>Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.</p>
+<!-- /wp:pagelayer/pl-image -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_padding":"100px,0px,0px,0px","pagelayer-id":"3fw7012"} -->
+<!-- wp:pagelayer/pl-col {"content_pos":"center","widget_space":"15","col":6,"overlay_hover_delay":"400","pagelayer-id":"k2k2992"} -->
+<!-- wp:pagelayer/pl-image {"id":120,"pagelayer-id":"dog865","tmpAtts":{"id-full-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3.png","id-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-150x150.png","id-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-300x300.png","id-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-768x768.png","id-large-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-1024x1024.png","id-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-1536x1536.png","id-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3.png","id-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-300x300.png","id-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-600x600.png","id-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3-100x100.png","id-url":"https://planningbi.com.br/wp-content/uploads/2025/09/Imagem-Wendrew-Certificado-3.png","id-alt":"Foto_consultor","id-title":"Imagem Wendrew Certificado (3)","id-link":"https://planningbi.com.br/imagem-wendrew-certificado-3/","id-caption":"Foto do consultor"}} -->
+<p>Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.</p>
+<!-- /wp:pagelayer/pl-image -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"content_pos":"center","widget_space":"15","col":6,"overlay_hover_delay":"400","ele_padding":"0px,20px,20px,20px","animation":"fadeInRight","animation_delay":"600","pagelayer-id":"ek92553"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#111111","heading_typo":"Red Hat Text,30,,500,,,Solid,1.1,Uppercase,,","ele_align":"50%","pagelayer-id":"fig4964"} -->
+SOBRE O CONSULTOR
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"20","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"ve65558"} /-->
+
+<!-- wp:pagelayer/pl-heading {"color":"#2e2e2eff","heading_typo":{"font-family":"Red Hat Text","font-size":"20","font-weight":"500","text-decoration-style":"solid","line-height":"1.1","text-transform":"uppercase"},"pagelayer-id":"iev2924"} -->
+<h3><strong><em>Wendrew Gomes</em></strong></h3>
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-text {"font_size":null,"ele_css":"{{element}} .pagelayer-text-holder p{font-family:poppins; font-weight:500; color:#757575;line-height:1.8;}","pagelayer-id":"0nl4467"} -->
+<p [object NamedNodeMap]><span data-start="22" data-end="39">Além de especialista em OKR e BSC</span> é gestor de TI e cientista de dados, com mais de 14 anos conectando tecnologia a <strong data-start="120" data-end="174">planejamento estratégico, indicadores e resultados</strong>. Lidera times multidisciplinares (Infra, BI, SAP, RPA e Processos), estruturando <strong data-start="256" data-end="304">Data Lake, pipelines de BI e KPIs executivos</strong> para decisão ágil. É <strong data-start="326" data-end="362" data-is-only-node="">criador da plataforma PlanningBI</strong>, que integra <strong data-start="376" data-end="389">OKR + BSC</strong> para alinhar metas, executar com governança e medir impacto. Ao longo da carreira, automatizou rotinas críticas, reduziu horas manuais e elevou a performance operacional e financeira, sempre com foco em previsibilidade e ROI.</p>
+<!-- /wp:pagelayer/pl-text -->
+
+<!-- wp:pagelayer/pl-list {"spacing":8,"spacing_mobile":15,"side_spacing_mobile":null,"list_color":"#5e5e5eff","list_typo":{"font-style":"italic"},"item_indent_mobile":null,"icon_color":"#ff9100ff","icon_size":17,"icon_size_mobile":null,"icon_border_type":"","ele_padding":["0px","0px","0px","50px"],"pagelayer-id":"1c91815"} -->
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-chess-knight","pagelayer-id":"xmf3611"} -->
+OKR + BSC — implantação e governança
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-crosshairs","pagelayer-id":"ewu1202"} -->
+KPIs executivos — desenho e padronização
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-database","pagelayer-id":"5gz5537"} -->
+BI &amp; Engenharia de Dados — Data Lake e ETL/ELT
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-share-alt","pagelayer-id":"qiw945"} -->
+SAP &amp; Integrações — processos fim a fim
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-robot","pagelayer-id":"tso2152"} -->
+Automação &amp; RPA — ganhos e ROI mensuráveis
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-lightbulb","pagelayer-id":"knb5981"} -->
+IA aplicada — processos e decisões supervisionadas
+<!-- /wp:pagelayer/pl-list-item -->
+<!-- /wp:pagelayer/pl-list -->
+
+<!-- wp:pagelayer/pl-grid-gallery {"ids":[126,80,114,84],"columns":"5","columns_mobile":"3","col_gap":0,"col_gap_mobile":null,"row_gap":0,"row_gap_mobile":null,"size":"custom","custom_size":["67","67"],"link_to":"","caption":"","images_no":6,"ele_zindex":null,"ele_custom_pos":"true","ele_align":"0%","pagelayer-id":"g0n4471","tmpAtts":{"ids-urls":"{\u0022i126\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022i80\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile.jpg\u0022,\u0022i114\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-scaled.png\u0022,\u0022i84\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap.jpeg\u0022}","ids-all-urls":"{\u0022i126\u0022:{\u0022full\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download-150x150.jpeg\u0022,\u0022medium\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022medium_large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u00221536x1536\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u00222048x2048\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022woocommerce_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022woocommerce_single\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download.jpeg\u0022,\u0022woocommerce_gallery_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/download-100x100.jpeg\u0022},\u0022i80\u0022:{\u0022full\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile.jpg\u0022,\u0022thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-150x150.jpg\u0022,\u0022medium\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-300x300.jpg\u0022,\u0022medium_large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-768x768.jpg\u0022,\u0022large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile.jpg\u0022,\u00221536x1536\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile.jpg\u0022,\u00222048x2048\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile.jpg\u0022,\u0022woocommerce_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-300x300.jpg\u0022,\u0022woocommerce_single\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-600x600.jpg\u0022,\u0022woocommerce_gallery_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/channels4_profile-100x100.jpg\u0022},\u0022i114\u0022:{\u0022full\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-scaled.png\u0022,\u0022thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-150x150.png\u0022,\u0022medium\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-300x169.png\u0022,\u0022medium_large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-768x432.png\u0022,\u0022large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-1024x576.png\u0022,\u00221536x1536\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-1536x864.png\u0022,\u00222048x2048\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-2048x1152.png\u0022,\u0022woocommerce_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-300x300.png\u0022,\u0022woocommerce_single\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-600x338.png\u0022,\u0022woocommerce_gallery_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/09\\/Microsoft-Power-BI-Symbol-100x100.png\u0022},\u0022i84\u0022:{\u0022full\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap.jpeg\u0022,\u0022thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-150x150.jpeg\u0022,\u0022medium\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-300x300.jpeg\u0022,\u0022medium_large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-768x768.jpeg\u0022,\u0022large\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap.jpeg\u0022,\u00221536x1536\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap.jpeg\u0022,\u00222048x2048\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap.jpeg\u0022,\u0022woocommerce_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-300x300.jpeg\u0022,\u0022woocommerce_single\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-600x600.jpeg\u0022,\u0022woocommerce_gallery_thumbnail\u0022:\u0022https:\\/\\/planningbi.com.br\\/wp-content\\/uploads\\/2025\\/07\\/sap-100x100.jpeg\u0022}}","ids-all-links":"{\u0022i126\u0022:\u0022https:\\/\\/planningbi.com.br\\/download\\/\u0022,\u0022i80\u0022:\u0022https:\\/\\/planningbi.com.br\\/channels4_profile\\/\u0022,\u0022i114\u0022:\u0022https:\\/\\/planningbi.com.br\\/microsoft-power-bi-symbol\\/\u0022,\u0022i84\u0022:\u0022https:\\/\\/planningbi.com.br\\/sap\\/\u0022}","ids-all-titles":"{\u0022i126\u0022:\u0022download\u0022,\u0022i80\u0022:\u0022channels4_profile\u0022,\u0022i114\u0022:\u0022Microsoft-Power-BI-Symbol\u0022,\u0022i84\u0022:\u0022sap\u0022}","ids-all-captions":"{\u0022i126\u0022:\u0022\u0022,\u0022i80\u0022:\u0022USP\\/Esalq\u0022,\u0022i114\u0022:\u0022Logo power BI\u0022,\u0022i84\u0022:\u0022Logo SAP\u0022}","gallery-random-id":"gallery-id-75"}} /-->
+
+<!-- wp:pagelayer/pl-btn {"text":"Ver currículo do consultor","btn_typo":"Poppins,16,,,,,Solid,,,,","type":"pagelayer-btn-custom","size":"pagelayer-btn-custom","btn_custom_size":"25","btn_hover":"","btn_bg_color":"#e64a19ff","btn_hover_delay":"400","btn_bg_color_hover":"#000000ff","icon_spacing":"5","btn_border_type":"solid","btn_border_width":"0,0,0,0","btn_border_radius":["10","10","10","10"],"ele_margin":"15px,0px,0px,0px","pagelayer-id":"ldr6561"} /-->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_type":"color","overlay_color":"#000000ff","overlay_transperancy":0.7,"overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_bg_type":"image","ele_img_color":"","ele_bg_img":116,"ele_bg_attachment":"fixed","ele_bg_posx":"center","ele_bg_posy":"center","ele_bg_repeat":"no-repeat","ele_bg_size":"cover","ele_margin":"60px,0px,0px,0px","ele_padding":"100px,0px,100px,0px","pagelayer-id":"a0l3783","tmpAtts":{"ele_bg_img-full-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-scaled.jpg","ele_bg_img-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-150x150.jpg","ele_bg_img-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-300x150.jpg","ele_bg_img-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-768x384.jpg","ele_bg_img-large-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-1024x512.jpg","ele_bg_img-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-1536x768.jpg","ele_bg_img-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-2048x1024.jpg","ele_bg_img-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-300x300.jpg","ele_bg_img-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-600x300.jpg","ele_bg_img-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-100x100.jpg","ele_bg_img-url":"https://planningbi.com.br/wp-content/uploads/2025/09/uma-rainha-de-ouro-destacada-entre-outras-pecas-de-xadrez-scaled.jpg","ele_bg_img-alt":"BG_CHESS","ele_bg_img-title":"A standout golden queen among other chess pieces.","ele_bg_img-link":"https://planningbi.com.br/a-standout-golden-queen-among-other-chess-pieces/","ele_bg_img-caption":"A standout golden queen among other chess pieces."}} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","overlay_hover_delay":"400","pagelayer-id":"yla2394"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#ffffffff","heading_typo":"Red Hat Text,40,,500,,,Solid,,Uppercase,,","heading_typo_mobile":",30,,,,,Solid,1.4,,,","animation":"fadeInDown","animation_delay":"600","pagelayer-id":"eyy2425"} -->
+números recentes
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"10","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"7c22845"} /-->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","pagelayer-id":"jko5293"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"3","overlay_hover_delay":"400","pagelayer-id":"peh2560"} -->
+<!-- wp:pagelayer/pl-counter {"counter_end_number":80,"counter_text":"Projetos entregues","counter_text_color":"#ffffffff","counter_text_style":"Poppins,18,,400,,,Solid,,,,","counter_number_color":"#ff9100ff","number_suffix":"+","counter_number_style":"Red Hat Text,55,,500,,,Solid,1.4,,,","animation":"fadeInUp","animation_delay":"600","pagelayer-id":"7px8952"} /-->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"3","overlay_hover_delay":"400","pagelayer-id":"b051277"} -->
+<!-- wp:pagelayer/pl-counter {"counter_end_number":50,"counter_text":"Clientes","counter_text_color":"#ffffffff","counter_text_style":"Poppins,18,,400,,,Solid,,,,","counter_number_color":"#ff9100ff","number_suffix":"+","counter_number_style":"Red Hat Text,55,,500,,,Solid,1.4,,,","animation":"fadeInUp","animation_delay":"600","pagelayer-id":"3tm8454"} /-->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"3","overlay_hover_delay":"400","pagelayer-id":"r695601"} -->
+<!-- wp:pagelayer/pl-counter {"counter_end_number":12,"counter_text":"Consultorias","counter_text_color":"#ffffffff","counter_text_style":"Poppins,18,,400,,,Solid,,,,","counter_number_color":"#ff9100ff","number_suffix":"+","counter_number_style":"Red Hat Text,55,,500,,,Solid,1.4,,,","animation":"fadeInUp","animation_delay":"600","pagelayer-id":"1mf1624"} /-->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"3","overlay_hover_delay":"400","pagelayer-id":"1wa8032"} -->
+<!-- wp:pagelayer/pl-counter {"counter_end_number":540,"counter_text":"Assinantes","counter_text_color":"#ffffffff","counter_text_style":"Poppins,18,,400,,,Solid,,,,","counter_number_color":"#ff9100ff","number_suffix":"+","counter_number_style":"Red Hat Text,55,,500,,,Solid,1.4,,,","animation":"fadeInUp","animation_delay":"600","pagelayer-id":"n2z5706"} /-->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_padding":"100px,0px,0px,0px","ele_id":"Cursos","pagelayer-id":"pgd5366"} -->
+<!-- wp:pagelayer/pl-col {"content_pos":"center","widget_space":"15","col":6,"overlay_hover_delay":"400","ele_padding":"0px,20px,20px,20px","animation":"fadeInRight","animation_delay":"600","pagelayer-id":"yg01192"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#111111","heading_typo":"Red Hat Text,30,,500,,,Solid,1.1,Uppercase,,","ele_align":"50%","pagelayer-id":"5vv1891"} -->
+CURSOS
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"20","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"wzr3894"} /-->
+
+<!-- wp:pagelayer/pl-heading {"color":"#2e2e2eff","heading_typo":{"font-family":"Red Hat Text","font-size":"20","font-weight":"500","text-decoration-style":"solid","line-height":"1.1","text-transform":"uppercase"},"pagelayer-id":"od46818"} -->
+<h3><strong><em>APRENDA BSC + OKR E ATUE COMO CONSULTOR</em></strong></h3>
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-text {"font_size":null,"ele_css":"{{element}} .pagelayer-text-holder p{font-family:poppins; font-weight:500; color:#757575;line-height:1.8;}","pagelayer-id":"ldh4055"} -->
+<p [object NamedNodeMap]>          Você vai aprender a transformar estratégia em rotina combinando <strong data-start="97" data-end="124">BSC (mapa de coerência)</strong> e <strong data-start="127" data-end="153">OKR (marcha de tração)</strong>, do diagnóstico à execução. Em aulas práticas, mostramos como escolher poucas alavancas que mexem ponteiro, desdobrar objetivos em KRs com baseline, metas e milestones, e rodar uma governança simples (check-ins semanais/mensais) com farol de confiança e ajustes.</p>
+<!-- /wp:pagelayer/pl-text -->
+
+<!-- wp:pagelayer/pl-list {"spacing":8,"spacing_mobile":15,"side_spacing_mobile":null,"list_color":"#5e5e5eff","list_typo":{"font-style":"italic"},"item_indent_mobile":null,"icon_color":"#ff9100ff","icon_size":17,"icon_size_mobile":null,"icon_border_type":"","ele_padding":["0px","0px","0px","50px"],"pagelayer-id":"orb6489"} -->
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"esu488"} -->
+Fundamentos BSC e OKR
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"tnd9217"} -->
+Pré-planejamento e diagnóstico
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"ohq7661"} -->
+Execução: objetivos e KRs
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"6ez2905"} -->
+Governança e rituais
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"9ju9619"} -->
+Plataforma PlanningBI prática
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"pqv8845"} -->
+Materiais de trabalho
+<!-- /wp:pagelayer/pl-list-item -->
+
+<!-- wp:pagelayer/pl-list-item {"icon":"fas fa-check-square","pagelayer-id":"6ys5585"} -->
+Casos reais e ROI
+<!-- /wp:pagelayer/pl-list-item -->
+<!-- /wp:pagelayer/pl-list -->
+
+<!-- wp:pagelayer/pl-btn {"text":"Saiba Mais","link":"https://wa.me/5518996538145?text=Quero%20saber%20mais%20sobre%20o%20curso%20de%20BSC%20%2B%20OKRs.","btn_typo":"Poppins,16,,,,,Solid,,,,","type":"pagelayer-btn-custom","size":"pagelayer-btn-custom","btn_custom_size":"25","btn_hover":"","btn_bg_color":"#e64a19ff","btn_hover_delay":"400","btn_bg_color_hover":"#000000ff","icon_spacing":"5","btn_border_type":"solid","btn_border_width":"0,0,0,0","btn_border_radius":["10","10","10","10"],"ele_margin":"15px,0px,0px,0px","pagelayer-id":"ful9370","tmpAtts":{"link":"https://wa.me/5518996538145?text=Quero%20saber%20mais%20sobre%20o%20curso%20de%20BSC%20%2B%20OKRs."}} /-->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"content_pos":"center","widget_space":"15","col":6,"overlay_hover_delay":"400","pagelayer-id":"sx56134"} -->
+<!-- wp:pagelayer/pl-video {"src":"https://youtu.be/RyiN3Hdazso","lightbox":"","overlay":"","ele_bg_hover":"","ele_shadow":["33","25","0","#222222aa","2",""],"animation":"fadeIn","ele_hover_anim":"float","pagelayer-id":"pul5879","tmpAtts":{"src-url":"https://youtu.be/RyiN3Hdazso","video_overlay_image-url":"https://planningbi.com.br/wp-content/plugins/pagelayer/images/default-image.png","video_overlay_image-no-image-set":1}} /-->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","ele_margin":"100px,0px,0px,0px","ele_padding":"0px,0px,60px,0px","pagelayer-id":"7sp4060"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","overlay_hover_delay":"400","pagelayer-id":"3n34923"} -->
+<!-- wp:pagelayer/pl-heading {"align":"center","color":"#111111","heading_typo":"Red Hat Text,40,,500,,,Solid,,Uppercase,,","heading_typo_mobile":",40,,,,,Solid,,,,","animation":"fadeInDown","animation_delay":"600","pagelayer-id":"gro3580"} -->
+Depoimentos
+<!-- /wp:pagelayer/pl-heading -->
+
+<!-- wp:pagelayer/pl-divider {"divider_color":"#ff9100ff","divider_weight":"3","divider_widht":"10","divider_widht_tablet":"10","divider_widht_mobile":"20","divider_gap":"10","pagelayer-id":"wci6903"} /-->
+
+<!-- wp:pagelayer/pl-row {"col_gap":"10","overlay_hover_delay":"400","row_shape_top_width":"100","row_shape_top_height":"100","row_shape_bottom_width":"100","row_shape_bottom_height":"100","pagelayer-id":"t4u3921"} -->
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"ht21246"} -->
+<!-- wp:pagelayer/pl-testimonial {"avatar":99,"testimonial_image_size":"100","testimonial_image_size_mobile":"90","cite":"wILLIAN AGNER","cite_color":"#000000ff","cite_style":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","cite_spacing":"0,0,0,10","designation":"Head de Tecnologia","designation_color":"#ff9100ff","cite_designation_style":"Poppins,16,,500,,,Solid,,,,","ele_padding":"15px,15px,15px,15px","ele_shadow":"1,1,10,#d8d9d9ff,3,","animation":"fadeInLeft","animation_delay":"600","ele_css":"{{element}} .pagelayer-testimonial-content p{font-family:poppins;font-weight:500;color:#757575;}","pagelayer-id":"s935656","tmpAtts":{"avatar-full-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner-150x150.png","avatar-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner-300x300.png","avatar-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner-300x300.png","avatar-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner-600x601.png","avatar-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner-100x100.png","avatar-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Agner.png","avatar-alt":"agner_depoimento","avatar-title":"Agner","avatar-link":"https://planningbi.com.br/agner/","avatar-caption":"Foto ilustrativa de willian agner em depoimento estratégico"}} -->
+<p [object NamedNodeMap]>Em quatro ciclos de OKRs com consultores da PlanningBI, elevamos nosso índice de maturidade digital, automatizamos 40 % dos processos críticos e reduzimos em 35 % o tempo médio de análise de dados. Recomendo.</p>
+<!-- /wp:pagelayer/pl-testimonial -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"5q34058"} -->
+<!-- wp:pagelayer/pl-testimonial {"avatar":100,"testimonial_image_size":"100","testimonial_image_size_mobile":"90","cite":"Rodrigo Antunes","cite_color":"#000000ff","cite_style":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","cite_spacing":"0,0,0,10","designation":"CEO da U-All Solutions","designation_color":"#ff9100ff","cite_designation_style":"Poppins,16,,500,,,Solid,,,,","ele_padding":"15px,15px,15px,15px","ele_shadow":"1,1,10,#d8d9d9ff,3,","animation":"fadeInUp","animation_delay":"600","ele_css":"{{element}} .pagelayer-testimonial-content p{font-family:poppins;font-weight:500;color:#757575;}","pagelayer-id":"eik3055","tmpAtts":{"avatar-full-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo-150x150.png","avatar-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo-300x300.png","avatar-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo-300x300.png","avatar-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo-600x599.png","avatar-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo-100x100.png","avatar-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Rodrigo.png","avatar-alt":"depoimento_rodrigo","avatar-title":"Rodrigo","avatar-link":"https://planningbi.com.br/rodrigo/","avatar-caption":"Depoimento estratégico Rodrigo"}} -->
+<p [object NamedNodeMap]>Em parceria com consultor da PlanningBI, definimos metas que dobraram nossa receita mensal, melhoraram o engajamento dos clientes e conquistamos o Prêmio de Inovação Ambev 2020.</p>
+<!-- /wp:pagelayer/pl-testimonial -->
+<!-- /wp:pagelayer/pl-col -->
+
+<!-- wp:pagelayer/pl-col {"widget_space":"15","col":"4","overlay_hover_delay":"400","pagelayer-id":"gsu1335"} -->
+<!-- wp:pagelayer/pl-testimonial {"avatar":102,"testimonial_image_size":"100","testimonial_image_size_mobile":"90","cite":"Nathan Dócusse","cite_color":"#000000ff","cite_style":"Red Hat Text,20,,500,,,Solid,,Uppercase,,","cite_spacing":"0,0,0,10","designation":"Gerente\u0026nbsp; E-commerce","designation_color":"#ff9100ff","cite_designation_style":"Poppins,16,,500,,,Solid,,,,","ele_padding":"15px,15px,15px,15px","ele_shadow":"1,1,10,#d8d9d9ff,3,","animation":"fadeInRight","animation_delay":"600","ele_css":"{{element}} .pagelayer-testimonial-content p{font-family:poppins;font-weight:500;color:#757575;}","pagelayer-id":"va59500","tmpAtts":{"avatar-full-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan-150x150.png","avatar-medium-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan-297x300.png","avatar-medium_large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-large-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-1536x1536-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-2048x2048-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-woocommerce_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan-300x300.png","avatar-woocommerce_single-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-woocommerce_gallery_thumbnail-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan-100x100.png","avatar-url":"https://planningbi.com.br/wp-content/uploads/2025/07/Nathan.png","avatar-alt":"Nathan","avatar-title":"Nathan","avatar-link":"https://planningbi.com.br/nathan/"}} -->
+<p [object NamedNodeMap]>Tive a oportunidade de contar com a consultoria da PlanningBI na estruturação do nosso e-commerce, e posso destacar sua potencial em conectar visão estratégica e execução prática. Excelentes na criação de processos do zero, estruturando fluxos operacionais com forte embasamento em dados.</p>
+<!-- /wp:pagelayer/pl-testimonial -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->
+<!-- /wp:pagelayer/pl-col -->
+<!-- /wp:pagelayer/pl-row -->

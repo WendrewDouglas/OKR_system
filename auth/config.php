@@ -122,3 +122,11 @@ define('SMTP_FROM_NAME',  (string)env('SMTP_FROM_NAME', 'OKR System'));
 // ===== APP flags =====
 define('APP_ENV',   (string)env('APP_ENV', 'production'));
 define('APP_DEBUG',  env_bool('APP_DEBUG', false));
+
+
+// ===== CAPTCHA / Security =====
+define('CAPTCHA_PROVIDER',     (string)env('CAPTCHA_PROVIDER', 'off')); // 'recaptcha' | 'hcaptcha' | 'off'
+define('CAPTCHA_SITE_KEY',     (string)env('CAPTCHA_SITE_KEY', ''));
+define('CAPTCHA_SECRET',       (string)env('CAPTCHA_SECRET', ''));
+define('RECAPTCHA_MIN_SCORE', (float)env('RECAPTCHA_MIN_SCORE', 0.5)); // usado no reCAPTCHA v3
+define('APP_TOKEN_PEPPER',     (string)env('APP_TOKEN_PEPPER', 'mude-este-valor'));

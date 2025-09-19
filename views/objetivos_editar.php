@@ -82,16 +82,17 @@ if (isset($_GET['ajax'])) {
       $nome          = trim((string)($_POST['nome_objetivo'] ?? ''));
       $tipo          = trim((string)($_POST['tipo_objetivo'] ?? ''));
       $pilar         = trim((string)($_POST['pilar_bsc'] ?? ''));
-      $responsavelCS = trim((string)($_POST['responsavel'] ?? '')); // CSV com ids
+      $status        = trim((string)($_POST['status'] ?? ''));            // <-- NOVO: status do objetivo
+      $responsavelCS = trim((string)($_POST['responsavel'] ?? ''));       // CSV com ids (usaremos só 1)
       $obsNovo       = trim((string)($_POST['observacoes'] ?? ''));
-      $qualidade     = trim((string)($_POST['qualidade'] ?? ''));   // opcional
+      $qualidade     = trim((string)($_POST['qualidade'] ?? ''));         // opcional
       $justEdit      = trim((string)($_POST['justificativa_edicao'] ?? ''));
 
       // Período (sempre enviado via hidden, calculado no JS; em "personalizado" vem também os months)
       $periodo_inicio = trim((string)($_POST['periodo_inicio'] ?? '')); // YYYY-MM-DD
       $periodo_fim    = trim((string)($_POST['periodo_fim'] ?? ''));
 
-      if ($nome === '' || $tipo === '' || $pilar === '' || $responsavelCS === '') {
+      if ($nome === '' || $tipo === '' || $pilar === '' || $status === '' || $responsavelCS === '') {
         http_response_code(422);
         echo json_encode(['success'=>false,'error'=>'Preencha os campos obrigatórios.']);
         exit;
@@ -102,7 +103,16 @@ if (isset($_GET['ajax'])) {
         exit;
       }
 
-      // Sanitiza responsáveis: mantém apenas usuários da mesma company
+      // Valida o status no domínio (FK: objetivos.status -> dom_status_kr.id_status)
+      $chkStatus = $pdo->prepare("SELECT 1 FROM dom_status_kr WHERE id_status = ? LIMIT 1");
+      $chkStatus->execute([$status]);
+      if (!$chkStatus->fetchColumn()) {
+        http_response_code(422);
+        echo json_encode(['success'=>false,'error'=>'Status inválido.']);
+        exit;
+      }
+
+      // Sanitiza responsáveis: mantém apenas usuários da mesma company e força exatamente 1
       $ids = array_values(array_filter(array_map('intval', explode(',', $responsavelCS))));
       if ($ids) {
         $in = implode(',', array_fill(0, count($ids), '?'));
@@ -117,10 +127,15 @@ if (isset($_GET['ajax'])) {
         echo json_encode(['success'=>false,'error'=>'Nenhum responsável válido da sua empresa foi informado.']);
         exit;
       }
-      $responsavelCS = implode(',', $ids);
-      $dono = (string)$ids[0]; // primeiro como dono (se você usa esse campo)
+      if (count($ids) !== 1) {
+        http_response_code(422);
+        echo json_encode(['success'=>false,'error'=>'Selecione exatamente 1 responsável para o objetivo.']);
+        exit;
+      }
+      $dono = (string)$ids[0];        // usamos apenas um
+      $responsavelCS = $dono;         // coerência: hidden guarda só o único id
 
-      // Monta bloco de justificativa e atualiza observações
+      // Monta bloco de justificativa e atualiza observações (apêndice)
       $obsAnt = (string)($obj['observacoes'] ?? '');
       $stamp  = date('Y-m-d H:i');
       $bloco  = "\n\n---\n[Justificativa de edição em {$stamp} por {$userName}]\n{$justEdit}";
@@ -212,6 +227,7 @@ if (isset($_GET['ajax'])) {
                 SET descricao             = :nome,
                     tipo                  = :tipo,
                     pilar_bsc             = :pilar,
+                    status                = :status,      -- NOVO
                     dono                  = :dono,
                     observacoes           = :obs,
                     qualidade             = COALESCE(:qualidade, qualidade),
@@ -233,6 +249,7 @@ if (isset($_GET['ajax'])) {
         ':nome'       => $nome,
         ':tipo'       => $tipo,
         ':pilar'      => $pilar,
+        ':status'     => $status, // bind do novo campo
         ':dono'       => $dono,
         ':obs'        => ($obsUpd !== '' ? $obsUpd : null),
         ':qualidade'  => ($qualidade !== '' ? $qualidade : null),
@@ -306,10 +323,11 @@ if (!$OBJ) {
 }
 
 // Listas
-$users   = [];
-$pilares = $pdo->query("SELECT id_pilar, descricao_exibicao FROM dom_pilar_bsc ORDER BY ordem_pilar")->fetchAll();
-$tipos   = $pdo->query("SELECT id_tipo,  descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao")->fetchAll();
-$ciclos  = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
+$users     = [];
+$pilares   = $pdo->query("SELECT id_pilar, descricao_exibicao FROM dom_pilar_bsc ORDER BY ordem_pilar")->fetchAll();
+$tipos     = $pdo->query("SELECT id_tipo,  descricao_exibicao FROM dom_tipo_objetivo ORDER BY descricao_exibicao")->fetchAll();
+$ciclos    = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
+$statuses  = $pdo->query("SELECT id_status, descricao_exibicao FROM dom_status_kr ORDER BY descricao_exibicao")->fetchAll(); // <-- NOVO
 
 if ($companyId) {
   $st = $pdo->prepare("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios WHERE id_company=:c ORDER BY primeiro_nome");
@@ -322,9 +340,9 @@ $nome          = (string)($OBJ['nome_objetivo'] ?? '');
 if ($nome === '' && !empty($OBJ['descricao'])) {
   $nome = (string)$OBJ['descricao'];
 }
-
 $tipoSel       = (string)($OBJ['tipo'] ?? '');
 $pilarSel      = (string)($OBJ['pilar_bsc'] ?? '');
+$statusSel     = (string)($OBJ['status'] ?? ''); // <-- NOVO
 
 // CSV de responsáveis (pode estar vazio em bases antigas)
 $respCSV       = trim((string)($OBJ['responsavel'] ?? ''));
@@ -396,7 +414,9 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
 
     .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
+    @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; }
+
+    }
 
     label{ display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
     input[type="text"], input[type="month"], textarea, select{
@@ -563,24 +583,39 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
             </div>
           </div>
 
-          <div style="margin-top:12px;">
-            <label><i class="fa-regular fa-user"></i> Responsável(es) <span class="helper">(obrigatório)</span></label>
-            <div class="multi-select-container">
-              <div class="chips-input" id="responsavel_container">
-                <input type="text" id="responsavel_input" class="chips-input-field" placeholder="Clique para selecionar...">
-              </div>
-              <div class="dropdown-list d-none" id="responsavel_list">
-                <ul>
-                  <?php foreach($users as $u): ?>
-                    <li data-id="<?= (int)$u['id_user'] ?>"><?= h($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
-                  <?php endforeach; ?>
-                </ul>
-              </div>
+          <!-- STATUS + RESPONSÁVEL (único) -->
+          <div class="grid-2" style="margin-top:12px;">
+            <!-- STATUS -->
+            <div>
+              <label for="status"><i class="fa-regular fa-flag"></i> Status do Objetivo <span class="helper">(obrigatório)</span></label>
+              <select id="status" name="status" required>
+                <option value="">Selecione...</option>
+                <?php foreach($statuses as $s): ?>
+                  <option value="<?= h($s['id_status']) ?>" <?= $statusSel===$s['id_status'] ? 'selected' : '' ?>>
+                    <?= h($s['descricao_exibicao']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
             </div>
-            <input type="hidden" id="responsavel" name="responsavel" value="<?= h($respCSV) ?>">
-            <small id="responsavel_warning" class="warning-text d-none">
-              ⚠️ Prefira um único responsável para evitar ambiguidades e garantir foco.
-            </small>
+
+            <!-- RESPONSÁVEL (APENAS 1) -->
+            <div>
+              <label><i class="fa-regular fa-user"></i> Responsável <span class="helper">(obrigatório)</span></label>
+              <div class="multi-select-container">
+                <div class="chips-input" id="responsavel_container">
+                  <input type="text" id="responsavel_input" class="chips-input-field" placeholder="Clique para selecionar...">
+                </div>
+                <div class="dropdown-list d-none" id="responsavel_list">
+                  <ul>
+                    <?php foreach($users as $u): ?>
+                      <li data-id="<?= (int)$u['id_user'] ?>"><?= h($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+              </div>
+              <input type="hidden" id="responsavel" name="responsavel" value="<?= h($respCSV) ?>">
+              <small id="responsavel_warning" class="warning-text d-none">⚠️ Selecione apenas um responsável.</small>
+            </div>
           </div>
 
           <div style="margin-top:12px;">
@@ -693,10 +728,10 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
         }
       } else if (tipo === 'trimestral') {
         const v = $('#ciclo_trimestral')?.value || '';
-        const m = v.match(/^Q([1-4])\/(\d{4})$/);
-        if (m) {
-          const q = parseInt(m[1],10);
-          const y = parseInt(m[2],10);
+        theMatch = v.match(/^Q([1-4])\/(\d{4})$/);
+        if (theMatch) {
+          const q = parseInt(theMatch[1],10);
+          const y = parseInt(theMatch[2],10);
           const sm = (q-1)*3;
           const em = sm+2;
           start = new Date(y, sm, 1);
@@ -824,25 +859,29 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
             warning     = $('#responsavel_warning');
 
       function bootstrapChipsFromHidden(){
-        const current = (hiddenResp.value || '')
-        .split(',').map(s => s.trim()).filter(Boolean);
-        if (!current.length) return;
+        // Carrega do hidden e mantém SOMENTE o primeiro id
+        const arr = (hiddenResp.value || '').split(',').map(s => s.trim()).filter(Boolean);
+        const current = arr.length ? [arr[0]] : [];
+
         const dict = {};
         listCont.querySelectorAll('li').forEach(li => dict[li.dataset.id] = li.textContent);
 
         containerCh.querySelectorAll('.chip').forEach(c=>c.remove());
 
-        current.forEach(id => {
-          const text = dict[id]; if (!text) return;
-          const chip = document.createElement('span');
-          chip.className = 'chip';
-          const label = document.createElement('span'); label.textContent = text;
-          const rem  = document.createElement('span'); rem.className = 'remove-chip'; rem.innerHTML = '&times;';
-          rem.onclick = () => { chip.remove(); updateHidden(); inputResp.style.display = 'block'; };
-          chip.append(label, rem);
-          containerCh.insertBefore(chip, inputResp);
-          inputResp.style.display='none';
-        });
+        if (!current.length) { inputResp.style.display = 'block'; return; }
+
+        const id = current[0];
+        const text = dict[id];
+        if (!text) { inputResp.style.display = 'block'; hiddenResp.value = ''; return; }
+
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        const label = document.createElement('span'); label.textContent = text;
+        const rem  = document.createElement('span'); rem.className = 'remove-chip'; rem.innerHTML = '&times;';
+        rem.onclick = () => { chip.remove(); updateHidden(); inputResp.style.display = 'block'; };
+        chip.append(label, rem);
+        containerCh.insertBefore(chip, inputResp);
+        inputResp.style.display='none';
         updateHidden();
       }
 
@@ -856,10 +895,12 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
           li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
         });
       });
+
       listCont.querySelectorAll('li').forEach(li => {
         li.addEventListener('click', () => {
-          const already = Array.from(containerCh.querySelectorAll('.chip span:first-child')).some(s=>s.textContent===li.textContent);
-          if (already) return;
+          // Remove chip existente (força apenas 1)
+          const existing = containerCh.querySelector('.chip');
+          if (existing) existing.remove();
 
           const chip = document.createElement('span');
           chip.className = 'chip';
@@ -872,14 +913,15 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
           updateHidden();
         });
       });
+
       function updateHidden(){
         const ids = Array.from(containerCh.querySelectorAll('.chip')).map(ch => {
           const name = ch.querySelector('span')?.textContent || '';
           const li   = Array.from(listCont.querySelectorAll('li')).find(l => l.textContent === name);
           return li ? li.dataset.id : null;
         }).filter(Boolean);
-        hiddenResp.value = ids.join(',');
-        warning.classList.toggle('d-none', ids.length <= 1);
+        hiddenResp.value = ids[0] ? String(ids[0]) : '';
+        warning.classList.add('d-none'); // aviso desnecessário com bloqueio hard
       }
 
       bootstrapChipsFromHidden();
@@ -899,7 +941,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
       populateCycles();
 
       // Se já vier com dt_inicio/dt_prazo gravados, marcamos "personalizado"
-      // (o select já marca via PHP; aqui só lidamos com a UI)
       toggleCycleDetail();
       setupOwners();
 
@@ -920,10 +961,10 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
       function setLoading(on){ on ? show(loading) : hide(loading); }
 
       $('#btnSalvar')?.addEventListener('click', () => {
-        const required = ['#nome_objetivo','#tipo_objetivo','#pilar_bsc','#responsavel'];
+        const required = ['#nome_objetivo','#tipo_objetivo','#pilar_bsc','#status','#responsavel'];
         for (const sel of required){
           const el = $(sel);
-          if (!el || !el.value || (sel==='#responsavel' && el.value.split(',').filter(Boolean).length===0)){
+          if (!el || !el.value || (sel==='#responsavel' && (el.value||'').trim()==='')){
             alert('Preencha os campos obrigatórios antes de salvar.');
             return;
           }

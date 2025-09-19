@@ -2,6 +2,11 @@
     // views/register.php
     session_start();
 
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+
     // Exibe mensagens de erro/sucesso, se existirem
     $error   = $_SESSION['error_message']   ?? '';
     $success = $_SESSION['success_message'] ?? '';
@@ -178,6 +183,7 @@
                 </div>
                 <div class="mb-3">
                 <label for="senha" class="form-label">Senha</label>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
                 <input type="password" id="senha" name="senha"
                         class="form-control" placeholder="Crie uma senha" required minlength="6">
                 </div>
@@ -191,6 +197,10 @@
             </div> <!-- .login-body -->
 
             <div class="login-footer">
+            <?php if (CAPTCHA_PROVIDER === 'recaptcha' && CAPTCHA_SITE_KEY): ?>
+                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars(CAPTCHA_SITE_KEY) ?>"></div>
+            <?php endif; ?>
             <button type="submit" class="btn btn-primary">Cadastrar</button>
             <div class="link-container">
                 <a href="/OKR_system/views/login.php">Já tenho conta – Entrar</a>

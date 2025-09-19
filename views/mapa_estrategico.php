@@ -629,6 +629,8 @@ $totalPil = count($pilares);
     }
     /* O chip de farol usa as classes de cor já existentes (b-green, b-warn, b-red, b-gray) */
     .badge.farol{ flex:0 0 auto; }
+    .badge.farol[data-farol="loading"] { opacity: .45; }
+
 
     .more{ display:grid; gap:6px; opacity:.0; max-height:0; transition:max-height .25s ease, opacity .25s ease; }
     .card:hover .more{ opacity:1; max-height:220px; }
@@ -812,21 +814,6 @@ $totalPil = count($pilares);
                   $statusBadge = $status==='concluído' ? 'b-green' : ($status==='em andamento' ? 'b-blue' : 'b-gray');
                   $detailUrl = "/OKR_system/views/detalhe_okr.php?id=" . urlencode((string)$obj['id_objetivo']);
                   $dono = $usuarios[(string)$obj['dono']] ?? $obj['dono'];
-
-                  $farol = $farolObj[(int)$obj['id_objetivo']] ?? 'cinza';
-                  $farolBadge = match($farol){
-                    'vermelho' => 'b-red',
-                    'amarelo'  => 'b-warn',
-                    'verde'    => 'b-green',
-                    default    => 'b-gray'
-                  };
-                   $farolTextMap = [
-                    'vermelho' => 'Crítico',
-                    'amarelo'  => 'Atenção',
-                    'verde'    => 'No trilho',
-                    'cinza'    => '-',
-                  ];
-                  $farolText = $farolTextMap[$farol] ?? '-';
                 ?>
                 <article
                   id="obj-<?= (int)$obj['id_objetivo'] ?>"
@@ -846,9 +833,11 @@ $totalPil = count($pilares);
                     <span class="badge owner"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
                     <span class="badge prog-chip">
                       <i class="fa-solid fa-gauge"></i>
-                      Prog: <strong class="prog-val"><?= number_format((float)$prog,1,',','.') ?>%</strong>
+                      <strong class="prog-val"><?= number_format((float)$prog,1,',','.') ?>%</strong>
                     </span>
-                    <span class="badge farol <?= $farolBadge ?>"><i class="fa-regular fa-lightbulb"></i> Farol: <?= h(ucfirst($farolText)) ?></span>
+                    <span class="badge farol b-gray" data-farol="loading">
+                      <i class="fa-regular fa-lightbulb"></i>
+                    </span>
                   </div>
 
                   <div class="more">
@@ -1391,22 +1380,23 @@ $totalPil = count($pilares);
 
 
   function setCardFarol(card, farol){
-    // badge: <span class="badge farol b-..."> Farol: ...</span>
     const badge = card.querySelector('.badge.farol');
     if (!badge) return;
 
-    // normaliza
-    const f = String(farol||'cinza').toLowerCase();
-    let cls='b-gray', txt='-';
-    if (f==='verde'){ cls='b-green'; txt='No trilho'; }
-    else if (f==='amarelo'){ cls='b-warn'; txt='Atenção'; }
-    else if (f==='vermelho'){ cls='b-red'; txt='Crítico'; }
+    const f = String(farol || 'cinza').toLowerCase();
+    if (badge.dataset.farol === f) return; // nada a fazer
 
+    badge.dataset.farol = f;
     badge.classList.remove('b-green','b-warn','b-red','b-gray');
+
+    let cls = 'b-gray', txt = '—';
+    if (f === 'verde')   { cls = 'b-green'; txt = 'No trilho'; }
+    else if (f === 'amarelo') { cls = 'b-warn';  txt = 'Atenção'; }
+    else if (f === 'vermelho'){ cls = 'b-red';   txt = 'Crítico'; }
+
     badge.classList.add(cls);
-    // mantém o ícone, troca apenas o texto após ele
-    const icon = badge.querySelector('i')?.outerHTML || '';
-    badge.innerHTML = icon + ' Farol: ' + txt;
+    const icon = badge.querySelector('i')?.outerHTML || '<i class="fa-regular fa-lightbulb"></i>';
+    badge.innerHTML = icon + ' ' + txt;
   }
 
   async function refreshCardFromAjax(card){
