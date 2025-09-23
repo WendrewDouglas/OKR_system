@@ -106,3 +106,605 @@
 [2025-08-26 12:46:01.743] [INFO] Gerando milestones {"id_kr":"005-20"}
 [2025-08-26 12:46:01.774] [INFO] Milestones gerados {"id_kr":"005-20","qtde":7}
 [2025-08-26 12:46:01.774] [INFO] Transação concluída com sucesso {"id_kr":"005-20"}
+[2025-09-06 16:43:28.966] [INFO] POST recebido em salvar_kr {"user":15,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-06 16:43:28.966] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-06 16:43:28.966] [INFO] Iniciando avaliação IA 
+[2025-09-06 16:43:29.770] [INFO] Avaliação IA concluída {"score":8}
+[2025-09-06 16:43:33.238] [INFO] POST recebido em salvar_kr {"user":15,"ip":"187.120.135.134","mode":"save"}
+[2025-09-06 16:43:33.238] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-06 16:43:33.238] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-06 16:43:33.267] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-06 16:43:33.270] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-06 16:43:33.270] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-06 16:43:33.270] [INFO] Iniciando transação para salvar KR 
+[2025-09-06 16:43:33.271] [INFO] Gerado id_kr {"id_kr":"001-22","key_result_num":1}
+[2025-09-06 16:43:33.277] [INFO] KR inserido {"id_kr":"001-22","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-06 16:43:33.277] [INFO] Gerando milestones {"id_kr":"001-22"}
+[2025-09-06 16:43:33.283] [INFO] Milestones gerados {"id_kr":"001-22","qtde":27}
+[2025-09-06 16:43:33.283] [INFO] Transação concluída com sucesso {"id_kr":"001-22"}
+[2025-09-11 13:56:43.939] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-11 13:56:43.940] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-11 13:56:43.940] [INFO] Iniciando avaliação IA 
+[2025-09-11 13:56:45.436] [INFO] Avaliação IA concluída {"score":8}
+[2025-09-11 13:56:51.911] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-11 13:56:51.911] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-11 13:56:51.911] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-11 13:56:51.913] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-11 13:56:51.914] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-11 13:56:51.914] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-11 13:56:51.914] [INFO] Iniciando transação para salvar KR 
+[2025-09-11 13:56:51.915] [INFO] Gerado id_kr {"id_kr":"001-19","key_result_num":1}
+[2025-09-11 13:56:51.918] [INFO] KR inserido {"id_kr":"001-19","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-11 13:56:51.918] [INFO] Gerando milestones {"id_kr":"001-19"}
+[2025-09-11 13:56:51.923] [INFO] Milestones gerados {"id_kr":"001-19","qtde":13}
+[2025-09-11 13:56:51.923] [INFO] Transação concluída com sucesso {"id_kr":"001-19"}
+[2025-09-12 11:15:36.999] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-12 11:15:37.000] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-12 11:15:37.000] [INFO] Iniciando avaliação IA 
+[2025-09-12 11:15:38.998] [INFO] Avaliação IA concluída {"score":8}
+[2025-09-12 11:15:43.575] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-12 11:15:43.575] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-12 11:15:43.575] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-12 11:15:43.576] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-12 11:15:43.580] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-12 11:15:43.580] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-12 11:15:43.580] [INFO] Iniciando transação para salvar KR 
+[2025-09-12 11:15:43.581] [INFO] Gerado id_kr {"id_kr":"002-17","key_result_num":2}
+[2025-09-12 11:15:43.585] [INFO] KR inserido {"id_kr":"002-17","freq":"mensal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-12 11:15:43.586] [INFO] Gerando milestones {"id_kr":"002-17"}
+[2025-09-12 11:15:43.588] [INFO] Milestones gerados {"id_kr":"002-17","qtde":2}
+[2025-09-12 11:15:43.588] [INFO] Transação concluída com sucesso {"id_kr":"002-17"}
+[2025-09-15 12:00:07.121] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:00:07.123] [INFO] Datas do ciclo derivadas {"inicio":"","fim":"","ciclo":"semestral"}
+[2025-09-15 12:00:07.123] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:00:07.123] [WARNING] Validação falhou (evaluate) {"errors":[{"field":"ciclo_semestral","message":"Semestre do ciclo é obrigatório"},{"field":"ciclo_tipo","message":"Não foi possível derivar o período do ciclo selecionado"}]}
+[2025-09-15 12:00:21.414] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:00:21.415] [INFO] Datas do ciclo derivadas {"inicio":"","fim":"","ciclo":"semestral"}
+[2025-09-15 12:00:21.415] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:00:21.415] [WARNING] Validação falhou (evaluate) {"errors":[{"field":"ciclo_semestral","message":"Semestre do ciclo é obrigatório"},{"field":"ciclo_tipo","message":"Não foi possível derivar o período do ciclo selecionado"}]}
+[2025-09-15 12:01:05.721] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:01:05.721] [INFO] Datas do ciclo derivadas {"inicio":"","fim":"","ciclo":"semestral"}
+[2025-09-15 12:01:05.721] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:01:05.721] [WARNING] Validação falhou (evaluate) {"errors":[{"field":"ciclo_semestral","message":"Semestre do ciclo é obrigatório"},{"field":"ciclo_tipo","message":"Não foi possível derivar o período do ciclo selecionado"}]}
+[2025-09-15 12:09:17.072] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:09:17.073] [INFO] Datas do ciclo derivadas {"inicio":"","fim":"","ciclo":"semestral"}
+[2025-09-15 12:09:17.073] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:09:17.073] [WARNING] Validação falhou (evaluate) {"errors":[{"field":"ciclo_semestral","message":"Semestre do ciclo é obrigatório"},{"field":"ciclo_tipo","message":"Não foi possível derivar o período do ciclo selecionado"}]}
+[2025-09-15 12:21:36.543] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:21:36.545] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 12:21:36.545] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:21:36.912] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 12:21:36.915] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 12:21:46.871] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 12:21:46.871] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 12:21:46.871] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 12:21:46.872] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 12:21:46.875] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 12:21:46.875] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 12:21:46.875] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 12:21:46.877] [INFO] Gerado id_kr {"id_kr":"003-17","key_result_num":3}
+[2025-09-15 12:21:46.880] [INFO] KR inserido {"id_kr":"003-17","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-15 12:21:46.880] [INFO] Gerando milestones {"id_kr":"003-17"}
+[2025-09-15 12:21:46.888] [INFO] Milestones gerados {"id_kr":"003-17","qtde":27}
+[2025-09-15 12:21:46.889] [INFO] Transação concluída com sucesso {"id_kr":"003-17"}
+[2025-09-15 12:24:35.921] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 12:24:35.921] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 12:24:35.921] [INFO] Iniciando avaliação IA 
+[2025-09-15 12:24:36.115] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 12:24:36.117] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 12:24:37.741] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 12:24:37.741] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 12:24:37.741] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 12:24:37.742] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 12:24:37.743] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 12:24:37.743] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 12:24:37.744] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 12:24:37.744] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 12:24:37.745] [INFO] KR inserido {"id_kr":"004-17","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-15 12:24:37.745] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 12:24:37.747] [INFO] Milestones gerados {"id_kr":"004-17","qtde":27}
+[2025-09-15 12:24:37.748] [INFO] Transação concluída com sucesso {"id_kr":"004-17"}
+[2025-09-15 14:59:40.432] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 14:59:40.433] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 14:59:40.433] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 14:59:40.433] [INFO] Iniciando avaliação IA 
+[2025-09-15 14:59:40.589] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 14:59:40.591] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 14:59:42.593] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 14:59:42.594] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 14:59:42.594] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 14:59:42.594] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 14:59:42.600] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 14:59:42.604] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 14:59:42.605] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 14:59:42.605] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 14:59:42.607] [INFO] Gerado id_kr {"id_kr":"003-17","key_result_num":3}
+[2025-09-15 14:59:42.611] [INFO] KR inserido {"id_kr":"003-17","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-15 14:59:42.611] [INFO] Gerando milestones {"id_kr":"003-17"}
+[2025-09-15 14:59:42.623] [INFO] Milestones gerados {"id_kr":"003-17","qtde":27}
+[2025-09-15 14:59:42.624] [INFO] Transação concluída com sucesso {"id_kr":"003-17"}
+[2025-09-15 15:28:23.732] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 15:28:23.733] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:28:23.733] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 15:28:23.733] [INFO] Iniciando avaliação IA 
+[2025-09-15 15:28:24.381] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 15:28:24.383] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 15:28:25.644] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 15:28:25.645] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:28:25.645] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 15:28:25.645] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 15:28:25.646] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 15:28:25.647] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativa","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 15:28:25.647] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 15:28:25.648] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 15:28:25.649] [INFO] Gerado id_kr {"id_kr":"003-17","key_result_num":3}
+[2025-09-15 15:28:25.650] [INFO] KR inserido {"id_kr":"003-17","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-15 15:28:25.650] [INFO] Gerando milestones {"id_kr":"003-17"}
+[2025-09-15 15:28:25.655] [INFO] Milestones gerados {"id_kr":"003-17","qtde":27}
+[2025-09-15 15:28:25.655] [INFO] Transação concluída com sucesso {"id_kr":"003-17"}
+[2025-09-15 15:46:29.070] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 15:46:29.070] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:46:29.070] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 15:46:29.070] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 15:46:29.070] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 15:46:29.070] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 15:46:29.071] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 15:46:29.071] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 15:46:29.071] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 15:46:29.071] [INFO] Iniciando avaliação IA 
+[2025-09-15 15:46:29.234] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 15:46:29.235] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 15:46:32.771] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 15:46:32.771] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:46:32.771] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 15:46:32.771] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 15:46:32.771] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 15:46:32.771] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 15:46:32.771] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 15:46:32.772] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 15:46:32.772] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-15 15:46:32.772] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 15:46:32.773] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 15:46:32.773] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-15 15:46:32.774] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 15:46:32.774] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 15:46:32.774] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 15:46:32.775] [INFO] Gerado id_kr {"id_kr":"003-17","key_result_num":3}
+[2025-09-15 15:46:32.776] [INFO] KR inserido {"id_kr":"003-17","freq":"semanal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-15 15:46:32.776] [INFO] Gerando milestones {"id_kr":"003-17"}
+[2025-09-15 15:46:32.784] [INFO] Milestones gerados {"id_kr":"003-17","qtde":27}
+[2025-09-15 15:46:32.784] [INFO] Transação concluída com sucesso {"id_kr":"003-17"}
+[2025-09-15 15:52:24.119] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 15:52:24.119] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:52:24.119] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 15:52:24.119] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 15:52:24.119] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 15:52:24.120] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 15:52:24.120] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 15:52:24.120] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 15:52:24.120] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 15:52:24.120] [INFO] Iniciando avaliação IA 
+[2025-09-15 15:52:24.274] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 15:52:24.277] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 15:52:25.444] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 15:52:25.444] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 15:52:25.444] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 15:52:25.445] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 15:52:25.445] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 15:52:25.445] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 15:52:25.445] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 15:52:25.445] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 15:52:25.445] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 15:52:25.445] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-09-15 15:52:25.446] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 15:52:25.447] [INFO] Natureza slug {"slug":"pontual"}
+[2025-09-15 15:52:25.448] [INFO] Normalizações {"freq":"quinzenal","natureza":"pontual","status_raw":"nao iniciado","status_norm":"nao iniciado"}
+[2025-09-15 15:52:25.448] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 15:52:25.448] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 15:52:25.449] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 15:52:25.450] [INFO] KR inserido {"id_kr":"004-17","freq":"quinzenal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-15 15:52:25.450] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 15:52:25.451] [INFO] Milestones gerados {"id_kr":"004-17","qtde":7}
+[2025-09-15 15:52:25.452] [INFO] Transação concluída com sucesso {"id_kr":"004-17"}
+[2025-09-15 16:21:33.941] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 16:21:33.941] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:21:33.942] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 16:21:33.942] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 16:21:33.942] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 16:21:33.942] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 16:21:33.942] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 16:21:33.942] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:21:33.942] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:21:33.942] [INFO] Iniciando avaliação IA 
+[2025-09-15 16:21:34.112] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 16:21:34.114] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 16:21:35.597] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 16:21:35.597] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:21:35.597] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:527 
+[2025-09-15 16:21:35.597] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:528 
+[2025-09-15 16:21:35.597] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:529 
+[2025-09-15 16:21:35.597] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:530 
+[2025-09-15 16:21:35.597] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:531 
+[2025-09-15 16:21:35.597] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:21:35.597] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:21:35.597] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-09-15 16:21:35.599] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 16:21:35.599] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-15 16:21:35.600] [INFO] Normalizações {"freq":"quinzenal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 16:21:35.600] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 16:21:35.600] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 16:21:35.601] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 16:21:35.601] [INFO] KR inserido {"id_kr":"004-17","freq":"quinzenal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-15 16:21:35.601] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 16:21:35.602] [INFO] Milestones gerados {"id_kr":"004-17","qtde":7}
+[2025-09-15 16:21:35.603] [INFO] Transação concluída com sucesso {"id_kr":"004-17"}
+[2025-09-15 16:44:14.320] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 16:44:14.320] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:44:14.321] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:44:14.321] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:44:14.321] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:44:14.321] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:44:14.321] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:44:14.321] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:44:14.321] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:44:14.321] [INFO] Iniciando avaliação IA 
+[2025-09-15 16:44:14.446] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 16:44:14.447] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 16:44:15.755] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 16:44:15.755] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:44:15.755] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:44:15.756] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:44:15.756] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:44:15.756] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:44:15.756] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:44:15.756] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:44:15.756] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:44:15.756] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 16:44:15.757] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 16:44:15.758] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-15 16:44:15.759] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 16:44:15.759] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 16:44:15.759] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 16:44:15.760] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 16:44:15.760] [INFO] KR inserido {"id_kr":"004-17","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-15 16:44:15.760] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 16:44:15.761] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'valor_esperado' cannot be null"}
+[2025-09-15 16:44:41.435] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 16:44:41.436] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:44:41.436] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:44:41.436] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:44:41.436] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:44:41.436] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:44:41.436] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:44:41.436] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:44:41.437] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:44:41.437] [INFO] Iniciando avaliação IA 
+[2025-09-15 16:44:41.564] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 16:44:41.565] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 16:44:43.088] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 16:44:43.088] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:44:43.088] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:44:43.088] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:44:43.088] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:44:43.089] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:44:43.089] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:44:43.089] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:44:43.089] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:44:43.089] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 16:44:43.090] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 16:44:43.091] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-15 16:44:43.092] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 16:44:43.092] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 16:44:43.092] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 16:44:43.092] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 16:44:43.093] [INFO] KR inserido {"id_kr":"004-17","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-15 16:44:43.093] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 16:44:43.094] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'valor_esperado' cannot be null"}
+[2025-09-15 16:58:40.553] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-15 16:58:40.553] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:58:40.553] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:58:40.553] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:58:40.553] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:58:40.553] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:58:40.553] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:58:40.553] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:58:40.553] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:58:40.553] [INFO] Iniciando avaliação IA 
+[2025-09-15 16:58:40.654] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-15 16:58:40.655] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-15 16:58:42.566] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-15 16:58:42.566] [INFO] POST ciclo debug {"ciclo_tipo":"trimestral","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":"Q4/2025","ciclo_tri_ano":"2025","ciclo_tri_per":"Q4","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-15 16:58:42.566] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-15 16:58:42.566] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-15 16:58:42.566] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-15 16:58:42.567] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-15 16:58:42.567] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-15 16:58:42.567] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-15 16:58:42.567] [INFO] Datas do ciclo derivadas {"inicio":"2025-10-01","fim":"2025-12-31","ciclo":"trimestral"}
+[2025-09-15 16:58:42.567] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"semanal"}
+[2025-09-15 16:58:42.568] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-15 16:58:42.568] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-15 16:58:42.569] [INFO] Normalizações {"freq":"semanal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-15 16:58:42.569] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-15 16:58:42.569] [INFO] Iniciando transação para salvar KR 
+[2025-09-15 16:58:42.570] [INFO] Gerado id_kr {"id_kr":"004-17","key_result_num":4}
+[2025-09-15 16:58:42.571] [INFO] KR inserido {"id_kr":"004-17","freq":"semanal","inicio":"2025-10-01","fim":"2025-12-31"}
+[2025-09-15 16:58:42.571] [INFO] Gerando milestones {"id_kr":"004-17"}
+[2025-09-15 16:58:42.572] [INFO] Milestones gerados {"id_kr":"004-17","qtde":13}
+[2025-09-15 16:58:42.573] [INFO] Transação concluída com sucesso {"id_kr":"004-17"}
+[2025-09-17 16:10:43.179] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-17 16:10:43.180] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-17 16:10:43.180] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-17 16:10:43.180] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-17 16:10:43.180] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-17 16:10:43.180] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-17 16:10:43.180] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-17 16:10:43.180] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-17 16:10:43.181] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-17 16:10:43.181] [INFO] Iniciando avaliação IA 
+[2025-09-17 16:10:43.355] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-17 16:10:43.357] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-17 16:10:46.934] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-17 16:10:46.934] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-17 16:10:46.934] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-17 16:10:46.935] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-17 16:10:46.935] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-17 16:10:46.935] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-17 16:10:46.935] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-17 16:10:46.935] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-17 16:10:46.935] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-17 16:10:46.935] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-09-17 16:10:46.937] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-17 16:10:46.937] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-17 16:10:46.938] [INFO] Normalizações {"freq":"quinzenal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-17 16:10:46.938] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-17 16:10:46.938] [INFO] Iniciando transação para salvar KR 
+[2025-09-17 16:10:46.939] [INFO] Gerado id_kr {"id_kr":"001-18","key_result_num":1}
+[2025-09-17 16:10:46.942] [INFO] KR inserido {"id_kr":"001-18","freq":"quinzenal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-17 16:10:46.942] [INFO] Gerando milestones {"id_kr":"001-18"}
+[2025-09-17 16:10:46.945] [INFO] Milestones gerados {"id_kr":"001-18","qtde":13}
+[2025-09-17 16:10:46.946] [INFO] Transação concluída com sucesso {"id_kr":"001-18"}
+[2025-09-19 13:37:31.382] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"evaluate"}
+[2025-09-19 13:37:31.388] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-19 13:37:31.388] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-19 13:37:31.388] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-19 13:37:31.388] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-19 13:37:31.388] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-19 13:37:31.388] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-19 13:37:31.389] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-19 13:37:31.389] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-19 13:37:31.389] [INFO] Iniciando avaliação IA 
+[2025-09-19 13:37:31.472] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-19 13:37:31.478] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-19 13:37:34.229] [INFO] POST recebido em salvar_kr {"user":1,"ip":"200.206.17.170","mode":"save"}
+[2025-09-19 13:37:34.229] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-19 13:37:34.230] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-19 13:37:34.230] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-19 13:37:34.230] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-19 13:37:34.230] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-19 13:37:34.230] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-19 13:37:34.230] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-19 13:37:34.230] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-19 13:37:34.231] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-09-19 13:37:34.231] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-19 13:37:34.232] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-19 13:37:34.233] [INFO] Normalizações {"freq":"quinzenal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-19 13:37:34.233] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-19 13:37:34.233] [INFO] Iniciando transação para salvar KR 
+[2025-09-19 13:37:34.234] [INFO] Gerado id_kr {"id_kr":"001-23","key_result_num":1}
+[2025-09-19 13:37:34.238] [INFO] KR inserido {"id_kr":"001-23","freq":"quinzenal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-19 13:37:34.238] [INFO] Gerando milestones {"id_kr":"001-23"}
+[2025-09-19 13:37:34.241] [INFO] Milestones gerados {"id_kr":"001-23","qtde":13}
+[2025-09-19 13:37:34.242] [INFO] Transação concluída com sucesso {"id_kr":"001-23"}
+[2025-09-20 13:29:01.220] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 13:29:01.221] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:01.222] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:01.222] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:01.222] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:01.222] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:01.222] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:01.222] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:01.222] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:01.222] [INFO] Iniciando avaliação IA 
+[2025-09-20 13:29:01.357] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 13:29:01.360] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 13:29:03.213] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 13:29:03.213] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:03.213] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:03.213] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:03.213] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:03.213] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:03.214] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:03.214] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:03.214] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:03.214] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 13:29:03.217] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 13:29:03.218] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-20 13:29:03.220] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 13:29:03.220] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 13:29:03.220] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 13:29:03.221] [INFO] Gerado id_kr {"id_kr":"004-20","key_result_num":4}
+[2025-09-20 13:29:03.223] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '004-20' for key 'PRIMARY'"}
+[2025-09-20 13:29:25.292] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 13:29:25.292] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:25.292] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:25.292] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:25.292] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:25.292] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:25.292] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:25.292] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:25.292] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:25.293] [INFO] Iniciando avaliação IA 
+[2025-09-20 13:29:25.495] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 13:29:25.497] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 13:29:29.771] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 13:29:29.771] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:29.771] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:29.771] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:29.771] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:29.771] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:29.772] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:29.772] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:29.774] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:29.774] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 13:29:29.776] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 13:29:29.776] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-20 13:29:29.778] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 13:29:29.778] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 13:29:29.778] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 13:29:29.779] [INFO] Gerado id_kr {"id_kr":"004-20","key_result_num":4}
+[2025-09-20 13:29:29.780] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '004-20' for key 'PRIMARY'"}
+[2025-09-20 13:29:39.557] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 13:29:39.557] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:39.557] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:39.557] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:39.558] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:39.558] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:39.558] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:39.558] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:39.558] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:39.558] [INFO] Iniciando avaliação IA 
+[2025-09-20 13:29:39.732] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 13:29:39.734] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 13:29:40.833] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 13:29:40.833] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:40.833] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:40.834] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:40.834] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:40.834] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:40.834] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:40.834] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:40.834] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:40.834] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 13:29:40.836] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 13:29:40.836] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-20 13:29:40.838] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 13:29:40.838] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 13:29:40.838] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 13:29:40.840] [INFO] Gerado id_kr {"id_kr":"004-20","key_result_num":4}
+[2025-09-20 13:29:40.844] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '004-20' for key 'PRIMARY'"}
+[2025-09-20 13:29:46.993] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 13:29:46.993] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:46.993] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:46.993] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:46.994] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:46.994] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:46.994] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:46.994] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:46.994] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:46.994] [INFO] Iniciando avaliação IA 
+[2025-09-20 13:29:47.101] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 13:29:47.102] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 13:29:48.467] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 13:29:48.467] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 13:29:48.467] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 13:29:48.467] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 13:29:48.467] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 13:29:48.467] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 13:29:48.467] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 13:29:48.467] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 13:29:48.467] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 13:29:48.468] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 13:29:48.473] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 13:29:48.474] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-20 13:29:48.475] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 13:29:48.475] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 13:29:48.475] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 13:29:48.476] [INFO] Gerado id_kr {"id_kr":"004-20","key_result_num":4}
+[2025-09-20 13:29:48.477] [ERROR] Erro ao salvar KR {"exception":"SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '004-20' for key 'PRIMARY'"}
+[2025-09-20 14:43:16.780] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 14:43:16.781] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:43:16.781] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:43:16.781] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:43:16.781] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:43:16.781] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:43:16.781] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:43:16.781] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:43:16.782] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 14:43:16.782] [INFO] Iniciando avaliação IA 
+[2025-09-20 14:43:16.928] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 14:43:16.931] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 14:43:18.689] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 14:43:18.689] [INFO] POST ciclo debug {"ciclo_tipo":"anual","ciclo_semestral":null,"ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:43:18.690] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:43:18.690] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:43:18.690] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:43:18.690] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:43:18.690] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:43:18.690] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:43:18.690] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-12-31","ciclo":"anual"}
+[2025-09-20 14:43:18.690] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 14:43:18.693] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 14:43:18.693] [INFO] Natureza slug {"slug":"acumulativo_exponencial"}
+[2025-09-20 14:43:18.694] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_exponencial","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 14:43:18.694] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 14:43:18.694] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 14:43:18.695] [INFO] Gerado id_kr {"id_kr":"001-30","key_result_num":1}
+[2025-09-20 14:43:18.706] [INFO] KR inserido {"id_kr":"001-30","freq":"mensal","inicio":"2025-01-01","fim":"2025-12-31"}
+[2025-09-20 14:43:18.706] [INFO] Gerando milestones {"id_kr":"001-30"}
+[2025-09-20 14:43:18.714] [INFO] Milestones gerados {"id_kr":"001-30","qtde":7}
+[2025-09-20 14:43:18.715] [INFO] Transação concluída com sucesso {"id_kr":"001-30"}
+[2025-09-20 14:46:14.430] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 14:46:14.430] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S1/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S1","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:46:14.430] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:46:14.431] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:46:14.431] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:46:14.431] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:46:14.431] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:46:14.431] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:46:14.431] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-06-30","ciclo":"semestral"}
+[2025-09-20 14:46:14.431] [INFO] Iniciando avaliação IA 
+[2025-09-20 14:46:14.557] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 14:46:14.560] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 14:46:15.797] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 14:46:15.797] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S1/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S1","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:46:15.797] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:46:15.798] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:46:15.798] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:46:15.798] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:46:15.798] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:46:15.798] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:46:15.798] [INFO] Datas do ciclo derivadas {"inicio":"2025-01-01","fim":"2025-06-30","ciclo":"semestral"}
+[2025-09-20 14:46:15.798] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"mensal"}
+[2025-09-20 14:46:15.800] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 14:46:15.801] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-20 14:46:15.802] [INFO] Normalizações {"freq":"mensal","natureza":"acumulativo_constante","status_raw":"concluido","status_norm":"concluido"}
+[2025-09-20 14:46:15.802] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 14:46:15.802] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 14:46:15.804] [INFO] Gerado id_kr {"id_kr":"002-30","key_result_num":2}
+[2025-09-20 14:46:15.804] [INFO] KR inserido {"id_kr":"002-30","freq":"mensal","inicio":"2025-01-01","fim":"2025-06-30"}
+[2025-09-20 14:46:15.804] [INFO] Gerando milestones {"id_kr":"002-30"}
+[2025-09-20 14:46:15.807] [INFO] Milestones gerados {"id_kr":"002-30","qtde":4}
+[2025-09-20 14:46:15.808] [INFO] Transação concluída com sucesso {"id_kr":"002-30"}
+[2025-09-20 14:49:19.177] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"evaluate"}
+[2025-09-20 14:49:19.177] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:49:19.177] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:49:19.177] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:49:19.178] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:49:19.178] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:49:19.178] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:49:19.178] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:49:19.178] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-20 14:49:19.178] [INFO] Iniciando avaliação IA 
+[2025-09-20 14:49:19.406] [ERROR] OpenAI resposta inválida {"http_code":401}
+[2025-09-20 14:49:19.408] [INFO] Avaliação IA concluída {"score":0}
+[2025-09-20 14:49:20.527] [INFO] POST recebido em salvar_kr {"user":1,"ip":"187.120.135.134","mode":"save"}
+[2025-09-20 14:49:20.527] [INFO] POST ciclo debug {"ciclo_tipo":"semestral","ciclo_semestral":"S2/2025","ciclo_sem_ano":"2025","ciclo_sem_per":"S2","ciclo_trimestral":null,"ciclo_tri_ano":"2025","ciclo_tri_per":"Q3","ciclo_bimestral":null,"ciclo_bim_ano":"2025","ciclo_bim_per":"01-02"}
+[2025-09-20 14:49:20.527] [ERROR] PHP Error 2: Undefined variable $naturezaSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:556 
+[2025-09-20 14:49:20.528] [ERROR] PHP Error 2: Undefined variable $direcao_metrica @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:557 
+[2025-09-20 14:49:20.528] [ERROR] PHP Error 2: Undefined variable $baseline @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:558 
+[2025-09-20 14:49:20.528] [ERROR] PHP Error 2: Undefined variable $meta @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:559 
+[2025-09-20 14:49:20.528] [ERROR] PHP Error 2: Undefined variable $freqSlug @ /home2/planni40/public_html/OKR_system/auth/salvar_kr.php:560 
+[2025-09-20 14:49:20.528] [INFO] Gerar milestones (natureza/direcao) {"slug":null,"direcao":null,"baseline":null,"meta":null,"freq":null}
+[2025-09-20 14:49:20.528] [INFO] Datas do ciclo derivadas {"inicio":"2025-07-01","fim":"2025-12-31","ciclo":"semestral"}
+[2025-09-20 14:49:20.528] [INFO] Frequência recebida (raw) {"tipo_frequencia_milestone":"quinzenal"}
+[2025-09-20 14:49:20.530] [INFO] Conectado ao MySQL com sucesso 
+[2025-09-20 14:49:20.530] [INFO] Natureza slug {"slug":"acumulativo_constante"}
+[2025-09-20 14:49:20.532] [INFO] Normalizações {"freq":"quinzenal","natureza":"acumulativo_constante","status_raw":"em andamento","status_norm":"em andamento"}
+[2025-09-20 14:49:20.532] [INFO] Flag autogerar_milestones {"autogerar":1}
+[2025-09-20 14:49:20.532] [INFO] Iniciando transação para salvar KR 
+[2025-09-20 14:49:20.533] [INFO] Gerado id_kr {"id_kr":"003-30","key_result_num":3}
+[2025-09-20 14:49:20.533] [INFO] KR inserido {"id_kr":"003-30","freq":"quinzenal","inicio":"2025-07-01","fim":"2025-12-31"}
+[2025-09-20 14:49:20.534] [INFO] Gerando milestones {"id_kr":"003-30"}
+[2025-09-20 14:49:20.536] [INFO] Milestones gerados {"id_kr":"003-30","qtde":13}
+[2025-09-20 14:49:20.536] [INFO] Transação concluída com sucesso {"id_kr":"003-30"}

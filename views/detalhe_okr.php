@@ -1655,11 +1655,23 @@ foreach ($milestones as $m) {
       foreach ($items as $it) {
         $id_ms   = $it['id_ms'] ?? null;
         $dataRef = $it['data_prevista'] ?? null; // yyyy-mm-dd
-        $valor   = isset($it['valor_real']) ? (float)$it['valor_real'] : null;
-        $evid    = trim((string)($it['dt_evidencia'] ?? ''));
-        $obs     = trim((string)($it['observacao'] ?? ''));
 
-        if ($valor === null || $valor === '' || (!$dataRef && !$id_ms)) continue;
+        // 🔧 Leia cru, valide vazio, depois converta
+        $rawValor = trim((string)($it['valor_real'] ?? ''));
+        if ($rawValor === '' || (!$dataRef && !$id_ms)) {
+          continue; // não salva quando o campo está em branco ou sem identificador do milestone
+        }
+
+        // (opcional) normaliza vírgula decimal para ponto
+        $rawValor = str_replace(',', '.', $rawValor);
+
+        if (!is_numeric($rawValor)) {
+          continue; // protege contra lixo
+        }
+        $valor = (float)$rawValor; // só aqui vira float
+
+        $evid = trim((string)($it['dt_evidencia'] ?? ''));
+        $obs  = trim((string)($it['observacao'] ?? ''));
 
         // Lê valor anterior para detectar overwrite
         $was = null;
@@ -1671,8 +1683,7 @@ foreach ($milestones as $m) {
           $st0->execute(['ik'=>$id_kr,'dr'=>$dataRef]);
         }
         $was = $st0->fetchColumn();
-        $overwrite = ($was !== null && $was !== '' && (float)$was != (float)$valor);
-
+        $overwrite = ($was !== null && $was !== '' && (float)$was != $valor);
         // WHERE para SELECT/UPDATE
         $whereParts = [];
         $whereBind  = [];
@@ -1848,39 +1859,252 @@ if ($action === 'apont_file_list') {
   exit;
 }
 
-/* ---------- APONTAMENTO: EXCLUIR EVIDÊNCIA (com justificativa) ---------- */
-if ($action === 'apont_file_delete') {
+/* ---------- APONTAMENTO: EXCLUIR (remove do log e re-sincroniza o milestone) ---------- */
+if ($action === 'apont_delete') {
   if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
     http_response_code(403);
     echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
   }
-  $id_kr = $_POST['id_kr'] ?? '';
-  $id_ms = $_POST['id_ms'] ?? '';
-  $name  = $_POST['name']  ?? '';
-  $just  = trim($_POST['justificativa'] ?? '');
-  if (!$id_kr || !$id_ms || !$name || $just===''){ echo json_encode(['success'=>false,'error'=>'Justificativa é obrigatória']); exit; }
 
-  $dir  = realpath(__DIR__ . '/../uploads/kr_evidencias/' . $id_kr . '/' . $id_ms);
-  $file = $dir ? $dir . '/' . basename($name) : null;
-  if (!$dir || !is_dir($dir) || !$file || !is_file($file)) {
-    echo json_encode(['success'=>false,'error'=>'Arquivo não encontrado']); exit;
+  $deleteAll = !empty($_POST['delete_all']);
+
+  $id_kr        = $_POST['id_kr'] ?? '';
+  $id_ms        = $_POST['id_ms'] ?? null;           // preferido
+  $data_prevista= $_POST['data_prevista'] ?? null;   // fallback (yyyy-mm-dd)
+  $id_apont     = $_POST['id_apontamento'] ?? null;  // opcional, se você tiver no front
+
+  if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+
+  // Descobre tabela/colunas de milestones (mesma lógica do apont_save)
+  $msTable=null;
+  foreach(['milestones_kr','milestones'] as $t){ try{$pdo->query("SHOW COLUMNS FROM `$t`"); $msTable=$t; break;}catch(Throwable $e){} }
+  if(!$msTable){ echo json_encode(['success'=>false,'error'=>'Tabela de milestones não encontrada']); exit; }
+  $cols = $pdo->query("SHOW COLUMNS FROM `$msTable`")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $has  = function(string $n) use($cols){ foreach($cols as $c){ if (strcasecmp($c['Field'],$n)===0) return true; } return false; };
+
+  $krCol   = $has('id_kr') ? 'id_kr' : 'id_kr'; // já que seu schema padrão usa id_kr
+  $idCol   = $has('id_milestone') ? 'id_milestone' : ($has('id_ms') ? 'id_ms' : ($has('id') ? 'id' : null));
+  $dateCol = $has('data_ref') ? 'data_ref' : ($has('dt_prevista') ? 'dt_prevista' : ($has('data_prevista') ? 'data_prevista' : null));
+  $realCol = $has('valor_real') ? 'valor_real'
+          : ($has('realizado') ? 'realizado'
+          : ($has('valor_real_consolidado') ? 'valor_real_consolidado' : null));
+  $eviCol  = $has('dt_evidencia') ? 'dt_evidencia'
+          : ($has('data_evidencia') ? 'data_evidencia'
+          : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
+  $apoCol  = $has('dt_apontamento') ? 'dt_apontamento'
+          : ($has('data_apontamento') ? 'data_apontamento'
+          : ($has('dt_ultimo_apontamento') ? 'dt_ultimo_apontamento' : null));
+  $usrCol  = $has('id_user_apontamento') ? 'id_user_apontamento'
+          : ($has('id_user_ult_alteracao') ? 'id_user_ult_alteracao' : null);
+  $cntCol  = $has('qtde_apontamentos') ? 'qtde_apontamentos' : null;
+
+  if (!$dateCol || !$realCol) {
+    echo json_encode(['success'=>false,'error'=>'Colunas essenciais do milestone ausentes']); exit;
   }
 
-  // Log simples na timeline do KR (reutiliza helper, se quiser)
-  try { $addKrComment($pdo, $id_kr, (int)$_SESSION['user_id'], "Evidência removida de MS {$id_ms}. Motivo: ".$just); } catch(Throwable $e){}
+  // Tabela de log de apontamentos (preferindo apontamentos_kr conforme seu pedido)
+  $apTable = null;
+  foreach (['apontamentos_kr','apontamentos'] as $t) {
+    try { $pdo->query("SHOW COLUMNS FROM `$t`"); $apTable=$t; break; } catch(Throwable $e){}
+  }
+  if (!$apTable) { echo json_encode(['success'=>false,'error'=>'Tabela de apontamentos não encontrada']); exit; }
 
-  if (!unlink($file)) { echo json_encode(['success'=>false,'error'=>'Não foi possível excluir']); exit; }
-  echo json_encode(['success'=>true]);
-  exit;
+  $getCol = function(string $table, array $cands) use($pdo){
+    foreach($cands as $c){ try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :c"); $st->execute(['c'=>$c]); if($st->fetch()) return $c; }catch(Throwable $e){} }
+    return null;
+  };
+  $apId   = $getCol($apTable, ['id_apontamento','id','id_log','id_registro']);
+  $apKr   = $getCol($apTable, ['id_kr','kr_id','id_key_result','key_result_id']);
+  $apMs   = $getCol($apTable, ['id_milestone','id_ms']);
+  $apVal  = $getCol($apTable, ['valor_real','valor']);
+  $apWhen = $getCol($apTable, ['dt_apontamento','created_at','dt_criacao','data']);
+  $apRef  = $getCol($apTable, ['data_ref','data_prevista']); // se existir
+  $apEvi  = $getCol($apTable, ['dt_evidencia','data_evidencia']);
+
+  if (!$apKr || !$apVal) { echo json_encode(['success'=>false,'error'=>'Colunas essenciais do log de apontamentos ausentes']); exit; }
+
+  try {
+    $pdo->beginTransaction();
+
+    if ($deleteAll && !$id_apont && !$id_ms && !$data_prevista) {
+      // 1) Zera o log inteiro do KR
+      $stDelAll = $pdo->prepare("DELETE FROM `$apTable` WHERE `$apKr`=:kr");
+      $stDelAll->execute(['kr'=>$id_kr]);
+
+      // 2) Limpa todos os milestones do KR (valor_real, datas/contadores se existirem)
+      $sets = [];
+      if ($realCol) $sets[] = "`$realCol`=NULL";
+      if ($eviCol)  $sets[] = "`$eviCol`=NULL";
+      if ($apoCol)  $sets[] = "`$apoCol`=NULL";
+      if ($usrCol)  $sets[] = "`$usrCol`=NULL";
+      if ($cntCol)  $sets[] = "`$cntCol`=0";
+
+      if ($sets) {
+        $sql = "UPDATE `$msTable` SET ".implode(',', $sets)." WHERE `$krCol`=:kr";
+        $stUpd = $pdo->prepare($sql);
+        $stUpd->execute(['kr'=>$id_kr]);
+      }
+
+      $pdo->commit();
+      echo json_encode(['success'=>true, 'cleared_all'=>true]);
+      exit;
+    }
+
+    // 1) Descobrir QUAL apontamento remover e QUAL milestone recalcular
+    $rowDel = null;
+    if ($id_apont && $apId) {
+      $st = $pdo->prepare("SELECT * FROM `$apTable` WHERE `$apId`=:id AND `$apKr`=:kr LIMIT 1");
+      $st->execute(['id'=>$id_apont,'kr'=>$id_kr]);
+      $rowDel = $st->fetch() ?: null;
+    } elseif ($id_ms && $apMs) {
+      $sql = "SELECT * FROM `$apTable` WHERE `$apKr`=:kr AND `$apMs`=:ms ".
+             ($apWhen? "ORDER BY `$apWhen` DESC":"ORDER BY 1 DESC")." LIMIT 1";
+      $st = $pdo->prepare($sql);
+      $st->execute(['kr'=>$id_kr,'ms'=>$id_ms]);
+      $rowDel = $st->fetch() ?: null;
+    } elseif ($apRef && $data_prevista) {
+      $sql = "SELECT * FROM `$apTable` WHERE `$apKr`=:kr AND `$apRef`=:d ".
+             ($apWhen? "ORDER BY `$apWhen` DESC":"ORDER BY 1 DESC")." LIMIT 1";
+      $st = $pdo->prepare($sql);
+      $st->execute(['kr'=>$id_kr,'d'=>$data_prevista]);
+      $rowDel = $st->fetch() ?: null;
+    } else {
+      // último do KR (fallback bem conservador)
+      $sql = "SELECT * FROM `$apTable` WHERE `$apKr`=:kr ".
+             ($apWhen? "ORDER BY `$apWhen` DESC":"ORDER BY 1 DESC")." LIMIT 1";
+      $st = $pdo->prepare($sql);
+      $st->execute(['kr'=>$id_kr]);
+      $rowDel = $st->fetch() ?: null;
+    }
+
+    if (!$rowDel) {
+      $pdo->rollBack();
+      echo json_encode(['success'=>false,'error'=>'Nenhum apontamento encontrado para excluir']); exit;
+    }
+
+    // id_ms alvo (pode vir do log; senão tentamos derivar por data)
+    $targetIdMs = null;
+    if ($apMs && !empty($rowDel[$apMs])) $targetIdMs = $rowDel[$apMs];
+
+    if (!$targetIdMs && $idCol) {
+      if ($apRef && !empty($rowDel[$apRef])) {
+        $q = $pdo->prepare("SELECT `$idCol` FROM `$msTable` WHERE `$krCol`=:kr AND `$dateCol`=:d LIMIT 1");
+        $q->execute(['kr'=>$id_kr,'d'=>$rowDel[$apRef]]);
+        $targetIdMs = $q->fetchColumn() ?: null;
+      } elseif ($data_prevista) {
+        $q = $pdo->prepare("SELECT `$idCol` FROM `$msTable` WHERE `$krCol`=:kr AND `$dateCol`=:d LIMIT 1");
+        $q->execute(['kr'=>$id_kr,'d'=>$data_prevista]);
+        $targetIdMs = $q->fetchColumn() ?: null;
+      } else {
+        $targetIdMs = $id_ms; // melhor que nada
+      }
+    }
+
+    // 2) Apaga o(s) apontamento(s) do log
+    if ($deleteAll) {
+      // Excluir todos os apontamentos da linha (por id_ms OU por data_ref), sem olhar dt/valor e sem LIMIT
+      $where = ["`$apKr`=:kr"];
+      $bind  = [':kr'=>$id_kr];
+      if ($apMs && $id_ms) {
+        $where[] = "`$apMs`=:ms";  $bind[':ms'] = $id_ms;
+      } elseif ($apRef && $data_prevista) {
+        $where[] = "`$apRef`=:dr"; $bind[':dr'] = $data_prevista;
+      } elseif ($apMs && $targetIdMs) { // fallback quando só conseguimos o id_ms “derivado”
+        $where[] = "`$apMs`=:ms";  $bind[':ms'] = $targetIdMs;
+      }
+      $sql = "DELETE FROM `$apTable` WHERE ".implode(' AND ', $where);
+      $st  = $pdo->prepare($sql);
+      $st->execute($bind);
+      // Como apagamos todos, garanta que os cálculos abaixo não tentem “buscar o último”
+      $last  = null;
+      $count = 0;
+    } else {
+      // Comportamento original: excluir só o último (a query atual tem LIMIT 1)
+      $where = ["`$apKr`=:kr"]; $bind  = [':kr'=>$id_kr];
+      if ($apMs && $targetIdMs) { $where[]="`$apMs`=:ms"; $bind[':ms']=$targetIdMs; }
+      elseif ($apRef && !empty($rowDel[$apRef])) { $where[]="`$apRef`=:dr"; $bind[':dr']=$rowDel[$apRef]; }
+      if ($apWhen && !empty($rowDel[$apWhen])) { $where[]="`$apWhen`=:dt"; $bind[':dt']=$rowDel[$apWhen]; }
+      if ($apVal  && isset($rowDel[$apVal]))   { $where[]="`$apVal`=:vr";  $bind[':vr']=$rowDel[$apVal]; }
+      $sql = "DELETE FROM `$apTable` WHERE ".implode(' AND ',$where)." LIMIT 1";
+      $st  = $pdo->prepare($sql);
+      $st->execute($bind);
+    }
+
+    // 3) Recalcula o milestone (valor_real, dt_evidencia, qtde_apontamentos, dt_ultimo_apontamento)
+    //    -> busca o último restante pro mesmo MS (ou mesma data_ref)
+    $last = null; $count = 0;
+    if ($apMs && $targetIdMs) {
+      $stC = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apMs`=:ms");
+      $stC->execute(['kr'=>$id_kr,'ms'=>$targetIdMs]);
+      $count = (int)$stC->fetchColumn();
+
+      $sqlL = "SELECT * FROM `$apTable` WHERE `$apKr`=:kr AND `$apMs`=:ms ".
+              ($apWhen? "ORDER BY `$apWhen` DESC":"ORDER BY 1 DESC")." LIMIT 1";
+      $stL = $pdo->prepare($sqlL);
+      $stL->execute(['kr'=>$id_kr,'ms'=>$targetIdMs]);
+      $last = $stL->fetch() ?: null;
+    } elseif ($apRef && !empty($rowDel[$apRef])) {
+      $stC = $pdo->prepare("SELECT COUNT(*) FROM `$apTable` WHERE `$apKr`=:kr AND `$apRef`=:dr");
+      $stC->execute(['kr'=>$id_kr,'dr'=>$rowDel[$apRef]]);
+      $count = (int)$stC->fetchColumn();
+
+      $sqlL = "SELECT * FROM `$apTable` WHERE `$apKr`=:kr AND `$apRef`=:dr ".
+              ($apWhen? "ORDER BY `$apWhen` DESC":"ORDER BY 1 DESC")." LIMIT 1";
+      $stL = $pdo->prepare($sqlL);
+      $stL->execute(['kr'=>$id_kr,'dr'=>$rowDel[$apRef]]);
+      $last = $stL->fetch() ?: null;
+    }
+
+    // Monta WHERE do milestone alvo
+    $whereMs = []; $bindMs=[];
+    if ($idCol && $targetIdMs) {
+      $whereMs[]="`$idCol`=:idms"; $bindMs[':idms']=$targetIdMs;
+      $whereMs[]="`$krCol`=:ik";   $bindMs[':ik']=$id_kr;
+    } else {
+      // se não temos id_ms, tentamos pelo par (kr + data_prevista do apontamento deletado)
+      $dataAlvo = $rowDel[$apRef] ?? $data_prevista ?? null;
+      if (!$dataAlvo) { $pdo->rollBack(); echo json_encode(['success'=>false,'error'=>'Não foi possível localizar o milestone alvo']); exit; }
+      $whereMs[]="`$krCol`=:ik";   $bindMs[':ik']=$id_kr;
+      $whereMs[]="`$dateCol`=:dr"; $bindMs[':dr']=$dataAlvo;
+    }
+
+    // Campos atualizados
+    $sets = [];
+    $retRow = ['valor_real'=>null,'dt_evidencia'=>null,'qtde_apontamentos'=>$count];
+
+    if ($cntCol) { $sets[]="`$cntCol`=:cnt"; $bindMs[':cnt']=$count; }
+
+    if ($last) {
+      if ($realCol && $apVal) { $sets[]="`$realCol`=:vr"; $bindMs[':vr']=$last[$apVal]; $retRow['valor_real']=(float)$last[$apVal]; }
+      if ($eviCol && $apEvi)  { $sets[]="`$eviCol`=:evi"; $bindMs[':evi']=$last[$apEvi] ?: date('Y-m-d'); $retRow['dt_evidencia']=$bindMs[':evi']; }
+      if ($apoCol && $apWhen) { $sets[]="`$apoCol`=:apo"; $bindMs[':apo']=$last[$apWhen] ?: date('Y-m-d H:i:s'); }
+    } else {
+      // Sem apontamentos restantes -> zera campos
+      if ($realCol) { $sets[]="`$realCol`=NULL"; }
+      if ($eviCol)  { $sets[]="`$eviCol`=NULL"; $retRow['dt_evidencia']=null; }
+      if ($apoCol)  { $sets[]="`$apoCol`=NULL"; }
+    }
+    if ($usrCol) { $sets[]="`$usrCol`=:uu"; $bindMs[':uu']=(int)$_SESSION['user_id']; }
+
+    if ($sets) {
+      $sqlUp = "UPDATE `$msTable` SET ".implode(', ',$sets)." WHERE ".implode(' AND ',$whereMs)." LIMIT 1";
+      $stU = $pdo->prepare($sqlUp);
+      $stU->execute($bindMs);
+    }
+
+    $pdo->commit();
+
+    // A view v_milestones_kr_normalizado lê de milestones_kr, então não precisa "atualizar" manualmente;
+    // ela refletirá imediatamente as alterações acima.
+
+    echo json_encode(['success'=>true,'row'=>$retRow]);
+    exit;
+  } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    echo json_encode(['success'=>false,'error'=>'Falha ao excluir apontamento']); exit;
+  }
 }
-
-
-  // Fallback
-  echo json_encode(['success'=>false,'error'=>'Ação inválida']);
-  exit;
 }
-
-
 
 /* ===================== MODO PÁGINA ===================== */
 ini_set('display_errors',1);
@@ -2138,9 +2362,9 @@ $saldoObj = max(0, $aprovObj - $realObj);
     }
 
     /* (opcional) fallback elegante se o JS não rodar por algum motivo */
-    @media (min-height: 500px){
+    @media (min-height: 400px){
       #modalApont .table-wrap.fallback-cap {
-        max-height: 50vh;    /* não fica gigante; ainda assim mostra bastante conteúdo */
+        max-height: 40vh;    /* não fica gigante; ainda assim mostra bastante conteúdo */
       }
     }
     .orc-two-cols{ display:grid; grid-template-columns:2fr 1fr; gap:10px; }
@@ -2430,8 +2654,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
   <div id="modalApont" class="modal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="apont_title">
       <header class="modal-head">
-        <h3 id="apont_title"><i class="fa-regular fa-pen-to-square"></i> Apontamento do KR</h3>
-        <button class="btn btn-outline" type="button" onclick="showApontModal(false)">Fechar ✕</button>
+        <h3 id="apont_title"><i class="fa-regular fa-pen-to-square"></i> Apontamentos do KR</h3>
       </header>
       <div class="modal-body">
         <div class="kr-banner" style="margin-bottom:10px;">
@@ -2440,6 +2663,9 @@ $saldoObj = max(0, $aprovObj - $realObj);
             <div class="title" id="ap_kr_titulo">KR —</div>
             <div class="sub" id="ap_kr_sub">Carregando...</div>
           </div>
+          <button type="button" id="ap_clear_all" class="btn btn-danger btn-sm" style="margin-left:auto">
+            <i class="fa-regular fa-trash-can"></i> Apagar todos apontamentos
+          </button>
         </div>
 
         <div class="chip" style="margin-bottom:10px;">
@@ -2462,6 +2688,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
                 <th style="white-space:nowrap">Evidência</th>
                 <th style="white-space:nowrap">Ver anexo</th>
                 <th style="white-space:nowrap">Salvar</th>
+                <th style="white-space:nowrap">Excluir</th>
               </tr>
             </thead>
             <tbody id="ap_rows">
@@ -2474,7 +2701,7 @@ $saldoObj = max(0, $aprovObj - $realObj);
               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" type="button" onclick="showApontModal(false)">Fechar</button>
+        <button class="btn btn-outline" type="button" onclick="showApontModal(false)">X Fechar</button>
       </div>
     </div>
   </div>
@@ -2569,7 +2796,8 @@ $saldoObj = max(0, $aprovObj - $realObj);
     const idObjetivo    = <?= (int)$id_objetivo ?>;
     const SCRIPT        = "<?= $_SERVER['SCRIPT_NAME'] ?>";
 
-    const $  = (s,p=document)=>p.querySelector(s);
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    //const $  = (s,p=document)=>p.querySelector(s);
     const $$ = (s,p=document)=>Array.from(p.querySelectorAll(s));
 
     function fmtNum(x){ if(x===null||x===undefined||isNaN(x)) return '—'; return Number(x).toLocaleString('pt-BR',{maximumFractionDigits:2}); }
@@ -2845,64 +3073,225 @@ $saldoObj = max(0, $aprovObj - $realObj);
     }
 
 
-        // ====== Novo Apontamento ======
+    // utilitária pra selecionar rápido (se já tiver $, mantenha o seu)
+    //const $ = (sel, ctx=document) => ctx.querySelector(sel);
+
+    // guarda o último foco pra devolver ao fechar
+    let __apontLastFocus = null;
+
     async function openApontModal(id){
-    // reset
-    $('#ap_id_kr').value = id;
-    $('#ap_rows').innerHTML = '<tr><td colspan="8" style="color:#9aa4b2">Carregando...</td></tr>';
+      const modal = $('#modalApont');
 
-    // banner + dados
-    const res  = await fetch(`${SCRIPT}?ajax=apont_modal_data&id_kr=${encodeURIComponent(id)}`);
-    const data = await res.json();
-    if(!data.success){ toast(data.error||'Falha ao carregar', false); return; }
+      // ===== estado de "modal ABERTO" (conserta o aria-hidden warning) =====
+      __apontLastFocus = document.activeElement;
+      modal.classList.add('show');
+      modal.removeAttribute('aria-hidden');      // visível => não esconda
+      modal.setAttribute('aria-modal', 'true');  // é um dialog modal
+      modal.setAttribute('role', 'dialog');      // reforça papel de diálogo
+      modal.setAttribute('tabindex', '-1');      // permite receber foco
+      modal.removeAttribute('inert');            // caso você use inert ao fechar
+      modal.focus({ preventScroll:true });
 
-    $('#ap_kr_titulo').textContent = 'KR';
-    $('#ap_kr_sub').textContent    = data.kr?.descricao || '—';
-    $('#ap_kr_meta').textContent   = 'Meta: ' + (data.kr?.meta ?? '—');
-    $('#ap_kr_base').textContent   = 'Baseline: ' + (data.kr?.baseline ?? '—');
-    $('#ap_kr_um').textContent     = 'Unidade: ' + (data.kr?.unidade_medida ?? '—');
+      // ===== reset de UI =====
+      $('#ap_id_kr').value = id;
+      $('#ap_rows').innerHTML = '<tr><td colspan="9" style="color:#9aa4b2">Carregando...</td></tr>';
 
-    const tb = $('#ap_rows'); tb.innerHTML='';
-    capApontRows(8);
-    const total = (data.milestones||[]).length || 0;
+      // ===== carrega banner + dados =====
+      const res  = await fetch(`${SCRIPT}?ajax=apont_modal_data&id_kr=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if(!data.success){
+        toast(data.error || 'Falha ao carregar', false);
+        closeApontModal(); // volta estado/aria se falhar
+        return;
+      }
 
-    (data.milestones||[]).forEach((m, i)=>{
-      const dp   = toDDMMYYYY(m.data_prevista,'/');
-      const esp  = Number(m.valor_esperado||0);
-      const rea  = (m.valor_real===null||m.valor_real===undefined) ? null : Number(m.valor_real);
-      const idMs = (m.id_ms ?? '');
-      const ordem = m.ordem_label || ((i+1)+'/'+total);
+      $('#ap_kr_titulo').textContent = 'KR';
+      $('#ap_kr_sub').textContent    = data.kr?.descricao || '—';
+      $('#ap_kr_meta').textContent   = 'Meta: ' + (data.kr?.meta ?? '—');
+      $('#ap_kr_base').textContent   = 'Baseline: ' + (data.kr?.baseline ?? '—');
+      $('#ap_kr_um').textContent     = 'Unidade: ' + (data.kr?.unidade_medida ?? '—');
 
-      tb.insertAdjacentHTML('beforeend', `
-        <tr data-idms="${idMs}" data-dref="${m.data_prevista}" data-esp="${esp}" data-has-real="${rea!==null}">
-          <td><strong>${ordem}</strong></td>
-          <td>${dp}</td>
-          <td>${fmtNum(esp)}</td>
-          <td><input type="number" step="0.0001" class="ap-real" value="${rea===null?'':rea}" placeholder="0,00"></td>
-          <td><input type="text" class="ap-just" placeholder="Justificativa (obrigatória se sobrescrever)"></td>
-          <td>
-            <button class="btn btn-outline btn-sm ap-add" type="button"><i class="fa-regular fa-paperclip"></i> Anexar</button>
-            <button class="btn btn-outline btn-sm ap-del" type="button" style="display:none"><i class="fa-regular fa-trash-can"></i> Excluir</button>
-          </td>
-          <td><button class="btn btn-outline btn-sm ap-list" type="button"><i class="fa-regular fa-eye"></i> Ver</button></td>
-          <td><button class="btn btn-primary btn-sm ap-save" type="button"><i class="fa-regular fa-floppy-disk"></i> Salvar</button></td>
-        </tr>
-      `);
+      // ===== monta tabela =====
+      const tb = $('#ap_rows');
+      tb.innerHTML = '';
+      capApontRows(8); // mantém sua paginação/truncamento
+      const total = (data.milestones || []).length || 0;
 
-      // Estado inicial dos botões de evidência (verifica se já existe arquivo)
-      setTimeout(async ()=>{
-        const f = await fetch(`${SCRIPT}?ajax=apont_file_list&id_kr=${encodeURIComponent(id)}&id_ms=${encodeURIComponent(idMs)}`);
-        const j = await f.json();
-        const tr = tb.querySelector(`tr[data-idms="${CSS.escape(idMs)}"]`);
-        if (tr && j.success && (j.files||[]).length){
-          tr.querySelector('.ap-add').style.display = 'none';
-          tr.querySelector('.ap-del').style.display = '';
+      (data.milestones || []).forEach((m, i) => {
+        const dp    = toDDMMYYYY(m.data_prevista,'/');
+        const esp   = Number(m.valor_esperado || 0);
+        const rea   = (m.valor_real===null || m.valor_real===undefined) ? null : Number(m.valor_real);
+        const idMs  = (m.id_ms ?? '');
+        const ordem = m.ordem_label || ((i+1)+'/'+total);
+
+        tb.insertAdjacentHTML('beforeend', `
+          <tr data-idms="${idMs}" data-dref="${m.data_prevista}" data-esp="${esp}" data-has-real="${rea!==null}">
+            <td><strong>${ordem}</strong></td>
+            <td>${dp}</td>
+            <td>${fmtNum(esp)}</td>
+            <td><input type="number" step="0.0001" class="ap-real" value="${rea===null?'':rea}" placeholder="0,00"></td>
+            <td><input type="text" class="ap-just" placeholder="Justificativa (obrigatória se sobrescrever)"></td>
+            <td>
+              <button class="btn btn-outline btn-sm ap-add" type="button"><i class="fa-solid fa-paperclip me-1"></i> Anexar</button>
+              <button class="btn btn-outline btn-sm ap-del" type="button" style="display:none"><i class="fa-regular fa-trash-can"></i> Excluir</button>
+            </td>
+            <td><button class="btn btn-outline btn-sm ap-list" type="button"><i class="fa-regular fa-eye"></i> Ver</button></td>
+            <td><button class="btn btn-primary btn-sm ap-save" type="button"><i class="fa-regular fa-floppy-disk"></i> Salvar</button></td>
+            <td>
+              <!-- trocado de id="btnApontExcluir" (duplicado) para uma classe única -->
+              <button class="btn btn-outline btn-sm btn-compact btn-apont-excluir" type="button">
+                <i class="fa fa-trash-alt"></i> Excluir
+              </button>
+            </td>
+          </tr>
+        `);
+
+        // Estado inicial dos botões de evidência (verifica se já existe arquivo)
+        // (cada linha consulta sua lista)
+        queueMicrotask(async () => {
+          try{
+            const f = await fetch(`${SCRIPT}?ajax=apont_file_list&id_kr=${encodeURIComponent(id)}&id_ms=${encodeURIComponent(idMs)}`);
+            const j = await f.json();
+            const tr = tb.querySelector(`tr[data-idms="${CSS.escape(idMs)}"]`);
+            if (tr && j.success && (j.files||[]).length){
+              tr.querySelector('.ap-add').style.display = 'none';
+              tr.querySelector('.ap-del').style.display = '';
+            }
+          }catch(_e){}
+        });
+      });
+
+      // ===== garante que o foco não fique em elementos "fora" do modal
+      // (opcional: se tiver backdrop/overlay, você pode mover o foco pro primeiro input)
+      const firstInput = tb.querySelector('input,button,select,textarea');
+      if (firstInput) firstInput.focus({ preventScroll:true });
+
+      // ===== liga os handlers 1x (delegação) =====
+      if (!modal.dataset.boundApontHandlers) {
+        // fechar por ESC
+        document.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Escape' && modal.classList.contains('show')) closeApontModal();
+        });
+
+        // fechar por elementos com data-dismiss
+        modal.addEventListener('click', (ev) => {
+          if (ev.target.matches('.modal-close,[data-dismiss="modal"]')) {
+            ev.preventDefault();
+            closeApontModal();
+          }
+          // clique no backdrop: se o clique foi no próprio contêiner modal (fora do card)
+          if (ev.target === modal) closeApontModal();
+        });
+
+        // excluir apontamento (delegação por linha)
+        $('#ap_rows').addEventListener('click', async (ev) => {
+          const btn = ev.target.closest('.btn-apont-excluir');
+          if (!btn) return;
+
+          const tr   = btn.closest('tr');
+          if (!tr) return;
+
+          const id_kr = $('#ap_id_kr').value;
+          const idMs  = tr.getAttribute('data-idms') || '';
+          const dref  = tr.getAttribute('data-dref') || '';
+
+          if (!id_kr) { toast('KR inválido', false); return; }
+          if (!idMs && !dref) { toast('Selecione uma linha válida.', false); return; }
+
+          if (!confirm('Excluir TODOS os apontamentos desta linha?')) return;
+
+          try {
+            const fd = new FormData();
+            fd.append('csrf_token', csrfToken);
+            fd.append('id_kr', id_kr);
+            if (idMs) fd.append('id_ms', idMs);
+            if (dref) fd.append('data_prevista', dref);
+            fd.append('delete_all', '1'); // <— Sinaliza exclusão em massa
+
+            const res = await fetch(`${SCRIPT}?ajax=apont_delete`, { method:'POST', body: fd });
+            const j   = await res.json();
+
+            if (!j.success) { toast(j.error || 'Falha ao excluir', false); return; }
+
+            // Atualiza a linha na UI (zera real, evidencia, etc.)
+            const realInput = tr.querySelector('.ap-real');
+            if (realInput) {
+              realInput.value = '';
+              realInput.defaultValue = '';
+              tr.setAttribute('data-has-real','false');
+            }
+            const justInput = tr.querySelector('.ap-just');
+            if (justInput) justInput.value = '';
+
+            // Se veio o dt_evidencia/valor_real da API, reflita se preferir:
+            // realInput.value = j.row?.valor_real ?? '';
+            // (ajuste as colunas de delta/esperado se necessário)
+
+            toast('Apontamento excluído.');
+          } catch (e) {
+            toast('Erro de comunicação ao excluir.', false);
+          }
+        });
+        // apagar TODOS os apontamentos do KR (botão no cabeçalho do modal)
+        const btnClearAll = modal.querySelector('#ap_clear_all');
+        if (btnClearAll) {
+          btnClearAll.addEventListener('click', async () => {
+            const idKR = $('#ap_id_kr').value;
+            if (!idKR) { toast('KR inválido', false); return; }
+            if (!confirm('Apagar TODOS os apontamentos deste KR? Essa ação não pode ser desfeita.')) return;
+
+            const fd = new FormData();
+            fd.append('csrf_token', csrfToken);   // csrfToken já existe no arquivo :contentReference[oaicite:4]{index=4}
+            fd.append('id_kr', idKR);
+            fd.append('delete_all', '1');         // sem id_ms nem data_prevista => "KR inteiro"
+
+            const res = await fetch(`${SCRIPT}?ajax=apont_delete`, { method:'POST', body: fd });
+            const j = await res.json();
+            if (!j.success){ toast(j.error||'Falha ao apagar apontamentos', false); return; }
+
+            // Limpa a tabela do modal imediatamente
+            $$('#ap_rows tr').forEach(tr=>{
+              const real = tr.querySelector('.ap-real');
+              if (real) { real.value=''; real.defaultValue=''; }
+              tr.setAttribute('data-has-real','false');
+              const just = tr.querySelector('.ap-just'); if (just) just.value='';
+            });
+
+            // Recarrega o gráfico/área do KR aberto
+            const open = document.querySelector('.kr-card.open');
+            const reloadId = open ? open.getAttribute('data-id') : idKR;
+            if (reloadId) await loadKrDetail(reloadId);
+
+            toast('Todos os apontamentos do KR foram apagados.');
+          });
         }
-      }, 0);
-    });
 
-      showApontModal(true);
+
+        modal.dataset.boundApontHandlers = '1';
+      }
     }
+
+    function closeApontModal(){
+      const modal = $('#modalApont');
+      if (!modal) return;
+
+      // remova foco de qualquer filho ANTES de esconder (evita o warning do Chrome)
+      if (modal.contains(document.activeElement)) {
+        try { document.activeElement.blur(); } catch(_e){}
+      }
+
+      // estado de "modal FECHADO"
+      modal.setAttribute('aria-hidden', 'true');
+      modal.removeAttribute('aria-modal');
+      modal.classList.remove('show');
+      modal.setAttribute('inert', ''); // opcional: bloqueia foco no container
+
+      // devolve o foco pra quem abriu
+      if (__apontLastFocus && document.body.contains(__apontLastFocus)) {
+        __apontLastFocus.focus();
+      }
+    }
+
 
 
     // Mini-modal de justificativa: fluxo controlado
@@ -4333,7 +4722,48 @@ $saldoObj = max(0, $aprovObj - $realObj);
         // json.krs.forEach(kr => renderKR({ ...kr, farol: kr.farol_auto }));
       })();
       </script>
+      <script>
+        (function(){
+          const $modal = document.getElementById('modalApont');
+
+          // 3.1 - Marcar a linha "ativa" ao focar em algum input dela
+          function wireActiveRowHighlight(){
+            const rows = $modal.querySelectorAll('tbody tr');
+            rows.forEach(tr=>{
+              tr.querySelectorAll('input, select, textarea').forEach(inp=>{
+                inp.addEventListener('focus', ()=>{
+                  $modal.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('is-active'));
+                  tr.classList.add('is-active');
+                });
+              });
+            });
+          }
+
+          // Chame isso logo depois de popular a tabela do modal:
+          window.__apont_modal_apply_hooks = wireActiveRowHighlight;
+
+          // utilitário simples de toast (caso você já tenha um, ignore)
+          function toast(msg, isErr=false){
+            let t = document.querySelector('.toast'); if (!t){ t=document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
+            t.classList.toggle('error', !!isErr);
+            t.textContent = msg;
+            t.style.display='block';
+            setTimeout(()=>{ t.style.display='none'; }, 2500);
+          }
+
+          // Quando você abrir o modal e carregar os dados via AJAX:
+          // - setar o id_kr no dataset
+          // - renderizar as linhas <tr> com data-id_ms e/ou hidden inputs id_ms/data_prevista
+          // - chamar window.__apont_modal_apply_hooks()
+          //
+          // Exemplo (onde você já trata o retorno de apont_modal_data):
+          // $modal.dataset.id_kr = resp.kr.id_kr;
+          // // ao montar cada linha:
+          // <tr data-id_ms="{{id_ms}}" data-data_prevista="{{data_prevista}}"> ... </tr>
+        })();
+      </script>
 
 
-</body>
+
+  </body>
 </html>

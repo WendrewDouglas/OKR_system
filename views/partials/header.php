@@ -1,4 +1,4 @@
-<?php
+<?php 
 // partials/header.php
 // Exibe o header fixo em todas as páginas
 // Deve ser incluído dentro da <div class="content">, antes do <main>
@@ -52,11 +52,89 @@ elseif ($id_user) {
         $avatarUrl = $avatarBaseWeb . $fn;
       }
     }
-    // Se não houver config.php, fica no default silenciosamente
   } catch (Throwable $e) {
-    // Mantém default.png em caso de erro sem poluir o output
-    // error_log('header avatar lookup: ' . $e->getMessage());
+    // Mantém default.png em caso de erro
   }
+}
+
+/* ====== LOGO DA COMPANY_STYLE (ATUALIZADO) ======
+   - Descobre id_company
+   - Busca logo e o hash MD5(logo_base64)
+   - Se hash mudou ou empresa mudou, atualiza a sessão
+*/
+$logoSrcDefault = 'https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg';
+
+// Garante config/conn
+try {
+  if (!isset($pdo)) {
+    $root = $root ?? dirname(__DIR__, 2);
+    $cfg  = $cfg  ?? ($root . '/auth/config.php');
+    if (is_file($cfg)) {
+      require_once $cfg;
+      $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+      $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+      ]);
+    }
+  }
+
+  $logoSrc = null;
+
+  if (isset($pdo)) {
+    // 1) Descobre o id_company
+    $companyId = $_SESSION['id_company'] 
+              ?? $_SESSION['company_id'] 
+              ?? null;
+
+    if (!$companyId && $id_user) {
+      $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = :id LIMIT 1");
+      $st->execute([':id' => $id_user]);
+      $companyId = $st->fetchColumn() ?: null;
+    }
+    if (!$companyId) { $companyId = 1; }
+
+    // 2) Se empresa mudou, invalida cache
+    if (isset($_SESSION['company_logo_company_id']) && $_SESSION['company_logo_company_id'] !== $companyId) {
+      unset($_SESSION['company_logo_base64'], $_SESSION['company_logo_hash']);
+    }
+
+    // 3) Busca logo atual e o hash de conteúdo
+    $st = $pdo->prepare("
+      SELECT logo_base64, MD5(logo_base64) AS logo_hash
+        FROM company_style
+       WHERE id_company = :cid
+       ORDER BY COALESCE(updated_at, created_at) DESC, id_style DESC
+       LIMIT 1
+    ");
+    $st->execute([':cid' => $companyId]);
+    $row = $st->fetch();
+
+    if ($row && is_string($row['logo_base64']) && str_starts_with($row['logo_base64'], 'data:image/')) {
+      $dbLogo  = $row['logo_base64'];
+      $dbHash  = $row['logo_hash'] ?? null;
+      $sesHash = $_SESSION['company_logo_hash'] ?? null;
+
+      // 4) Atualiza sessão se não houver cache ou se o hash mudou
+      if (!$sesHash || $sesHash !== $dbHash) {
+        $_SESSION['company_logo_base64']  = $dbLogo;
+        $_SESSION['company_logo_hash']    = $dbHash;
+        $_SESSION['company_logo_company_id'] = $companyId;
+      }
+    }
+
+    // 5) Define a fonte da logo (cache já atualizado acima, se necessário)
+    $logoSrc = $_SESSION['company_logo_base64'] ?? null;
+  }
+
+  // Fallback
+  if (empty($logoSrc)) {
+    $logoSrc = $logoSrcDefault;
+  }
+} catch (Throwable $e) {
+  // Falha silenciosa: usa fallback
+  $logoSrc = $logoSrcDefault;
 }
 ?>
 <!-- ====== HEADER ====== -->
@@ -85,7 +163,12 @@ elseif ($id_user) {
   align-items: center;
 }
 .header .left .logo-link img {
-  height: 32px;
+  /* Mantém proporção e cresce até o limite abaixo */
+  height: auto;
+  width: auto;
+  max-height: 30px;
+  max-width: 240px;
+  object-fit: contain;
   transition: transform 0.2s ease-in-out;
 }
 .header .left .logo-link:hover img {
@@ -177,7 +260,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
   <div class="left">
     <a href="https://planningbi.com.br/" class="logo-link"
        aria-label="Ir para página inicial" target="_blank" rel="noopener">
-      <img src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg" alt="Logo">
+      <img src="<?= htmlspecialchars($logoSrc, ENT_QUOTES, 'UTF-8') ?>" alt="Logo">
     </a>
   </div>
   <div class="right">

@@ -824,3 +824,56 @@ Stack trace:
 [05-Sep-2025 10:31:23 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials/../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
 [05-Sep-2025 10:34:48 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials../../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
 [05-Sep-2025 10:37:58 America/Sao_Paulo] PHP Warning:  require_once(/home2/planni40/public_html/OKR_system/views/partials../../auth/config.php): Failed to open stream: No such file or directory in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 28
+[05-Sep-2025 11:03:33 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:04:07 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:04:13 America/Sao_Paulo] profile_user remove_avatar: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[05-Sep-2025 11:04:13 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:44:42 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:44:56 America/Sao_Paulo] profile_user remove_avatar: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[05-Sep-2025 11:44:58 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:45:39 America/Sao_Paulo] profile_user choose_avatar: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[05-Sep-2025 11:45:40 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:47:29 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 11:47:48 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 12:03:34 America/Sao_Paulo] remove_avatar: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[05-Sep-2025 12:03:52 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[05-Sep-2025 12:04:01 America/Sao_Paulo] profile_user load avatars table: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'file' in 'field list'
+[11-Sep-2025 01:42:59 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to undefined function assertObjectiveVisiblePage() in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:1098
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 1098
+[11-Sep-2025 01:45:06 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to undefined function assertObjectiveVisiblePage() in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:944
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 944
+[11-Sep-2025 01:46:05 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to undefined function assertObjectiveVisiblePage() in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:944
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 944
+[11-Sep-2025 01:46:37 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to undefined function assertObjectiveVisiblePage() in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:944
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 944
+[11-Sep-2025 01:48:16 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Call to undefined function assertObjectiveVisiblePage() in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:944
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 944
+[11-Sep-2025 01:49:25 America/Sao_Paulo] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home2/planni40/public_html/OKR_system/views/partials/header.php on line 7
+[11-Sep-2025 01:49:25 America/Sao_Paulo] PHP Warning:  Undefined variable $g in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 1
+[11-Sep-2025 01:49:25 America/Sao_Paulo] PHP Fatal error:  Uncaught Error: Value of type null is not callable in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php:1
+Stack trace:
+#0 {main}
+  thrown in /home2/planni40/public_html/OKR_system/views/detalhe_okr.php on line 1
+[11-Sep-2025 20:30:26 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:30:39 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:30:45 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:35:52 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:36:05 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:36:57 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 20:37:42 America/Sao_Paulo] PHP Warning:  Undefined variable $avatarOptions in /home2/planni40/public_html/OKR_system/views/profile_user.php on line 579
+[11-Sep-2025 21:08:32 America/Sao_Paulo] [choose_avatar][primeira tentativa] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[11-Sep-2025 21:08:32 America/Sao_Paulo] [choose_avatar][fallback] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'avatar' in 'field list'
+[11-Sep-2025 21:52:57 America/Sao_Paulo] [2025-09-11T21:52:57-03:00] SMTP_SEND_FAIL {"to":"w**************@gmail.com","error":"SMTP Error: Could not authenticate.","host":"smtp.titan.email","port":587}
+[11-Sep-2025 21:52:57 America/Sao_Paulo] [2025-09-11T21:52:57-03:00] MAIL_FALLBACK_SEND {"to":"w**************@gmail.com","result":"accepted_by_mail","file":"20250911_215254_wendrew.douglas_gmail.com.eml"}
+[19-Sep-2025 07:30:04 America/Fortaleza] [2025-09-19T07:30:04-03:00] UNCAUGHT_EXCEPTION {"type":"Error","message":"Call to undefined function verifyCaptchaOrFail()","file":"/home2/planni40/public_html/OKR_system/auth/auth_register.php","line":20,"trace":"#0 {main}"}
+

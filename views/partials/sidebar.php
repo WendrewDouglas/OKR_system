@@ -258,26 +258,12 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-file-invoice-dollar icon-main"></i><span>Orçamento</span>
       </div>
     </li>
-    <li class="<?= $isReports ? 'open' : '' ?>">
+    <li class="<?= $isRelOKRs ? 'active' : '' ?>"
+        data-href="/OKR_system/views/relatorios_okrs.php"
+        onclick="onMenuClick(this, event)">
       <div class="menu-item <?= $isReports ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
-        <i class="fas fa-chart-line icon-main"></i><span>Relatórios</span>
-        <i class="fas fa-chevron-down icon-chevron"></i>
+        <i class="fas fa-clipboard-list icon-main"></i><span>Relatório One-Page</span>
       </div>
-      <ul class="submenu">
-        <!-- Relatório Personalizado -> nossa página -->
-        <li class="<?= $isRelOKRs ? 'active' : '' ?>"
-            data-href="/OKR_system/views/relatorios_okrs.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-clipboard-list"></i><span>One-Page</span>
-        </li>
-
-        <!-- Sumário Executivo -> corrige o active/href -->
-        <li class="<?= ($currentPath === '/OKR_system/views/rel_desempenho.php') ? 'active' : '' ?>"
-            data-href="/OKR_system/views/rel_desempenho.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-flag-checkered"></i><span>Sumário Executivo</span>
-        </li>
-      </ul>
     </li>
     <li>
       <div class="menu-item <?= $isAprovacao ? 'active' : '' ?>"
@@ -316,8 +302,8 @@ body.collapsed .sidebar-footer .org { display: none; }
     <span class="user" title="<?= htmlspecialchars($userShort) ?>">
       <?= htmlspecialchars($userShort) ?>
     </span>
-    <span class="org" title="#<?= htmlspecialchars($companyIdText) ?> - <?= htmlspecialchars($orgText) ?>">
-      #<?= htmlspecialchars($companyIdText) ?> - <?= htmlspecialchars($orgText) ?>
+    <span class="org" title=<?= htmlspecialchars($orgText) ?>>
+    <?= htmlspecialchars($orgText) ?>
     </span>
   </div>
 </aside>

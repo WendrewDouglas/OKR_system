@@ -1,21 +1,69 @@
 <?php
 // views/novo_key_result.php — KR form
 // Agora filtra objetivos e usuários SOMENTE da mesma company do usuário logado.
+// Instrumentado para gerar logs estruturados em /OKR_system/views/error_log
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+declare(strict_types=1);
+
+// ===== Bootstrap / Sessão / Config =====
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '0');
 
 session_start();
+
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
+require_once __DIR__ . '/../auth/logger.php'; // << logger que grava em views/error_log
 
+// ===== Correlação de requisição =====
+$REQ_ID = $_GET['req_id'] ?? ($_SERVER['HTTP_X_REQUEST_ID'] ?? bin2hex(random_bytes(8)));
+header('X-Request-Id: ' . $REQ_ID);
+$__LOG_CTX_BASE = [
+  'req_id'  => $REQ_ID,
+  'user_id' => $_SESSION['user_id'] ?? null,
+];
+
+// ===== Handlers de erro/exception/fatal (para logar tudo) =====
+set_error_handler(function($severity, $message, $file, $line) use ($__LOG_CTX_BASE) {
+  pb_log_error('php_error_view', $message, $__LOG_CTX_BASE + ['severity'=>$severity, 'file'=>$file, 'line'=>$line]);
+  return false; // deixa o PHP seguir o fluxo normal (não converte em exceção aqui)
+});
+
+set_exception_handler(function(Throwable $e) use ($__LOG_CTX_BASE) {
+  $id = pb_log_error('exception_view', $e->getMessage(), $__LOG_CTX_BASE + ['trace'=>$e->getTraceAsString()]);
+  http_response_code(500);
+  header('Content-Type: text/html; charset=utf-8');
+  echo "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'><title>Erro</title></head><body style='font-family:system-ui,Segoe UI,Roboto,Arial'>
+        <h2>Ocorreu um erro ao carregar o formulário.</h2>
+        <p>Por favor, informe este código ao suporte: <strong>{$id}</strong></p>
+        </body></html>";
+  exit;
+});
+
+register_shutdown_function(function() use ($__LOG_CTX_BASE) {
+  $err = error_get_last();
+  if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+    $id = pb_log_error('fatal_view', $err['message'], $__LOG_CTX_BASE + ['file'=>$err['file'],'line'=>$err['line'],'type'=>$err['type']]);
+    if (!headers_sent()) {
+      http_response_code(500);
+      header('Content-Type: text/html; charset=utf-8');
+    }
+    echo "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'><title>Erro fatal</title></head><body style='font-family:system-ui,Segoe UI,Roboto,Arial'>
+          <h2>Erro fatal ao carregar o formulário.</h2>
+          <p>Código: <strong>{$id}</strong></p>
+          </body></html>";
+  }
+});
+
+// ===== Autenticação =====
 if (!isset($_SESSION['user_id'])) {
+  pb_log_error('unauthenticated_view', 'Usuário não autenticado, redirecionando para login', $__LOG_CTX_BASE + ['redirect'=>'/OKR_system/views/login.php']);
   header('Location: /OKR_system/views/login.php');
   exit;
 }
 
-// CSRF
+// ===== CSRF =====
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -27,29 +75,40 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
   echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
 }
 
-// Conexão
+// ===== Conexão DB =====
 try {
   $pdo = new PDO(
-    "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4",
-    DB_USER, DB_PASS,
-    [ PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC ]
+    "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+    DB_USER,
+    DB_PASS,
+    [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC ]
   );
 } catch (PDOException $e) {
+  $id = pb_log_error('db_connect_view', $e->getMessage(), $__LOG_CTX_BASE + ['db_host'=>DB_HOST,'db_name'=>DB_NAME]);
   http_response_code(500);
-  die("Erro ao conectar: ".$e->getMessage());
+  echo "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'><title>Erro de conexão</title></head><body style='font-family:system-ui,Segoe UI,Roboto,Arial'>
+        <h2>Falha ao conectar ao banco de dados.</h2>
+        <p>Código: <strong>{$id}</strong></p>
+        </body></html>";
+  exit;
 }
 
-// Descobre a company do usuário logado
+// ===== Descobre a company do usuário logado =====
 $userId = (int)$_SESSION['user_id'];
 $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = :u LIMIT 1");
 $st->execute([':u' => $userId]);
 $companyId = (int)($st->fetchColumn() ?: 0);
 if ($companyId <= 0) {
+  $id = pb_log_error('no_company_view', 'Usuário sem company vinculada', $__LOG_CTX_BASE + ['user_id'=>$userId]);
   http_response_code(403);
-  die("Usuário sem company vinculada.");
+  echo "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'><title>Acesso negado</title></head><body style='font-family:system-ui,Segoe UI,Roboto,Arial'>
+        <h2>Acesso negado</h2>
+        <p>Usuário sem empresa vinculada. Código: <strong>{$id}</strong></p>
+        </body></html>";
+  exit;
 }
 
-// Pré-seleção via GET (validando contra a mesma company)
+// ===== Pré-seleção via GET (validando contra a mesma company) =====
 $prefIdObjetivo = 0;
 if (isset($_GET['id_objetivo']))     $prefIdObjetivo = (int)$_GET['id_objetivo'];
 elseif (isset($_GET['id']))          $prefIdObjetivo = (int)$_GET['id'];
@@ -58,49 +117,69 @@ if ($prefIdObjetivo > 0) {
   $chk = $pdo->prepare("SELECT 1 FROM objetivos WHERE id_objetivo = :id AND id_company = :c LIMIT 1");
   $chk->execute([':id' => $prefIdObjetivo, ':c' => $companyId]);
   if (!$chk->fetchColumn()) {
-    // Se não pertencer à company do usuário, ignora a preferência
+    // Se não pertencer à company do usuário, ignora a preferência e loga
+    pb_log_error('pref_objetivo_invalid_ignored', 'Pré-seleção de objetivo ignorada (fora da company do usuário).',
+      $__LOG_CTX_BASE + ['requested_id'=>$prefIdObjetivo, 'company_id'=>$companyId]);
     $prefIdObjetivo = 0;
   }
 }
 
 // ===== Domínios / Listas =====
-// OBJETIVOS: apenas da MESMA company
-$st = $pdo->prepare("
-  SELECT id_objetivo, descricao, status_aprovacao, dt_prazo
-  FROM objetivos
-  WHERE id_company = :c
-  ORDER BY dt_prazo ASC, id_objetivo ASC
-");
-$st->execute([':c' => $companyId]);
-$objetivos = $st->fetchAll();
+try {
+  // OBJETIVOS: apenas da MESMA company
+  $st = $pdo->prepare("
+    SELECT id_objetivo, descricao, status_aprovacao, dt_prazo
+    FROM objetivos
+    WHERE id_company = :c
+    ORDER BY dt_prazo ASC, id_objetivo ASC
+  ");
+  $st->execute([':c' => $companyId]);
+  $objetivos = $st->fetchAll();
 
-// USERS (responsável KR): apenas da MESMA company
-$st = $pdo->prepare("
-  SELECT id_user, primeiro_nome, ultimo_nome
-  FROM usuarios
-  WHERE id_company = :c
-  ORDER BY primeiro_nome, ultimo_nome
-");
-$st->execute([':c' => $companyId]);
-$users = $st->fetchAll();
+  // USERS (responsável KR): apenas da MESMA company
+  $st = $pdo->prepare("
+    SELECT id_user, primeiro_nome, ultimo_nome
+    FROM usuarios
+    WHERE id_company = :c
+    ORDER BY primeiro_nome, ultimo_nome
+  ");
+  $st->execute([':c' => $companyId]);
+  $users = $st->fetchAll();
 
-// Domínios globais (não dependem de company)
-$tiposKr   = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_kr ORDER BY descricao_exibicao")->fetchAll();
-$naturezas = $pdo->query("SELECT id_natureza, descricao_exibicao FROM dom_natureza_kr ORDER BY descricao_exibicao")->fetchAll();
-$ciclos    = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
-$freqs     = $pdo->query("SELECT id_frequencia, descricao_exibicao FROM dom_tipo_frequencia_milestone ORDER BY descricao_exibicao")->fetchAll();
-$statusKr  = $pdo->query("SELECT id_status, descricao_exibicao FROM dom_status_kr ORDER BY 1")->fetchAll();
+  // Domínios globais (não dependem de company)
+  $tiposKr   = $pdo->query("SELECT id_tipo, descricao_exibicao FROM dom_tipo_kr ORDER BY descricao_exibicao")->fetchAll();
+  $naturezas = $pdo->query("SELECT id_natureza, descricao_exibicao FROM dom_natureza_kr ORDER BY descricao_exibicao")->fetchAll();
+  $ciclos    = $pdo->query("SELECT id_ciclo, nome_ciclo, descricao FROM dom_ciclos ORDER BY id_ciclo")->fetchAll();
+  $freqs     = $pdo->query("SELECT id_frequencia, descricao_exibicao FROM dom_tipo_frequencia_milestone ORDER BY descricao_exibicao")->fetchAll();
+  $statusKr  = $pdo->query("SELECT id_status, descricao_exibicao FROM dom_status_kr ORDER BY 1")->fetchAll();
+} catch (Throwable $e) {
+  $id = pb_log_error('domain_query_view', $e->getMessage(), $__LOG_CTX_BASE + ['trace'=>$e->getTraceAsString(), 'company_id'=>$companyId]);
+  http_response_code(500);
+  echo "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'><title>Erro</title></head><body style='font-family:system-ui,Segoe UI,Roboto,Arial'>
+        <h2>Erro ao carregar dados do formulário.</h2>
+        <p>Código: <strong>{$id}</strong></p>
+        </body></html>";
+  exit;
+}
 
 // Garante opção "Quinzenal (15 dias)" no front mesmo que não exista na tabela
 $hasQuinzenal = false;
 foreach ($freqs as $f) {
   $id  = strtolower(trim((string)$f['id_frequencia']));
   $lbl = strtolower(trim((string)$f['descricao_exibicao']));
-  if ($id === 'quinzenal' || strpos($lbl,'quinzen') !== false) { $hasQuinzenal = true; break; }
+  if ($id === 'quinzenal' || strpos($lbl, 'quinzen') !== false) { $hasQuinzenal = true; break; }
 }
 if (!$hasQuinzenal) {
-  $freqs[] = ['id_frequencia'=>'quinzenal', 'descricao_exibicao'=>'Quinzenal (15 dias)'];
+  $freqs[] = ['id_frequencia' => 'quinzenal', 'descricao_exibicao' => 'Quinzenal (15 dias)'];
 }
+
+// Log informativo de carregamento da view
+pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BASE + [
+  'company_id' => $companyId,
+  'objetivos_count' => count($objetivos),
+  'users_count' => count($users)
+]);
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -157,22 +236,11 @@ if (!$hasQuinzenal) {
     .form-card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; }
     .grid-2{ display:grid; grid-template-columns:2fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    /* Dois campos lado a lado (50% cada) */
-    .split{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      align-items: center;
-    }
+    .split{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center; }
     .split > * { min-width: 0; }
-    .split select, .split input{
-      width: 100%;
-    }
+    .split select, .split input{ width: 100%; }
 
-    @media (max-width: 600px){
-      .split{ grid-template-columns: 1fr; }
-    }
-
+    @media (max-width: 600px){ .split{ grid-template-columns: 1fr; } }
     @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
 
     label{ display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
@@ -182,9 +250,7 @@ if (!$hasQuinzenal) {
     textarea{ resize:vertical; min-height:90px; }
     .helper{ color:#9aa4b2; font-size:.85rem; }
 
-    select.has-value{
-      box-shadow: 0 0 0 2px rgba(221, 201, 23, 0.15);
-    }
+    select.has-value{ box-shadow: 0 0 0 2px rgba(221, 201, 23, 0.15); }
 
     .save-row{ display:flex; justify-content:center; margin-top:16px; }
     .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:700; }
@@ -409,50 +475,50 @@ if (!$hasQuinzenal) {
               </select>
             </div>
             <div id="ciclo_detalhe_wrapper">
-            <!-- anual (igual) -->
-            <div id="ciclo_detalhe_anual" class="detalhe" style="display:none; margin-top:6px;">
-              <label for="ciclo_anual_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
-              <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
-            </div>
-
-            <!-- semestral: ANO + PERÍODO -->
-            <div id="ciclo_detalhe_semestral" class="detalhe" style="display:none; margin-top:6px;">
-              <label for="ciclo_sem_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
-              <div class="split">
-                <select id="ciclo_sem_ano" name="ciclo_sem_ano"></select>
-                <select id="ciclo_sem_per" name="ciclo_sem_per">
-                  <option value="">Selecione o período…</option>
-                  <option value="S1">1º Semestre</option>
-                  <option value="S2">2º Semestre</option>
-                </select>
+              <!-- anual -->
+              <div id="ciclo_detalhe_anual" class="detalhe" style="display:none; margin-top:6px;">
+                <label for="ciclo_anual_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+                <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
               </div>
-            </div>
 
-            <!-- trimestral: ANO + PERÍODO -->
-            <div id="ciclo_detalhe_trimestral" class="detalhe" style="margin-top:6px;">
-              <label for="ciclo_tri_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
-              <div class="split">
-                <select id="ciclo_tri_ano" name="ciclo_tri_ano"></select>
-                <select id="ciclo_tri_per" name="ciclo_tri_per">
-                  <option value="">Selecione o período…</option>
-                  <option value="Q1">1º Quarter</option>
-                  <option value="Q2">2º Quarter</option>
-                  <option value="Q3">3º Quarter</option>
-                  <option value="Q4">4º Quarter</option>
-                </select>
+              <!-- semestral -->
+              <div id="ciclo_detalhe_semestral" class="detalhe" style="display:none; margin-top:6px;">
+                <label for="ciclo_sem_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+                <div class="split">
+                  <select id="ciclo_sem_ano" name="ciclo_sem_ano"></select>
+                  <select id="ciclo_sem_per" name="ciclo_sem_per">
+                    <option value="">Selecione o período…</option>
+                    <option value="S1">1º Semestre</option>
+                    <option value="S2">2º Semestre</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <!-- bimestral: ANO + PERÍODO -->
-            <div id="ciclo_detalhe_bimestral" class="detalhe" style="display:none; margin-top:6px;">
-              <label for="ciclo_bim_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
-              <div class="split">
-                <select id="ciclo_bim_ano" name="ciclo_bim_ano"></select>
-                <select id="ciclo_bim_per" name="ciclo_bim_per"></select>
+              <!-- trimestral -->
+              <div id="ciclo_detalhe_trimestral" class="detalhe" style="margin-top:6px;">
+                <label for="ciclo_tri_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+                <div class="split">
+                  <select id="ciclo_tri_ano" name="ciclo_tri_ano"></select>
+                  <select id="ciclo_tri_per" name="ciclo_tri_per">
+                    <option value="">Selecione o período…</option>
+                    <option value="Q1">1º Quarter</option>
+                    <option value="Q2">2º Quarter</option>
+                    <option value="Q3">3º Quarter</option>
+                    <option value="Q4">4º Quarter</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <!-- mensal e personalizado permanecem iguais -->
+              <!-- bimestral -->
+              <div id="ciclo_detalhe_bimestral" class="detalhe" style="display:none; margin-top:6px;">
+                <label for="ciclo_bim_ano"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
+                <div class="split">
+                  <select id="ciclo_bim_ano" name="ciclo_bim_ano"></select>
+                  <select id="ciclo_bim_per" name="ciclo_bim_per"></select>
+                </div>
+              </div>
+
+              <!-- mensal / personalizado -->
               <div id="ciclo_detalhe_mensal" class="detalhe" style="display:none; margin-top:6px;">
                 <label for="ciclo_mensal_mes"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
                 <div class="split">
@@ -460,7 +526,7 @@ if (!$hasQuinzenal) {
                   <select id="ciclo_mensal_ano" name="ciclo_mensal_ano"></select>
                 </div>
               </div>
-              <div id="ciclo_detalhe_personalizado" class="detalhe" style="display:none; margin-top:6px;">
+              <div id="ciclo_detalhe_personalizado" class="detalhe" style="display:none; margin-top:6px%;">
                 <label for="ciclo_pers_inicio"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
                 <div class="split">
                   <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
@@ -605,6 +671,9 @@ if (!$hasQuinzenal) {
   </div>
 
   <script>
+  // Expondo o req_id do PHP para o JS (usado no fetch e para correlação nos logs)
+  window.REQ_ID = '<?= htmlspecialchars($REQ_ID, ENT_QUOTES, 'UTF-8') ?>';
+
   const TYPE_HELP = {
     'alavanca':    'Explica ~80% do valor do ciclo. Alto impacto e virada de chave.',
     'habilitador': 'Prepara o terreno (capacidade, dados, compliance, infraestrutura).',
@@ -617,6 +686,9 @@ if (!$hasQuinzenal) {
   }
   document.querySelector('#tipo_kr')?.addEventListener('change', applyTipoHelp);
   applyTipoHelp();
+
+  // ===== ID de correlação (fallback no client, se necessário) =====
+  const REQ_ID = window.REQ_ID || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(16).slice(2)));
 
   // ===== helpers de normalização =====
   function normNat(n){
@@ -647,7 +719,6 @@ if (!$hasQuinzenal) {
 
   // ========= Ajuste com chat lateral =========
   const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-  const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
   function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
   function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
   function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
@@ -764,7 +835,6 @@ if (!$hasQuinzenal) {
       if (out.length === 0 || out[out.length-1] !== iso) out.push(iso);
     };
 
-    // Semanal / Quinzenal (igual ao backend: +7d / +15d)
     if (f === 'semanal' || f === 'quinzenal') {
       const stepDays = (f === 'semanal') ? 7 : 15;
       let d = new Date(start);
@@ -772,7 +842,6 @@ if (!$hasQuinzenal) {
       while (d < end) { pushUnique(d); d.setDate(d.getDate() + stepDays); }
       pushUnique(end);
     } else {
-      // >>> AQUI O MAPEAMENTO QUE FALTAVA <<<
       const map = { mensal:1, bimestral:2, trimestral:3, semestral:6, anual:12 };
       const stepMonths = map[f] ?? 1;
 
@@ -909,7 +978,7 @@ if (!$hasQuinzenal) {
     if (firstValid){ sel.value = firstValid.value; sel.classList.add('has-value'); }
   }
 
-  // ===== NOVO: selecionar Natureza "Pontual" com base no texto/slug =====
+  // ===== Seleciona Natureza "Pontual" quando necessário =====
   function selectNaturezaBySlug(slug){
     const sel = $('#natureza_kr');
     if (!sel) return false;
@@ -919,7 +988,6 @@ if (!$hasQuinzenal) {
     for (const opt of sel.options){
       const vNorm = strip(opt.value);
       const tNorm = strip(opt.textContent || opt.label || '');
-      // casa se value já for 'pontual' (casos onde o domínio usa string) ou o rótulo contém 'pontual'
       if (vNorm === slugNorm || tNorm.includes(slugNorm)){
         opt.selected = true;
         matched = true;
@@ -933,20 +1001,18 @@ if (!$hasQuinzenal) {
     return matched;
   }
 
-  // ===== NOVO: quando Direção = INTERVALO_IDEAL, força Natureza = Pontual e bloqueia seletor =====
+  // ===== Direção = INTERVALO_IDEAL força Natureza = Pontual =====
   function onDirecaoChange(){
     const dir = ($('#direcao_metrica')?.value || '').toUpperCase();
     const natSel = $('#natureza_kr');
 
     if (dir === 'INTERVALO_IDEAL'){
-      // força "pontual"
       const ok = selectNaturezaBySlug('pontual');
       if (ok && natSel){
         natSel.setAttribute('data-autofix','1');
-        natSel.disabled = true; // opcional (evita inconsistência)
+        natSel.disabled = true;
       }
     } else if (natSel && natSel.getAttribute('data-autofix') === '1'){
-      // libera novamente caso o usuário mude a direção
       natSel.disabled = false;
       natSel.removeAttribute('data-autofix');
     }
@@ -980,11 +1046,9 @@ if (!$hasQuinzenal) {
     const nf = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
     const fmt = v => isInt ? Math.round(v) : Number(nf.format(Number(v))).toString().replace('.', ',');
 
-
     tbody.innerHTML = '';
 
     if (direcao === 'INTERVALO_IDEAL'){
-      // Duas linhas constantes: limites do intervalo
       const lo = fmt(Math.min(base, meta));
       const hi = fmt(Math.max(base, meta));
 
@@ -1012,7 +1076,6 @@ if (!$hasQuinzenal) {
         tbody.appendChild(tr);
       });
     } else {
-      // Comportamento normal (uma linha de esperado)
       if (thead){
         thead.innerHTML = `
           <tr>
@@ -1027,7 +1090,7 @@ if (!$hasQuinzenal) {
 
       const esperados = calcularEsperados(datas, base, meta, naturezaSlug, direcao, unidade);
 
-            datas.forEach((d, i)=>{
+      datas.forEach((d, i)=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${i+1}</td>
@@ -1042,28 +1105,28 @@ if (!$hasQuinzenal) {
     updateBadges();
   }
 
-  // ===== Avaliação/Salvar (inalterado) =====
+  // ===== Loader =====
   function setLoading(on){ on ? show($('#loadingOverlay')) : hide($('#loadingOverlay')); }
 
-  // Back-compat com o backend: envia aliases de ciclo conforme o tipo escolhido
+  // ===== Back-compat com o backend: envia aliases de ciclo =====
   function appendCycleAliases(fd){
     const tipo = ($('#ciclo_tipo')?.value || '').trim().toLowerCase();
 
     if (tipo === 'semestral'){
       const ano = ($('#ciclo_sem_ano')?.value || '').trim();
-      const per = ($('#ciclo_sem_per')?.value || '').trim().toUpperCase(); // "S1" | "S2"
+      const per = ($('#ciclo_sem_per')?.value || '').trim().toUpperCase();
       if (ano && (per === 'S1' || per === 'S2')) {
         fd.set('ciclo_semestral', `${per}/${ano}`);
       }
     } else if (tipo === 'trimestral'){
       const ano = ($('#ciclo_tri_ano')?.value || '').trim();
-      const per = ($('#ciclo_tri_per')?.value || '').trim().toUpperCase(); // "Q1".."Q4"
+      const per = ($('#ciclo_tri_per')?.value || '').trim().toUpperCase();
       if (ano && /^Q[1-4]$/.test(per)) {
         fd.set('ciclo_trimestral', `${per}/${ano}`);
       }
     } else if (tipo === 'bimestral'){
       const ano = ($('#ciclo_bim_ano')?.value || '').trim();
-      const per = ($('#ciclo_bim_per')?.value || '').trim(); // "01-02", "03-04"...
+      const per = ($('#ciclo_bim_per')?.value || '').trim();
       if (ano && /^\d{2}-\d{2}$/.test(per)) {
         fd.set('ciclo_bimestral', `${per}-${ano}`); // MM-MM-YYYY
       }
@@ -1075,19 +1138,25 @@ if (!$hasQuinzenal) {
     const fd = new FormData($('#krForm'));
     appendCycleAliases(fd);
     fd.append('evaluate','1');
+    fd.append('req_id', REQ_ID);
+
     setLoading(true);
     try{
-      const res = await fetch($('#krForm').action, { method:'POST', body:fd });
+      const res = await fetch($('#krForm').action, {
+        method:'POST',
+        body:fd,
+        headers: { 'X-Request-Id': REQ_ID }
+      });
       const data = await res.json().catch(()=> ({}));
       setLoading(false);
 
       if(res.status===422 && Array.isArray(data.errors)){
         const lista = data.errors.map(e=>`• ${e.message}`).join('\n');
-        alert(`Por favor, corrija os campos obrigatórios:\n\n${lista}`);
+        alert(`Por favor, corrija os campos obrigatórios:\n\n${lista}\n\nCódigo: ${data.log_id || REQ_ID}`);
         return;
       }
       if(!res.ok || typeof data.score==='undefined' || typeof data.justification==='undefined'){
-        alert(data.error || 'Falha na avaliação IA.');
+        alert((data.error || 'Falha na avaliação IA.') + `\n\nCódigo: ${data.log_id || REQ_ID}`);
         return;
       }
       $('#score_ia').value = data.score;
@@ -1102,7 +1171,7 @@ if (!$hasQuinzenal) {
       show($('#evaluationOverlay'));
     }catch(err){
       setLoading(false);
-      alert(err?.message || 'Falha na avaliação IA. Tente novamente.');
+      alert((err?.message || 'Falha na avaliação IA.') + `\n\nCódigo: ${REQ_ID}`);
     }
   }
 
@@ -1112,24 +1181,30 @@ if (!$hasQuinzenal) {
     const fd = new FormData($('#krForm'));
     appendCycleAliases(fd);
     fd.delete('evaluate');
+    fd.append('req_id', REQ_ID);
+
     setLoading(true);
     try{
-      const res = await fetch($('#krForm').action, { method:'POST', body:fd });
+      const res = await fetch($('#krForm').action, {
+        method:'POST',
+        body:fd,
+        headers: { 'X-Request-Id': REQ_ID }
+      });
       const data = await res.json().catch(()=> ({}));
       setLoading(false);
       if(res.ok && data?.success){
         const el = $('#saveAiMessage');
         if(el){
           const idKR = data.id_kr ? `<strong>${data.id_kr}</strong>` : 'Seu Key Result';
-          el.innerHTML = `${idKR} foi salvo com sucesso.<br>Vou submetê-lo à aprovação e te aviso quando houver feedback.`;
+          el.innerHTML = `${idKR} foi salvo com sucesso.<br>Vou submetê-lo à aprovação e te aviso quando houver feedback.<br><small>Código: ${data.log_id || REQ_ID}</small>`;
         }
         show($('#saveMessageOverlay'));
       } else {
-        throw new Error(data?.error || 'Erro ao salvar Key Result.');
+        throw new Error((data?.error || 'Erro ao salvar Key Result.') + ` (Código: ${data?.log_id || REQ_ID})`);
       }
     }catch(err){
       setLoading(false);
-      alert(err?.message || 'Erro de rede ao salvar.');
+      alert((err?.message || 'Erro de rede ao salvar.') + `\n\nCódigo: ${REQ_ID}`);
     }
   }
 
@@ -1166,7 +1241,7 @@ if (!$hasQuinzenal) {
     selObj?.addEventListener('change', updateStatusObjetivo);
     if (selObj?.value) updateStatusObjetivo();
 
-    // Popular detalhes de ciclo e listeners (mesma lógica anterior)
+    // Popular detalhes de ciclo e listeners
     (function populateCycleDetails(){
       const anoAtual = new Date().getFullYear();
 
@@ -1263,7 +1338,7 @@ if (!$hasQuinzenal) {
 
     // Direção (força Pontual quando INTERVALO_IDEAL)
     $('#direcao_metrica')?.addEventListener('change', onDirecaoChange);
-    onDirecaoChange(); // garante estado correto no load
+    onDirecaoChange();
 
     // Status default
     ensureDefaultStatus();
@@ -1285,4 +1360,3 @@ if (!$hasQuinzenal) {
   </script>
 </body>
 </html>
-

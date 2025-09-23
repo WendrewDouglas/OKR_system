@@ -34,7 +34,7 @@ try {
   die("Erro ao conectar: ".$e->getMessage());
 }
 
-// ====== Dados da empresa do usuário (usuarios.id_user -> company.id_company) ======
+// ====== Dados da empresa ======
 $userId = (int)$_SESSION['user_id'];
 $company = [
   'id_company'   => null,
@@ -47,39 +47,116 @@ $company = [
 
 try {
   $stmt = $pdo->prepare("
-    SELECT
-      c.id_company,
-      c.organizacao,
-      c.razao_social,
-      c.cnpj,
-      c.missao,
-      c.visao
+    SELECT c.id_company, c.organizacao, c.razao_social, c.cnpj, c.missao, c.visao
     FROM usuarios u
     LEFT JOIN company c ON c.id_company = u.id_company
     WHERE u.id_user = :uid
     LIMIT 1
   ");
   $stmt->execute([':uid' => $userId]);
-  if ($row = $stmt->fetch()) {
-    $company = $row;
-  }
-} catch (Throwable $th) {
-  // mantém valores padrão
-}
+  if ($row = $stmt->fetch()) $company = $row;
+} catch (Throwable $th) { /* mantém default */ }
 
-// === SEM fallback para 1: exige empresa vinculada ===
 if (empty($company['id_company'])) {
-  // Direcione para a página de Organização para o usuário vincular a empresa
   header('Location: /OKR_system/organizacao');
   exit;
 }
 
-// Sessão e variável local
 $_SESSION['company_id'] = (int)$company['id_company'];
 $companyId = (int)$company['id_company'];
-
 $companyName = $company['organizacao'] ?: ($company['razao_social'] ?: 'Sua Empresa');
-$companyHasCNPJ = !empty($company['cnpj']); // ajuste se quiser validar 14 dígitos
+$companyHasCNPJ = !empty($company['cnpj']);
+
+// ===== Helpers (defina ANTES de usar) =====
+function pct($parte, $todo) { return $todo ? (int)round(($parte/$todo)*100) : 0; }
+
+function first_upper_rest_lower(string $s): string {
+  $s = trim($s);
+  if ($s === '') return $s;
+  $s = mb_strtolower($s, 'UTF-8');
+  $first = mb_strtoupper(mb_substr($s, 0, 1, 'UTF-8'), 'UTF-8');
+  return $first . mb_substr($s, 1, null, 'UTF-8');
+}
+
+/**
+ * Normaliza rótulos de pilares para chaves canônicas:
+ *   financeiro | clientes | processos | aprendizado
+ * Aceita tanto id_pilar quanto descricao_exibicao (qualquer caixa/acentos).
+ * NÃO faz replace por substring; usa equivalência exata pós-trim/lower/sem acentos.
+ */
+$normPilar = static function($s) {
+  $s = trim((string)$s);
+  if ($s === '') return '';
+
+  // lower + remover acentos
+  $lower = mb_strtolower($s, 'UTF-8');
+  $trans = [
+    'á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a',
+    'ç'=>'c',
+    'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+    'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+    'ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
+    'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u'
+  ];
+  $norm = strtr($lower, $trans);
+  $norm = preg_replace('/\s+/', ' ', $norm); // colapsa múltiplos espaços
+
+  // mapa de equivalências exatas (após normalização)
+  static $map = [
+    'financeiro'                 => 'financeiro',
+    'financas'                   => 'financeiro',
+    'financeira'                 => 'financeiro',
+
+    'clientes'                   => 'clientes',
+    'cliente'                    => 'clientes',
+    'foco no cliente'            => 'clientes',
+    'mercado e clientes'         => 'clientes',
+
+    'processos'                  => 'processos',
+    'processo'                   => 'processos',
+    'processos internos'         => 'processos',
+    'operacoes'                  => 'processos',
+    'operacoes internas'         => 'processos',
+    'operacao'                   => 'processos',
+    'operacoes e processos'      => 'processos',
+
+    'aprendizado'                => 'aprendizado',
+    'aprendizagem'               => 'aprendizado',
+    'aprendizado e crescimento'  => 'aprendizado',
+    'pessoas'                    => 'aprendizado',
+  ];
+
+  // tenta equivalência direta
+  if (isset($map[$norm])) return $map[$norm];
+
+  // tenta remover palavras extras comuns (ex.: "perspectiva clientes", etc.)
+  $norm2 = preg_replace('/^(perspectiva|pilar|area|área|dimensao|dimensão)\s+/u','',$norm);
+  if (isset($map[$norm2])) return $map[$norm2];
+
+  // fallback: se já é um dos 4, fica como está; senão, devolve string simplificada
+  if (in_array($norm, ['financeiro','clientes','processos','aprendizado'], true)) return $norm;
+
+  return $norm; // deixa rastreável, mas fora do set padrão
+};
+
+$clamp = static function($v){
+  if($v===null||!is_numeric($v)) return null;
+  $v=(float)$v; return (int)max(0,min(100,round($v)));
+};
+
+// Paleta e ícones por pilar (chave canônica)
+$PILLAR_COLORS = [
+  'aprendizado'=>'#8e44ad',
+  'processos'  =>'#2980b9',
+  'clientes'   =>'#27ae60',
+  'financeiro' =>'#f39c12'
+];
+$PILLAR_ICONS = [
+  'aprendizado'=>'fa-solid fa-graduation-cap',
+  'processos'  =>'fa-solid fa-gears',
+  'clientes'   =>'fa-solid fa-users',
+  'financeiro' =>'fa-solid fa-coins'
+];
 
 // ====== Endpoint AJAX: salvar missão/visão ======
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
@@ -87,19 +164,17 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
 
   if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
-    echo json_encode(['success'=>false, 'error'=>'Não autorizado']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'Não autorizado']); exit;
   }
 
   // CSRF
   $token = $_POST['csrf_token'] ?? '';
   if (!$token || !hash_equals($_SESSION['csrf_token'], $token)) {
     http_response_code(403);
-    echo json_encode(['success'=>false, 'error'=>'Falha de segurança (CSRF). Recarregue a página.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'Falha de segurança (CSRF). Recarregue a página.']); exit;
   }
 
-  // Recarrega estado mínimo da empresa
+  // Estado mínimo da empresa
   $stC = $pdo->prepare("
     SELECT c.id_company, c.cnpj, c.missao, c.visao
     FROM usuarios u
@@ -111,8 +186,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
   $cRow = $stC->fetch();
 
   if (!$cRow || empty($cRow['id_company'])) {
-    echo json_encode(['success'=>false, 'error'=>'Empresa não encontrada para este usuário.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'Empresa não encontrada para este usuário.']); exit;
   }
   if (empty($cRow['cnpj'])) {
     echo json_encode([
@@ -128,26 +202,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
   $valor = trim((string)($_POST['valor'] ?? ''));
 
   if (!in_array($tipo, ['missao','visao'], true)) {
-    echo json_encode(['success'=>false, 'error'=>'Tipo inválido.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'Tipo inválido.']); exit;
   }
   if ($valor === '') {
-    echo json_encode(['success'=>false, 'error'=>'O texto não pode ficar vazio.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'O texto não pode ficar vazio.']); exit;
   }
   if (mb_strlen($valor) > 2000) {
-    echo json_encode(['success'=>false, 'error'=>'O texto excede 2000 caracteres.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'O texto excede 2000 caracteres.']); exit;
   }
 
   // Evita reaproveitar o mesmo texto
   $atual = (string)($cRow[$tipo] ?? '');
   if (mb_strtolower(trim($atual)) === mb_strtolower($valor)) {
-    echo json_encode(['success'=>false, 'error'=>'O novo texto precisa ser diferente do atual.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'O novo texto precisa ser diferente do atual.']); exit;
   }
 
-  // Normaliza a apresentação: primeira letra maiúscula, resto minúsculo
+  // Normalização simples para exibição
   $normalized = mb_strtolower($valor, 'UTF-8');
   $normalized = mb_strtoupper(mb_substr($normalized, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($normalized, 1, null, 'UTF-8');
 
@@ -157,38 +227,28 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'vm') {
     $stU->execute([':valor' => $valor, ':id' => $cRow['id_company']]);
   } catch (Throwable $th) {
     http_response_code(500);
-    echo json_encode(['success'=>false, 'error'=>'Erro ao salvar.']);
-    exit;
+    echo json_encode(['success'=>false, 'error'=>'Erro ao salvar.']); exit;
   }
 
   echo json_encode([
     'success'=>true,
     'tipo'=>$tipo,
-    // já retorna normalizado para exibir exatamente como desejado
     'html'=> nl2br(htmlspecialchars($normalized, ENT_QUOTES, 'UTF-8'))
   ]);
   exit;
 }
 
+// Totais gerais
 $stTotais = $pdo->prepare("
   SELECT
-    (SELECT COUNT(*)
-       FROM objetivos o
-      WHERE o.id_company = :cid) AS total_obj,
-
-    (SELECT COUNT(*)
-       FROM key_results kr
-       JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
-      WHERE o.id_company = :cid) AS total_kr,
-
+    (SELECT COUNT(*) FROM objetivos o WHERE o.id_company = :cid) AS total_obj,
+    (SELECT COUNT(*) FROM key_results kr JOIN objetivos o ON o.id_objetivo = kr.id_objetivo WHERE o.id_company = :cid) AS total_kr,
     (SELECT COUNT(*)
        FROM key_results kr
        JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
       WHERE o.id_company = :cid
         AND (kr.dt_conclusao IS NOT NULL
              OR kr.status IN ('Concluído','Concluido','Completo','Finalizado'))) AS total_kr_done,
-
-    /* === KRs CRÍTICOS por milestone vencido === */
     (SELECT COUNT(*)
        FROM key_results kr
        JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
@@ -201,33 +261,26 @@ $stTotais = $pdo->prepare("
                     AND m2.data_ref <= CURDATE()
              )
       WHERE o.id_company = :cid
-        /* considera apenas KRs ainda não concluídos */
         AND (kr.dt_conclusao IS NULL
              AND (kr.status IS NULL OR kr.status NOT IN ('Concluído','Concluido','Completo','Finalizado')))
-        /* tem milestone vencido... */
         AND m.id_milestone IS NOT NULL
-        /* ...e está crítico: sem apontamento OU abaixo do esperado */
         AND (m.valor_real_consolidado IS NULL OR m.valor_real_consolidado < m.valor_esperado)
     ) AS total_kr_risk
 ");
 $stTotais->execute([':cid' => $companyId]);
 $totais = $stTotais->fetch();
 
-// ====== Pilares BSC (AGORA filtrados por empresa) ======
+// ====== Pilares BSC ======
 $stPilares = $pdo->prepare("
   SELECT
     p.id_pilar,
     p.descricao_exibicao AS pilar_nome,
-
     COALESCE(COUNT(DISTINCT o.id_objetivo),0) AS objetivos,
     COALESCE(COUNT(kr.id_kr),0)               AS krs,
-
     COALESCE(SUM(CASE
       WHEN kr.dt_conclusao IS NOT NULL
         OR kr.status IN ('Concluído','Concluido','Completo','Finalizado') THEN 1
       ELSE 0 END),0) AS krs_concluidos,
-
-    /* === KRs CRÍTICOS por milestone vencido === */
     COALESCE(SUM(
       CASE
         WHEN kr.dt_conclusao IS NULL
@@ -237,14 +290,12 @@ $stPilares = $pdo->prepare("
         THEN 1 ELSE 0
       END
     ),0) AS krs_risco
-
   FROM dom_pilar_bsc p
   LEFT JOIN objetivos o
          ON o.pilar_bsc = p.id_pilar
         AND o.id_company = :cid
   LEFT JOIN key_results kr
          ON kr.id_objetivo = o.id_objetivo
-  /* último milestone vencido por KR (se existir) */
   LEFT JOIN milestones_kr m
          ON m.id_kr = kr.id_kr
         AND m.data_ref = (
@@ -253,61 +304,68 @@ $stPilares = $pdo->prepare("
              WHERE m2.id_kr = kr.id_kr
                AND m2.data_ref <= CURDATE()
         )
-  GROUP BY p.id_pilar, p.descricao_exibicao
+  GROUP BY p.id_pilar, p.descricao_exibicao, p.ordem_pilar
   ORDER BY p.ordem_pilar
 ");
 $stPilares->execute([':cid' => $companyId]);
 $pilares = $stPilares->fetchAll();
 
-function pct($parte, $todo) { return $todo ? (int)round(($parte/$todo)*100) : 0; }
+// === Mapa robusto para reconhecer qualquer variação vinda de objetivos.pilar_bsc ===
+// cria um lookup que aceita: id_pilar, descricao_exibicao, e suas versões normalizadas
+$pilarLookup = [];
+foreach ($pilares as $row) {
+  $idRaw   = (string)$row['id_pilar'];              // ex.: "Processos"
+  $nomeRaw = (string)$row['pilar_nome'];            // ex.: "Processos Internos"
+  $canon   = $normPilar($nomeRaw ?: $idRaw);        // ex.: "processos"
 
-// Helper de apresentação
-function first_upper_rest_lower(string $s): string {
-  $s = trim($s);
-  if ($s === '') return $s;
-  $s = mb_strtolower($s, 'UTF-8');
-  $first = mb_strtoupper(mb_substr($s, 0, 1, 'UTF-8'), 'UTF-8');
-  return $first . mb_substr($s, 1, null, 'UTF-8');
+  // chaves possíveis (com e sem normalização)
+  foreach ([$idRaw, $nomeRaw] as $k) {
+    $k1 = trim($k);
+    if ($k1 !== '') $pilarLookup[$k1] = $canon;     // forma original (case-sensitive)
+    $k2 = mb_strtolower($k1,'UTF-8');
+    if ($k2 !== '') $pilarLookup[$k2] = $canon;     // minúscula
+    // sem acentos
+    $k3 = strtr($k2, ['á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a','ç'=>'c','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o','ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u']);
+    if ($k3 !== '') $pilarLookup[$k3] = $canon;
+    // normalizador canônico
+    $k4 = $normPilar($k1);
+    if ($k4 !== '') $pilarLookup[$k4] = $canon;
+  }
 }
 
-// =====================[NOVO - PROGRESSO DOS PILARES COMO NO RELATÓRIO]=====================
-$tableExists = static function(PDO $pdo, string $t): bool { try{ $pdo->query("SHOW COLUMNS FROM `$t`"); return true; }catch(Throwable){ return false; } };
-$colExists   = static function(PDO $pdo, string $t, string $c): bool { try{ $st=$pdo->prepare("SHOW COLUMNS FROM `$t` LIKE :c"); $st->execute([':c'=>$c]); return (bool)$st->fetch(); }catch(Throwable){ return false; } };
-$normPilar   = static function($s){ $s=mb_strtolower(trim((string)$s),'UTF-8'); $s=str_replace(['processos internos','cliente'],['processos','clientes'],$s); return $s; };
-$clamp       = static function($v){ if($v===null||!is_numeric($v)) return null; $v=(float)$v; return (int)max(0,min(100,round($v))); };
+// ===================== PROGRESSO DOS PILARES =====================
+$tableExists = static function(PDO $pdo, string $t): bool {
+  try { $pdo->query("SHOW COLUMNS FROM `$t`"); return true; } catch(Throwable) { return false; }
+};
+$colExists = static function(PDO $pdo, string $t, string $c): bool {
+  try { $st=$pdo->prepare("SHOW COLUMNS FROM `$t` LIKE :c"); $st->execute([':c'=>$c]); return (bool)$st->fetch(); } catch(Throwable) { return false; }
+};
 
-/** Ícones/cores iguais ao relatorios_okrs */
-$PILLAR_COLORS = [ // [NOVO - CORES]
-  'aprendizado'=>'#8e44ad',
-  'processos'  =>'#2980b9',
-  'clientes'   =>'#27ae60',
-  'financeiro' =>'#f39c12'
-];
-$PILLAR_ICONS = [ // [NOVO - ÍCONES]
-  'aprendizado'=>'fa-solid fa-graduation-cap',
-  'processos'  =>'fa-solid fa-gears',
-  'clientes'   =>'fa-solid fa-users',
-  'financeiro' =>'fa-solid fa-coins'
-];
-
-// Mapa pilar -> média (calculada)
 $pillarMedia = [];
-
-// Busca objetivos da empresa (id + pilar nominal)
 $stObj = $pdo->prepare("SELECT id_objetivo, pilar_bsc FROM objetivos WHERE id_company = :cid");
 $stObj->execute([':cid'=>$companyId]);
 $objsAll = $stObj->fetchAll();
 
 if ($objsAll) {
   $objIds = array_column($objsAll, 'id_objetivo');
+
+  // mapeia objetivo -> chave canônica do pilar
   $objPilarKey = [];
   foreach ($objsAll as $o) {
-    $objPilarKey[(int)$o['id_objetivo']] = $normPilar($o['pilar_bsc'] ?? '');
+    $raw = trim((string)($o['pilar_bsc'] ?? '')); // pode vir "Processos" ou "Processos Internos", etc.
+    if ($raw === '') continue;
+
+    // tenta todas as formas no lookup, senão normaliza direto
+    $canon = $pilarLookup[$raw]
+          ?? $pilarLookup[mb_strtolower($raw,'UTF-8')]
+          ?? $pilarLookup[strtr(mb_strtolower($raw,'UTF-8'), ['á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a','ç'=>'c','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o','ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u'])]
+          ?? $normPilar($raw);
+
+    $objPilarKey[(int)$o['id_objetivo']] = $canon;
   }
 
   $in = implode(',', array_fill(0, count($objIds), '?'));
 
-  // Colunas opcionais
   $selKR = function(string $c) use ($colExists, $pdo) {
     return $colExists($pdo,'key_results',$c) ? "kr.`$c`" : "NULL";
   };
@@ -321,7 +379,6 @@ if ($objsAll) {
   $stKR->execute($objIds);
   $krsAll = $stKR->fetchAll();
 
-  // Descobrir tabelas de milestones/apontamentos (iguais ao relatório)
   $msT=null; if($tableExists($pdo,'milestones_kr')) $msT='milestones_kr'; else if($tableExists($pdo,'milestones')) $msT='milestones';
   $apT=null; if($tableExists($pdo,'apontamentos_kr')) $apT='apontamentos_kr'; else if($tableExists($pdo,'apontamentos')) $apT='apontamentos';
 
@@ -344,8 +401,7 @@ if ($objsAll) {
   $stRealMs = ($msT && $msKr && $msReal)          ? $pdo->prepare("SELECT `$msReal` FROM `$msT` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ORDER BY ".($msDate? "`$msDate` DESC":"1")." LIMIT 1") : null;
   $stRealAp = ($apT && $apKr && $apVal)           ? $pdo->prepare("SELECT `$apVal` FROM `$apT` WHERE `$apKr`=:id ORDER BY ".($apWhen? "`$apWhen` DESC":"1")." LIMIT 1") : null;
 
-  // Agregadores
-  $objVals = []; // id_objetivo => [valores%...]
+  $objVals = [];
   foreach ($krsAll as $kr) {
     $oid = (int)$kr['id_objetivo'];
     if (!isset($objVals[$oid])) $objVals[$oid] = [];
@@ -353,8 +409,7 @@ if ($objsAll) {
     $base = is_numeric($kr['baseline']) ? (float)$kr['baseline'] : null;
     $meta = is_numeric($kr['meta'])     ? (float)$kr['meta']     : null;
 
-    $expNow = null; $realNow = null;
-    if ($stExp){    $stExp->execute([':id'=>$kr['id_kr']]);    $expNow  = $stExp->fetchColumn(); }
+    $realNow = null;
     if ($stRealMs){ $stRealMs->execute([':id'=>$kr['id_kr']]); $realNow = $stRealMs->fetchColumn(); }
     if (($realNow===false || $realNow===null) && $stRealAp){
       $stRealAp->execute([':id'=>$kr['id_kr']]); $realNow = $stRealAp->fetchColumn();
@@ -362,25 +417,24 @@ if ($objsAll) {
 
     $pctAtual = null;
     if ($base!==null && $meta!==null && $meta!=$base){
-      if ($meta > $base){ // crescer
-        if (is_numeric($realNow)) $pctAtual = (($realNow-$base)/($meta-$base))*100.0;
-      } else { // diminuir
-        if (is_numeric($realNow)) $pctAtual = (($base-$realNow)/($base-$meta))*100.0;
+      if (is_numeric($realNow)) {
+        if ($meta > $base){ // crescer
+          $pctAtual = (($realNow-$base)/($meta-$base))*100.0;
+        } else { // reduzir
+          $pctAtual = (($base-$realNow)/($base-$meta))*100.0;
+        }
+        $pctAtual = $clamp($pctAtual);
       }
-      $pctAtual = $clamp($pctAtual);
     }
-
     if ($pctAtual!==null) $objVals[$oid][] = $pctAtual;
   }
 
-  // Média por objetivo
-  $objPct = []; // id_objetivo => pct
+  $objPct = [];
   foreach ($objVals as $oid => $vals) {
     if (count($vals)) { $objPct[$oid] = (int)round(array_sum($vals)/count($vals)); }
   }
 
-  // Média por pilar (média dos objetivos com pct)
-  $pAgg = []; // pkey => ['sum'=>..,'cnt'=>..]
+  $pAgg = [];
   foreach ($objPct as $oid => $pctVal) {
     $pkey = $objPilarKey[$oid] ?? '';
     if (!$pkey) continue;
@@ -393,15 +447,26 @@ if ($objsAll) {
   }
 }
 
-// Anexa 'media_pct' a cada pilar retornado acima
+// Anexa 'media_pct' + chave canônica para cada pilar exibido
 foreach ($pilares as &$p) {
-  $key = $normPilar($p['id_pilar'] ?? '');
-  $p['__pkey']     = $key;
-  $p['media_pct']  = $pillarMedia[$key] ?? null; // pode ser null se não há dados suficientes
+  // use a descricao_exibicao (ex.: "Processos Internos") como fonte “humana” e normalize
+  $key = $normPilar($p['pilar_nome'] ?: $p['id_pilar']);
+  $p['__pkey']    = $key;
+  $p['media_pct'] = $pillarMedia[$key] ?? null;
 }
 unset($p);
-// ====================[FIM NOVO - PROGRESSO/CORES/ÍCONES DOS PILARES]======================
 
+// ====== Ordem fixa: Financeiro, Clientes, Processos, Aprendizado ======
+$desiredOrder = ['financeiro','clientes','processos','aprendizado'];
+usort($pilares, function($a,$b) use ($desiredOrder){
+  $ia = array_search($a['__pkey'] ?? '', $desiredOrder, true);
+  $ib = array_search($b['__pkey'] ?? '', $desiredOrder, true);
+  $ia = $ia === false ? 99 : $ia;
+  $ib = $ib === false ? 99 : $ib;
+  return $ia <=> $ib;
+});
+
+$mapaUrl = '/OKR_system/views/mapa_estrategico.php';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -416,115 +481,156 @@ unset($p);
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
-   <!-- Tema por empresa (depois dos CSS globais) -->
+  <!-- Tema por empresa -->
   <link rel="stylesheet"
         href="/OKR_system/assets/company_theme.php?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>">
-  <!-- Para testar sem cache, use temporariamente:  ?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>&nocache=1 -->
 
   <style>
-    body { background:#fff !important; color:#111; }
-    :root{ --chat-w: 0px; }
-    .content { background: transparent; }
-    main.dashboard-container{
-      padding: 24px; display: grid; grid-template-columns: 1fr; gap: 24px;
-      margin-right: var(--chat-w); transition: margin-right .25s ease;
-    }
-
     :root{
       --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
       --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
       --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
+      --mini-min-h: 64px;        /* cards menores */
+      --mini-pad: 8px;
+      --pillar-stripe-w: 8px;
+      --card-pad: 14px;
+      --gap: 8px;
+      --fs-xxs: .72rem;
+      --fs-xs:  .78rem;
+      --fs-s:   .85rem;
+      --fs-m:   .95rem;
+      --pillar-stripe-h: 8px; /* altura da faixa no topo */
+    }
+    body { background:#fff !important; color:#111; }
+    .content { background: transparent; }
+    main.dashboard-container{
+      padding: 20px; display: grid; grid-template-columns: 1fr; gap: 10px;
+      margin-right: var(--chat-w); transition: margin-right .25s ease;
     }
 
     [hidden]{ display:none !important; }
 
-    .vision-mission{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* progresso com parte vazia branca */
+    .pillar-card .progress-bar{
+      background:var(--muted) !important;
+      border-color: rgba(0,0,0,.15);
+    }
+
+    /* Visão/Missão */
+    .vision-mission{ display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
     @media (max-width: 900px){ .vision-mission{ grid-template-columns: 1fr; } }
     .vm-card{
       background: linear-gradient(180deg, var(--card), #0d1117);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 16px;
+      border-radius: 12px;
+      padding: 12px var(--card-pad);
       box-shadow: var(--shadow);
       position: relative; overflow: hidden;
       color: var(--text);
     }
     .vm-card:before{
       content:""; position:absolute; inset:0;
-      background: radial-gradient(500px 100px at 10% -10%, rgba(246,195,67,.10), transparent 40%),
-                  radial-gradient(400px 160px at 110% 10%, rgba(96,165,250,.08), transparent 50%);
+      background: radial-gradient(400px 90px at 10% -10%, rgba(246,195,67,.10), transparent 40%),
+                  radial-gradient(340px 140px at 110% 10%, rgba(96,165,250,.08), transparent 50%);
       pointer-events:none;
     }
     .vm-title{
-      display:flex; align-items:center; gap:10px; margin-bottom:6px;
-      font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px; margin-bottom:1px;
+      font-weight:700; letter-spacing:.2px; font-size: var(--fs-s);
     }
-    .vm-title .badge{ background: var(--gold); color:#1a1a1a; padding:5px 9px; border-radius:999px; font-size:.72rem; font-weight:800; text-transform:uppercase; }
-    .vm-text{ color:var(--muted); line-height:1.45; white-space:pre-line; text-align:left; font-size:.95rem; }
+    .vm-title .badge{ background: var(--gold); color:#1a1a1a; padding:4px 8px; border-radius:999px; font-size: var(--fs-xxs); font-weight:800; text-transform:uppercase; }
+    .vm-text{ color:var(--muted); line-height:1.35; white-space:pre-line; text-align:left; font-size: var(--fs-xs); font-style:italic; }
     .vm-text a.vm-edit-link{ color:#eab308; text-decoration:underline dotted; }
 
-    .pillars{ display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
-    @media (max-width: 1200px){ .pillars{ grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 700px){ .pillars{ grid-template-columns: 1fr; } }
+    /* Pilares: 4 colunas */
+    .pillars{
+      display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap);
+    }
+    @media (max-width: 640px){ .pillars{ grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px){ .pillars{ grid-template-columns: 1fr; } }
+
     .pillar-card{
-      background: linear-gradient(180deg, var(--card), #0d1117); border: 1px solid var(--border);
-      border-radius: 16px; padding: 18px; box-shadow: var(--shadow);
-      position:relative; overflow:hidden; transition: transform .2s ease, border-color .2s ease; color: var(--text);
+      --pilar-color: var(--gold);
+      background: linear-gradient(180deg, var(--card), #0d1117);
+      border: none;
+      border-radius: 12px;
+      padding: var(--card-pad);
+      box-shadow: var(--shadow);
+      position:relative; overflow:hidden; color: var(--text);
+      cursor: pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      outline: none;
     }
-    .pillar-card:hover{ transform: translateY(-2px); border-color: #293140; }
-    .pillar-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
-    .pillar-title{ display:flex; align-items:center; gap:10px; font-weight:700; }
+    .pillar-card:focus-visible{ box-shadow: 0 0 0 3px color-mix(in srgb, var(--pilar-color), #fff 70%); }
+    .pillar-card:hover{ transform: translateY(-1px); }
+    .pillar-card::after{
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: var(--pillar-stripe-h);
+      /* degradezinho na horizontal usando a cor do pilar */
+      background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--pilar-color), #fff 10%),
+        var(--pilar-color)
+      );
+      /* arredonda só os cantos de cima para casar com o card */
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+    .pillar-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; margin-top:5px; }
+    .pillar-title{ display:flex; align-items:center; gap:8px; font-weight:700; font-size: var(--fs-s); }
     .pillar-title i{
-      color: var(--gold); background: rgba(246,195,67,.12); width: 40px; height: 40px; border-radius: 12px;
-      display:grid; place-items:center; border:1px solid rgba(246,195,67,.25);
+      color: var(--pilar-color);
+      background: color-mix(in srgb, var(--pilar-color), transparent 88%);
+      width: 34px; height: 34px; border-radius: 10px;
+      display:grid; place-items:center; border:1px solid color-mix(in srgb, var(--pilar-color), transparent 65%);
+      font-size: .95rem;
     }
-    .pillar-stats{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin:12px 0 10px; }
-    .stat{ background: #0e131a; border:1px solid var(--border); border-radius: 12px; padding:10px; text-align:center; }
-    .stat .label{ font-size:.75rem; color:var(--muted); }
-    .stat .value{ font-size:1.25rem; font-weight:800; letter-spacing:.2px; color: var(--text); }
-    .progress-wrap{ margin-top:10px; }
-    .progress-label{ display:flex; align-items:center; justify-content:space-between; font-size:.85rem; color:var(--muted); margin-bottom:6px;}
-    .progress-bar{
-      width:100%;
-      height:10px;
-      background:#fff; /* trilho branco */
-      border:1px solid var(--border);
-      border-radius:999px;
-      overflow:hidden;
+
+    .pillar-stats{
+      display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0 8px; align-items: stretch;
     }
-    .progress-fill{ height:100%; width:0%; background: linear-gradient(90deg, var(--gold), var(--green)); border-right:1px solid rgba(255,255,255,.15); transition: width 1s ease-in-out; }
+    .stat{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height: var(--mini-min-h); padding: var(--mini-pad); background: #0e131a;
+      border:1px solid var(--border); border-radius: 10px; text-align:center; box-sizing: border-box;
+    }
+    .stat .label{ font-size: var(--fs-xxs); color:var(--muted); line-height:1.1; white-space:nowrap; }
+    .stat .value{ font-size: clamp(1rem, 1.9vw, 1.25rem); font-weight:800; letter-spacing:.15px; color: var(--text); }
 
-    .risk-badge{ display:inline-flex; align-items:center; gap:6px; background: rgba(239,68,68,.12); color: #fecaca; border:1px solid rgba(239,68,68,.35); padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:700; }
-    .pillar-footer{ margin-top: 12px; display:flex; justify-content:center; }
+    .progress-wrap{ margin-top:6px; }
+    .progress-label{ display:flex; align-items:center; justify-content:space-between; font-size: var(--fs-xxs); color:var(--muted); margin-bottom:4px;}
+    .progress-bar{ width:100%; height:8px; background:#ffffff !important; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+    .progress-fill{ height:100%; width:0%; background: var(--pilar-color); border-right:1px solid rgba(255,255,255,.15); transition: width 700ms ease; }
 
-    .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
-    @media (max-width: 1200px){ .kpi-row{ grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 700px){ .kpi-row{ grid-template-columns: 1fr; } }
+    .risk-badge{ display:inline-flex; align-items:center; gap:6px; background: rgba(239,68,68,.12); color: #fecaca; border:1px solid rgba(239,68,68,.35);
+      padding:3px 8px; border-radius:999px; font-size: var(--fs-xxs); font-weight:700; }
+    .pillar-footer{ margin-top: 8px; display:flex; justify-content:center; }
+
+    /* KPIs: 4 colunas */
+    .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+    @media (max-width: 640px){ .kpi-row{ grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px){ .kpi-row{ grid-template-columns: 1fr; } }
+
     .kpi-card{
       background: linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:18px; box-shadow: var(--shadow);
+      border:1px solid var(--border); border-radius:12px; padding: var(--card-pad); box-shadow: var(--shadow);
       position:relative; overflow:hidden; color: var(--text);
+      cursor:pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      min-height: 96px;
     }
-    .kpi-card .kpi-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; color:var(--muted); font-size:.9rem; }
-    .kpi-card .kpi-value{ font-size:2rem; color:var(--gold); font-weight:900; letter-spacing:.3px; }
-    .kpi-icon{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; border:1px solid var(--border); color:#c7d2fe; background:rgba(96,165,250,.12); }
+    .kpi-card:hover{ transform: translateY(-1px); border-color:#2a3342; }
+    .kpi-card:focus-visible{ outline: none; box-shadow: 0 0 0 3px rgba(96,165,250,.35); }
+    .kpi-card .kpi-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; color:var(--muted); font-size: var(--fs-xs); }
+    .kpi-card .kpi-value{ font-size: clamp(1.2rem, 2.4vw, 1.6rem); color:var(--gold); font-weight:900; letter-spacing:.2px; }
+    .kpi-icon{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; border:1px solid var(--border); background:rgba(96,165,250,.12); font-size:.95rem; color:#c7d2fe; }
     .kpi-card.success .kpi-icon{ color:#86efac; background:rgba(34,197,94,.12); }
-    .kpi-card.danger .kpi-icon{ color:#fca5a5; background:rgba(239,68,68,.12); }
+    .kpi-card.danger  .kpi-icon{ color:#fca5a5; background:rgba(239,68,68,.12); }
 
-    .modal-backdrop{ position: fixed; inset:0; display:none; place-items:center; background: rgba(0,0,0,.5); z-index: 2000; }
-    .modal-backdrop.show{ display:grid; }
-    .modal{ width: min(680px, 94vw); background: #0f1420; color: #e5e7eb; border: 1px solid #223047; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.4); overflow:hidden; }
-    .modal header{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom:1px solid #1f2a3a; background:#0b101a; }
-    .modal header h3{ margin:0; font-size:1.05rem; letter-spacing:.2px; }
-    .modal .modal-body{ padding: 16px; }
-    .modal .modal-actions{ display:flex; gap:10px; justify-content:flex-end; padding: 12px 16px; border-top:1px solid #1f2a3a; background:#0b101a; }
-    .btn{ border:1px solid var(--border); background: var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:700; }
-    .btn:hover{ border-color:#2a3342; transform: translateY(-1px); transition:.15s; }
-    .btn-primary{ background: #1f2937; }
-    .btn-link{ background: transparent; border: none; color:#93c5fd; text-decoration:underline; padding:0; }
-    .textarea{ width:100%; min-height: 150px; resize: vertical; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:12px; padding:12px 12px; line-height:1.5; }
-    .helper{ color:#9aa4b2; font-size:.85rem; margin-top:6px; }
-    .modal .notice{ background:#111827; border:1px dashed #374151; padding:12px; border-radius:12px; margin-bottom:10px; color:#cbd5e1; }
+    .card-link{ position:absolute; inset:0; z-index: 5; }
+    .card-link:focus{ outline:none; }
   </style>
 </head>
 <body>
@@ -568,21 +674,20 @@ unset($p);
       </section>
 
       <!-- Pilares BSC -->
-      <section class="pillars">
+      <section class="pillars" aria-label="Pilares BSC">
         <?php foreach ($pilares as $p):
-          // [NOVO] usa a média por pilar (mesma lógica do relatorio)
           $pctPilar = is_null($p['media_pct']) ? 0 : (int)$p['media_pct'];
-
-          // [NOVO] ícone e cor iguais ao relatório
-          $pKey  = $p['__pkey'] ?: '';
-          $pColor = $PILLAR_COLORS[$pKey] ?? '#60a5fa';
-          $pIcon  = $PILLAR_ICONS[$pKey]  ?? 'fa-solid fa-layer-group';
+          $pKey     = $p['__pkey'] ?: ''; // esperado: financeiro | clientes | processos | aprendizado
+          $pColor   = $PILLAR_COLORS[$pKey] ?? '#a3a3a3';
+          $pIcon    = $PILLAR_ICONS[$pKey]  ?? 'fa-solid fa-layer-group';
         ?>
-        <div class="pillar-card">
+        <div class="pillar-card" style="--pilar-color: <?= htmlspecialchars($pColor, ENT_QUOTES, 'UTF-8') ?>;"
+             role="link" tabindex="0" aria-label="Abrir mapa estratégico do pilar <?= htmlspecialchars($p['pilar_nome'] ?: 'Pilar', ENT_QUOTES, 'UTF-8') ?>">
+          <a class="card-link" href="<?= htmlspecialchars($mapaUrl, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></a>
+
           <div class="pillar-header">
             <div class="pillar-title">
-              <!-- [NOVO] ícone com cor do pilar -->
-              <i class="<?= htmlspecialchars($pIcon) ?>" style="color: <?= htmlspecialchars($pColor) ?>;"></i>
+              <i class="<?= htmlspecialchars($pIcon) ?>"></i>
               <span><?= htmlspecialchars($p['pilar_nome'] ?: 'Pilar') ?></span>
             </div>
           </div>
@@ -607,14 +712,13 @@ unset($p);
               <span>Progresso do pilar</span>
               <strong><span class="progress-pct"><?= $pctPilar ?></span>%</strong>
             </div>
-            <div class="progress-bar" style="background:#5C5F63 !important;">
-              <!-- [NOVO] cor do preenchimento igual ao pilar -->
-              <div class="progress-fill" style="width:0%; background: <?= htmlspecialchars($pColor) ?>;" data-final="<?= $pctPilar ?>"></div>
+            <div class="progress-bar">
+              <div class="progress-fill" data-final="<?= $pctPilar ?>"></div>
             </div>
           </div>
 
           <div class="pillar-footer">
-            <span class="risk-badge">
+            <span class="risk-badge" title="KRs com último milestone abaixo do esperado">
               <i class="fa-solid fa-triangle-exclamation"></i>
               <?= (int)$p['krs_risco'] ?> em risco
             </span>
@@ -624,27 +728,30 @@ unset($p);
       </section>
 
       <!-- KPIs gerais -->
-      <section class="kpi-row">
-        <div class="kpi-card">
+      <section class="kpi-row" aria-label="Indicadores gerais">
+        <div class="kpi-card" role="link" tabindex="0" aria-label="Abrir mapa estratégico - Total de Objetivos">
+          <a class="card-link" href="<?= htmlspecialchars($mapaUrl, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></a>
           <div class="kpi-head"><span>Total de Objetivos</span><div class="kpi-icon"><i class="fa-solid fa-bullseye"></i></div></div>
           <div class="kpi-value countup" data-target="<?= (int)$totais['total_obj'] ?>">0</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" role="link" tabindex="0" aria-label="Abrir mapa estratégico - Total de KRs">
+          <a class="card-link" href="<?= htmlspecialchars($mapaUrl, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></a>
           <div class="kpi-head"><span>Total de KRs</span><div class="kpi-icon"><i class="fa-solid fa-list-check"></i></div></div>
           <div class="kpi-value countup" data-target="<?= (int)$totais['total_kr'] ?>">0</div>
         </div>
-        <div class="kpi-card success">
+        <div class="kpi-card success" role="link" tabindex="0" aria-label="Abrir mapa estratégico - KRs Concluídos">
+          <a class="card-link" href="<?= htmlspecialchars($mapaUrl, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></a>
           <div class="kpi-head"><span>KRs Concluídos</span><div class="kpi-icon"><i class="fa-solid fa-check-double"></i></div></div>
           <div class="kpi-value countup" data-target="<?= (int)$totais['total_kr_done'] ?>">0</div>
         </div>
-        <div class="kpi-card danger">
+        <div class="kpi-card danger" role="link" tabindex="0" aria-label="Abrir mapa estratégico - KRs em Risco">
+          <a class="card-link" href="<?= htmlspecialchars($mapaUrl, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></a>
           <div class="kpi-head"><span>KRs em Risco</span><div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div></div>
           <div class="kpi-value countup" data-target="<?= (int)$totais['total_kr_risk'] ?>">0</div>
         </div>
       </section>
     </main>
 
-    <!-- Chat (inalterado) -->
     <?php include __DIR__ . '/partials/chat.php'; ?>
   </div>
 
@@ -694,8 +801,7 @@ unset($p);
   </div>
 
   <script>
-    // --------- Count-up e progress ----------
-    function animateCounter(el, target, duration=900){
+    function animateCounter(el, target, duration=800){
       const start=0, t0=performance.now();
       function tick(t){
         const p=Math.min((t-t0)/duration,1);
@@ -705,16 +811,15 @@ unset($p);
       requestAnimationFrame(tick);
     }
     function animateProgressBars(){
-      document.querySelectorAll('.progress-fill').forEach(bar=>{
+      document.querySelectorAll('.pillar-card .progress-fill').forEach(bar=>{
         const to=parseInt(bar.getAttribute('data-final')||'0',10);
         requestAnimationFrame(()=>{ bar.style.width = Math.max(0,Math.min(100,to))+'%'; });
       });
     }
 
-    // --------- Adaptação ao chat ----------
+    // Espaço do chat
     const CHAT_SELECTORS = ['#chatPanel', '.chat-panel', '.chat-container', '#chat', '.drawer-chat'];
     const TOGGLE_SELECTORS = ['#chatToggle', '.chat-toggle', '.btn-chat-toggle', '.chat-icon', '.chat-open'];
-
     function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
     function isOpen(el){
       const style = getComputedStyle(el);
@@ -732,7 +837,27 @@ unset($p);
       updateChatWidth();
     }
 
-    // --------- Modais ----------
+    document.addEventListener('DOMContentLoaded', ()=>{
+      document.querySelectorAll('.countup[data-target]').forEach(el=>{
+        const tgt = parseInt(el.getAttribute('data-target')||'0',10);
+        animateCounter(el, tgt, 700 + Math.random()*300);
+      });
+      animateProgressBars();
+      setupChatObservers();
+
+      // Acessibilidade: Enter/Espaço abre links dos cards
+      document.querySelectorAll('.pillar-card, .kpi-card').forEach(card=>{
+        card.addEventListener('keydown', (ev)=>{
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            const a = card.querySelector('.card-link');
+            if (a) window.location.href = a.href;
+          }
+        });
+      });
+    });
+
+    // Modais (missão/visão)
     const vmModalBackdrop = document.getElementById('vmModalBackdrop');
     const vmTitle   = document.getElementById('vmModalTitle');
     const vmHelper  = document.getElementById('vmHelper');
@@ -750,7 +875,7 @@ unset($p);
     const COMPANY_HAS_CNPJ = (document.getElementById('companyHasCNPJ').dataset.has === '1');
     const COMPANY_NAME = document.getElementById('companyName').dataset.name;
 
-    let currentType = null; // 'missao' | 'visao'
+    let currentType = null;
 
     function openVMModal(type){
       currentType = type;
@@ -786,20 +911,15 @@ unset($p);
     cnpjBack && cnpjBack.addEventListener('click', closeCNPJModal);
     cnpjClose && cnpjClose.addEventListener('click', closeCNPJModal);
 
-    // Abrir via “clique aqui”: valida CNPJ antes de abrir o editor
     document.addEventListener('click', (e)=>{
       const a = e.target.closest('.vm-edit-link');
       if (a){
         e.preventDefault();
-        if (!COMPANY_HAS_CNPJ){
-          openCNPJModal();
-          return;
-        }
+        if (!COMPANY_HAS_CNPJ){ openCNPJModal(); return; }
         openVMModal(a.getAttribute('data-type'));
       }
     });
 
-    // Salvar via AJAX
     vmSaveBtn && vmSaveBtn.addEventListener('click', async ()=>{
       if (!currentType) return;
       const csrf = document.getElementById('csrfToken').dataset.token;
@@ -825,10 +945,7 @@ unset($p);
 
         let data = null;
         try { data = await res.json(); } catch{ data = null; }
-
-        if (!res.ok || !data){
-          throw new Error('bad_response');
-        }
+        if (!res.ok || !data) throw new Error('bad_response');
 
         if (!data.success){
           if (data.requireCNPJ){
@@ -853,30 +970,6 @@ unset($p);
       } finally {
         vmSaveBtn.disabled = false; vmSaveBtn.textContent = 'Salvar';
       }
-    });
-
-    // --------- Inicialização ----------
-    document.addEventListener('DOMContentLoaded', ()=>{
-      document.querySelectorAll('.countup[data-target]').forEach(el=>{
-        const tgt = parseInt(el.getAttribute('data-target')||'0',10);
-        animateCounter(el, tgt, 800 + Math.random()*400);
-      });
-      animateProgressBars();
-
-      // Chat space
-      const CHAT_SELECTORS = ['#chatPanel', '.chat-panel', '.chat-container', '#chat', '.drawer-chat'];
-      function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-      function isOpen(el){
-        const style = getComputedStyle(el);
-        const visible = style.display!=='none' && style.visibility!=='hidden';
-        const w = el.offsetWidth;
-        return (visible && w>0) || el.classList.contains('open') || el.classList.contains('show') || el.getAttribute('aria-expanded')==='true';
-      }
-      function updateChatWidth(){ const el = findChatEl(); const w = (el && isOpen(el)) ? el.offsetWidth : 0; document.documentElement.style.setProperty('--chat-w', (w||0)+'px'); }
-      const mo = new MutationObserver(()=>updateChatWidth());
-      const chat = findChatEl(); if(chat){ mo.observe(chat, { attributes:true, attributeFilter:['style','class','aria-expanded'] }); }
-      window.addEventListener('resize', updateChatWidth);
-      updateChatWidth();
     });
   </script>
 </body>

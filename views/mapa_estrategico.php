@@ -830,7 +830,7 @@ $totalPil = count($pilares);
 
                   <!-- Chips na mesma linha: Dono + Farol -->
                   <div class="progress-meta">
-                    <span class="badge owner"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
+                    
                     <span class="badge prog-chip">
                       <i class="fa-solid fa-gauge"></i>
                       <strong class="prog-val"><?= number_format((float)$prog,1,',','.') ?>%</strong>
@@ -842,6 +842,7 @@ $totalPil = count($pilares);
 
                   <div class="more">
                     <div class="badges">
+                      <span class="badge owner"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
                       <span class="badge b-gray"><i class="fa-solid fa-list-check"></i> KR: <strong><?= (int)$m['qtd_kr'] ?></strong></span>
                       <?php if(!empty($obj['tipo'])): ?><span class="badge b-type"><?= h(normalizeText($obj['tipo'])) ?></span><?php endif; ?>
                       <?php if(!empty($obj['dt_prazo'])):
