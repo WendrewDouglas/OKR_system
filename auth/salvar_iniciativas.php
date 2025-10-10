@@ -11,6 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__.'/../auth/acl.php';
 
 if (!isset($_SESSION['user_id'])) {
   http_response_code(401);

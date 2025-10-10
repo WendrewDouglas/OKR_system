@@ -4,6 +4,7 @@ if (isset($_GET['debug'])) { ini_set('display_errors','1'); ini_set('display_sta
 
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
+require_once __DIR__.'/../auth/acl.php';
 
 $autoload = __DIR__ . '/../vendor/autoload.php';
 if (file_exists($autoload)) require_once $autoload;

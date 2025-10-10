@@ -26,6 +26,11 @@ $csrf = $_SESSION['csrf_token'];
 // ===== Config + helpers =====
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php'; // sendPasswordResetEmail
+if (($_GET['mode'] ?? '') === 'edit') {
+  require_cap('W:objetivo@ORG');
+}
+// Gate automático pela tabela dom_paginas.requires_cap
+gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 
 // ===== Conexão =====
 try {

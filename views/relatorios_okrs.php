@@ -30,6 +30,13 @@ if (isset($_GET['ajax'])) {
   session_start();
   require_once __DIR__ . '/../auth/config.php';
   require_once __DIR__ . '/../auth/functions.php';
+  require_once __DIR__.'/../auth/acl.php';
+
+  // Gate automático pela tabela dom_paginas.requires_cap
+  gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+  if (($_GET['mode'] ?? '') === 'edit') {
+    require_cap('W:objetivo@ORG');
+  }
   header('Content-Type: application/json; charset=utf-8');
 
   if (!isset($_SESSION['user_id'])) { http_response_code(401); echo json_encode(['success'=>false,'error'=>'Não autorizado']); exit; }

@@ -2,6 +2,9 @@
 // partials/sidebar.php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
+require_once __DIR__ . '/../../auth/acl.php';
+
+
 /* ============ INJETAR O TEMA (uma vez por página) ============ */
 if (!defined('PB_THEME_LINK_EMITTED')) {
   define('PB_THEME_LINK_EMITTED', true);
@@ -216,18 +219,22 @@ body.collapsed .sidebar-footer .org { display: none; }
 
   <ul>
     <li>
+      <?php if (can_open_path('/OKR_system/views/dashboard.php')): ?>
       <div class="menu-item <?= $isDashboard ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/dashboard"
            onclick="onMenuClick(this, event)">
         <i class="fas fa-tachometer-alt icon-main"></i><span>Dashboard</span>
       </div>
+      <?php endif; ?>
     </li>
     <li>
+      <?php if (can_open_path('/OKR_system/views/mapa_estrategico.php')): ?>
       <div class="menu-item <?= $isMapaEstrategico ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/mapa_estrategico"
            onclick="onMenuClick(this, event)">
         <i class="fas fa-map icon-main"></i><span>Mapa Estratégico</span>
       </div>
+      <?php endif; ?>
     </li>
     <li class="<?= $isOKRGroup ? 'open' : '' ?>">
       <div class="menu-item <?= $isOKRGroup ? 'active' : '' ?>"
@@ -239,25 +246,32 @@ body.collapsed .sidebar-footer .org { display: none; }
            onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
       </div>
       <ul class="submenu">
+        <?php if (can_open_path('/OKR_system/views/novo_objetivo.php')): ?>
         <li class="<?= $isNewObjective ? 'active' : '' ?>"
             data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-bullseye mr-2"></i><span>Novo Objetivo</span>
         </li>
+        <?php endif; ?>
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
         <li class="<?= $isNewKR ? 'active' : '' ?>"
             data-href="https://planningbi.com.br/OKR_system/novo_key_result"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-clipboard-check mr-2"></i><span>Novo Key Result</span>
         </li>
+        <?php endif; ?>
       </ul>
     </li>
     <li>
+      <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
       <div class="menu-item <?= $isOrcamento ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/orcamento"
            onclick="onMenuClick(this, event)">
         <i class="fas fa-file-invoice-dollar icon-main"></i><span>Orçamento</span>
       </div>
+      <?php endif; ?>
     </li>
+    <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
     <li class="<?= $isRelOKRs ? 'active' : '' ?>"
         data-href="/OKR_system/views/relatorios_okrs.php"
         onclick="onMenuClick(this, event)">
@@ -265,12 +279,15 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-clipboard-list icon-main"></i><span>Relatório One-Page</span>
       </div>
     </li>
+    <?php endif; ?>
     <li>
+      <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
       <div class="menu-item <?= $isAprovacao ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/aprovacao"
            onclick="onMenuClick(this, event)">
         <i class="fas fa-stamp icon-main"></i><span>Aprovações</span>
       </div>
+      <?php endif; ?>
     </li>
     <li class="<?= $isSettings ? 'open' : '' ?>">
       <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
@@ -278,21 +295,27 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-chevron-down icon-chevron"></i>
       </div>
       <ul class="submenu">
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
         <li class="<?= $isConfigStyle ? 'active' : '' ?>"
             data-href="/OKR_system/views/config_style.php"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-palette"></i><span>Personalizar Estilo</span>
         </li>
+        <?php endif; ?>
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
         <li class="<?= $isOrgConfig ? 'active' : '' ?>"
             data-href="/OKR_system/views/organizacao.php"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-building"></i><span>Editar Organização</span>
         </li>
+        <?php endif; ?>
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
         <li class="<?= $isUsersMgmt ? 'active' : '' ?>"
             data-href="/OKR_system/views/usuarios.php"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-users-gear"></i><span>Gerenciar Usuários</span>
         </li>
+        <?php endif; ?>
       </ul>
     </li>
   </ul>

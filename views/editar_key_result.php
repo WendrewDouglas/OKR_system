@@ -12,6 +12,15 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/diff_helpers.php';
+require_once __DIR__.'/../auth/acl.php';
+
+// Gate automático pela tabela dom_paginas.requires_cap
+gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+if (($_GET['mode'] ?? '') === 'edit') {
+  require_cap('W:objetivo@ORG');
+}
+
+require_cap('W:kr@ORG', ['id_objetivo' => (int)($_POST['id_objetivo'] ?? 0)]);
 
 if (empty($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');

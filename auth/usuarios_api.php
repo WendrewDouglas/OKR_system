@@ -1,7 +1,9 @@
 <?php
 // auth/usuarios_api.php — CRUD de usuários + RBAC (roles/overrides) + avatar
-// Endpoints: options, list, get, get_permissions, get_access, capabilities,
-//            save, save_permissions, delete, upload_avatar, save_avatar_canvas
+// Endpoints aceitos pelo front: options, list, get_user, save_user, delete,
+// capabilities, get_permissions, save_permissions, roles_matrix (stub),
+// departamentos (por company), niveis_cargo (catálogo)
+// (aliases para compat: get/save + departamentos_by_company/cargos_niveis/niveis)
 
 declare(strict_types=1);
 ini_set('display_errors', '1');
@@ -12,6 +14,7 @@ session_start();
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../auth/acl.php';
 
 /* ----------------------- Helpers ----------------------- */
 function jexit(int $code, array $payload) {
@@ -19,6 +22,7 @@ function jexit(int $code, array $payload) {
   echo json_encode($payload, JSON_UNESCAPED_UNICODE);
   exit;
 }
+
 function pdo(): PDO {
   static $pdo = null;
   if ($pdo) return $pdo;
@@ -32,10 +36,11 @@ function pdo(): PDO {
       ]
     );
     return $pdo;
-  } catch (PDOException $e) {
-    jexit(500, ['success'=>false,'error'=>$e->getMessage()]);
+  } catch (Throwable $e) {
+    jexit(500, ['success'=>false,'error'=>'DB: '.$e->getMessage()]);
   }
 }
+
 function table_exists(PDO $pdo, string $name): bool {
   $st = $pdo->prepare("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
   $st->execute([$name]);
@@ -46,12 +51,28 @@ function view_exists(PDO $pdo, string $name): bool {
   $st->execute([$name]);
   return (bool)$st->fetchColumn();
 }
+function column_exists(PDO $pdo, string $table, string $column): bool {
+  $st = $pdo->prepare("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+  $st->execute([$table,$column]);
+  return (bool)$st->fetchColumn();
+}
+function first_existing_table(PDO $pdo, array $candidates): ?string {
+  foreach ($candidates as $t) if (table_exists($pdo,$t)) return $t;
+  return null;
+}
+function first_existing_column(PDO $pdo, string $table, array $candidates): ?string {
+  foreach ($candidates as $c) if (column_exists($pdo,$table,$c)) return $c;
+  return null;
+}
+
 function get_my_company(PDO $pdo, int $uid): ?int {
   $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user=?");
   $st->execute([$uid]);
   $v = $st->fetchColumn();
   return $v !== false && $v !== null ? (int)$v : null;
 }
+
+/* Admin master via tabela aprovadores (habilitado=1, tudo=1) */
 function is_master(PDO $pdo, int $uid): bool {
   if (!table_exists($pdo, 'aprovadores')) return false;
   $st = $pdo->prepare("SELECT tudo, habilitado FROM aprovadores WHERE id_user=? LIMIT 1");
@@ -59,17 +80,12 @@ function is_master(PDO $pdo, int $uid): bool {
   $row = $st->fetch();
   return $row && (int)$row['habilitado']===1 && (int)$row['tudo']===1;
 }
-function to_int_array($arr): array {
-  if (!is_array($arr)) return [];
-  return array_values(array_unique(array_map(fn($v)=> (int)$v, $arr)));
-}
-function to_str_array($arr): array {
-  if (!is_array($arr)) return [];
-  return array_values(array_unique(array_map(fn($v)=> (string)$v, $arr)));
-}
+
 function company_name_expr(): string {
+  // usa alias "c" quando a tabela company existir
   return "COALESCE(c.organizacao, c.razao_social, CONCAT('Empresa #', c.id_company))";
 }
+
 function avatar_public_path(int $id): ?string {
   $base = __DIR__ . '/../assets/img/avatars/';
   foreach (['png','jpg','jpeg'] as $ext) {
@@ -78,6 +94,7 @@ function avatar_public_path(int $id): ?string {
   }
   return null;
 }
+
 /* v_user_access_summary: retorna ['consulta_R'=>..., 'edicao_W'=>...] ou '—' */
 function fetch_access_summary(PDO $pdo, int $userId): array {
   if (view_exists($pdo, 'v_user_access_summary')) {
@@ -88,13 +105,13 @@ function fetch_access_summary(PDO $pdo, int $userId): array {
   }
   return ['consulta_R'=>'—','edicao_W'=>'—'];
 }
+
 /* Resolve roles[] podendo vir como role_id (int) ou role_key (string) */
 function resolve_role_ids(PDO $pdo, array $rolesAny): array {
   if (!$rolesAny) return [];
   $nums = []; $keys = [];
   foreach ($rolesAny as $r) {
-    if (is_numeric($r)) $nums[] = (int)$r;
-    else $keys[] = (string)$r;
+    if (is_numeric($r)) $nums[] = (int)$r; else $keys[] = (string)$r;
   }
   $ids = [];
   if ($nums) {
@@ -111,8 +128,10 @@ function resolve_role_ids(PDO $pdo, array $rolesAny): array {
   }
   return array_values(array_unique($ids));
 }
-/* Busca roles do usuário para lista (como role_key p/ UI chips) */
+
+/* Busca roles do usuário (keys para chips) */
 function fetch_user_role_keys(PDO $pdo, int $userId): array {
+  if (!table_exists($pdo,'rbac_user_role') || !table_exists($pdo,'rbac_roles')) return [];
   $sql = "SELECT r.role_key
           FROM rbac_user_role ur
           JOIN rbac_roles r ON r.role_id = ur.role_id
@@ -122,14 +141,18 @@ function fetch_user_role_keys(PDO $pdo, int $userId): array {
   $st->execute([$userId]);
   return array_values(array_map('strval', array_column($st->fetchAll(), 'role_key')));
 }
-/* Busca roles do usuário para formulário (ids) */
+
+/* Busca roles do usuário (ids para formulário/perms) */
 function fetch_user_role_ids(PDO $pdo, int $userId): array {
+  if (!table_exists($pdo,'rbac_user_role')) return [];
   $st = $pdo->prepare("SELECT role_id FROM rbac_user_role WHERE user_id=? ORDER BY role_id");
   $st->execute([$userId]);
   return array_values(array_map('intval', array_column($st->fetchAll(), 'role_id')));
 }
-/* Busca overrides do usuário */
+
+/* Overrides do usuário */
 function fetch_user_overrides(PDO $pdo, int $userId): array {
+  if (!table_exists($pdo,'rbac_user_capability')) return [];
   $st = $pdo->prepare("SELECT capability_id, effect FROM rbac_user_capability WHERE user_id=? ORDER BY capability_id");
   $st->execute([$userId]);
   $rows = $st->fetchAll();
@@ -161,20 +184,35 @@ function safe_delete_user_rows(PDO $pdo, string $table, int $uid): void {
 }
 
 /* ----------------------- Auth ----------------------- */
-if (!isset($_SESSION['user_id'])) jexit(401, ['success'=>false,'error'=>'Não autenticado']);
+if (empty($_SESSION['user_id'])) jexit(401, ['success'=>false,'error'=>'Não autenticado']);
 $MEU_ID = (int)$_SESSION['user_id'];
-$pdo = pdo();
+$pdo    = pdo();
 $IS_MASTER = is_master($pdo, $MEU_ID);
 
 /* ----------------------- Router ----------------------- */
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');
 
-/* CSRF p/ POST */
+/* Aliases aceitos pelo front */
+$alias = [
+  'get_user'                => 'get',
+  'save_user'               => 'save',
+  'user_permissions'        => 'get_permissions',
+  'get_user_acl'            => 'get_permissions',
+  // aliases para os catálogos usados no modal
+  'departamentos_by_company'=> 'departamentos',
+  'cargos_niveis'           => 'niveis_cargo',
+  'niveis'                  => 'niveis_cargo',
+];
+if (isset($alias[$action])) $action = $alias[$action];
+
+/* CSRF em POST */
 if ($method === 'POST') {
   $sess = $_SESSION['csrf_token'] ?? '';
   $sent = $_POST['csrf_token'] ?? '';
-  if (!$sess || !$sent || !hash_equals($sess, $sent)) jexit(403, ['success'=>false,'error'=>'CSRF inválido']);
+  if (!$sess || !$sent || !hash_equals($sess, $sent)) {
+    jexit(403, ['success'=>false,'error'=>'CSRF inválido']);
+  }
 }
 
 /* ======================================================
@@ -182,17 +220,18 @@ if ($method === 'POST') {
  * ====================================================*/
 if ($method==='GET' && $action==='options') {
   $myCompanyId = get_my_company($pdo, $MEU_ID);
-  $nameExpr = company_name_expr();
+  $hasCompany  = table_exists($pdo,'company');
+  $nameExpr    = $hasCompany ? company_name_expr() : "CONCAT('Empresa #', COALESCE(id_company,'—'))";
 
   // companies
   try {
     if ($IS_MASTER) {
-      $companies = table_exists($pdo,'company')
-        ? $pdo->query("SELECT id_company, $nameExpr AS nome FROM company ORDER BY nome")->fetchAll()
+      $companies = $hasCompany
+        ? $pdo->query("SELECT c.id_company, $nameExpr AS nome FROM company c ORDER BY nome")->fetchAll()
         : [];
     } else {
-      if ($myCompanyId) {
-        $st = $pdo->prepare("SELECT id_company, $nameExpr AS nome FROM company WHERE id_company=?");
+      if ($myCompanyId && $hasCompany) {
+        $st = $pdo->prepare("SELECT c.id_company, $nameExpr AS nome FROM company c WHERE c.id_company=?");
         $st->execute([$myCompanyId]);
         $companies = $st->fetchAll();
       } else {
@@ -202,11 +241,19 @@ if ($method==='GET' && $action==='options') {
   } catch (Throwable $e) { $companies = []; }
 
   // roles (RBAC)
-  $roles = table_exists($pdo,'rbac_roles')
-    ? $pdo->query("SELECT role_id AS id, role_key, role_name, COALESCE(role_desc, role_name) AS descricao
-                   FROM rbac_roles
-                   WHERE is_active=1
-                   ORDER BY role_name")->fetchAll()
+  $roles = (table_exists($pdo,'rbac_roles'))
+    ? $pdo->query("
+        SELECT
+          role_id,
+          role_id   AS id,                          -- compat com UI
+          role_key,
+          role_name,
+          COALESCE(role_desc, role_name) AS role_desc,
+          COALESCE(role_desc, role_name) AS descricao
+        FROM rbac_roles
+        WHERE is_active=1
+        ORDER BY role_name
+      ")->fetchAll()
     : [];
 
   // capabilities (RBAC)
@@ -217,12 +264,14 @@ if ($method==='GET' && $action==='options') {
     : [];
 
   jexit(200, [
-    'success'     => true,
-    'companies'   => $companies,
-    'roles'       => $roles,
-    'capabilities'=> $capabilities,
-    'is_master'   => $IS_MASTER,
-    'my_company'  => $myCompanyId,
+    'success'      => true,
+    'companies'    => $companies,
+    'roles'        => $roles,
+    'capabilities' => $capabilities,
+    'is_master'    => $IS_MASTER,
+    'my_company'   => $myCompanyId,
+    'my_id'        => $MEU_ID,
+    'my_roles'     => fetch_user_role_keys($pdo, $MEU_ID),
   ]);
 }
 
@@ -248,7 +297,7 @@ if ($method==='GET' && $action==='list') {
     if (!$IS_MASTER) {
       $mc = get_my_company($pdo, $MEU_ID);
       if ($mc) { $conds[] = "u.id_company = ?"; $params[] = (int)$mc; }
-      else     { $conds[] = "1=0"; } // sem org vinculada
+      else     { $conds[] = "1=0"; } // sem org vinculada → nada listado
     } else {
       if ($compIn !== '' && $compIn !== 'all') {
         $conds[] = "u.id_company = ?"; $params[] = (int)$compIn;
@@ -261,9 +310,8 @@ if ($method==='GET' && $action==='list') {
       $like = "%{$q}%"; array_push($params, $like,$like,$like,$like);
     }
 
-    // por papel
+    // por papel (aceita id ou key)
     if ($roleIn !== '' && strtolower($roleIn) !== 'all') {
-      // aceita role_id numérico OU role_key textual
       if (is_numeric($roleIn)) {
         $conds[] = "EXISTS (SELECT 1 FROM rbac_user_role ur WHERE ur.user_id=u.id_user AND ur.role_id = ?)";
         $params[] = (int)$roleIn;
@@ -275,10 +323,14 @@ if ($method==='GET' && $action==='list') {
     }
 
     $whereSql = $conds ? 'WHERE '.implode(' AND ', $conds) : '';
-    $companyName = company_name_expr();
+
+    $hasCompany   = table_exists($pdo,'company');
+    $companyName  = $hasCompany ? company_name_expr()
+                                : "CONCAT('Empresa #', COALESCE(u.id_company,'—'))";
+    $joinCompany  = $hasCompany ? "LEFT JOIN company c ON c.id_company = u.id_company" : "";
 
     // total
-    $sqlCount = "SELECT COUNT(*) FROM usuarios u LEFT JOIN company c ON c.id_company=u.id_company $whereSql";
+    $sqlCount = "SELECT COUNT(*) FROM usuarios u $joinCompany $whereSql";
     $stmtCount = $pdo->prepare($sqlCount);
     $stmtCount->execute($params);
     $total = (int)$stmtCount->fetchColumn();
@@ -292,6 +344,15 @@ if ($method==='GET' && $action==='list') {
       ? "LEFT JOIN v_user_access_summary v ON v.user_id = u.id_user"
       : "";
 
+    // >>> ESSENCIAL: acrescenta IDs de departamento e nível/cargo (ou função) <<<
+    $hasDep   = column_exists($pdo,'usuarios','id_departamento');
+    $hasNivel = column_exists($pdo,'usuarios','id_nivel_cargo');
+    $hasFunc  = column_exists($pdo,'usuarios','id_funcao');
+
+    $selectExtra  = $hasDep   ? ", u.id_departamento" : ", NULL AS id_departamento";
+    $selectExtra .= $hasNivel ? ", u.id_nivel_cargo"  : ($hasFunc ? ", u.id_funcao AS id_nivel_cargo" : ", NULL AS id_nivel_cargo");
+    // <<< ESSENCIAL
+
     $sqlList = "
       SELECT
         u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
@@ -300,9 +361,10 @@ if ($method==='GET' && $action==='list') {
            FROM rbac_user_role ur
            JOIN rbac_roles r ON r.role_id=ur.role_id
           WHERE ur.user_id=u.id_user) AS roles_csv
+        $selectExtra
         $selectAccess
       FROM usuarios u
-      LEFT JOIN company c ON c.id_company = u.id_company
+      $joinCompany
       $joinAccess
       $whereSql
       ORDER BY u.id_user DESC
@@ -316,7 +378,7 @@ if ($method==='GET' && $action==='list') {
     $stmt->execute();
     $rows = $stmt->fetchAll();
 
-    // fallback se vazio
+    // fallback (vazio com filtros) — mostra últimos 100
     if ($total===0) {
       $rows = $pdo->query("
         SELECT u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
@@ -324,10 +386,11 @@ if ($method==='GET' && $action==='list') {
                (SELECT GROUP_CONCAT(r.role_key ORDER BY r.role_key SEPARATOR ',')
                   FROM rbac_user_role ur
                   JOIN rbac_roles r ON r.role_id=ur.role_id
-                 WHERE ur.user_id=u.id_user) AS roles_csv,
+                 WHERE ur.user_id=u.id_user) AS roles_csv
+               $selectExtra,
                NULL AS consulta_R, NULL AS edicao_W
         FROM usuarios u
-        LEFT JOIN company c ON c.id_company = u.id_company
+        $joinCompany
         ORDER BY u.id_user DESC
         LIMIT 100
       ")->fetchAll();
@@ -345,8 +408,14 @@ if ($method==='GET' && $action==='list') {
         'id_company'        => $r['id_company'] !== null ? (int)$r['id_company'] : null,
         'company_name'      => $r['company_name'],
         'roles'             => $roles,
+        'avatar'            => avatar_public_path((int)$r['id_user']),
         'can_edit'          => $IS_MASTER || ((int)$r['id_user']===$MEU_ID),
         'can_delete'        => $IS_MASTER && (int)$r['id_user']!==$MEU_ID && (int)$r['id_user']!==1,
+
+        // >>> ESSENCIAL: devolver IDs para o front mapear nomes nos chips <<<
+        'id_departamento'   => array_key_exists('id_departamento',$r) && $r['id_departamento'] !== null ? (int)$r['id_departamento'] : null,
+        'id_nivel_cargo'    => array_key_exists('id_nivel_cargo',$r) && $r['id_nivel_cargo'] !== null ? (int)$r['id_nivel_cargo'] : null,
+        // <<< ESSENCIAL
       ];
       if (isset($r['consulta_R']) || isset($r['edicao_W'])) {
         $u['access'] = [
@@ -371,7 +440,7 @@ if ($method==='GET' && $action==='list') {
 }
 
 /* ======================================================
- * GET — dados do usuário + roles(ids) + overrides + resumo
+ * GET — dados do usuário + roles(ids) + overrides + resumo (+ departamento/função)
  * ====================================================*/
 if ($method==='GET' && $action==='get') {
   $id = (int)($_GET['id'] ?? 0);
@@ -387,15 +456,28 @@ if ($method==='GET' && $action==='get') {
     }
   }
 
-  $st=$pdo->prepare("SELECT id_user, primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome,
-                            email_corporativo, telefone, empresa, id_company
-                     FROM usuarios WHERE id_user=?");
+  // incluir campos opcionais se existirem
+  $hasDep   = column_exists($pdo,'usuarios','id_departamento');
+  $hasNivel = column_exists($pdo,'usuarios','id_nivel_cargo');
+  $hasFunc  = column_exists($pdo,'usuarios','id_funcao');
+
+  $extra = '';
+  $extra .= $hasDep   ? ", id_departamento" : ", NULL AS id_departamento";
+  $extra .= $hasNivel ? ", id_nivel_cargo"  : ", NULL AS id_nivel_cargo";
+  $extra .= $hasFunc  ? ", id_funcao"       : ", NULL AS id_funcao";
+
+  $st=$pdo->prepare("
+      SELECT id_user, primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome,
+             email_corporativo, telefone, id_company
+             $extra
+        FROM usuarios WHERE id_user=?
+  ");
   $st->execute([$id]);
   $u=$st->fetch();
   if (!$u) jexit(404, ['success'=>false,'error'=>'Usuário não encontrado']);
 
-  $rolesIds   = table_exists($pdo,'rbac_user_role')        ? fetch_user_role_ids($pdo, $id)     : [];
-  $overrides  = table_exists($pdo,'rbac_user_capability')  ? fetch_user_overrides($pdo, $id)    : [];
+  $rolesIds   = fetch_user_role_ids($pdo, $id);
+  $overrides  = fetch_user_overrides($pdo, $id);
   $summary    = fetch_access_summary($pdo, $id);
   $avatarPath = avatar_public_path($id);
 
@@ -410,15 +492,15 @@ if ($method==='GET' && $action==='get_permissions') {
   if ($id<=0) jexit(400, ['success'=>false,'error'=>'ID inválido']);
   if (!$IS_MASTER && $id !== $MEU_ID) jexit(403, ['success'=>false,'error'=>'Sem permissão para ver permissões deste usuário.']);
 
-  $rolesIds  = table_exists($pdo,'rbac_user_role')       ? fetch_user_role_ids($pdo, $id)    : [];
-  $overrides = table_exists($pdo,'rbac_user_capability') ? fetch_user_overrides($pdo, $id)   : [];
+  $rolesIds  = fetch_user_role_ids($pdo, $id);
+  $overrides = fetch_user_overrides($pdo, $id);
   $summary   = fetch_access_summary($pdo, $id);
 
   jexit(200, ['success'=>true,'roles'=>$rolesIds,'overrides'=>$overrides,'summary'=>$summary]);
 }
 
 /* ======================================================
- * GET_ACCESS — resumo de acesso (R/W)
+ * GET_ACCESS — resumo de acesso (R/W) — opcional
  * ====================================================*/
 if ($method==='GET' && $action==='get_access') {
   $id = (int)($_GET['id'] ?? 0);
@@ -448,18 +530,98 @@ if ($method==='GET' && $action==='capabilities') {
 }
 
 /* ======================================================
- * SAVE — cria/edita usuário + roles + overrides
+ * DEPARTAMENTOS — catálogo por organização (para o modal)
+ * Query params aceitos: cid | company | company_id | id_company
+ * ====================================================*/
+if ($method==='GET' && $action==='departamentos') {
+  // aceita 'cid' (é o que o front envia)
+  $cid = (int)($_GET['cid'] ?? $_GET['company'] ?? $_GET['company_id'] ?? $_GET['id_company'] ?? 0);
+
+  // inclui dom_departamentos (primeira opção)
+  $table = first_existing_table($pdo, ['dom_departamentos','departamentos','okr_departamentos']);
+  if (!$table) jexit(200, ['success'=>true, 'items'=>[]]); // sem tabela → retorna vazio
+
+  // sinônimos de colunas
+  $idCol     = first_existing_column($pdo,$table, ['id_departamento','departamento_id','id']) ?? 'id';
+  $nameCol   = first_existing_column($pdo,$table, ['nome','nome_departamento','descricao','descricao_departamento','departamento','name','titulo']) ?? $idCol;
+  $compCol   = first_existing_column($pdo,$table, ['id_company','company_id','id_empresa','empresa_id','id_organizacao','organizacao_id','empresa']);
+  $activeCol = first_existing_column($pdo,$table, ['ativo','is_active','habilitado','status']);
+  $ordCol    = first_existing_column($pdo,$table, ['display_order','ordem','order','sort','pos','position']);
+  $codeCol   = first_existing_column($pdo,$table, ['codigo','sigla','cod']);
+
+  $select = "SELECT $idCol AS id, $nameCol AS nome"
+          . ($codeCol ? ", $codeCol AS codigo" : "")
+          . ($compCol ? ", $compCol AS id_company" : "")
+          . " FROM `$table`";
+
+  $baseConds = [];
+  if ($activeCol) $baseConds[] = "$activeCol = 1";
+  $orderBy = " ORDER BY " . ($ordCol ?: $nameCol);
+
+  // 1) Tentativa com filtro por empresa
+  $sql  = $select;
+  $args = [];
+  $conds = $baseConds;
+  if ($cid > 0 && $compCol) { $conds[] = "$compCol = ?"; $args[] = $cid; }
+  if ($conds) $sql .= " WHERE " . implode(' AND ', $conds);
+  $sql .= $orderBy;
+
+  $st = $pdo->prepare($sql);
+  $st->execute($args);
+  $items = $st->fetchAll();
+
+  // 2) Fallback: se não encontrou para a empresa escolhida, retorna catálogo global (sem filtrar company)
+  if ($cid > 0 && $compCol && empty($items)) {
+    $sql2 = $select;
+    if ($baseConds) $sql2 .= " WHERE " . implode(' AND ', $baseConds);
+    $sql2 .= $orderBy;
+    $items = $pdo->query($sql2)->fetchAll();
+  }
+
+  jexit(200, ['success'=>true, 'items'=>$items]);
+}
+
+/* ======================================================
+ * NIVEIS_CARGO — catálogo de funções/níveis (para o modal)
+ * ====================================================*/
+if ($method==='GET' && $action==='niveis_cargo') {
+  // inclui dom_niveis_cargo (primeira opção)
+  $table = first_existing_table($pdo, ['dom_niveis_cargo','niveis_cargo','cargos_niveis','niveis','funcoes','cargos','okr_funcoes','okr_niveis']);
+  if (!$table) jexit(200, ['success'=>true, 'items'=>[]]);
+
+  $idCol     = first_existing_column($pdo,$table, ['id_nivel','nivel_id','id','id_funcao','id_cargo']) ?? 'id';
+  $nameCol   = first_existing_column($pdo,$table, ['nome','nome_nivel','descricao','descricao_nivel','nivel','funcao','cargo','name','titulo']) ?? $idCol;
+  $ordCol    = first_existing_column($pdo,$table, ['ordem','order','sort','pos','position']);
+  $activeCol = first_existing_column($pdo,$table, ['ativo','is_active','habilitado','status']);
+
+  $selOrd = $ordCol ? "$ordCol AS ordem" : "0 AS ordem";
+  $sql = "SELECT $idCol AS id, $nameCol AS nome, $selOrd FROM `$table`";
+  $conds = [];
+  if ($activeCol) $conds[] = "$activeCol = 1";
+  if ($conds) $sql .= " WHERE ".implode(' AND ', $conds);
+  $sql .= " ORDER BY ".($ordCol ?: $nameCol);
+
+  $items = $pdo->query($sql)->fetchAll();
+  jexit(200, ['success'=>true, 'items'=>$items]);
+}
+
+/* ======================================================
+ * SAVE — cria/edita usuário + roles + overrides (+ depto/função)
  * ====================================================*/
 if ($method==='POST' && $action==='save') {
   $id         = (int)($_POST['id_user'] ?? 0);
   $primeiro   = trim((string)($_POST['primeiro_nome'] ?? ''));
   $ultimo     = trim((string)($_POST['ultimo_nome'] ?? ''));
-  $email      = trim((string)($_POST['email_corporativo'] ?? ''));
+  $email      = trim((string)($_POST['email'] ?? $_POST['email_corporativo'] ?? ''));
   $tel        = trim((string)($_POST['telefone'] ?? ''));
   $rawCompany = $_POST['id_company'] ?? null;
 
   $rolesAny   = $_POST['roles'] ?? [];
   $overAssoc  = $_POST['overrides'] ?? []; // overrides[cap_id] = ALLOW|DENY
+
+  // Departamento / Função (nível)
+  $in_dep   = (int)($_POST['id_departamento']  ?? 0);
+  $in_nivel = (int)($_POST['id_nivel_cargo']   ?? ($_POST['id_funcao'] ?? 0)); // aceita alias
 
   if ($primeiro==='' || $email==='') jexit(422, ['success'=>false,'error'=>'Nome e e-mail são obrigatórios.']);
   if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jexit(422, ['success'=>false,'error'=>'E-mail inválido.']);
@@ -474,13 +636,13 @@ if ($method==='POST' && $action==='save') {
     $myCompanyId = get_my_company($pdo, $MEU_ID);
     if ($myCompanyId > 0) $id_company = $myCompanyId;
     else jexit(422, ['success'=>false,'error'=>'Seu usuário não está vinculado a nenhuma organização.']);
-    // não permitir conceder admin_master
+    // não-master não concede admin_master
     if (is_array($rolesAny)) {
       $rolesAny = array_values(array_filter($rolesAny, fn($r)=> strtolower((string)$r) !== 'admin_master'));
     }
   }
 
-  // email duplicado
+  // e-mail duplicado
   $chk = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE email_corporativo = ? AND id_user <> ?");
   $chk->execute([$email, $id]);
   if ((int)$chk->fetchColumn() > 0) jexit(422, ['success'=>false,'error'=>'Já existe um usuário com este e-mail.']);
@@ -496,6 +658,11 @@ if ($method==='POST' && $action==='save') {
       if ($eff==='ALLOW' || $eff==='DENY') $over[(int)$capId] = $eff;
     }
   }
+
+  // colunas opcionais no schema
+  $hasDep   = column_exists($pdo,'usuarios','id_departamento');
+  $hasNivel = column_exists($pdo,'usuarios','id_nivel_cargo');
+  $hasFunc  = column_exists($pdo,'usuarios','id_funcao');
 
   $pdo->beginTransaction();
   try {
@@ -514,20 +681,27 @@ if ($method==='POST' && $action==='save') {
 
       $canChangeAcl = $IS_MASTER || $id===$MEU_ID;
 
-      $st = $pdo->prepare("
-        UPDATE usuarios
-           SET primeiro_nome = :p,
-               ultimo_nome   = :u,
-               email_corporativo = :e,
-               telefone      = :t,
-               id_company    = :c,
-               dt_alteracao  = NOW(),
-               id_user_alteracao = :me
-         WHERE id_user = :id
-      ");
+      // UPDATE dinâmico com campos opcionais
+      $sets = [
+        "primeiro_nome = :p",
+        "ultimo_nome = :u",
+        "email_corporativo = :e",
+        "telefone = :t",
+        "id_company = :c",
+        "dt_alteracao = NOW()",
+        "id_user_alteracao = :me"
+      ];
+      if ($hasDep)   $sets[] = "id_departamento = :dep";
+      if ($hasNivel) $sets[] = "id_nivel_cargo = :nivel";
+      elseif ($hasFunc) $sets[] = "id_funcao = :nivel"; // mapeia para id_funcao se não existir id_nivel_cargo
+
+      $sql = "UPDATE usuarios SET ".implode(', ',$sets)." WHERE id_user = :id";
+      $st = $pdo->prepare($sql);
       $st->execute([
         ':p'=>$primeiro, ':u'=>$ultimo, ':e'=>$email, ':t'=>$tel,
-        ':c'=>$id_company, ':me'=>$MEU_ID, ':id'=>$id
+        ':c'=>$id_company, ':me'=>$MEU_ID, ':id'=>$id,
+        ...($hasDep   ? [':dep'=>$in_dep] : []),
+        ...(($hasNivel || $hasFunc) ? [':nivel'=>$in_nivel] : []),
       ]);
 
       if ($canChangeAcl) {
@@ -547,18 +721,20 @@ if ($method==='POST' && $action==='save') {
         }
       }
     } else {
-      // INSERT
-      $st = $pdo->prepare("
-        INSERT INTO usuarios
-          (primeiro_nome, ultimo_nome, email_corporativo, telefone, id_company, dt_cadastro, ip_criacao, id_user_criador)
-        VALUES
-          (:p, :u, :e, :t, :c, NOW(), :ip, :me)
-      ");
-      $ip = $_SERVER['REMOTE_ADDR'] ?? null;
-      $st->execute([
+      // INSERT dinâmico
+      $cols = ['primeiro_nome','ultimo_nome','email_corporativo','telefone','id_company','dt_cadastro','ip_criacao','id_user_criador'];
+      $ph   = [':p',':u',':e',':t',':c','NOW()',':ip',':me'];
+      $params = [
         ':p'=>$primeiro, ':u'=>$ultimo, ':e'=>$email, ':t'=>$tel,
-        ':c'=>$id_company, ':ip'=>$ip, ':me'=>$MEU_ID
-      ]);
+        ':c'=>$id_company, ':ip'=>($_SERVER['REMOTE_ADDR'] ?? null), ':me'=>$MEU_ID
+      ];
+      if ($hasDep)   { $cols[]='id_departamento'; $ph[]=':dep'; $params[':dep']=$in_dep; }
+      if ($hasNivel) { $cols[]='id_nivel_cargo';  $ph[]=':nivel'; $params[':nivel']=$in_nivel; }
+      elseif ($hasFunc) { $cols[]='id_funcao';   $ph[]=':nivel'; $params[':nivel']=$in_nivel; }
+
+      $sql = "INSERT INTO usuarios (".implode(',',$cols).") VALUES (".implode(',',$ph).")";
+      $st  = $pdo->prepare($sql);
+      $st->execute($params);
       $id = (int)$pdo->lastInsertId();
 
       if (table_exists($pdo,'rbac_user_role') && $roleIds) {
@@ -592,7 +768,6 @@ if ($method==='POST' && $action==='save_permissions') {
   $overAssoc = $_POST['overrides'] ?? [];
 
   if (!$IS_MASTER) {
-    // não-master não concede admin_master
     if (is_array($rolesAny)) {
       $rolesAny = array_values(array_filter($rolesAny, fn($r)=> strtolower((string)$r) !== 'admin_master'));
     }
@@ -649,7 +824,7 @@ if ($method==='POST' && $action==='delete') {
     safe_delete_user_rows($pdo, 'rbac_user_capability', $id);
     safe_delete_user_rows($pdo, 'rbac_user_role',       $id);
 
-    // Legado (FK pode ter nomes distintos; a helper resolve)
+    // Tabelas legadas comuns (se existirem)
     safe_delete_user_rows($pdo, 'usuarios_permissoes',       $id);
     safe_delete_user_rows($pdo, 'usuarios_paginas',          $id);
     safe_delete_user_rows($pdo, 'usuarios_planos',           $id);
@@ -724,6 +899,18 @@ if ($method==='POST' && $action==='save_avatar_canvas') {
   if (file_put_contents($dest,$bin)===false) jexit(500, ['success'=>false,'error'=>'Falha ao gravar PNG']);
 
   jexit(200, ['success'=>true,'path'=>'/OKR_system/assets/img/avatars/'.$id.'.png']);
+}
+
+/* ======================================================
+ * ROLES_MATRIX — stub (somente leitura; evita "Ação inválida")
+ * ====================================================*/
+if ($method==='GET' && $action==='roles_matrix') {
+  jexit(200, [
+    'success'   => true,
+    'pages'     => [],
+    'roles'     => [],
+    'role_caps' => new stdClass()
+  ]);
 }
 
 /* ----------------------- Fallback ----------------------- */

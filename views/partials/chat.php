@@ -162,7 +162,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
 <div class="chat-container hidden" id="chat_container">
     <div class="chat-box">
         <div class="chat-header">
-            OKR Master
+            OKR Master (IA Especializada)
             <button id="chat_hide">&#9654;</button>
         </div>
         <div class="chat-messages" id="chat_messages">
@@ -230,21 +230,32 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    async function sendMessage(text) {
+        async function sendMessage(text) {
         appendMessage('user', text);
         try {
             const res = await fetch(`${window.location.origin}/OKR_system/api/chat_api.php`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({message: text})
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: text })
             });
-            const data = await res.json();
-            appendMessage('bot', data.reply || 'Sem resposta do servidor.');
+
+            const raw = await res.text(); // lê UMA vez
+            let data = {};
+            try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+            // *** PRIORIZE ERROR ***
+            const msg =
+            (data && typeof data.error === 'string' && data.error.trim()) ? `⚠️ ${data.error}` :
+            (data && typeof data.reply === 'string' && data.reply.trim()) ? data.reply :
+            (raw && raw.trim()) ? `⚠️ ${raw}` :
+            `⚠️ HTTP ${res.status}`;
+
+            appendMessage('bot', msg);
         } catch (e) {
             console.error(e);
-            appendMessage('bot', 'Erro ao processar sua mensagem.');
+            appendMessage('bot', '⚠️ Falha de rede ao chamar o servidor.');
         }
-    }
+        }
 
     openBtn.addEventListener('click', () => {
         container.classList.remove('hidden');

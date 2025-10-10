@@ -78,7 +78,8 @@ if (session_status() === PHP_SESSION_NONE) {
       <div class="cta-section">
         <h5>Primeira vez aqui?</h5>
         <p>Crie sua conta e gerencie seus OKRs na palma da mão:</p>
-        <a href="https://planningbi.com.br/OKR_system/cadastro_site"
+        <!-- <a href="https://planningbi.com.br/OKR_system/cadastro_site" -->
+        <a href="https://planningbi.com.br/acesso-antecipado-okr-bsc/"
            class="btn btn-primary w-100">
           Criar conta grátis
         </a>

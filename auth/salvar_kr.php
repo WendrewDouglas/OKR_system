@@ -37,6 +37,9 @@ set_exception_handler(function($ex){
 $logger = require dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__.'/../auth/acl.php';
+
+require_cap('W:kr@ORG', ['id_objetivo' => (int)($_POST['id_objetivo'] ?? 0)]);
 
 $MILESTONE_TABLE = 'milestones_kr';
 

@@ -15,6 +15,13 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/logger.php'; // << logger que grava em views/error_log
+require_once __DIR__.'/../auth/acl.php';
+
+// Gate automático pela tabela dom_paginas.requires_cap
+gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+if (($_GET['mode'] ?? '') === 'edit') {
+  require_cap('W:objetivo@ORG');
+}
 
 // ===== Correlação de requisição =====
 $REQ_ID = $_GET['req_id'] ?? ($_SERVER['HTTP_X_REQUEST_ID'] ?? bin2hex(random_bytes(8)));

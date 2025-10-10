@@ -10,6 +10,11 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 
+// ADICIONE estas 2 linhas:
+require_once __DIR__ . '/../auth/acl.php';
+gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+
+
 // Redireciona se não estiver logado
 if (!isset($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');

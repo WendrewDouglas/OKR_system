@@ -12,6 +12,9 @@ session_start();
 $logger = require dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__.'/../auth/acl.php';
+// criar objetivo
+require_cap('W:objetivo@ORG');
 
 // 2) ENV / API KEY
 $envFile = dirname(__DIR__) . '/.env';

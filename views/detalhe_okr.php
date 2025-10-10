@@ -10,7 +10,16 @@ if (isset($_GET['ajax'])) {
   session_start();
   require_once __DIR__ . '/../auth/config.php';
   require_once __DIR__ . '/../auth/functions.php';
+  require_once __DIR__.'/../auth/acl.php';
 
+  // Gate automático pela tabela dom_paginas.requires_cap
+  gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+  if (($_GET['mode'] ?? '') === 'edit') {
+    require_cap('W:objetivo@ORG');
+  }
+
+  require_cap('W:apontamento@ORG', ['id_kr' => $_POST['id_kr'] ?? null]);
+  require_cap('W:orcamento@ORG', ['id_orcamento' => (int)($_POST['id_orcamento'] ?? 0)]);
   header('Content-Type: application/json; charset=utf-8');
 
   if (!isset($_SESSION['user_id'])) {
