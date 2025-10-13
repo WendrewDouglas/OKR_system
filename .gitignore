@@ -1,3 +1,4 @@
 # Ignora variáveis de ambiente
 .env
 sftp.json
+.mov
