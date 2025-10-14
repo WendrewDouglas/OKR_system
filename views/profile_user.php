@@ -1,38 +1,79 @@
 <?php
 // views/profile_user.php
 
-// ===== DEV ONLY (remova em produção) =====
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+/* ==================== LOG & DEBUG ==================== */
+// Todos os erros vão para views/error_log (sem exibir na tela em prod)
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$__logFile = __DIR__ . '/error_log';
+if (!file_exists($__logFile)) { @touch($__logFile); }
+@ini_set('display_errors', 0);
+@ini_set('display_startup_errors', 0);
+@ini_set('log_errors', 1);
+@ini_set('error_log', $__logFile);
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
-  session_start();
-}
+// Handlers p/ warnings, exceptions e fatais
+set_error_handler(function($severity, $message, $file, $line) {
+  $uri = $_SERVER['REQUEST_URI'] ?? '';
+  $uid = $_SESSION['user_id'] ?? '-';
+  error_log("[PHP:$severity] $message in $file:$line | URI=$uri | UID=$uid");
+  return false;
+});
+set_exception_handler(function($ex){
+  $uri = $_SERVER['REQUEST_URI'] ?? '';
+  $uid = $_SESSION['user_id'] ?? '-';
+  error_log("[EXCEPTION] ".$ex->getMessage()." @ ".$ex->getFile().":".$ex->getLine()." | URI=$uri | UID=$uid");
+  http_response_code(500);
+  echo "Ocorreu um erro interno. Já registramos no log.";
+});
+register_shutdown_function(function(){
+  $e = error_get_last();
+  if ($e && in_array($e['type'], [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR])) {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $uid = $_SESSION['user_id'] ?? '-';
+    error_log("[FATAL] {$e['message']} in {$e['file']}:{$e['line']} | URI=$uri | UID=$uid");
+  }
+});
 
-// ===== Gate =====
+/* ==================== BOOT ==================== */
 if (!isset($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');
   exit;
 }
 $id_user = (int)$_SESSION['user_id'];
 
-// ===== CSRF =====
+// CSRF
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf = $_SESSION['csrf_token'];
 
-// ===== Config + helpers =====
+// Config
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php'; // sendPasswordResetEmail
-if (($_GET['mode'] ?? '') === 'edit') {
-  require_cap('W:objetivo@ORG');
-}
-// Gate automático pela tabela dom_paginas.requires_cap
-gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 
-// ===== Conexão =====
+// Polyfill p/ PHP 7.x
+if (!function_exists('str_contains')) {
+  function str_contains(string $haystack, string $needle): bool {
+    return $needle === '' ? true : (strpos($haystack, $needle) !== false);
+  }
+}
+
+// Gates opcionais
+$mode = $_GET['mode'] ?? '';
+if ($mode === 'edit') {
+  if (function_exists('require_cap')) {
+    require_cap('W:objetivo@ORG');
+  } else {
+    error_log('require_cap() não definido; ignorando verificação.');
+  }
+}
+if (function_exists('gate_page_by_path')) {
+  gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+} else {
+  error_log('gate_page_by_path() não definido; ignorando gate.');
+}
+
+/* ==================== DB ==================== */
 try {
   $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
   $pdoOptions = (isset($options) && is_array($options)) ? $options : [];
@@ -43,69 +84,128 @@ try {
   ];
   $pdo = new PDO($dsn, DB_USER, DB_PASS, $pdoOptions);
 } catch (PDOException $e) {
+  error_log("Falha ao conectar: ".$e->getMessage());
   http_response_code(500);
-  die("Erro ao conectar: " . $e->getMessage());
+  echo "Erro de conexão. Verifique o log.";
+  exit;
 }
 
-/* ---------- Paths dos avatares (galeria) ---------- */
+/* ==================== AVATARES: paths ==================== */
 $defaultsDir = realpath(__DIR__ . '/../assets/img/avatars/default_avatar') ?: (__DIR__ . '/../assets/img/avatars/default_avatar');
 $defaultsWeb = '/OKR_system/assets/img/avatars/default_avatar/';
 $defaultFile = 'default.png';
-
-// Garante pasta (só por segurança)
 if (!is_dir($defaultsDir)) @mkdir($defaultsDir, 0755, true);
 
-/* ---------- Helpers ---------- */
+/* ==================== Helpers ==================== */
 function mask_email_local(string $email): string {
   if (!str_contains($email, '@')) return $email;
   [$u, $d] = explode('@', $email, 2);
-  $uMasked = mb_substr($u, 0, 1) . str_repeat('*', max(0, mb_strlen($u)-1));
+  $sub = function_exists('mb_substr') ? 'mb_substr' : 'substr';
+  $len = function_exists('mb_strlen') ? 'mb_strlen' : 'strlen';
+  $uMasked = $sub($u, 0, 1) . str_repeat('*', max(0, $len($u)-1));
   return $uMasked . '@' . $d;
 }
 function gallery_file_exists(string $dir, string $file): bool {
   if ($file === '') return false;
   return is_file(rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $file);
 }
-
-/* ---------- Descobre o ID do avatar default (por filename) ---------- */
-$defaultAvatarId = null;
-try {
-  $q = $pdo->prepare("SELECT id FROM avatars WHERE filename = :fn AND active = 1 LIMIT 1");
-  $q->execute([':fn' => $defaultFile]);
-  $tmp = $q->fetchColumn();
-  if ($tmp !== false) $defaultAvatarId = (int)$tmp;
-} catch (Throwable $e) {
-  // silencioso; fallback tratado abaixo
+function arr_pluck(array $rows, string $k, string $v): array {
+  $out = [];
+  foreach ($rows as $r) $out[(string)$r[$k]] = (string)$r[$v];
+  return $out;
 }
 
-/* ---------- Carrega dados do usuário (com JOIN no avatar) ---------- */
-$stmt = $pdo->prepare("
-  SELECT u.*, a.filename AS avatar_filename
-  FROM usuarios u
-  LEFT JOIN avatars a ON a.id = u.avatar_id
-  WHERE u.id_user = :id
-  LIMIT 1
-");
-$stmt->execute([':id' => $id_user]);
-$user = $stmt->fetch() ?: [];
+/**
+ * Retorna pares id=>label de uma tabela dicionário via SHOW COLUMNS (sem INFORMATION_SCHEMA).
+ */
+function dict_options(PDO $pdo, string $table, array $idCandidates, array $labelCandidates, array $orderCandidates = ['ordem','posicao','nome','descricao','titulo','label'], string $where = '1') : array {
+  $cacheKey = 'dict_v2:' . DB_NAME . ':' . $table . ':' . md5(json_encode([$idCandidates,$labelCandidates,$orderCandidates,$where]));
+  if (function_exists('apcu_fetch')) {
+    $cached = apcu_fetch($cacheKey);
+    if ($cached !== false) return $cached;
+  }
 
-/* ---------- Flash (PRG) ---------- */
+  $cols = [];
+  try {
+    $st = $pdo->query("SHOW COLUMNS FROM `{$table}`");
+    $cols = array_map(function($r){ return $r['Field']; }, $st->fetchAll());
+  } catch (Throwable $e) {
+    error_log("SHOW COLUMNS falhou em {$table}: ".$e->getMessage());
+  }
+
+  $pick = function(array $cands, array $cols, $default=null){
+    foreach ($cands as $c) if (in_array($c, $cols, true)) return $c;
+    return $default;
+  };
+  $idCol    = $pick($idCandidates, $cols, 'id');
+  $labelCol = $pick($labelCandidates, $cols, $idCol);
+  $orderCol = $pick($orderCandidates, $cols, $labelCol);
+
+  try {
+    $sql = sprintf(
+      "SELECT `%s` AS id, `%s` AS label FROM `%s` WHERE %s ORDER BY `%s`",
+      str_replace('`','',$idCol),
+      str_replace('`','',$labelCol),
+      str_replace('`','',$table),
+      $where,
+      str_replace('`','',$orderCol)
+    );
+    $rows = $pdo->query($sql)->fetchAll();
+    $opts = arr_pluck($rows, 'id', 'label');
+    if (function_exists('apcu_store')) apcu_store($cacheKey, $opts, 300);
+    return $opts;
+  } catch (Throwable $e) {
+    error_log("dict_options falhou em {$table}: ".$e->getMessage());
+    return [];
+  }
+}
+
+/* ==================== Dados do usuário ==================== */
+try {
+  $stmt = $pdo->prepare("
+    SELECT u.*, a.filename AS avatar_filename
+    FROM usuarios u
+    LEFT JOIN avatars a ON a.id = u.avatar_id
+    WHERE u.id_user = :id
+    LIMIT 1
+  ");
+  $stmt->execute([':id' => $id_user]);
+  $user = $stmt->fetch() ?: [];
+} catch (Throwable $e) {
+  error_log("Falha ao carregar usuário {$id_user}: ".$e->getMessage());
+  $user = [];
+}
+$maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
+
+/* ========= Dicionários (Departamentos / Níveis) ========= */
+$optsDepartamentos = dict_options(
+  $pdo, 'dom_departamentos',
+  ['id_departamento','id','codigo','cod'],
+  ['nome','descricao','titulo','label','departamento','nome_departamento']
+);
+$optsNiveis = dict_options(
+  $pdo, 'dom_niveis_cargo',
+  ['id_nivel_cargo','id','nivel'],
+  ['descricao','nome','nivel','titulo','label']
+);
+
+/* ==================== Flash (PRG) ==================== */
 $success = $_SESSION['success_message'] ?? '';
 $errors  = $_SESSION['error_messages'] ?? [];
 unset($_SESSION['success_message'], $_SESSION['error_messages']);
 
-/* ---------- Processamento POST ---------- */
+/* ==================== POST ==================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // CSRF
-  if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+  $postedToken = isset($_POST['csrf_token']) ? (string)$_POST['csrf_token'] : '';
+  if (!hash_equals($_SESSION['csrf_token'], $postedToken)) {
     $_SESSION['error_messages'][] = 'Falha de segurança (CSRF). Recarregue a página.';
-    header('Location: ' . $_SERVER['REQUEST_URI']);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
     exit;
   }
 
   $action = $_POST['action'] ?? '';
 
-  // Reset de senha
   if ($action === 'reset_password') {
     try {
       $token   = bin2hex(random_bytes(16));
@@ -120,20 +220,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $to = (string)$emailStmt->fetchColumn();
 
       if ($to && sendPasswordResetEmail($to, $token)) {
-        $_SESSION['success_message'] = "E-mail de recuperação enviado para <strong>" . htmlspecialchars(mask_email_local($to)) . "</strong>.";
+        $_SESSION['success_message'] = "Enviamos um link de <strong>alteração de senha</strong> para <strong>" . htmlspecialchars($maskedEmail) . "</strong>.";
       } else {
-        $_SESSION['error_messages'][] = 'Não foi possível enviar o e-mail de recuperação.';
+        $_SESSION['error_messages'][] = 'Não foi possível enviar o e-mail de alteração de senha.';
       }
     } catch (Throwable $e) {
-      $_SESSION['error_messages'][] = 'Erro ao solicitar recuperação de senha.';
+      error_log("reset_password falhou: ".$e->getMessage());
+      $_SESSION['error_messages'][] = 'Erro ao solicitar alteração de senha.';
     }
-    header('Location: ' . $_SERVER['REQUEST_URI']);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
     exit;
   }
 
-  // Remover avatar -> aplica avatar_id = (ID do default.png) OU NULL se não encontrado
   if ($action === 'remove_avatar') {
     try {
+      // Descobre ID do default
+      $defaultAvatarId = null;
+      $q = $pdo->prepare("SELECT id FROM avatars WHERE filename = :fn AND active = 1 LIMIT 1");
+      $q->execute([':fn' => 'default.png']);
+      $tmp = $q->fetchColumn();
+      if ($tmp !== false) $defaultAvatarId = (int)$tmp;
+
       if ($defaultAvatarId !== null) {
         $st = $pdo->prepare("
           UPDATE usuarios
@@ -144,7 +251,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         $st->execute([':defid' => $defaultAvatarId, ':u' => $id_user, ':id' => $id_user]);
       } else {
-        // Fallback seguro (não deve ocorrer se a linha do default existe)
         $st = $pdo->prepare("
           UPDATE usuarios
              SET avatar_id = NULL,
@@ -155,39 +261,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st->execute([':u' => $id_user, ':id' => $id_user]);
       }
 
-      // Mantém o header/UX em sincronia imediatamente
-      $_SESSION['avatar_filename'] = $defaultFile;
+      $_SESSION['avatar_filename'] = 'default.png';
       $_SESSION['success_message'] = 'Avatar redefinido para o padrão.';
     } catch (Throwable $e) {
+      error_log("remove_avatar falhou: ".$e->getMessage());
       $_SESSION['error_messages'][] = 'Falha ao aplicar avatar padrão.';
     }
-    header('Location: ' . $_SERVER['REQUEST_URI']);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
     exit;
   }
 
-  // Escolher avatar da galeria -> grava avatar_id (FK)
   if ($action === 'choose_avatar') {
     $chosenId = (int)($_POST['chosen_id'] ?? 0);
     if ($chosenId <= 0) {
       $_SESSION['error_messages'][] = 'Selecione um avatar.';
-      header('Location: ' . $_SERVER['REQUEST_URI']);
+      header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
       exit;
     }
-
     try {
-      // Busca o avatar escolhido (ativo)
       $av = $pdo->prepare("SELECT id, filename FROM avatars WHERE id = :id AND active = 1 LIMIT 1");
       $av->execute([':id' => $chosenId]);
       $row = $av->fetch();
       if (!$row) {
         $_SESSION['error_messages'][] = 'Avatar inválido ou inativo.';
-        header('Location: ' . $_SERVER['REQUEST_URI']);
+        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
         exit;
       }
       $filename = (string)$row['filename'];
       if ($filename === '' || !gallery_file_exists($defaultsDir, $filename)) {
         $_SESSION['error_messages'][] = 'Arquivo de avatar não encontrado no servidor.';
-        header('Location: ' . $_SERVER['REQUEST_URI']);
+        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
         exit;
       }
 
@@ -200,74 +303,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ");
       $st->execute([':aid' => (int)$row['id'], ':u' => $id_user, ':id' => $id_user]);
 
-      $_SESSION['avatar_filename'] = $filename; // sincroniza header
+      $_SESSION['avatar_filename'] = $filename;
       $_SESSION['success_message'] = 'Avatar aplicado com sucesso.';
     } catch (Throwable $e) {
+      error_log("choose_avatar falhou: ".$e->getMessage());
       $_SESSION['error_messages'][] = 'Falha ao aplicar avatar.';
     }
-    header('Location: ' . $_SERVER['REQUEST_URI']);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
     exit;
   }
 
-  // Salvar demais dados
   if ($action === 'save_profile') {
     $pn  = trim($_POST['primeiro_nome'] ?? '');
     $un  = trim($_POST['ultimo_nome'] ?? '');
     $tel = trim($_POST['telefone'] ?? '');
-    $emp = trim($_POST['empresa'] ?? '');
-    $fx  = trim($_POST['faixa_qtd_funcionarios'] ?? '');
+
+    $idDept  = isset($_POST['id_departamento']) ? (int)$_POST['id_departamento'] : null;
+    $idNivel = isset($_POST['id_nivel_cargo']) ? (int)$_POST['id_nivel_cargo'] : null;
 
     if ($pn === '') {
       $_SESSION['error_messages'][] = 'Primeiro nome é obrigatório.';
-      header('Location: ' . $_SERVER['REQUEST_URI']);
+      header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
       exit;
     }
+
+    // Nulifica IDs que não existirem nos dicionários carregados
+    if ($idDept !== null  && !isset($optsDepartamentos[(string)$idDept])) $idDept  = null;
+    if ($idNivel !== null && !isset($optsNiveis[(string)$idNivel]))      $idNivel = null;
 
     try {
       $pdo->beginTransaction();
       $pdo->prepare("
         UPDATE usuarios SET
-          primeiro_nome          = :pn,
-          ultimo_nome            = :un,
-          telefone               = :tel,
-          empresa                = :emp,
-          faixa_qtd_funcionarios = :fx,
-          dt_alteracao           = NOW(),
-          id_user_alteracao      = :u
+          primeiro_nome     = :pn,
+          ultimo_nome       = :un,
+          telefone          = :tel,
+          id_departamento   = :dep,
+          id_nivel_cargo    = :niv,
+          dt_alteracao      = NOW(),
+          id_user_alteracao = :u
         WHERE id_user = :id
       ")->execute([
         ':pn'  => $pn,
-        ':un'  => $un ?: null,
-        ':tel' => $tel ?: null,
-        ':emp' => $emp ?: null,
-        ':fx'  => $fx ?: null,
+        ':un'  => ($un !== '' ? $un : null),
+        ':tel' => ($tel !== '' ? $tel : null),
+        ':dep' => $idDept,
+        ':niv' => $idNivel,
         ':u'   => $id_user,
         ':id'  => $id_user,
       ]);
       $pdo->commit();
+
       $_SESSION['success_message'] = 'Perfil salvo com sucesso.';
       $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // novo token
     } catch (Throwable $e) {
       if ($pdo->inTransaction()) $pdo->rollBack();
+      error_log("save_profile falhou: ".$e->getMessage());
       $_SESSION['error_messages'][] = 'Erro ao salvar perfil.';
     }
-    header('Location: ' . $_SERVER['REQUEST_URI']);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
     exit;
   }
 }
 
-/* ---------- Recarrega dados (GET após PRG) ---------- */
-$stmt = $pdo->prepare("
-  SELECT u.*, a.filename AS avatar_filename
-  FROM usuarios u
-  LEFT JOIN avatars a ON a.id = u.avatar_id
-  WHERE u.id_user = :id
-  LIMIT 1
-");
-$stmt->execute([':id' => $id_user]);
-$user = $stmt->fetch() ?: [];
+/* ==================== Recarrega (GET pós-PRG) ==================== */
+try {
+  $stmt = $pdo->prepare("
+    SELECT u.*, a.filename AS avatar_filename
+    FROM usuarios u
+    LEFT JOIN avatars a ON a.id = u.avatar_id
+    WHERE u.id_user = :id
+    LIMIT 1
+  ");
+  $stmt->execute([':id' => $id_user]);
+  $user = $stmt->fetch() ?: [];
+} catch (Throwable $e) {
+  error_log("Falha ao recarregar usuário {$id_user}: ".$e->getMessage());
+  $user = [];
+}
 
-/* ---------- Telefone formatado ---------- */
+/* ==================== Formata Telefone ==================== */
 $raw = (string)($user['telefone'] ?? '');
 $d = preg_replace('/\D+/', '', $raw);
 if (strpos($d, '55') === 0 && strlen($d) > 10) $d = substr($d, 2);
@@ -275,31 +390,21 @@ $telFmt = strlen($d) === 11
   ? sprintf('(%s) %s-%s', substr($d,0,2), substr($d,2,5), substr($d,7,4))
   : $raw;
 
-/* ---------- Avatar atual ---------- */
+/* ==================== Avatar atual ==================== */
 $avatarFilename = $defaultFile;
-
-// 1) cache de sessão
-if (!empty($_SESSION['avatar_filename'])) {
-  $candidate = (string)$_SESSION['avatar_filename'];
-  if ($candidate !== '' && gallery_file_exists($defaultsDir, $candidate)) {
-    $avatarFilename = $candidate;
-  }
-}
-// 2) filename via JOIN
-elseif (!empty($user['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$user['avatar_filename'])) {
+if (!empty($_SESSION['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$_SESSION['avatar_filename'])) {
+  $avatarFilename = (string)$_SESSION['avatar_filename'];
+} elseif (!empty($user['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$user['avatar_filename'])) {
   $avatarFilename = (string)$user['avatar_filename'];
   $_SESSION['avatar_filename'] = $avatarFilename;
 }
-
-// 3) fallback
 if (!gallery_file_exists($defaultsDir, $avatarFilename)) {
   $avatarFilename = $defaultFile;
   $_SESSION['avatar_filename'] = $defaultFile;
 }
-
 $avatarUrl = $defaultsWeb . rawurlencode($avatarFilename);
 
-/* ---------- AJAX: lista paginada de avatares (DB + sync da pasta) ---------- */
+/* ==================== AJAX: lista de avatares ==================== */
 if (($_GET['ajax'] ?? '') === 'avatar_list') {
   if (!isset($_SESSION['user_id'])) { http_response_code(401); exit; }
   header('Content-Type: application/json; charset=utf-8');
@@ -312,45 +417,30 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
   $offset   = ($page - 1) * $pageSize;
 
   try {
-    // --- SINCRONIZAÇÃO LEVE (cache 5 min via APCu) ---
-    $syncKey = 'avatars_sync_flag_' . md5($defaultsDir);
-    $doSync = true;
-    if (function_exists('apcu_fetch')) {
-      $doSync = (apcu_fetch($syncKey) === false);
-    }
-    if ($doSync) {
-      $files = glob($defaultsDir . '/*.{png,jpg,jpeg,webp}', GLOB_BRACE) ?: [];
-      $ins = $pdo->prepare("INSERT IGNORE INTO avatars (filename, gender, active) VALUES (:f, :g, 1)");
-      foreach ($files as $path) {
-        $bn = basename($path);
-        if (strcasecmp($bn, 'default.png') === 0) continue; // não listar default
-        $gender = 'todos';
-        if (stripos($bn, 'fem') === 0)      $gender = 'feminino';
-        elseif (stripos($bn, 'user') === 0) $gender = 'masculino';
-        $ins->execute([':f' => $bn, ':g' => $gender]);
-      }
-      if (function_exists('apcu_store')) apcu_store($syncKey, 1, 300);
-    }
-    // --- FIM SYNC ---
-
-    // COUNT + SELECT paginado
     if ($filter === 'todos') {
-      $total = (int)$pdo->query("SELECT COUNT(*) FROM avatars WHERE active = 1")->fetchColumn();
-      $listStmt = $pdo->prepare("SELECT id, filename, gender
-                                   FROM avatars
-                                  WHERE active = 1
-                                  ORDER BY id
-                                  LIMIT :limit OFFSET :offset");
+      $total = (int)$pdo->query("SELECT COUNT(*) FROM avatars WHERE active = 1 AND filename <> 'default.png'")->fetchColumn();
+      $listStmt = $pdo->prepare("
+        SELECT id, filename, gender
+          FROM avatars
+         WHERE active = 1
+           AND filename <> 'default.png'
+         ORDER BY id
+         LIMIT :limit OFFSET :offset
+      ");
     } else {
-      $countStmt = $pdo->prepare("SELECT COUNT(*) FROM avatars WHERE active = 1 AND gender = :g");
+      $countStmt = $pdo->prepare("SELECT COUNT(*) FROM avatars WHERE active = 1 AND gender = :g AND filename <> 'default.png'");
       $countStmt->execute([':g' => $filter]);
       $total = (int)$countStmt->fetchColumn();
 
-      $listStmt = $pdo->prepare("SELECT id, filename, gender
-                                   FROM avatars
-                                  WHERE active = 1 AND gender = :g
-                                  ORDER BY id
-                                  LIMIT :limit OFFSET :offset");
+      $listStmt = $pdo->prepare("
+        SELECT id, filename, gender
+          FROM avatars
+         WHERE active = 1
+           AND gender = :g
+           AND filename <> 'default.png'
+         ORDER BY id
+         LIMIT :limit OFFSET :offset
+      ");
       $listStmt->bindValue(':g', $filter);
     }
 
@@ -378,12 +468,12 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     header('Cache-Control: private, max-age=300');
     echo json_encode(['items' => $items, 'total' => $total], JSON_UNESCAPED_SLASHES);
   } catch (Throwable $e) {
+    error_log("avatar_list AJAX falhou: ".$e->getMessage());
     http_response_code(500);
-    echo json_encode(['items' => [], 'total' => 0, 'error' => 'Falha ao consultar/sincronizar avatares']);
+    echo json_encode(['items' => [], 'total' => 0, 'error' => 'Falha ao consultar avatares']);
   }
   exit;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -392,43 +482,31 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Meu Perfil – OKR System</title>
 
-  <!-- Tema dinâmico (necessário p/ sidebar) -->
   <?php if (!defined('PB_THEME_LINK_EMITTED')) { define('PB_THEME_LINK_EMITTED', true); ?>
     <link rel="stylesheet" href="/OKR_system/assets/company_theme.php">
   <?php } ?>
 
-  <!-- CSS globais -->
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
-    :root{
-      --card: var(--bg1, #222222);
-      --border:#222733;
-      --soft:#0d1117;
-      --text:#eaeef6;
-      --muted:#a6adbb;
-      --gold: var(--bg2, #F1C40F);
-      --shadow: 0 10px 30px rgba(0,0,0,.20);
-    }
+    :root{ --card: var(--bg1, #222222); --border:#222733; --soft:#0d1117; --text:#eaeef6; --muted:#a6adbb; --gold: var(--bg2, #F1C40F); --shadow: 0 10px 30px rgba(0,0,0,.20); }
     body{ background:#fff !important; color:#111; }
     .content{ background: transparent; }
 
-    main.profile-wrapper{ padding:24px; display:grid; grid-template-columns:1fr; gap:24px; }
+    /* menos espaço no fim da página */
+    main.profile-wrapper{ padding:24px 24px 10px; display:grid; grid-template-columns:1fr; gap:24px; }
 
-    .profile-grid{ display:grid; grid-template-columns:360px 1fr; gap:20px; }
+    .profile-grid{ display:grid; grid-template-columns:360px 1fr; gap:20px; align-items:start; }
     @media (max-width:1000px){ .profile-grid{ grid-template-columns:1fr; } }
 
-    .card-dk{
-      background: linear-gradient(180deg, var(--card), var(--soft));
-      border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
-      color:var(--text); overflow:hidden;
-    }
+    .card-dk{ background: linear-gradient(180deg, var(--card), var(--soft)); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); color:var(--text); overflow:hidden; }
     .card-dk header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); background:#0b101a; }
     .card-dk header h2{ margin:0; font-size:1.05rem; letter-spacing:.2px; }
-    .card-dk .card-body{ padding:16px; }
+    /* stack vertical consistente e sem “respiro” extra no fim */
+    .card-dk .card-body{ padding:16px; display:flex; flex-direction:column; gap:12px; }
 
     .alert{ padding:10px 12px; border-radius:12px; border:1px solid; margin-bottom:12px; font-size:.95rem; }
     .alert-success{ background:#0f2b20; border-color:#1e7f5a; color:#c6f6d5; }
@@ -446,7 +524,8 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     .btn-outline{ background: transparent; }
     .btn-danger{ background:#7f1d1d; border-color:#b91c1c; }
     .btn-primary{ background:#111827; }
-    .btn-right{ display:flex; justify-content:flex-end; gap:10px; }
+    .btn-right{ display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+    .btn-full{ width:100%; justify-content:center; }
 
     .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     @media (max-width:700px){ .form-grid{ grid-template-columns:1fr; } }
@@ -457,26 +536,49 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     .split{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     @media (max-width:900px){ .split{ grid-template-columns:1fr; } }
 
-    /* -------- Modal Avatar (somente galeria) -------- */
+    /* ===== Bloco “Alterar senha” revisado (grid para alinhar tudo) ===== */
+    .security-block{
+      display:grid;
+      grid-template-columns: 44px 1fr auto; /* ícone | texto | botão */
+      align-items:center;
+      gap:12px;
+      background:#0c1118;
+      border:1px solid #1f2635;
+      border-radius:14px;
+      padding:12px;
+    }
+    .security-icon{
+      width:44px; height:44px; border-radius:12px;
+      background:#111827; border:1px solid #1f2635;
+      display:grid; place-items:center;
+    }
+    .security-icon i{ font-size:18px; color:#e5e7eb; }
+    .security-desc{ color:#cbd5e1; font-size:.95rem; line-height:1.35; }
+    .security-desc strong{ color:#fff; display:block; margin-bottom:2px; }
+    .security-actions .btn{ white-space:nowrap; }
+    @media (max-width:700px){
+      .security-block{ grid-template-columns: 1fr; }
+      .security-actions{ width:100%; }
+      .security-actions .btn{ width:100%; justify-content:center; }
+    }
+
+    /* -------- Modal Avatar -------- */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:1rem; z-index:2050; }
     .modal-backdrop.show{ display:flex; }
     .modal{ width:min(920px, 96vw); max-height:90vh; overflow:auto; background:#0f1420; color:#e5e7eb; border:1px solid #223047; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.4); }
     .modal header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #1f2a3a; background:#0b101a; }
     .modal .modal-body{ padding:16px; }
     .modal .modal-actions{ display:flex; gap:10px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #1f2a3a; background:#0b101a; }
-
     .icon-filters{ display:flex; gap:8px; align-items:center; margin:8px 0 12px; }
     .chip-icon{ border:1px solid #273244; background:#0c1118; color:#9ca3af; padding:8px 10px; border-radius:999px; display:inline-flex; gap:8px; align-items:center; cursor:pointer; font-weight:800; }
     .chip-icon i{ font-size:1rem; }
     .chip-icon.active{ background: #1c2a44; color:#fff; border-color:#3b5aa1; box-shadow:0 0 0 3px rgba(59,90,161,.25) inset; }
-
     .grid-avatars{ display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; }
     @media (max-width:680px){ .grid-avatars{ grid-template-columns: repeat(2, 1fr); } }
     .avatar-card{ background:#0c1118; border:1px solid #1f2635; border-radius:14px; padding:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
     .avatar-card img{ width:60%; height:auto; border-radius:10px; display:block; }
     .avatar-card.selected{ outline:3px solid var(--gold); box-shadow:0 0 0 4px rgba(241,196,15,.25); }
     .avatar-card .badge-g{ position:absolute; left:8px; top:8px; background:#111827; border:1px solid #1f2635; color:#cbd5e1; font-size:.75rem; padding:2px 6px; border-radius:999px; }
-
     .paginator{ display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
     .paginator .btn{ background:#0c1118; color:#e5e7eb; }
     .paginator .info{ color:#9aa4b2; font-size:.9rem; }
@@ -484,9 +586,9 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
   </style>
 </head>
 <body>
-  <?php include __DIR__.'/partials/sidebar.php'; ?>
+  <?php @include __DIR__.'/partials/sidebar.php'; ?>
   <div class="content">
-    <?php include __DIR__.'/partials/header.php'; ?>
+    <?php @include __DIR__.'/partials/header.php'; ?>
 
     <main class="profile-wrapper">
       <?php if ($success): ?>
@@ -514,7 +616,7 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
                 <img id="currentAvatar" src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar do usuário">
               </div>
 
-              <div class="btn-right" style="gap:8px; flex-wrap:wrap;">
+              <div class="btn-right">
                 <button type="button" class="btn btn-outline" id="btnOpenAvatarModal">
                   <i class="fa-solid fa-image"></i> Alterar avatar
                 </button>
@@ -529,15 +631,28 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
               </div>
             </div>
 
-            <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+            <hr style="border:none; border-top:1px solid var(--border);">
 
-            <form method="post" class="btn-right">
-              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
-              <input type="hidden" name="action" value="reset_password">
-              <button type="submit" class="btn">
-                <i class="fa-solid fa-envelope-circle-check"></i> Enviar e-mail de redefinição
-              </button>
-            </form>
+            <!-- Bloco de Alterar Senha (alinhado com grid) -->
+            <div class="security-block" role="group" aria-label="Alterar senha">
+              <div class="security-icon" aria-hidden="true">
+                <i class="fa-solid fa-lock-keyhole"></i>
+              </div>
+              <div class="security-desc">
+                <strong>Alterar senha</strong>
+                <span>Enviaremos um link de alteração para o seu e-mail corporativo <?= htmlspecialchars($maskedEmail) ?>.</span>
+              </div>
+              <div class="security-actions">
+                <form method="post">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                  <input type="hidden" name="action" value="reset_password">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar link
+                  </button>
+                </form>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -571,25 +686,38 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
                          value="<?= htmlspecialchars($telFmt) ?>" placeholder="(XX) 9XXXX-XXXX">
                 </div>
                 <div class="form-group">
-                  <label for="empresa">Empresa</label>
-                  <input id="empresa" name="empresa" class="form-control"
-                         value="<?= htmlspecialchars($user['empresa'] ?? '') ?>">
+                  <label>E-mail corporativo</label>
+                  <input class="form-control" value="<?= htmlspecialchars($user['email_corporativo'] ?? '') ?>" readonly>
                 </div>
               </div>
 
-              <div class="form-group" style="margin-top:12px;">
-                <label for="faixa_qtd_funcionarios">Faixa de funcionários</label>
-                <select id="faixa_qtd_funcionarios" name="faixa_qtd_funcionarios" class="form-select">
-                  <option value="">Selecione</option>
-                  <?php foreach (['1–100','101–500','501–1000','1001+'] as $opt): ?>
-                    <option value="<?= $opt ?>" <?= (($user['faixa_qtd_funcionarios'] ?? '') === $opt ? 'selected':'') ?>>
-                      <?= $opt ?>
-                    </option>
-                  <?php endforeach; ?>
-                </select>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="id_departamento">Departamento</label>
+                  <select id="id_departamento" name="id_departamento" class="form-select">
+                    <option value="">Selecione</option>
+                    <?php foreach ($optsDepartamentos as $id=>$nome): ?>
+                      <option value="<?= htmlspecialchars($id) ?>" <?= ((string)($user['id_departamento'] ?? '') === (string)$id ? 'selected':'') ?>>
+                        <?= htmlspecialchars($nome) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="id_nivel_cargo">Nível/Cargo</label>
+                  <select id="id_nivel_cargo" name="id_nivel_cargo" class="form-select">
+                    <option value="">Selecione</option>
+                    <?php foreach ($optsNiveis as $id=>$label): ?>
+                      <option value="<?= htmlspecialchars($id) ?>" <?= ((string)($user['id_nivel_cargo'] ?? '') === (string)$id ? 'selected':'') ?>>
+                        <?= htmlspecialchars($label) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
               </div>
 
-              <div class="btn-right" style="margin-top:8px;">
+              <div class="btn-right">
                 <button type="submit" class="btn btn-primary">
                   <i class="fa-solid fa-floppy-disk"></i> Salvar alterações
                 </button>
@@ -657,8 +785,8 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
       });
     })();
 
-    // ===== Modal Avatar (somente galeria) =====
-    let TOTAL = 0; // preenchido pelo AJAX
+    // ===== Modal Avatar =====
+    let TOTAL = 0;
 
     const backdrop  = document.getElementById('avatarModal');
     const openBtn   = document.getElementById('btnOpenAvatarModal');
@@ -764,7 +892,6 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     pgPrev.addEventListener('click', ()=>{ if (page>1){ page--; fetchAndRender(); } });
     pgNext.addEventListener('click', ()=>{ if (page<totalPages()){ page++; fetchAndRender(); } });
 
-    // seleção + submit (mantém)
     form.addEventListener('submit', function(e){
       if (!chosenId.value) {
         e.preventDefault();
