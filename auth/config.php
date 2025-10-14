@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Carregamento de variáveis de ambiente a partir do .env na raiz do projeto.
  * - Usa vlucas/phpdotenv se disponível.
- * - Fallback: loader simples baseado em file().
+ * - Fallback: loader simples (roda SEMPRE se .env existir, sem sobrescrever o que já estiver no ambiente).
  * Mantém defines (DB_HOST, SMTP_HOST, etc.) para compatibilidade com o restante do sistema.
  */
 
@@ -23,26 +23,35 @@ if (is_file($AUTOLOAD)) {
     }
 }
 
-// ----- Fallback loader simples se variáveis essenciais não vierem -----
-if (!getenv('DB_HOST') && is_file($ENV_PATH) && is_readable($ENV_PATH)) {
+/**
+ * ===== ALTERAÇÃO ESSENCIAL =====
+ * Fallback loader: agora roda SEMPRE que o .env existir,
+ * em vez de depender de DB_HOST. Só injeta variável se ainda não estiver setada.
+ */
+if (is_file($ENV_PATH) && is_readable($ENV_PATH)) {
     $lines = file($ENV_PATH, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
+        if ($line === '' || (isset($line[0]) && $line[0] === '#')) continue;
         $pos = strpos($line, '=');
         if ($pos === false) continue;
+
         $name  = trim(substr($line, 0, $pos));
         $value = trim(substr($line, $pos + 1));
+
         // remove aspas envolventes
         if (($value[0] ?? '') === '"' && substr($value, -1) === '"') {
             $value = substr($value, 1, -1);
         } elseif (($value[0] ?? '') === "'" && substr($value, -1) === "'") {
             $value = substr($value, 1, -1);
         }
-        // injeta em getenv/$_ENV/$_SERVER
-        putenv("$name=$value");
-        $_ENV[$name]    = $value;
-        $_SERVER[$name] = $value;
+
+        // injeta apenas se ainda não existir no ambiente
+        if (getenv($name) === false) {
+            putenv("$name=$value");
+            $_ENV[$name]    = $value;
+            $_SERVER[$name] = $value;
+        }
     }
 }
 
@@ -68,7 +77,7 @@ if (!function_exists('env_int')) {
     }
 }
 
-// ----- Timezone e log (agora podem vir do .env) -----
+// ----- Timezone e log (podem vir do .env) -----
 date_default_timezone_set((string)env('TIMEZONE', 'America/Sao_Paulo'));
 
 ini_set('log_errors', '1');
@@ -123,8 +132,8 @@ define('SMTP_FROM_NAME',  (string)env('SMTP_FROM_NAME', 'OKR System'));
 define('APP_ENV',   (string)env('APP_ENV', 'production'));
 define('APP_DEBUG',  env_bool('APP_DEBUG', false));
 
-
 // ===== CAPTCHA / Security =====
+// (Mantidos; agora serão lidos do .env porque o fallback loader roda sempre)
 define('CAPTCHA_PROVIDER',     (string)env('CAPTCHA_PROVIDER', 'off')); // 'recaptcha' | 'hcaptcha' | 'off'
 define('CAPTCHA_SITE_KEY',     (string)env('CAPTCHA_SITE_KEY', ''));
 define('CAPTCHA_SECRET',       (string)env('CAPTCHA_SECRET', ''));
