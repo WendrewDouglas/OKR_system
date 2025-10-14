@@ -762,7 +762,8 @@ if ($method==='POST' && $action==='save_permissions') {
   $id = (int)($_POST['id_user'] ?? 0);
   if ($id<=0) jexit(422, ['success'=>false,'error'=>'ID inválido']);
 
-  if (!$IS_MASTER && $id !== $MEU_ID) jexit(403, ['success'=>false,'error'=>'Sem permissão para alterar ACL deste usuário.']);
+  if (!$IS_MASTER) jexit(403, ['success'=>false,'error'=>'Apenas admin master pode alterar papéis/overrides.']);
+
 
   $rolesAny  = $_POST['roles'] ?? [];
   $overAssoc = $_POST['overrides'] ?? [];

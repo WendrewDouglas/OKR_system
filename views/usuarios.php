@@ -572,11 +572,12 @@ function getNivelName(id){
 
 /* ===== Prioridade de papéis ===== */
 const ROLE_PRIORITY = {
-  'admin_master': 999,
-  'user_admin':   800,
-  'user_gestor':  700,
-  'user_editor':  600,
-  'user_viewer':  500
+  'admin_master': 600,
+  'gestor_master': 500,
+  'gestor_user': 400,
+  'user_admin': 300,
+  'user_colab': 200,
+  'user_guest': 100
 };
 function highestRoleKeyFromKeys(keys){
   const arr = (keys||[]).map(k=>String(k));
@@ -931,7 +932,7 @@ function userCard(_u){
         <div class="meta">
           <span class="badge"><i class="fa-regular fa-envelope"></i> ${u.email_corporativo||'—'}</span>
           <span class="badge"><i class="fa-regular fa-building"></i> ${u.company_name||'—'}</span>
-          ${u.telefone ? `<span class="badge"><i class="fa-regular fa-phone"></i> ${u.telefone}</span>` : ''}
+          ${u.telefone ? `<span class="badge"><i class="fa-brands fa-whatsapp"></i> ${u.telefone}</span>` : ''}
         </div>
         <div class="meta">
           <span class="badge" title="Departamento"><i class="fa-solid fa-sitemap"></i> ${dep}</span>
