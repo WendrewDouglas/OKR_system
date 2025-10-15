@@ -206,21 +206,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   $action = $_POST['action'] ?? '';
 
+  // SUBSTITUA todo o bloco if ($action === 'reset_password') { ... } por:
   if ($action === 'reset_password') {
     try {
-      $token   = bin2hex(random_bytes(16));
-      $expires = date('Y-m-d H:i:s', time() + 3600);
-      $pdo->prepare("
-        INSERT INTO usuarios_password_resets (user_id, token, expira_em)
-        VALUES (:uid, :tok, :exp)
-      ")->execute([':uid' => $id_user, ':tok' => $token, ':exp' => $expires]);
+      // Gera selector/verifier e hash, conforme functions.php
+      if (!function_exists('generateSelectorVerifier')) {
+        throw new RuntimeException('generateSelectorVerifier() não encontrada.');
+      }
+      [$selector, $verifier] = generateSelectorVerifier();
+      $verifierHash = function_exists('hashVerifier')
+        ? hashVerifier($verifier)
+        : hash_hmac('sha256', $verifier, APP_TOKEN_PEPPER);
 
+      $expires = date('Y-m-d H:i:s', time() + 3600);
+      $ipReq   = substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45);
+      $uaReq   = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 255);
+
+      // (Opcional) Rate limit — só chama se existir e não falhar
+      try {
+        if (function_exists('rateLimitResetRequestOrFail')) {
+          rateLimitResetRequestOrFail($pdo, $id_user, $ipReq);
+        }
+      } catch (Throwable $e) {
+        error_log('RESET_RATELIMIT_WARN: '.$e->getMessage());
+      }
+
+      // Persiste o pedido no formato esperado por password_reset.php
+      $ins = $pdo->prepare("
+        INSERT INTO usuarios_password_resets
+          (user_id, selector, verifier_hash, expira_em, ip_request, user_agent_request, created_at)
+        VALUES
+          (:uid, :sel, :vh, :exp, :ip, :ua, NOW())
+      ");
+      $ins->execute([
+        ':uid' => $id_user,
+        ':sel' => $selector,
+        ':vh'  => $verifierHash,
+        ':exp' => $expires,
+        ':ip'  => $ipReq,
+        ':ua'  => $uaReq,
+      ]);
+
+      // Busca e-mail do usuário e envia o link
       $emailStmt = $pdo->prepare("SELECT email_corporativo FROM usuarios WHERE id_user = :id");
       $emailStmt->execute([':id' => $id_user]);
       $to = (string)$emailStmt->fetchColumn();
 
-      if ($to && sendPasswordResetEmail($to, $token)) {
-        $_SESSION['success_message'] = "Enviamos um link de <strong>alteração de senha</strong> para <strong>" . htmlspecialchars($maskedEmail) . "</strong>.";
+      if ($to && sendPasswordResetEmail($to, $selector, $verifier)) {
+        $_SESSION['success_message'] =
+          "Enviamos um link de <strong>alteração de senha</strong> para <strong>" .
+          htmlspecialchars(mask_email_local($to)) . "</strong>.";
       } else {
         $_SESSION['error_messages'][] = 'Não foi possível enviar o e-mail de alteração de senha.';
       }
@@ -505,7 +540,6 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     .card-dk{ background: linear-gradient(180deg, var(--card), var(--soft)); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); color:var(--text); overflow:hidden; }
     .card-dk header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); background:#0b101a; }
     .card-dk header h2{ margin:0; font-size:1.05rem; letter-spacing:.2px; }
-    /* stack vertical consistente e sem “respiro” extra no fim */
     .card-dk .card-body{ padding:16px; display:flex; flex-direction:column; gap:12px; }
 
     .alert{ padding:10px 12px; border-radius:12px; border:1px solid; margin-bottom:12px; font-size:.95rem; }
@@ -536,32 +570,36 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
     .split{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     @media (max-width:900px){ .split{ grid-template-columns:1fr; } }
 
-    /* ===== Bloco “Alterar senha” revisado (grid para alinhar tudo) ===== */
+    /* ===== Bloco “Alterar senha” (sem ícone) ===== */
     .security-block{
-      display:grid;
-      grid-template-columns: 44px 1fr auto; /* ícone | texto | botão */
-      align-items:center;
-      gap:12px;
       background:#0c1118;
       border:1px solid #1f2635;
       border-radius:14px;
-      padding:12px;
+      padding:16px;
     }
-    .security-icon{
-      width:44px; height:44px; border-radius:12px;
-      background:#111827; border:1px solid #1f2635;
-      display:grid; place-items:center;
+    .security-content{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-start; /* alinhado à esquerda, limpo e consistente */
     }
-    .security-icon i{ font-size:18px; color:#e5e7eb; }
-    .security-desc{ color:#cbd5e1; font-size:.95rem; line-height:1.35; }
-    .security-desc strong{ color:#fff; display:block; margin-bottom:2px; }
-    .security-actions .btn{ white-space:nowrap; }
+    .security-desc{
+      color:#cbd5e1;
+      font-size:.95rem;
+      line-height:1.45;
+    }
+    .security-desc strong{
+      color:#fff;
+      display:block;
+      margin-bottom:4px;
+    }
+    .security-actions .btn{ width:auto; }
     @media (max-width:700px){
-      .security-block{ grid-template-columns: 1fr; }
-      .security-actions{ width:100%; }
       .security-actions .btn{ width:100%; justify-content:center; }
     }
 
+    /* Espaço entre formulário e botões na coluna direita */
+    .form-actions{ margin-top:16px; display:flex; justify-content:flex-end; }
     /* -------- Modal Avatar -------- */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:1rem; z-index:2050; }
     .modal-backdrop.show{ display:flex; }
@@ -633,23 +671,22 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
 
             <hr style="border:none; border-top:1px solid var(--border);">
 
-            <!-- Bloco de Alterar Senha (alinhado com grid) -->
+            <!-- Bloco de Alterar Senha (sem ícone, botão abaixo do texto) -->
             <div class="security-block" role="group" aria-label="Alterar senha">
-              <div class="security-icon" aria-hidden="true">
-                <i class="fa-solid fa-lock-keyhole"></i>
-              </div>
-              <div class="security-desc">
-                <strong>Alterar senha</strong>
-                <span>Enviaremos um link de alteração para o seu e-mail corporativo <?= htmlspecialchars($maskedEmail) ?>.</span>
-              </div>
-              <div class="security-actions">
-                <form method="post">
-                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
-                  <input type="hidden" name="action" value="reset_password">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar link
-                  </button>
-                </form>
+              <div class="security-content">
+                <div class="security-desc">
+                  <strong>Alterar senha</strong>
+                  <span>Enviaremos um link de alteração para o seu e-mail corporativo <?= htmlspecialchars($maskedEmail) ?>.</span>
+                </div>
+                <div class="security-actions">
+                  <form method="post">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                    <input type="hidden" name="action" value="reset_password">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-paper-plane"></i> Enviar link
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
 
@@ -717,7 +754,7 @@ if (($_GET['ajax'] ?? '') === 'avatar_list') {
                 </div>
               </div>
 
-              <div class="btn-right">
+              <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
                   <i class="fa-solid fa-floppy-disk"></i> Salvar alterações
                 </button>

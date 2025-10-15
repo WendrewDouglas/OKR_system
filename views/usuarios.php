@@ -910,9 +910,23 @@ function userCard(_u){
 
   const safeId = (u.id_user ?? '').toString();
   const name = `${u.primeiro_nome||''} ${u.ultimo_nome||''}`.trim() || (safeId ? ('#'+safeId) : '(sem id)');
-  const avatar = `<img class="avatar" src="/OKR_system/assets/img/avatars/${safeId||'0'}.png"
-                    onerror="this.onerror=null; this.src='/OKR_system/assets/img/avatars/${safeId||'0'}.jpg'; this.onerror=function(){this.src='/OKR_system/assets/img/avatars/${safeId||'0'}.jpeg';};"
-                    alt="Avatar de ${name}">`;
+  // preferir o caminho enviado pelo backend (igual ao header)
+  const primaryAvatar = (u.avatar && String(u.avatar).trim())
+    ? u.avatar
+    : `/OKR_system/assets/img/avatars/${safeId||'0'}.png`;
+
+  const avatar = `
+    <img class="avatar" src="${primaryAvatar}" loading="lazy"
+      alt="Avatar de ${name}"
+      onerror="
+        this.onerror=null;
+        const id='${safeId||'0'}';
+        // cascata compatível com a lógica antiga, mas só se o primary falhar
+        if (!this.dataset.fb) { this.dataset.fb='png'; this.src='/OKR_system/assets/img/avatars/'+id+'.png'; }
+        else if (this.dataset.fb==='png') { this.dataset.fb='jpg'; this.src='/OKR_system/assets/img/avatars/'+id+'.jpg'; }
+        else if (this.dataset.fb==='jpg') { this.dataset.fb='jpeg'; this.src='/OKR_system/assets/img/avatars/'+id+'.jpeg'; }
+      ">
+  `;
 
   const mainRoleKey = highestRoleKeyFromKeys(u.roles||[]);
   const roleHtml = roleChip(mainRoleKey);
@@ -1329,6 +1343,8 @@ async function openUserForm(id=null){
         const j = await apiFetchFlexible('get_user', { id: String(id) }, 'GET');
         const rawUser = j.user || j.data?.user || j.data || j;
         const u = normalizeUser(rawUser || {});
+        // garante avatar também vindo do get_user (top-level)
+        if (!u.avatar && j.avatar) u.avatar = j.avatar;
         $('#ufPrimeiro').value = u.primeiro_nome || '';
         $('#ufUltimo').value   = u.ultimo_nome   || '';
         $('#ufEmail').value    = u.email_corporativo || '';

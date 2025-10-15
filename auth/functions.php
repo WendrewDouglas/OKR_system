@@ -1,5 +1,5 @@
 <?php
-/**
+/**auth/functions.php
  * Funções de e-mail transacional (verificação e reset de senha)
  * - Prioriza SMTP (PHPMailer) com Titan
  * - Fallback para mail() com envelope -f
@@ -318,4 +318,76 @@ function sendEmailVerificationCode(string $to, string $code): bool {
     $fromName= defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'OKR System';
 
     return sendTransactionalMail($to, $subject, $html, $from, $fromName);
+}
+
+
+/* =======================================================================
+ *  NOVO: Helpers para fluxo de boas-vindas com criação de senha
+ * ======================================================================= */
+
+if (!function_exists('createPasswordReset')) {
+    /**
+     * Cria um reset de senha (selector + verifier) para o usuário e registra em usuarios_password_resets.
+     * Retorna [selector, verifier, expiraEmDateTimeStr].
+     */
+    function createPasswordReset(PDO $pdo, int $userId, string $ip = '', string $ua = '', int $ttlSeconds = 3600): array {
+        // Rate limit defensivo para não gerar múltiplos resets em massa
+        rateLimitResetRequestOrFail($pdo, $userId, $ip);
+
+        [$selector, $verifier] = generateSelectorVerifier();
+        $verifierHash = hashVerifier($verifier);
+
+        $sql = "
+            INSERT INTO usuarios_password_resets
+                (user_id, selector, verifier_hash, expira_em, created_at, ip_request, user_agent_request)
+            VALUES
+                (:uid,    :sel,     :vh,           DATE_ADD(NOW(), INTERVAL :ttl SECOND), NOW(), :ip, :ua)
+        ";
+        $st = $pdo->prepare($sql);
+        $st->execute([
+            ':uid' => $userId,
+            ':sel' => $selector,
+            ':vh'  => $verifierHash,
+            ':ttl' => $ttlSeconds,
+            ':ip'  => substr($ip ?? '', 0, 45),
+            ':ua'  => substr($ua ?? '', 255),
+        ]);
+
+        $expira = (new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get())))
+                    ->add(new DateInterval('PT' . max(1, (int)$ttlSeconds) . 'S'))
+                    ->format('Y-m-d H:i:s');
+
+        return [$selector, $verifier, $expira];
+    }
+}
+
+if (!function_exists('sendWelcomeEmailWithReset')) {
+    /**
+     * E-mail de boas-vindas com link para criar a senha (mesma página de reset).
+     */
+    function sendWelcomeEmailWithReset(string $to, string $name, ?string $orgName, string $selector, string $verifier): bool {
+        $base   = 'https://planningbi.com.br/OKR_system/views/password_reset.php';
+        $query  = http_build_query(['selector' => $selector, 'verifier' => $verifier]);
+        $link   = $base . '?' . $query;
+
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $orgTxt = $orgName ? " na <b>".htmlspecialchars($orgName, ENT_QUOTES, 'UTF-8')."</b>" : '';
+        $subject = 'Bem-vindo(a) ao OKR System';
+        $html = <<<HTML
+        <html><head><meta charset="UTF-8"><title>Boas-vindas</title></head>
+        <body style="font-family:Arial,Helvetica,sans-serif; font-size:15px; color:#111">
+          <p>Olá, <b>{$safeName}</b>!</p>
+          <p>Sua conta do OKR System foi criada{$orgTxt}. Para começar, crie sua senha no link abaixo (válido por 1 hora):</p>
+          <p><a href="{$link}" target="_blank" rel="noopener">Criar minha senha e acessar</a></p>
+          <p>Se você não estava esperando este e-mail, pode ignorá-lo.</p>
+          <hr style="border:none; border-top:1px solid #eee; margin:16px 0">
+          <p>PlanningBI – OKR System</p>
+        </body></html>
+        HTML;
+
+        $from     = defined('SMTP_FROM') ? SMTP_FROM : 'no-reply@planningbi.com.br';
+        $fromName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'OKR System';
+
+        return sendTransactionalMail($to, $subject, $html, $from, $fromName);
+    }
 }

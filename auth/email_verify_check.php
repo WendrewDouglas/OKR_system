@@ -1,5 +1,5 @@
 <?php
-/**
+/** auth/email_verify_check.php
  * Valida o código de verificação (5 dígitos) vinculado a um token.
  * - Entrada: JSON { token, code } OU POST token/code
  * - CSRF: cabeçalho X-CSRF-Token OU campo csrf_token (comparado à $_SESSION['csrf_token'])
