@@ -15,7 +15,8 @@ gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 if (($_GET['mode'] ?? '') === 'edit') {
   require_cap('W:objetivo@ORG');
 }
-require_cap('A:approval@ORG', ['id_orcamento' => (int)($_POST['id_orcamento'] ?? 0)]);
+// Regra de acesso a página de aprovação
+//require_cap('R:aprovacao@ORG', ['id_orcamento' => (int)($_POST['id_orcamento'] ?? 0)]);
 
 if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.php'); exit; }
 

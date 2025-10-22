@@ -665,10 +665,14 @@ try{
 <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 <style>
-:root{ --chat-w:0px; --border:#222733; --gold:var(--bg2, #F1C40F); }
+:root{
+  --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
+  --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
+  --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
+}
 body{ background:#fff !important; color:#111; }
 .content{ background:transparent; }
-.sidebar{ background:linear-gradient(180deg,#0f1420,#0a0f16) !important; color:#eaeef6 !important; border-right:1px solid var(--border) !important; }
+.sidebar{ background:var(--card); color:var(--gold); border-right:1px solid var(--border) !important; }
 .sidebar a{ color:#cbd5e1 !important; }
 .sidebar .active, .sidebar .current{ color:#fff !important; }
 .header{ background:#fff !important; color:#eaeef6 !important; }

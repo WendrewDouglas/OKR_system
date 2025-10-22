@@ -141,8 +141,8 @@ $csrf = $_SESSION['csrf_token'];
 
     .btn { border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
-    .btn-ghost{ background:#0c1118; }
-    .btn-primary{ background:#1f2937; }
+    .btn-ghost{ background:#0c1118;}
+    .btn-primary{ background:#1f2937;}
     .btn-danger{ border-color:#7f1d1d; background:rgba(127,29,29,.28); }
     .btn-gold{
       background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9);
@@ -150,6 +150,8 @@ $csrf = $_SESSION['csrf_token'];
       box-shadow:0 6px 20px rgba(246,195,67,.22);
     }
     .btn-gold:hover{ filter:brightness(.96); transform:translateY(-1px); box-shadow:0 10px 28px rgba(246,195,67,.28); }
+    #ufSave { background:#1f2937; color:#e5e7eb; }
+    #ufSave:disabled { background:#e5e7eb; color:#0b1020; }
 
     .toolbar{ position:sticky; top:64px; z-index:10; }
     .filters{

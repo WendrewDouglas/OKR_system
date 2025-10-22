@@ -185,9 +185,20 @@ $optsDepartamentos = dict_options(
 );
 $optsNiveis = dict_options(
   $pdo, 'dom_niveis_cargo',
-  ['id_nivel_cargo','id','nivel'],
-  ['descricao','nome','nivel','titulo','label']
+  // candidatos para a COLUNA ID
+  ['id_nivel_cargo','id_nivel','id_funcao','id_cargo','id'],
+  // candidatos para a COLUNA LABEL
+  ['descricao','nome','nivel','titulo','label','funcao','cargo','nome_nivel']
 );
+
+if (!$optsNiveis) {
+  try {
+    $cols = $pdo->query("SHOW COLUMNS FROM `dom_niveis_cargo`")->fetchAll(PDO::FETCH_ASSOC);
+    error_log('dom_niveis_cargo sem opções. Colunas encontradas: '.json_encode(array_column($cols,'Field')));
+  } catch (Throwable $e) {
+    error_log('Falha ao inspecionar dom_niveis_cargo: '.$e->getMessage());
+  }
+}
 
 /* ==================== Flash (PRG) ==================== */
 $success = $_SESSION['success_message'] ?? '';

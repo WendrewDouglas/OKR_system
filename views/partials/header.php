@@ -11,13 +11,30 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $userName    = $_SESSION['user_name']    ?? 'Usuário';
 $newMessages = (int)($_SESSION['new_messages'] ?? 0);
 
-// ===== Avatar (nova lógica: usuarios.avatar_id -> avatars.filename) =====
-$id_user         = $_SESSION['user_id'] ?? null;
-$avatarBaseWeb   = '/OKR_system/assets/img/avatars/default_avatar/';
-$avatarUrl       = $avatarBaseWeb . 'default.png';
+// ===== Avatar (usuarios.avatar_id -> avatars.filename) =====
+$id_user       = $_SESSION['user_id'] ?? null;
+$avatarBaseWeb = '/OKR_system/assets/img/avatars/default_avatar/'; // onde estão seus PNGs
+$avatarUrl     = $avatarBaseWeb . 'default.png';
 
-// Se já tiver em sessão (setado no login), usa direto
-if (!empty($_SESSION['avatar_filename']) && preg_match('/^[a-z0-9_.-]+\.png$/i', $_SESSION['avatar_filename'])) {
+// Validador simples para nomes (seu acervo é todo .png)
+$validPng = function($fn) {
+  return is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn);
+};
+
+/* >>>>>>> Correção ESSENCIAL do cache <<<<<<<
+   - Se houver avatar_filename na sessão, mas:
+     a) não houver avatar_user_id, OU
+     b) avatar_user_id != user_id atual,
+     então invalida o cache para forçar leitura correta.
+*/
+if (isset($_SESSION['avatar_filename'])) {
+  if (!isset($_SESSION['avatar_user_id']) || $_SESSION['avatar_user_id'] !== $id_user) {
+    unset($_SESSION['avatar_filename'], $_SESSION['avatar_user_id']);
+  }
+}
+
+// Se já tiver em sessão (cache do MESMO user), usa direto
+if (!empty($_SESSION['avatar_filename']) && $validPng($_SESSION['avatar_filename'])) {
   $avatarUrl = $avatarBaseWeb . $_SESSION['avatar_filename'];
 }
 // Senão, consulta no banco e faz cache em sessão
@@ -47,8 +64,9 @@ elseif ($id_user) {
       $st->execute([':id' => $id_user]);
       $fn = $st->fetchColumn();
 
-      if (is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn)) {
-        $_SESSION['avatar_filename'] = $fn; // cache
+      if ($validPng($fn)) {
+        $_SESSION['avatar_filename'] = $fn;        // cache
+        $_SESSION['avatar_user_id']  = $id_user;   // vínculo com o usuário atual
         $avatarUrl = $avatarBaseWeb . $fn;
       }
     }
@@ -118,8 +136,8 @@ try {
 
       // 4) Atualiza sessão se não houver cache ou se o hash mudou
       if (!$sesHash || $sesHash !== $dbHash) {
-        $_SESSION['company_logo_base64']  = $dbLogo;
-        $_SESSION['company_logo_hash']    = $dbHash;
+        $_SESSION['company_logo_base64']     = $dbLogo;
+        $_SESSION['company_logo_hash']       = $dbHash;
         $_SESSION['company_logo_company_id'] = $companyId;
       }
     }
@@ -139,119 +157,25 @@ try {
 ?>
 <!-- ====== HEADER ====== -->
 <style>
-/* Header styles */
-.header {
-  height: 60px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.menu-toggle {
-  font-size: 1.5rem;
-  cursor: pointer;
-  margin-right: 1rem;
-  color: #2C3E50;
-}
-.header .left {
-  display: flex;
-  align-items: center;
-}
-.header .left .logo-link img {
-  /* Mantém proporção e cresce até o limite abaixo */
-  height: auto;
-  width: auto;
-  max-height: 30px;
-  max-width: 240px;
-  object-fit: contain;
-  transition: transform 0.2s ease-in-out;
-}
-.header .left .logo-link:hover img {
-  transform: scale(1.1);
-}
-.header .right {
-  display: flex;
-  align-items: center;
-  position: relative;
-  gap: 16px; /* <- dá respiro entre envelope e avatar */
-}
-.notif-link {
-  position: relative;
-  display: inline-block;
-  line-height: 1;
-  color: #2C3E50;
-}
-.notif-link i {
-  font-size: 1.2rem;
-}
-.notif-link .badge {
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  display: none; /* começa escondido quando count=0 */
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 18px;
-  text-align: center;
-  box-shadow: 0 0 0 2px #fff; /* contorno para destacar no fundo branco */
-}
-.profile {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-}
-.profile img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
-  object-fit: cover;
-}
-.profile span {
-  color: #2C3E50;
-  font-weight: 500;
-}
-/* Profile dropdown menu */
-.profile-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: #fff;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  list-style: none;
-  margin: 0;
-  padding: 0.5rem 0;
-  min-width: 150px;
-  z-index: 200;
-}
+/* (estilos inalterados) */
+.header { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+.menu-toggle { font-size: 1.5rem; cursor: pointer; margin-right: 1rem; color: #2C3E50; }
+.header .left { display: flex; align-items: center; }
+.header .left .logo-link img { height: auto; width: auto; max-height: 30px; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
+.header .left .logo-link:hover img { transform: scale(1.1); }
+.header .right { display: flex; align-items: center; position: relative; gap: 16px; }
+.notif-link { position: relative; display: inline-block; line-height: 1; color: #2C3E50; }
+.notif-link i { font-size: 1.2rem; }
+.notif-link .badge { position: absolute; top: -6px; right: -8px; display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.profile { display: flex; align-items: center; cursor: pointer; position: relative; }
+.profile img { width: 32px; height: 32px; border-radius: 50%; margin-right: 0.5rem; object-fit: cover; }
+.profile span { color: #2C3E50; font-weight: 500; }
+.profile-menu { display: none; position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1); list-style: none; margin: 0; padding: 0.5rem 0; min-width: 150px; z-index: 200; }
 .profile.open .profile-menu { display: block; }
 .profile-menu li { padding: 0; }
-.profile-menu a {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 1rem;
-  color: #222222;
-  text-decoration: none;
-  transition: background 0.2s;
-}
+.profile-menu a { display: flex; align-items: center; padding: 0.5rem 1rem; color: #222222; text-decoration: none; transition: background 0.2s; }
 .profile-menu a:hover { background: #f1c40f; }
 .profile-menu a i { margin-right: 0.5rem; color: #222222; }
-
-/* Ajuste para não sobrepor a sidebar */
 .content { margin-left: var(--sidebar-width); transition: margin-left var(--transition-speed); }
 body.collapsed .content { margin-left: var(--sidebar-collapsed); }
 </style>
@@ -265,12 +189,9 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
   </div>
   <div class="right">
     <!-- Envelope + badge numérico -->
-    <a href="/OKR_system/views/notificacoes.php"
-       class="notif-link"
-       aria-label="Abrir notificações">
+    <a href="/OKR_system/views/notificacoes.php" class="notif-link" aria-label="Abrir notificações">
       <i class="fa-regular fa-envelope" aria-hidden="true"></i>
-      <span id="notifBadge" class="badge"
-            aria-live="polite"
+      <span id="notifBadge" class="badge" aria-live="polite"
             <?php if ($newMessages > 0): ?>style="display:inline-block"<?php endif; ?>>
         <?= $newMessages > 99 ? '99+' : ($newMessages > 0 ? (int)$newMessages : '') ?>
       </span>

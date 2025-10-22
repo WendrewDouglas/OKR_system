@@ -14,7 +14,7 @@ gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 if (($_GET['mode'] ?? '') === 'edit') {
   require_cap('W:objetivo@ORG');
 }
-require_cap('W:objetivo@ORG');
+//require_cap('W:objetivo@ORG');
 
 if (empty($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');
