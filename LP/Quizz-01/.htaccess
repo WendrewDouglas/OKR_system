@@ -1,0 +1,5 @@
+# Isola a LP do WordPress/SpeedyCache
+RewriteEngine Off
+
+# (Opcional) ainda assim proteja a listagem
+Options -Indexes
