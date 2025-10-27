@@ -15,6 +15,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../auth/acl.php';
+require_once __DIR__ . '/functions.php'; // <<< ADICIONADO: helpers de e-mail/reset
 
 /* ----------------------- Helpers ----------------------- */
 function jexit(int $code, array $payload) {
@@ -95,6 +96,15 @@ function avatar_public_path(int $id): ?string {
   return null;
 }
 
+/* Resolve a URL pública do avatar, priorizando avatars.filename (como no header) */
+function avatar_url_from_filename(?string $fn): ?string {
+  if (is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn)) {
+    return '/OKR_system/assets/img/avatars/default_avatar/'.$fn;
+  }
+  return null;
+}
+
+
 /* v_user_access_summary: retorna ['consulta_R'=>..., 'edicao_W'=>...] ou '—' */
 function fetch_access_summary(PDO $pdo, int $userId): array {
   if (view_exists($pdo, 'v_user_access_summary')) {
@@ -106,7 +116,7 @@ function fetch_access_summary(PDO $pdo, int $userId): array {
   return ['consulta_R'=>'—','edicao_W'=>'—'];
 }
 
-/* Resolve roles[] podendo vir como role_id (int) ou role_key (string) */
+/* Resolve role ids a partir de ids/keys */
 function resolve_role_ids(PDO $pdo, array $rolesAny): array {
   if (!$rolesAny) return [];
   $nums = []; $keys = [];
@@ -353,6 +363,10 @@ if ($method==='GET' && $action==='list') {
     $selectExtra .= $hasNivel ? ", u.id_nivel_cargo"  : ($hasFunc ? ", u.id_funcao AS id_nivel_cargo" : ", NULL AS id_nivel_cargo");
     // <<< ESSENCIAL
 
+    // >>> NOVO (AVATAR): join com avatars e filename
+    $joinAv = "LEFT JOIN avatars a ON a.id = u.avatar_id";
+    // <<< NOVO
+
     $sqlList = "
       SELECT
         u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
@@ -362,10 +376,12 @@ if ($method==='GET' && $action==='list') {
            JOIN rbac_roles r ON r.role_id=ur.role_id
           WHERE ur.user_id=u.id_user) AS roles_csv
         $selectExtra
-        $selectAccess
+        $selectAccess,
+        a.filename AS avatar_filename
       FROM usuarios u
       $joinCompany
       $joinAccess
+      $joinAv
       $whereSql
       ORDER BY u.id_user DESC
       LIMIT ? OFFSET ?
@@ -388,9 +404,11 @@ if ($method==='GET' && $action==='list') {
                   JOIN rbac_roles r ON r.role_id=ur.role_id
                  WHERE ur.user_id=u.id_user) AS roles_csv
                $selectExtra,
-               NULL AS consulta_R, NULL AS edicao_W
+               NULL AS consulta_R, NULL AS edicao_W,
+               a.filename AS avatar_filename
         FROM usuarios u
         $joinCompany
+        $joinAv
         ORDER BY u.id_user DESC
         LIMIT 100
       ")->fetchAll();
@@ -399,6 +417,13 @@ if ($method==='GET' && $action==='list') {
 
     $users = array_map(function($r) use($IS_MASTER, $MEU_ID){
       $roles = array_values(array_filter(array_map('trim', explode(',', (string)($r['roles_csv'] ?? '')))));
+
+      // NOVO: montar URL do avatar pela nova ordem de precedência
+      $fn = $r['avatar_filename'] ?? null;
+      $avatar = avatar_url_from_filename($fn);
+      if (!$avatar) $avatar = avatar_public_path((int)$r['id_user']);
+      if (!$avatar) $avatar = '/OKR_system/assets/img/avatars/default_avatar/default.png';
+
       $u = [
         'id_user'           => (int)$r['id_user'],
         'primeiro_nome'     => $r['primeiro_nome'],
@@ -408,7 +433,7 @@ if ($method==='GET' && $action==='list') {
         'id_company'        => $r['id_company'] !== null ? (int)$r['id_company'] : null,
         'company_name'      => $r['company_name'],
         'roles'             => $roles,
-        'avatar'            => avatar_public_path((int)$r['id_user']),
+        'avatar'            => $avatar, // <<< NOVO
         'can_edit'          => $IS_MASTER || ((int)$r['id_user']===$MEU_ID),
         'can_delete'        => $IS_MASTER && (int)$r['id_user']!==$MEU_ID && (int)$r['id_user']!==1,
 
@@ -462,15 +487,19 @@ if ($method==='GET' && $action==='get') {
   $hasFunc  = column_exists($pdo,'usuarios','id_funcao');
 
   $extra = '';
-  $extra .= $hasDep   ? ", id_departamento" : ", NULL AS id_departamento";
-  $extra .= $hasNivel ? ", id_nivel_cargo"  : ", NULL AS id_nivel_cargo";
-  $extra .= $hasFunc  ? ", id_funcao"       : ", NULL AS id_funcao";
+  $extra .= $hasDep   ? ", u.id_departamento" : ", NULL AS id_departamento";
+  $extra .= $hasNivel ? ", u.id_nivel_cargo"  : ", NULL AS id_nivel_cargo";
+  $extra .= $hasFunc  ? ", u.id_funcao"       : ", NULL AS id_funcao";
 
+  // NOVO: trazer filename do avatar via join
   $st=$pdo->prepare("
-      SELECT id_user, primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome,
-             email_corporativo, telefone, id_company
-             $extra
-        FROM usuarios WHERE id_user=?
+      SELECT u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
+             u.email_corporativo, u.telefone, u.id_company
+             $extra,
+             a.filename AS avatar_filename
+        FROM usuarios u
+        LEFT JOIN avatars a ON a.id = u.avatar_id
+       WHERE u.id_user=?
   ");
   $st->execute([$id]);
   $u=$st->fetch();
@@ -479,9 +508,17 @@ if ($method==='GET' && $action==='get') {
   $rolesIds   = fetch_user_role_ids($pdo, $id);
   $overrides  = fetch_user_overrides($pdo, $id);
   $summary    = fetch_access_summary($pdo, $id);
-  $avatarPath = avatar_public_path($id);
 
-  jexit(200, ['success'=>true,'user'=>$u,'roles'=>$rolesIds,'overrides'=>$overrides,'summary'=>$summary,'avatar'=>$avatarPath]);
+  // NOVO: montar URL final do avatar (filename -> arquivo por id -> default)
+  $fn = $u['avatar_filename'] ?? null;
+  $avatarUrl = avatar_url_from_filename($fn);
+  if (!$avatarUrl) $avatarUrl = avatar_public_path($id);
+  if (!$avatarUrl) $avatarUrl = '/OKR_system/assets/img/avatars/default_avatar/default.png';
+
+  // manter o avatar dentro do objeto user (mesmo padrão do list)
+  $u['avatar'] = $avatarUrl;
+
+  jexit(200, ['success'=>true,'user'=>$u,'roles'=>$rolesIds,'overrides'=>$overrides,'summary'=>$summary,'avatar'=>$avatarUrl]);
 }
 
 /* ======================================================
@@ -610,6 +647,8 @@ if ($method==='GET' && $action==='niveis_cargo') {
  * ====================================================*/
 if ($method==='POST' && $action==='save') {
   $id         = (int)($_POST['id_user'] ?? 0);
+  $isNewUser  = ($id <= 0); // <<< ADICIONADO: flag para saber se é INSERT
+
   $primeiro   = trim((string)($_POST['primeiro_nome'] ?? ''));
   $ultimo     = trim((string)($_POST['ultimo_nome'] ?? ''));
   $email      = trim((string)($_POST['email'] ?? $_POST['email_corporativo'] ?? ''));
@@ -748,6 +787,48 @@ if ($method==='POST' && $action==='save') {
     }
 
     $pdo->commit();
+
+    /* -----------------------------------------------------------------
+     * NOVO: e-mail de boas-vindas com link para criar a senha
+     * Somente quando for INSERT (novo usuário)
+     * ----------------------------------------------------------------- */
+    if ($isNewUser && $id > 0) {
+      try {
+        $ip = $_SERVER['REMOTE_ADDR']     ?? '';
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        // Nome da organização para o e-mail (se existir tabela company)
+        $orgName = null;
+        if ($id_company && table_exists($pdo,'company')) {
+          $stmtOrg = $pdo->prepare("SELECT ".company_name_expr()." AS nome FROM company c WHERE c.id_company=?");
+          $stmtOrg->execute([$id_company]);
+          $orgName = $stmtOrg->fetchColumn() ?: null;
+        }
+
+        // Gera o reset (1h) e envia boas-vindas com link de criação de senha
+        [$selector, $verifier, $expiraEm] = createPasswordReset($pdo, $id, $ip, $ua, 3600);
+
+        // Template de boas-vindas (ou use sendPasswordResetEmail se preferir)
+        $sent = sendWelcomeEmailWithReset(
+          $email,
+          trim($primeiro.' '.$ultimo),
+          $orgName,
+          $selector,
+          $verifier
+        );
+
+        app_log('WELCOME_RESET_SENT', [
+          'user_id' => $id,
+          'email'   => mask_email($email),
+          'sent'    => (bool)$sent,
+          'expires' => $expiraEm
+        ]);
+      } catch (Throwable $e) {
+        // Não quebra o fluxo de cadastro
+        app_log('WELCOME_RESET_FAIL', ['user_id'=>$id, 'error'=>$e->getMessage()]);
+      }
+    }
+
     jexit(200, ['success'=>true,'id_user'=>$id]);
   } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();

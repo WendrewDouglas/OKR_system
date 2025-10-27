@@ -141,8 +141,8 @@ $csrf = $_SESSION['csrf_token'];
 
     .btn { border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
-    .btn-ghost{ background:#0c1118; }
-    .btn-primary{ background:#1f2937; }
+    .btn-ghost{ background:#0c1118;}
+    .btn-primary{ background:#1f2937;}
     .btn-danger{ border-color:#7f1d1d; background:rgba(127,29,29,.28); }
     .btn-gold{
       background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9);
@@ -150,6 +150,8 @@ $csrf = $_SESSION['csrf_token'];
       box-shadow:0 6px 20px rgba(246,195,67,.22);
     }
     .btn-gold:hover{ filter:brightness(.96); transform:translateY(-1px); box-shadow:0 10px 28px rgba(246,195,67,.28); }
+    #ufSave { background:#1f2937; color:#e5e7eb; }
+    #ufSave:disabled { background:#e5e7eb; color:#0b1020; }
 
     .toolbar{ position:sticky; top:64px; z-index:10; }
     .filters{
@@ -910,9 +912,23 @@ function userCard(_u){
 
   const safeId = (u.id_user ?? '').toString();
   const name = `${u.primeiro_nome||''} ${u.ultimo_nome||''}`.trim() || (safeId ? ('#'+safeId) : '(sem id)');
-  const avatar = `<img class="avatar" src="/OKR_system/assets/img/avatars/${safeId||'0'}.png"
-                    onerror="this.onerror=null; this.src='/OKR_system/assets/img/avatars/${safeId||'0'}.jpg'; this.onerror=function(){this.src='/OKR_system/assets/img/avatars/${safeId||'0'}.jpeg';};"
-                    alt="Avatar de ${name}">`;
+  // preferir o caminho enviado pelo backend (igual ao header)
+  const primaryAvatar = (u.avatar && String(u.avatar).trim())
+    ? u.avatar
+    : `/OKR_system/assets/img/avatars/${safeId||'0'}.png`;
+
+  const avatar = `
+    <img class="avatar" src="${primaryAvatar}" loading="lazy"
+      alt="Avatar de ${name}"
+      onerror="
+        this.onerror=null;
+        const id='${safeId||'0'}';
+        // cascata compatível com a lógica antiga, mas só se o primary falhar
+        if (!this.dataset.fb) { this.dataset.fb='png'; this.src='/OKR_system/assets/img/avatars/'+id+'.png'; }
+        else if (this.dataset.fb==='png') { this.dataset.fb='jpg'; this.src='/OKR_system/assets/img/avatars/'+id+'.jpg'; }
+        else if (this.dataset.fb==='jpg') { this.dataset.fb='jpeg'; this.src='/OKR_system/assets/img/avatars/'+id+'.jpeg'; }
+      ">
+  `;
 
   const mainRoleKey = highestRoleKeyFromKeys(u.roles||[]);
   const roleHtml = roleChip(mainRoleKey);
@@ -1329,6 +1345,8 @@ async function openUserForm(id=null){
         const j = await apiFetchFlexible('get_user', { id: String(id) }, 'GET');
         const rawUser = j.user || j.data?.user || j.data || j;
         const u = normalizeUser(rawUser || {});
+        // garante avatar também vindo do get_user (top-level)
+        if (!u.avatar && j.avatar) u.avatar = j.avatar;
         $('#ufPrimeiro').value = u.primeiro_nome || '';
         $('#ufUltimo').value   = u.ultimo_nome   || '';
         $('#ufEmail').value    = u.email_corporativo || '';
