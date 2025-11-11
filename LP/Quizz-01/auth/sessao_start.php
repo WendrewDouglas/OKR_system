@@ -1,4 +1,7 @@
 <?php
+// .../auth/sessao_start.php
+declare(strict_types=1);
+
 require __DIR__ . '/_bootstrap.php';
 $in = json_input();
 

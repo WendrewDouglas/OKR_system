@@ -1,2 +1,9 @@
 DirectoryIndex index.php
 Options -Indexes -MultiViews
+
+RewriteEngine On
+RewriteBase /OKR_system/LP/Quizz-01/
+
+RewriteRule ^start/?$  views/start.php  [L]
+RewriteRule ^run/?$    views/run.php    [L]
+RewriteRule ^result/?$ views/result.php [L]

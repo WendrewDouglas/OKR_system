@@ -3,3 +3,11 @@ RewriteEngine Off
 
 # (Opcional) ainda assim proteja a listagem
 Options -Indexes
+
+
+RewriteEngine On
+RewriteBase /OKR_system/LP/Quizz-01/
+
+RewriteRule ^start/?$  views/start.php  [L]
+RewriteRule ^run/?$    views/run.php    [L]
+RewriteRule ^result/?$ views/result.php [L]
