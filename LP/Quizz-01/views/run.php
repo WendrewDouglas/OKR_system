@@ -1,7 +1,9 @@
 <?php
 // views/run.php
 require __DIR__ . '/partials/header.php';
-$sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
+
+$sid      = isset($_GET['sid']) ? trim($_GET['sid']) : '';
+$id_cargo = isset($_GET['id_cargo']) ? (int)$_GET['id_cargo'] : 0;
 ?>
 <div id="debugTop" style="background:#2a2f3a;color:#ffd166;padding:10px 14px;font:14px/1.4 system-ui;display:flex;justify-content:space-between;align-items:center;">
   <div><b>Debug:</b> SID =
@@ -98,7 +100,9 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  const SID = <?='"'.htmlspecialchars($sid, ENT_QUOTES).'"'?>;
+  const SID      = <?='"'.htmlspecialchars($sid, ENT_QUOTES).'"'?>;
+  const ID_CARGO = <?php echo json_encode($id_cargo, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+
   if (!SID) {
     alert('Sessão inválida. Voltando ao início.');
     location.href='/OKR_system/LP/Quizz-01/views/start.php';
@@ -194,7 +198,6 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
     const wrap = $('#qOptions');
     wrap.innerHTML = '';
     const canonic = (state.opcoes[p.id_pergunta] || p.opcoes || []).slice();
-    // embaralha a exibição, mas sempre posta id_opcao
     const shown = shuffle(canonic.map(x=>({...x})));
 
     shown.forEach(o=>{
@@ -227,7 +230,6 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
     updateStepper(state.idx, total);
     $('#qDomain').textContent = state.dominios[p.id_dominio]?.nome || '—';
 
-    // aplica glossário no enunciado (se houver)
     let texto = p.texto;
     try {
       const gloss = p.glossario_json ? JSON.parse(p.glossario_json) : null;
@@ -235,13 +237,11 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
     } catch(_) {}
     $('#qText').innerHTML = texto;
 
-    // limpa feedback e pinta opções
     $('#feedback').style.display='none';
     $('#fbCorrect').style.display='none';
     $('#fbChosen').style.display='none';
     paintOptions(p);
 
-    // estado do botão
     state.phase = 'confirm';
     $('#btnAction').textContent = (state.idx === total-1) ? 'Confirmar' : 'Confirmar';
     $('#btnPrev').disabled = (state.idx===0);
@@ -261,7 +261,14 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
 
   (async function init(){
     try{
-      const v = await api('GET', API.versaoAtiva);
+      // monta query para pedir a versão já filtrando por cargo
+      const params = new URLSearchParams();
+      params.set('slug', 'lp001');
+      if (ID_CARGO) {
+        params.set('id_cargo', String(ID_CARGO));
+      }
+      const v = await api('GET', API.versaoAtiva + '?' + params.toString());
+
       state.perguntas = v.perguntas||[];
       state.dominios = (v.dominios||[]).reduce((a,d)=>{a[d.id_dominio]=d; return a;}, {});
       state.perguntas.forEach(p=> state.opcoes[p.id_pergunta]=p.opcoes||[]);
@@ -290,7 +297,6 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
 
   document.getElementById('btnAction').addEventListener('click', async ()=>{
     const total = state.ordem.length;
-    // Fase 1: Confirmar => chama backend, exibe feedback, troca para Próxima/Ver resultado
     if (state.phase === 'confirm') {
       const wrap = $('#qOptions');
       const selected = wrap.querySelector('input[name="opt"]:checked');
@@ -308,10 +314,8 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
           tempo_na_tela_ms: timeMs
         });
 
-        // trava seleção
         wrap.querySelectorAll('input, .opt').forEach(el=> el.disabled = true);
 
-        // mostra feedback
         $('#feedback').style.display='block';
         if (ans.correta && ans.correta.explicacao) {
           const c = $('#fbCorrect');
@@ -324,7 +328,6 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
           ch.innerHTML = `<b>Sua escolha:</b> ${ans.escolhida.explicacao || '—'}`;
         }
 
-        // troca para próxima
         state.phase = 'next';
         $('#btnAction').textContent = (state.idx === total-1) ? 'Ver resultado' : 'Próxima';
         $('#btnAction').disabled = false;
@@ -336,7 +339,6 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
       return;
     }
 
-    // Fase 2: Próxima/Ver resultado
     if (state.phase === 'next') {
       if (state.idx === state.ordem.length - 1) {
         await finalizeQuiz();

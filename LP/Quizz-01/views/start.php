@@ -67,9 +67,14 @@ require __DIR__ . '/partials/header.php';
   .msg { margin-top:10px; font-size:14px; color:var(--muted); min-height:18px; }
   .msg.error { color:var(--danger); }
   .msg.warn { color:var(--warn); }
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width: 720px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
 </style>
 
 <script>
+  // === ENDPOINTS ===
   const API_BASE = '/OKR_system/LP/Quizz-01/auth/';
   const API = {
     versaoAtiva: API_BASE + 'versao_ativa.php',
@@ -78,6 +83,10 @@ require __DIR__ . '/partials/header.php';
     cargosList:  API_BASE + 'cargos_list.php'
   };
 
+  // Slug da landing/quiz
+  const QUIZ_SLUG = 'lp001';
+
+  // === HELPERS ===
   const $ = s => document.querySelector(s);
   const isCorporate = e => !/@(gmail|hotmail|outlook|yahoo|icloud)\./i.test(e);
 
@@ -101,10 +110,20 @@ require __DIR__ . '/partials/header.php';
       debugBox.textContent += `\n[${time}] ${title}\n${payload}\n`;
     } catch (_) {}
   }
-  function clearDebug(){ if (debugBox) { debugBox.textContent = ''; debugBox.style.display='none'; } }
+  function clearDebug(){
+    if (debugBox) {
+      debugBox.textContent = '';
+      debugBox.style.display='none';
+    }
+  }
 
   async function api(method, url, data){
-    const opt = { method, headers:{'Content-Type':'application/json','Accept':'application/json'}, cache:'no-store' };
+    const opt = {
+      method,
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      cache:'no-store',
+      credentials:'same-origin'
+    };
     if (data) opt.body = JSON.stringify(data);
     const started = performance.now();
     const r = await fetch(url, opt);
@@ -132,13 +151,13 @@ require __DIR__ . '/partials/header.php';
     return json;
   }
 
-  // Carrega cargos
+  // === CARREGA CARGOS ===
   (async () => {
     const sel = $('#cargo');
     const msg = $('#startMsg');
     clearDebug();
     try {
-      const res = await fetch(API.cargosList, { headers:{ 'Accept':'application/json' }, cache:'no-store' });
+      const res = await fetch(API.cargosList, { headers:{ 'Accept':'application/json' }, cache:'no-store', credentials:'same-origin' });
       const body = await res.text();
       showDebug({endpoint:API.cargosList,status:res.status,ok:res.ok,body_preview:body.replace(/\s+/g,' ').slice(0,800)}, 'cargos_list fetch');
       let j = JSON.parse(body);
@@ -161,6 +180,7 @@ require __DIR__ . '/partials/header.php';
     }
   })();
 
+  // === SUBMISSÃO ===
   document.getElementById('formStart').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const msg = $('#startMsg'); msg.className='msg'; msg.textContent='';
@@ -172,10 +192,12 @@ require __DIR__ . '/partials/header.php';
     if(!isCorporate(email)){ msg.classList.add('warn'); msg.textContent='Prefira e-mail corporativo (ex.: nome@empresa.com.br).'; }
     if(!nome){ msg.classList.add('error'); msg.textContent='Informe seu nome.'; $('#nome').focus(); return; }
     if(!id_cargo){ msg.classList.add('error'); msg.textContent='Selecione sua posição profissional.'; $('#cargo').focus(); return; }
+    if(!$('#consent_termos').checked){ msg.classList.add('error'); msg.textContent='Para continuar, é necessário autorizar o uso dos dados para gerar o relatório.'; return; }
 
     try{
       $('#btnStart').disabled = true;
 
+      // 1) Cria lead
       const lead = await api('POST', API.leadStart, {
         email, nome, id_cargo,
         consent_termos: $('#consent_termos').checked,
@@ -189,11 +211,18 @@ require __DIR__ . '/partials/header.php';
         if (lead && lead.id_lead) localStorage.setItem('lead_id', String(lead.id_lead));
       } catch(_) {}
 
-      // >>> PASSA id_cargo para a escolha da versão
-      const v = await api('GET', API.versaoAtiva + '?id_cargo=' + encodeURIComponent(id_cargo));
+      // 2) Busca versão ativa já filtrando por slug/cargo
+      const qsVersao = new URLSearchParams({ slug: QUIZ_SLUG, id_cargo: String(id_cargo) }).toString();
+      const v = await api('GET', API.versaoAtiva + '?' + qsVersao);
+
+      // 3) Cria sessão
       const ses = await api('POST', API.sessStart, { id_versao: v.id_versao, id_lead: lead.id_lead });
 
-      window.location.href = '/OKR_system/LP/Quizz-01/views/run.php?sid=' + encodeURIComponent(ses.session_token);
+      // 4) Redireciona para execução (agora levando também o id_cargo)
+      window.location.href =
+        '/OKR_system/LP/Quizz-01/views/run.php?sid=' +
+        encodeURIComponent(ses.session_token) +
+        '&id_cargo=' + encodeURIComponent(id_cargo);
     }catch(err){
       msg.classList.add('error');
       msg.textContent = (err && err.message) ? err.message : String(err);
