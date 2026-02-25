@@ -1,0 +1,197 @@
+:root {
+  --white: #ffffff;
+  --gray-100: #f8f9fa;
+  --gray-900: #212529;
+  --font-sans: 'Inter', sans-serif;
+  --red-orange: #FF5722;
+  --amber: #FFC107;
+  --link-blue: #007bff;
+  --link-blue-hover: #0056b3;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--gray-900);
+}
+
+/* Logo */
+.logo {
+  max-width: 210px;
+  height: auto;
+  display: block;
+  margin: 0 auto 2rem;
+  transition: transform 0.2s ease-in-out; /* animação suave */
+}
+
+.logo:hover {
+  transform: scale(1.1); /* aumenta 10% no hover */
+}
+
+/* Ilustração */
+.illustration {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Form labels e espaçamento */
+.form-label {
+  font-weight: 500;
+  margin-bottom: .5rem;
+}
+.mb-3 {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Inputs e botão */
+.form-control {
+  border-radius: .5rem;
+  padding: .75rem;
+  width: 100%;
+}
+.btn-primary {
+  background-color: var(--red-orange);
+  border: none;
+  border-radius: .5rem;
+  padding: .75rem;
+  font-weight: 600;
+  color: var(--white) !important;
+  width: 100%;
+}
+/* Hover geral para botões fortes */
+.btn-primary:hover,
+.cta-section a.btn-primary:hover {
+  background-color: #000000;  /* fundo preto */
+  color: #ffffff !important;  /* texto branco */
+}
+
+/* Se tiver botão secundário com fundo forte, aplique também */
+.btn-secondary:hover {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+/* Link “Esqueci minha senha” */
+.password-reset-link {
+  display: block;
+  margin-top: .5rem;
+  font-size: .9rem;
+  color: var(--link-blue);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.password-reset-link:hover {
+  color: var(--link-blue-hover);
+  text-decoration: none;
+}
+
+/* Call to action */
+.cta-section {
+  margin-top: 0rem;
+  text-align: center;
+}
+.cta-section h5 {
+  font-size: 1rem;
+  margin-bottom: .5rem;
+}
+.cta-section p {
+  font-size: 0.85rem;     /* antes era ~0.95rem */
+  margin-bottom: .75rem;
+}
+.cta-section ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+.cta-section ul li {
+  font-size: 0.85rem;     /* antes herdava o padrão */
+  margin-bottom: .4rem;
+}.cta-section ul li::before {
+  content: '✔';
+  margin-right: .5rem;
+  color: var(--red-orange);
+}
+
+/* Mensagem de erro chamativa e centralizada */
+.error-message {
+  background-color: #fdecea;       /* vermelho claro */
+  border: 1px solid #f44336;       /* vermelho médio */
+  color: #b71c1c;                  /* vermelho escuro */
+  padding: 1rem;
+  border-radius: .5rem;
+  text-align: center;
+  font-size: .95rem;
+  max-width: 300px;
+  margin: 0 auto 1.5rem auto;
+}
+
+/* ===========================
+   Form Reset de Senha
+   =========================== */
+
+/* Faz o <form> dentro do .login-form-wrapper virar flex-col e centralizar */
+.login-form-wrapper > form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 360px;     /* largura máxima do conjunto */
+}
+
+/* Centraliza também labels dentro desse form */
+.login-form-wrapper > form .form-label {
+  text-align: center;
+  width: 100%;
+}
+
+/* Força largura fixa nos inputs apenas dentro deste form */
+.login-form-wrapper > form .form-control {
+  width: 100%;          /* 100% do max-width do form */
+  max-width: 300px;     /* controla o tamanho real */
+}
+
+/* Apenas o botão primário deste form — não todos os .btn */
+.login-form-wrapper > form .btn-primary {
+  width: 100%;
+  max-width: 200px;
+  margin-top: 1rem;     /* espaço acima do botão */
+}
+
+/* Remove margem extra do container de botão para não conflitar */
+.login-form-wrapper > form .mb-3 {
+  margin-bottom: 0;     /* ou ajuste conforme desejado */
+}
+
+/* === Formulário “Nova Senha” - inputs centralizados e iguais === */
+.login-form-wrapper > form .form-control {
+  width: 300px;       /* largura fixa igual para todos os campos */
+  max-width: 100%;    /* não ultrapassar em telas pequenas */
+  margin: 0 auto;     /* centraliza horizontalmente */
+  display: block;     /* para que margin auto funcione */
+}
+
+/* Dentro do login-card, dividimos em duas colunas (ilustração + form) */
+.login-card {
+  display: flex;
+}
+
+/* Aligna tudo na coluna direita ao centro */
+.login-form-wrapper {
+  flex: 1;                    /* ocupa todo o espaço disponível à direita */
+  display: flex;
+  flex-direction: column;     /* empilha logo, título, form, link */
+  align-items: center;        /* centraliza cada item horizontalmente */
+  padding: 2rem;              
+}
+
+/* Opcional: se quiser limitar a largura máxima do form */
+.login-form-wrapper > form {
+  width: 100%;
+  max-width: 360px;           /* ajusta ao desejado */
+}
+

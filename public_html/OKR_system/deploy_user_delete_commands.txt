@@ -1,0 +1,5 @@
+cd public_html/OKR_system
+put auth/usuarios_api.php auth/usuarios_api.php
+put views/usuarios.php views/usuarios.php
+put api/migrations/004_user_delete_prep.sql api/migrations/004_user_delete_prep.sql
+bye

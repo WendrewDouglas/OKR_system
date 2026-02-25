@@ -1,0 +1,64 @@
+cd public_html/OKR_system
+
+# === API (novos + alterados) ===
+cd api
+lcd api
+put chat_api.php
+put chat_context_builder.php
+put chat_history.php
+-mkdir migrations
+cd migrations
+lcd migrations
+put 001_chat_conversas.sql
+lcd ..
+cd ..
+lcd ..
+cd ..
+
+# === CSS ===
+cd assets/css
+lcd assets/css
+put base.css
+put components.css
+lcd ../..
+cd ../..
+
+# === Views (19 arquivos) ===
+cd views
+lcd views
+put aprovacao.php
+put config_style.php
+put dashboard.php
+put detalhe_okr.php
+put editar_key_result.php
+put mapa_estrategico.php
+put meus_okrs.php
+put notificacoes.php
+put novo_key_result.php
+put novo_objetivo.php
+put objetivo_edtar.php
+put objetivos_editar.php
+put objetivos_edtar.php
+put orcamento.php
+put organizacao.php
+put profile_user.php
+put relatorios_okrs.php
+put usuario_form.php
+put usuarios.php
+
+# === Partials (3 arquivos) ===
+cd partials
+lcd partials
+put breadcrumbs.php
+put chat.php
+put header.php
+lcd ..
+cd ..
+
+lcd ..
+cd ..
+
+# === Migration runner (temporario) ===
+put run_migration.php
+
+bye

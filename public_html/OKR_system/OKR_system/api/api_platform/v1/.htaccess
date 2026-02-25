@@ -1,0 +1,30 @@
+# /OKR_system/api/api_platform/v1/.htaccess
+
+Options -Indexes
+RewriteEngine On
+
+# Ajuste o RewriteBase para refletir exatamente o caminho público da pasta v1
+RewriteBase /OKR_system/api/api_platform/v1/
+
+# Se o arquivo/pasta existir, entrega direto (ex.: assets, docs)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Tudo o resto vai para o router
+RewriteRule ^ index.php [QSA,L]
+
+# Bloqueios básicos de segurança (Apache 2.4+)
+<IfModule mod_authz_core.c>
+  <FilesMatch "(^\.env$|^composer\.(json|lock)$|^phpunit\.xml$|\.log$)">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+# Fallback Apache 2.2 (se precisar)
+<IfModule !mod_authz_core.c>
+  <FilesMatch "(^\.env$|^composer\.(json|lock)$|^phpunit\.xml$|\.log$)">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,93 @@
+cd public_html/OKR_system
+
+# 1) Arquivos modificados
+lcd auth
+cd auth
+put acl.php
+put salvar_kr.php
+put salvar_objetivo.php
+lcd ..
+cd ..
+
+# 2) Helpers extraídos (NOVO diretório)
+mkdir auth/helpers
+cd auth/helpers
+lcd auth/helpers
+put cycle_calc.php
+put kr_helpers.php
+lcd ../..
+cd ../..
+
+# 3) composer.json atualizado
+put composer.json
+
+# 4) Health check
+cd tools
+lcd tools
+put health.php
+lcd ..
+cd ..
+
+# 5) Tests infrastructure
+mkdir tests
+cd tests
+lcd tests
+put .htaccess
+put phpunit.xml
+put bootstrap.php
+
+mkdir Helpers
+cd Helpers
+lcd Helpers
+put DbTestCase.php
+put HttpSmokeClient.php
+lcd ..
+cd ..
+
+mkdir Unit
+mkdir Unit/Acl
+cd Unit/Acl
+lcd Unit/Acl
+put ParseCapKeyTest.php
+put ActionMatchesTest.php
+put ScopeCoversTest.php
+put HasCapTest.php
+lcd ../..
+cd ../..
+
+mkdir Unit/Cycle
+cd Unit/Cycle
+lcd Unit/Cycle
+put CalcDatasAnualTest.php
+put CalcDatasSemestralTest.php
+put CalcDatasTrimestralTest.php
+put CalcDatasBimestralTest.php
+put CalcDatasMensalTest.php
+put CalcDatasPersonalizadoTest.php
+lcd ../..
+cd ../..
+
+mkdir Unit/KR
+cd Unit/KR
+lcd Unit/KR
+put ValidarObrigatoriosTest.php
+put MapScoreToQualidadeTest.php
+put GerarSerieDatasTest.php
+put InferirNaturezaSlugTest.php
+lcd ../..
+cd ../..
+
+mkdir Integration
+
+mkdir Smoke
+cd Smoke
+lcd Smoke
+put DbConnectionTest.php
+put ApiLoginSmokeTest.php
+lcd ..
+cd ..
+
+lcd ..
+cd ..
+
+bye

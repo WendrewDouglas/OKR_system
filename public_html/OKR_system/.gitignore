@@ -1,0 +1,49 @@
+# Ignora variáveis de ambiente
+.env
+sftp.json
+.MOV
+.mov
+*.mov
+*.MOV
+# === Python / venv ===
+Ambiente_Python/.venv/
+**/.venv/
+__pycache__/
+*.pyc
+
+# === Jupyter / cache ===
+.ipynb_checkpoints/
+.jupyter/
+
+# === Logs / temporários (NÃO versionar) ===
+error_log
+*/error_log
+views/error_log
+auth/error_log
+*.log
+
+# === OS / IDE ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === Node (se aparecer) ===
+node_modules/
+
+Ambiente_Python/.venv/
+**/.venv/
+__pycache__/
+*.pyc
+auth/error_log
+views/error_log
+*.log
+
+# Python virtualenv
+.venv/
+**/.venv/
+Ambiente_Python/.venv/
+
+# Cache Python
+__pycache__/
+*.pyc

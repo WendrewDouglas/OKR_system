@@ -1,7 +1,47 @@
-# Ignora variáveis de ambiente
+# Variáveis de ambiente e credenciais
 .env
 sftp.json
-.MOV
-.mov
+tmp_my.cnf
+
+# IDE
+.idea/
+
+# Claude Code
+.claude/
+
+# Vídeos
 *.mov
 *.MOV
+
+# Dependências (instalar via composer install / pip install)
+public_html/OKR_system/vendor/
+public_html/OKR_system/Ambiente_Python/.venv/
+node_modules/
+
+# Ambiente dev (cópia separada)
+public_html/dev-okr.planningbi.com.br/
+
+# Logs e runtime
+public_html/OKR_system/logs/
+public_html/OKR_system/error_log
+**/error_log
+
+# Backups e migrations locais
+backup_pre_migration_*.sql
+migration_lopa_data.sql
+
+# Uploads de usuários
+public_html/OKR_system/uploads/
+
+# WordPress core (não é código do projeto)
+public_html/wp-*
+public_html/xmlrpc.php
+public_html/license.txt
+public_html/readme.html
+public_html/index.php
+public_html/wp-content/
+public_html/r/
+
+# OS files
+.DS_Store
+Thumbs.db
