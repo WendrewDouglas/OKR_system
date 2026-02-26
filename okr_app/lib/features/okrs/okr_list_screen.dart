@@ -5,6 +5,7 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
+import '../shared/widgets/app_header.dart';
 
 final okrListProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final api = ref.read(apiClientProvider);
@@ -20,7 +21,7 @@ class OkrListScreen extends ConsumerWidget {
     final okrs = ref.watch(okrListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Meus OKRs')),
+      appBar: const AppHeader(),
       body: okrs.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Erro: $e')),

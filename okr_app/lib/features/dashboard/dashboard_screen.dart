@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/auth/auth_provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../shared/widgets/kpi_card.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/app_header.dart';
 
 final dashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final api = ref.read(apiClientProvider);
@@ -17,16 +17,10 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authProvider);
     final dashboard = ref.watch(dashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Olá, ${auth.userName}'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(dashboardProvider)),
-        ],
-      ),
+      appBar: const AppHeader(),
       body: dashboard.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),

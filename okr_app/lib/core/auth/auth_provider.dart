@@ -20,7 +20,14 @@ class AuthState {
 
   int get userId => (user?['id_user'] as int?) ?? 0;
   String get userName => (user?['primeiro_nome'] as String?) ?? '';
+  String get userFullName => '${(user?['primeiro_nome'] ?? '')} ${(user?['ultimo_nome'] ?? '')}'.trim();
   String get userEmail => (user?['email'] as String?) ?? '';
+  String get userRole => (user?['role_label'] as String?) ?? (user?['funcao'] as String?) ?? '';
+  String get userInitials {
+    final first = (user?['primeiro_nome'] as String?) ?? '';
+    final last = (user?['ultimo_nome'] as String?) ?? '';
+    return '${first.isNotEmpty ? first[0] : ''}${last.isNotEmpty ? last[0] : ''}'.toUpperCase();
+  }
   int get companyId => (user?['id_company'] as int?) ?? 0;
 }
 
