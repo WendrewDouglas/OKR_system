@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/auth/auth_provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../shared/widgets/loading_shimmer.dart';
@@ -11,19 +10,8 @@ import '../shared/widgets/app_header.dart';
 
 final _minhasTarefasProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final api = ref.read(apiClientProvider);
-  final auth = ref.read(authProvider);
-  final userId = auth.userId;
-
-  // Fetch user's iniciativas and KRs in parallel
-  final results = await Future.wait([
-    api.dio.get('/iniciativas', queryParameters: {'responsavel': userId}),
-    api.dio.get('/krs', queryParameters: {'responsavel': userId}),
-  ]);
-
-  final iniciativas = (results[0].data['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-  final krs = (results[1].data['krs'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-
-  return {'iniciativas': iniciativas, 'krs': krs};
+  final res = await api.dio.get('/minhas-tarefas');
+  return res.data as Map<String, dynamic>;
 });
 
 class MinhasTarefasScreen extends ConsumerWidget {
@@ -37,10 +25,24 @@ class MinhasTarefasScreen extends ConsumerWidget {
       appBar: const AppHeader(),
       body: tarefas.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              Text('Erro ao carregar tarefas', style: const TextStyle(color: AppColors.red, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => ref.invalidate(_minhasTarefasProvider),
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
         data: (data) {
-          final iniciativas = data['iniciativas'] as List<Map<String, dynamic>>;
-          final krs = data['krs'] as List<Map<String, dynamic>>;
+          final iniciativas = (data['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          final krs = (data['krs'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           final hasData = iniciativas.isNotEmpty || krs.isNotEmpty;
 
           if (!hasData) {
@@ -104,6 +106,7 @@ class _IniciativasList extends StatelessWidget {
         final status = ini['status'] ?? '';
         final descricao = ini['descricao'] ?? '';
         final prazo = ini['dt_prazo'] as String?;
+        final krDesc = ini['kr_descricao'] as String?;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
@@ -112,15 +115,26 @@ class _IniciativasList extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  StatusBadge(label: status),
-                  if (prazo != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
-                    Text(prazo, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                  ],
+                  if (krDesc != null && krDesc.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('KR: $krDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ),
+                  Row(
+                    children: [
+                      StatusBadge(label: status),
+                      if (prazo != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(prazo, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -150,6 +164,7 @@ class _KrsList extends StatelessWidget {
         final descricao = kr['descricao'] ?? '';
         final pct = (kr['progresso_pct'] as num?)?.toDouble() ?? 0;
         final farol = kr['farol'] ?? '';
+        final objDesc = kr['objetivo_descricao'] as String?;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
@@ -159,21 +174,32 @@ class _KrsList extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: pct / 100,
-                        backgroundColor: AppColors.border,
-                        valueColor: AlwaysStoppedAnimation(pct >= 70 ? AppColors.green : pct >= 40 ? AppColors.warn : AppColors.red),
-                        minHeight: 5,
-                      ),
+                  if (objDesc != null && objDesc.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('Obj: $objDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: pct / 100,
+                            backgroundColor: AppColors.border,
+                            valueColor: AlwaysStoppedAnimation(pct >= 70 ? AppColors.green : pct >= 40 ? AppColors.warn : AppColors.red),
+                            minHeight: 5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),

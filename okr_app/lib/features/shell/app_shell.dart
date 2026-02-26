@@ -39,7 +39,7 @@ class AppShell extends StatelessWidget {
         ),
         child: SafeArea(
           child: SizedBox(
-            height: 64,
+            height: 70,
             child: Row(
               children: [
                 _NavItem(
@@ -64,8 +64,8 @@ class AppShell extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 46,
+                          height: 46,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [AppColors.gold, Color(0xFFE6A800)],
@@ -77,7 +77,16 @@ class AppShell extends StatelessWidget {
                                 ? [BoxShadow(color: AppColors.gold.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)]
                                 : [BoxShadow(color: AppColors.gold.withValues(alpha: 0.2), blurRadius: 8)],
                           ),
-                          child: const Icon(Icons.task_alt, color: AppColors.bgSoft, size: 26),
+                          child: const Icon(Icons.task_alt, color: AppColors.bgSoft, size: 24),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Tarefas',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: current == 2 ? FontWeight.w700 : FontWeight.w500,
+                            color: current == 2 ? AppColors.gold : AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),

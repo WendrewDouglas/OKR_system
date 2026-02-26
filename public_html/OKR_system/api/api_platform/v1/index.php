@@ -52,6 +52,9 @@ $routes = [
   ['GET',    'company/style',          'company/style.php'],
   ['PUT',    'company/style',          'company/style_update.php'],
 
+  // Minhas Tarefas
+  ['GET',    'minhas-tarefas',         'tarefas/minhas.php'],
+
   // Dashboard
   ['GET',    'dashboard/summary',      'dashboard/summary.php'],
   ['GET',    'dashboard/cascata',      'dashboard/cascata.php'],
