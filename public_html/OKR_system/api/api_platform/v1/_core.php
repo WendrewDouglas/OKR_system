@@ -268,3 +268,136 @@ set_exception_handler(function (Throwable $e) {
     ]
   ] : []);
 });
+
+
+/* ===================== ROUTE PARAMS ===================== */
+
+/** @var array<string,string> Populated by router */
+$GLOBALS['_route_params'] = [];
+
+function api_param(string $key): string {
+  return (string)($GLOBALS['_route_params'][$key] ?? '');
+}
+
+
+/* ===================== VALIDATION HELPERS ===================== */
+
+function api_require_fields(array $data, array $fields): void {
+  $missing = [];
+  foreach ($fields as $f) {
+    if (!isset($data[$f]) || (is_string($data[$f]) && trim($data[$f]) === '')) {
+      $missing[] = $f;
+    }
+  }
+  if ($missing) {
+    api_error('E_INPUT', 'Campos obrigatórios: ' . implode(', ', $missing) . '.', 422);
+  }
+}
+
+function api_str(mixed $val): string {
+  return trim((string)($val ?? ''));
+}
+
+function api_int(mixed $val, string $name = 'value'): int {
+  if ($val === null || $val === '') {
+    api_error('E_INPUT', "Campo '$name' é obrigatório.", 422);
+  }
+  if (!is_numeric($val)) {
+    api_error('E_INPUT', "Campo '$name' deve ser numérico.", 422);
+  }
+  return (int)$val;
+}
+
+function api_int_or_null(mixed $val): ?int {
+  if ($val === null || $val === '') return null;
+  return is_numeric($val) ? (int)$val : null;
+}
+
+function api_float(mixed $val, string $name = 'value'): float {
+  if ($val === null || $val === '') {
+    api_error('E_INPUT', "Campo '$name' é obrigatório.", 422);
+  }
+  if (!is_numeric($val)) {
+    api_error('E_INPUT', "Campo '$name' deve ser numérico.", 422);
+  }
+  return (float)$val;
+}
+
+function api_float_or_null(mixed $val): ?float {
+  if ($val === null || $val === '') return null;
+  return is_numeric($val) ? (float)$val : null;
+}
+
+function api_date(string $val, string $name = 'value'): string {
+  $val = trim($val);
+  if ($val === '') {
+    api_error('E_INPUT', "Campo '$name' é obrigatório.", 422);
+  }
+  $d = \DateTime::createFromFormat('Y-m-d', $val);
+  if (!$d || $d->format('Y-m-d') !== $val) {
+    api_error('E_INPUT', "Campo '$name' deve estar no formato YYYY-MM-DD.", 422);
+  }
+  return $val;
+}
+
+function api_date_or_null(mixed $val): ?string {
+  if ($val === null || trim((string)$val) === '') return null;
+  $v = trim((string)$val);
+  $d = \DateTime::createFromFormat('Y-m-d', $v);
+  return ($d && $d->format('Y-m-d') === $v) ? $v : null;
+}
+
+function api_enum(string $val, array $allowed, string $name = 'value'): string {
+  $val = trim($val);
+  if (!in_array($val, $allowed, true)) {
+    api_error('E_INPUT', "Campo '$name' deve ser um de: " . implode(', ', $allowed) . '.', 422);
+  }
+  return $val;
+}
+
+
+/* ===================== PAGINATION ===================== */
+
+function api_pagination_params(): array {
+  $page    = max(1, (int)($_GET['page'] ?? 1));
+  $perPage = min(100, max(1, (int)($_GET['per_page'] ?? 20)));
+  return [$page, $perPage];
+}
+
+function api_paginated(PDO $pdo, string $dataSql, string $countSql, array $params, int $page, int $perPage): array {
+  $stC = $pdo->prepare($countSql);
+  $stC->execute($params);
+  $total = (int)$stC->fetchColumn();
+
+  $offset = ($page - 1) * $perPage;
+  $dataSql .= " LIMIT $perPage OFFSET $offset";
+
+  $stD = $pdo->prepare($dataSql);
+  $stD->execute($params);
+  $rows = $stD->fetchAll();
+
+  return [
+    'items'    => $rows,
+    'page'     => $page,
+    'per_page' => $perPage,
+    'total'    => $total,
+    'pages'    => (int)ceil($total / $perPage),
+  ];
+}
+
+
+/* ===================== HELPERS ===================== */
+
+function api_method(): string {
+  return strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+}
+
+/** Loads business-logic helpers from auth/ */
+function api_load_helper(string $relativePath): void {
+  $ROOT = dirname(__DIR__, 3);
+  $file = $ROOT . '/' . ltrim($relativePath, '/');
+  if (!is_file($file)) {
+    api_error('E_SERVER', "Helper não encontrado: $relativePath", 500);
+  }
+  require_once $file;
+}

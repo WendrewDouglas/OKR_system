@@ -1,10 +1,13 @@
 Options -MultiViews -Indexes
+DirectorySlash Off
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /OKR_system/api/api_platform/v1/
 
+  # Route everything through index.php except actual files
+  # (removed !-d: directory names conflict with API routes)
+  # (DirectorySlash Off: prevents 301 redirect /objetivos → /objetivos/)
   RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.php [QSA,L]
 </IfModule>
