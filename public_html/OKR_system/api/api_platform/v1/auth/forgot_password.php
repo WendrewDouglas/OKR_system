@@ -53,7 +53,7 @@ $stIns->execute([
 $resetToken = $selector . ':' . $verifier;
 
 // Tenta enviar e-mail se mailer disponível
-$ROOT = dirname(__DIR__, 3);
+$ROOT = dirname(__DIR__, 4);
 $functionsFile = $ROOT . '/auth/functions.php';
 if (is_file($functionsFile)) {
   try {
