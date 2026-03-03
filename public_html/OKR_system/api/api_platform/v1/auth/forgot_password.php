@@ -54,12 +54,12 @@ $resetToken = $selector . ':' . $verifier;
 
 // Tenta enviar e-mail se mailer disponível
 $ROOT = dirname(__DIR__, 3);
-$mailerFile = $ROOT . '/auth/mailer.php';
-if (is_file($mailerFile)) {
+$functionsFile = $ROOT . '/auth/functions.php';
+if (is_file($functionsFile)) {
   try {
-    require_once $mailerFile;
-    if (function_exists('send_password_reset_email')) {
-      send_password_reset_email($email, $user['primeiro_nome'] ?? '', $resetToken);
+    require_once $functionsFile;
+    if (function_exists('sendPasswordResetEmail')) {
+      sendPasswordResetEmail($email, $selector, $verifier);
     }
   } catch (\Throwable $e) {
     api_log('Erro ao enviar email de reset: ' . $e->getMessage());
