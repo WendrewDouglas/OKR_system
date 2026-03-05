@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 
 class IniciativaFormScreen extends ConsumerStatefulWidget {
-  final String? idIniciativa; // null = create
-  final String? idKr;         // required for create
+  final String? idIniciativa;
+  final String? idKr;
   const IniciativaFormScreen({super.key, this.idIniciativa, this.idKr});
 
   @override
@@ -64,6 +65,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    AppHaptics.medium();
 
     setState(() => _isLoading = true);
     try {
@@ -83,6 +85,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
         await api.dio.post('/iniciativas', data: body);
       }
 
+      AppHaptics.success();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(isEditing ? 'Iniciativa atualizada!' : 'Iniciativa criada!')),
@@ -117,8 +120,6 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // Status
                   DropdownButtonFormField<String>(
                     initialValue: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
@@ -131,8 +132,6 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                     onChanged: (v) => setState(() => _status = v ?? _status),
                   ),
                   const SizedBox(height: 16),
-
-                  // Prazo
                   TextFormField(
                     readOnly: true,
                     decoration: InputDecoration(
@@ -154,8 +153,6 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-
-                  // Multi-responsável picker
                   const Text('Responsáveis', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                   const SizedBox(height: 8),
                   responsaveis.when(
@@ -172,6 +169,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                           label: Text(nome.toString()),
                           selected: selected,
                           onSelected: (v) {
+                            AppHaptics.selection();
                             setState(() {
                               if (v) {
                                 _selectedResponsaveis.add(userId);
@@ -187,14 +185,13 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submit,
                       child: _isLoading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                           : Text(isEditing ? 'Salvar Alterações' : 'Criar Iniciativa'),
                     ),
                   ),

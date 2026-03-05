@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/farol_indicator.dart';
 import '../shared/widgets/status_badge.dart';
@@ -37,13 +38,34 @@ class KrDetailScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.push('/krs/$idKr/editar'),
+            onPressed: () {
+              AppHaptics.light();
+              context.push('/krs/$idKr/editar');
+            },
           ),
         ],
       ),
       body: detail.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar KR', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(krDetailProvider(idKr));
+                },
+              ),
+            ],
+          ),
+        ),
         data: (data) {
           final kr = data['kr'] as Map<String, dynamic>? ?? {};
           final milestones = ((data['milestones'] as List?) ?? []).cast<Map<String, dynamic>>();
@@ -52,14 +74,16 @@ class KrDetailScreen extends ConsumerWidget {
           final orc = agg['orcamento'] as Map<String, dynamic>?;
 
           return RefreshIndicator(
+            color: AppColors.gold,
+            backgroundColor: AppColors.bgCard,
             onRefresh: () async {
+              AppHaptics.medium();
               ref.invalidate(krDetailProvider(idKr));
               ref.invalidate(iniciativasForKrProvider(idKr));
             },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // KR Info Card
                 _KrInfoCard(kr: kr),
                 const SizedBox(height: 16),
 
@@ -92,7 +116,6 @@ class KrDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Milestones
                 _MilestonesSection(milestones: milestones, idKr: idKr, kr: kr, ref: ref),
                 const SizedBox(height: 16),
 
@@ -103,7 +126,10 @@ class KrDetailScreen extends ConsumerWidget {
                       icon: Icons.rocket_launch,
                       label: 'Iniciativas',
                       value: '${agg['iniciativas'] ?? 0}',
-                      onTap: () => context.push('/krs/$idKr/iniciativas'),
+                      onTap: () {
+                        AppHaptics.light();
+                        context.push('/krs/$idKr/iniciativas');
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -119,11 +145,9 @@ class KrDetailScreen extends ConsumerWidget {
                 ]),
                 const SizedBox(height: 16),
 
-                // Initiatives preview
                 _IniciativasPreview(idKr: idKr, ref: ref),
                 const SizedBox(height: 24),
 
-                // Actions
                 _ActionButtons(idKr: idKr, kr: kr, ref: ref),
               ],
             ),
@@ -131,11 +155,10 @@ class KrDetailScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.gold,
-        foregroundColor: AppColors.bgSoft,
         icon: const Icon(Icons.add_chart),
         label: const Text('Registrar Progresso'),
         onPressed: () async {
+          AppHaptics.medium();
           final saved = await showApontamentoSheet(context, idKr);
           if (saved == true) {
             ref.invalidate(krDetailProvider(idKr));
@@ -287,7 +310,7 @@ class _MilestonesSection extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.5))),
+                  border: Border(bottom: BorderSide(color: AppColors.borderDefault.withValues(alpha: 0.5))),
                 ),
                 child: Row(children: [
                   Container(
@@ -298,7 +321,7 @@ class _MilestonesSection extends StatelessWidget {
                           ? AppColors.green
                           : bloqueado
                               ? AppColors.textMuted
-                              : AppColors.border,
+                              : AppColors.borderDefault,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -393,7 +416,10 @@ class _IniciativasPreview extends StatelessWidget {
               const Spacer(),
               if (items.length > 3)
                 TextButton(
-                  onPressed: () => context.push('/krs/$idKr/iniciativas'),
+                  onPressed: () {
+                    AppHaptics.light();
+                    context.push('/krs/$idKr/iniciativas');
+                  },
                   child: Text('Ver todas (${items.length})', style: const TextStyle(color: AppColors.gold, fontSize: 12)),
                 ),
             ]),
@@ -405,7 +431,10 @@ class _IniciativasPreview extends StatelessWidget {
                 title: Text(ini['descricao'] ?? '', style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(ini['status'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 trailing: const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
-                onTap: () => context.push('/iniciativas/${ini['id_iniciativa']}'),
+                onTap: () {
+                  AppHaptics.light();
+                  context.push('/iniciativas/${ini['id_iniciativa']}');
+                },
               ),
             )),
           ],
@@ -433,7 +462,10 @@ class _ActionButtons extends StatelessWidget {
             icon: const Icon(Icons.cancel_outlined, size: 18),
             label: const Text('Cancelar KR'),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red)),
-            onPressed: () => _cancelKr(context),
+            onPressed: () {
+              AppHaptics.medium();
+              _cancelKr(context);
+            },
           ),
         ),
       if (isCancelado)
@@ -441,7 +473,10 @@ class _ActionButtons extends StatelessWidget {
           child: ElevatedButton.icon(
             icon: const Icon(Icons.play_arrow, size: 18),
             label: const Text('Reativar KR'),
-            onPressed: () => _reactivateKr(context),
+            onPressed: () {
+              AppHaptics.medium();
+              _reactivateKr(context);
+            },
           ),
         ),
     ]);

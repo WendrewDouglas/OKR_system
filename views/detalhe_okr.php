@@ -2198,6 +2198,20 @@ $stOR->execute(['id'=>$id_objetivo]);
 $realObj = (float)($stOR->fetch()['v'] ?? 0);
 
 $saldoObj = max(0, $aprovObj - $realObj);
+
+/* KPIs: total de KRs, críticos (farol vermelho) e em risco (farol amarelo) */
+$stKpi = $pdo->prepare("
+  SELECT COUNT(*) AS total_krs,
+         SUM(CASE WHEN farol='vermelho' THEN 1 ELSE 0 END) AS criticos,
+         SUM(CASE WHEN farol='amarelo'  THEN 1 ELSE 0 END) AS em_risco
+  FROM `key_results`
+  WHERE `id_objetivo`=:id AND (`ativo`='sim' OR `ativo` IS NULL)
+");
+$stKpi->execute(['id'=>$id_objetivo]);
+$kpi = $stKpi->fetch() ?: [];
+$kpi['total_krs'] = (int)($kpi['total_krs'] ?? 0);
+$kpi['criticos']  = (int)($kpi['criticos']  ?? 0);
+$kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">

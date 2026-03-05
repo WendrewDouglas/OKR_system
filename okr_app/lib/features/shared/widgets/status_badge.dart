@@ -33,16 +33,24 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = _color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.12),
+        gradient: LinearGradient(
+          colors: [c.withValues(alpha: 0.08), c.withValues(alpha: 0.16)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _color.withValues(alpha: 0.3)),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(color: c.withValues(alpha: 0.15), blurRadius: 6),
+        ],
       ),
       child: Text(
         label,
-        style: TextStyle(color: _color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }

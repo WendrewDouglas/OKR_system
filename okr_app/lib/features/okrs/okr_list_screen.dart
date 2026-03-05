@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/app_header.dart';
@@ -24,9 +26,32 @@ class OkrListScreen extends ConsumerWidget {
       appBar: const AppHeader(),
       body: okrs.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar objetivos', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(okrListProvider);
+                },
+              ),
+            ],
+          ),
+        ),
         data: (items) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(okrListProvider),
+          color: AppColors.gold,
+          backgroundColor: AppColors.bgCard,
+          onRefresh: () async {
+            AppHaptics.medium();
+            ref.invalidate(okrListProvider);
+          },
           child: items.isEmpty
               ? EmptyState(
                   icon: Icons.flag_outlined,
@@ -36,6 +61,7 @@ class OkrListScreen extends ConsumerWidget {
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Novo Objetivo'),
                     onPressed: () async {
+                      AppHaptics.medium();
                       final result = await context.push('/okrs/novo');
                       if (result == true) ref.invalidate(okrListProvider);
                     },
@@ -44,14 +70,16 @@ class OkrListScreen extends ConsumerWidget {
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,
-                  itemBuilder: (ctx, i) => _OkrCard(obj: items[i]),
+                  itemBuilder: (ctx, i) => StaggeredFadeSlide(
+                    index: i,
+                    child: _OkrCard(obj: items[i]),
+                  ),
                 ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.gold,
-        foregroundColor: AppColors.bgSoft,
         onPressed: () async {
+          AppHaptics.medium();
           final result = await context.push('/okrs/novo');
           if (result == true) ref.invalidate(okrListProvider);
         },
@@ -77,7 +105,10 @@ class _OkrCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/okrs/${obj['id_objetivo']}'),
+        onTap: () {
+          AppHaptics.light();
+          context.push('/okrs/${obj['id_objetivo']}');
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

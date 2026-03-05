@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
 
@@ -79,11 +80,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         return null;
       }
+      // Generic message — never expose API details
       state = state.copyWith(isLoading: false);
-      return res.data['message'] as String? ?? 'Erro desconhecido';
-    } catch (e) {
+      return 'E-mail ou senha incorretos.';
+    } on DioException catch (e) {
       state = state.copyWith(isLoading: false);
-      return 'Erro de conexão. Verifique sua internet.';
+      if (e.response?.statusCode == 429) {
+        return 'Muitas tentativas. Aguarde alguns minutos.';
+      }
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        return 'Sem conexão. Verifique sua internet.';
+      }
+      return 'E-mail ou senha incorretos.';
+    } catch (_) {
+      state = state.copyWith(isLoading: false);
+      return 'Erro inesperado. Tente novamente.';
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -25,12 +26,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    AppHaptics.medium();
     setState(() => _isLoading = true);
     try {
       final api = ref.read(apiClientProvider);
       await api.dio.post('/auth/forgot-password', data: {
         'email': _emailCtrl.text.trim(),
       });
+      AppHaptics.success();
       setState(() {
         _isLoading = false;
         _sent = true;
@@ -38,6 +41,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       // Always show success to prevent email enumeration
+      AppHaptics.success();
       setState(() => _sent = true);
     }
   }
@@ -50,7 +54,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: _sent ? _buildSuccess() : _buildForm(),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOutCubic,
+              child: _sent ? _buildSuccess() : _buildForm(),
+            ),
           ),
         ),
       ),
@@ -59,9 +67,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   Widget _buildSuccess() {
     return Column(
+      key: const ValueKey('success'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.mark_email_read, size: 64, color: AppColors.green),
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: AppColors.green.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2),
+            ],
+          ),
+          child: const Icon(Icons.mark_email_read, size: 64, color: AppColors.green),
+        ),
         const SizedBox(height: 16),
         const Text('E-mail enviado!', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
         const SizedBox(height: 8),
@@ -75,7 +92,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: () => context.go('/login'),
+            onPressed: () {
+              AppHaptics.light();
+              context.go('/login');
+            },
             child: const Text('Voltar ao Login'),
           ),
         ),
@@ -87,9 +107,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Form(
       key: _formKey,
       child: Column(
+        key: const ValueKey('form'),
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.lock_reset, size: 64, color: AppColors.gold),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: AppColors.gold.withValues(alpha: 0.15), blurRadius: 20, spreadRadius: 2),
+              ],
+            ),
+            child: const Icon(Icons.lock_reset, size: 64, color: AppColors.gold),
+          ),
           const SizedBox(height: 16),
           const Text('Esqueceu sua senha?', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
           const SizedBox(height: 8),
@@ -115,13 +144,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _submit,
               child: _isLoading
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                   : const Text('Enviar Link'),
             ),
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => context.pop(),
+            onPressed: () {
+              AppHaptics.light();
+              context.pop();
+            },
             child: const Text('Voltar ao login', style: TextStyle(color: AppColors.textMuted)),
           ),
         ],

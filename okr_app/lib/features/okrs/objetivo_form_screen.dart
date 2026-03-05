@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 import '../shared/widgets/loading_shimmer.dart';
 
 class ObjetivoFormScreen extends ConsumerStatefulWidget {
-  final String? idObjetivo; // null = create, non-null = edit
+  final String? idObjetivo;
   const ObjetivoFormScreen({super.key, this.idObjetivo});
 
   @override
@@ -26,13 +27,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   bool _isLoading = false;
   bool _isLoadingEdit = true;
 
-  // Cycle-specific fields
-  String? _cicloAnualAno;
-  String? _cicloSemestral;
-  String? _cicloTrimestral;
-  String? _cicloBimestral;
-  String? _cicloMensalMes;
-  String? _cicloMensalAno;
   String? _cicloPersInicio;
   String? _cicloPersFim;
 
@@ -86,6 +80,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
       return;
     }
 
+    AppHaptics.medium();
     setState(() => _isLoading = true);
     try {
       final api = ref.read(apiClientProvider);
@@ -96,12 +91,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         'ciclo_tipo': _cicloTipo,
         'observacoes': _observacoesCtrl.text.trim(),
         if (_donoId != null) 'dono': _donoId,
-        if (_cicloAnualAno != null) 'ciclo_anual_ano': _cicloAnualAno,
-        if (_cicloSemestral != null) 'ciclo_semestral': _cicloSemestral,
-        if (_cicloTrimestral != null) 'ciclo_trimestral': _cicloTrimestral,
-        if (_cicloBimestral != null) 'ciclo_bimestral': _cicloBimestral,
-        if (_cicloMensalMes != null) 'ciclo_mensal_mes': _cicloMensalMes,
-        if (_cicloMensalAno != null) 'ciclo_mensal_ano': _cicloMensalAno,
         if (_cicloPersInicio != null) 'ciclo_pers_inicio': _cicloPersInicio,
         if (_cicloPersFim != null) 'ciclo_pers_fim': _cicloPersFim,
       };
@@ -112,6 +101,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         await api.dio.post('/objetivos', data: body);
       }
 
+      AppHaptics.success();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(isEditing ? 'Objetivo atualizado!' : 'Objetivo criado!')),
@@ -142,7 +132,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Descrição
                   TextFormField(
                     controller: _descricaoCtrl,
                     maxLines: 3,
@@ -150,8 +139,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // Pilar BSC
                   pilares.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const Text('Erro ao carregar pilares'),
@@ -168,8 +155,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Tipo Objetivo
                   tipos.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -185,8 +170,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Ciclo
                   ciclos.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const Text('Erro ao carregar ciclos'),
@@ -203,8 +186,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Cycle-specific fields
                   if (_cicloTipo == 'personalizado') ...[
                     Row(children: [
                       Expanded(
@@ -245,8 +226,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     ]),
                     const SizedBox(height: 16),
                   ],
-
-                  // Dono
                   responsaveis.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -261,23 +240,19 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Observações
                   TextFormField(
                     controller: _observacoesCtrl,
                     maxLines: 3,
                     decoration: const InputDecoration(labelText: 'Observações'),
                   ),
                   const SizedBox(height: 32),
-
-                  // Submit
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submit,
                       child: _isLoading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                           : Text(isEditing ? 'Salvar Alterações' : 'Criar Objetivo'),
                     ),
                   ),

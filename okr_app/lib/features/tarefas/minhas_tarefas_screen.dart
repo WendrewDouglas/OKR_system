@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/status_badge.dart';
@@ -31,11 +33,15 @@ class MinhasTarefasScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.error_outline, color: AppColors.red, size: 48),
               const SizedBox(height: 12),
-              Text('Erro ao carregar tarefas', style: const TextStyle(color: AppColors.red, fontSize: 16)),
+              const Text('Erro ao carregar tarefas', style: TextStyle(color: AppColors.red, fontSize: 16)),
               const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => ref.invalidate(_minhasTarefasProvider),
-                child: const Text('Tentar novamente'),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(_minhasTarefasProvider);
+                },
               ),
             ],
           ),
@@ -54,7 +60,12 @@ class MinhasTarefasScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(_minhasTarefasProvider),
+            color: AppColors.gold,
+            backgroundColor: AppColors.bgCard,
+            onRefresh: () async {
+              AppHaptics.medium();
+              ref.invalidate(_minhasTarefasProvider);
+            },
             child: DefaultTabController(
               length: 2,
               child: Column(
@@ -108,38 +119,44 @@ class _IniciativasList extends StatelessWidget {
         final prazo = ini['dt_prazo'] as String?;
         final krDesc = ini['kr_descricao'] as String?;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListTile(
-            title: Text(descricao, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (krDesc != null && krDesc.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('KR: $krDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    ),
-                  Row(
-                    children: [
-                      StatusBadge(label: status),
-                      if (prazo != null) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(prazo, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        return StaggeredFadeSlide(
+          index: i,
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text(descricao, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (krDesc != null && krDesc.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text('KR: $krDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ),
+                    Row(
+                      children: [
+                        StatusBadge(label: status),
+                        if (prazo != null) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(prazo, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+              onTap: () {
+                AppHaptics.light();
+                context.push('/iniciativas/${ini['id_iniciativa']}');
+              },
             ),
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
-            onTap: () => context.push('/iniciativas/${ini['id_iniciativa']}'),
           ),
         );
       },
@@ -166,45 +183,51 @@ class _KrsList extends StatelessWidget {
         final farol = kr['farol'] ?? '';
         final objDesc = kr['objetivo_descricao'] as String?;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListTile(
-            leading: _farolDot(farol),
-            title: Text(descricao, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (objDesc != null && objDesc.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('Obj: $objDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: pct / 100,
-                            backgroundColor: AppColors.border,
-                            valueColor: AlwaysStoppedAnimation(pct >= 70 ? AppColors.green : pct >= 40 ? AppColors.warn : AppColors.red),
-                            minHeight: 5,
+        return StaggeredFadeSlide(
+          index: i,
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              leading: _farolDot(farol),
+              title: Text(descricao, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (objDesc != null && objDesc.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text('Obj: $objDesc', maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: pct / 100,
+                              backgroundColor: AppColors.borderDefault,
+                              valueColor: AlwaysStoppedAnimation(pct >= 70 ? AppColors.green : pct >= 40 ? AppColors.warn : AppColors.red),
+                              minHeight: 5,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 8),
+                        Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+              trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+              onTap: () {
+                AppHaptics.light();
+                context.push('/krs/${kr['id_kr']}');
+              },
             ),
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
-            onTap: () => context.push('/krs/${kr['id_kr']}'),
           ),
         );
       },
@@ -220,7 +243,11 @@ class _KrsList extends StatelessWidget {
     };
     return Container(
       width: 12, height: 12,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)],
+      ),
     );
   }
 }

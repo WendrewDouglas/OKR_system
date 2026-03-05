@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -30,6 +31,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    AppHaptics.medium();
     setState(() => _isLoading = true);
     try {
       final api = ref.read(apiClientProvider);
@@ -38,13 +40,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         'password_nova': _novaCtrl.text,
       });
       if (res.data['ok'] == true && mounted) {
+        AppHaptics.success();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Senha alterada!')));
         context.pop();
       }
     } catch (e) {
       setState(() => _isLoading = false);
+      AppHaptics.error();
       if (mounted) {
-        final msg = e.toString().contains('401') ? 'Senha atual incorreta' : 'Erro: $e';
+        final msg = e.toString().contains('401') ? 'Senha atual incorreta' : 'Erro ao alterar senha. Tente novamente.';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     }
@@ -104,7 +108,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
                 child: _isLoading
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                     : const Text('Alterar Senha'),
               ),
             ),

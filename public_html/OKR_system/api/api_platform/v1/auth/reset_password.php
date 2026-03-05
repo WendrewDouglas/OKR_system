@@ -45,8 +45,15 @@ if (strtotime($row['expira_em']) < time()) {
   api_error('E_AUTH', 'Token de recuperação expirado.', 400);
 }
 
-// Verify hash
-$calcHash = hash('sha256', $verifier);
+// Verify hash (peppered, matching hashVerifier() from functions.php)
+$ROOT = dirname(__DIR__, 4);
+$functionsFile = $ROOT . '/auth/functions.php';
+if (is_file($functionsFile)) {
+  require_once $functionsFile;
+}
+$calcHash = function_exists('hashVerifier')
+  ? hashVerifier($verifier)
+  : hash('sha256', (defined('APP_TOKEN_PEPPER') ? APP_TOKEN_PEPPER : '') . $verifier);
 if (!hash_equals($row['verifier_hash'], $calcHash)) {
   api_error('E_AUTH', 'Token de recuperação inválido.', 400);
 }

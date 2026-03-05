@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/app_header.dart';
@@ -23,7 +25,25 @@ class OrcamentoScreen extends ConsumerWidget {
       appBar: const AppHeader(),
       body: orcamentos.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar orçamentos', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(_orcamentoProvider);
+                },
+              ),
+            ],
+          ),
+        ),
         data: (items) {
           if (items.isEmpty) {
             return const EmptyState(
@@ -33,7 +53,6 @@ class OrcamentoScreen extends ConsumerWidget {
             );
           }
 
-          // Aggregate totals
           double totalPlanejado = 0;
           double totalRealizado = 0;
           for (final o in items) {
@@ -43,11 +62,15 @@ class OrcamentoScreen extends ConsumerWidget {
           final pctUsado = totalPlanejado > 0 ? (totalRealizado / totalPlanejado * 100) : 0.0;
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(_orcamentoProvider),
+            color: AppColors.gold,
+            backgroundColor: AppColors.bgCard,
+            onRefresh: () async {
+              AppHaptics.medium();
+              ref.invalidate(_orcamentoProvider);
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Summary card
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -77,7 +100,7 @@ class OrcamentoScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: (pctUsado / 100).clamp(0, 1),
-                            backgroundColor: AppColors.border,
+                            backgroundColor: AppColors.borderDefault,
                             valueColor: AlwaysStoppedAnimation(
                               pctUsado > 100 ? AppColors.red : pctUsado > 80 ? AppColors.warn : AppColors.green,
                             ),
@@ -95,9 +118,25 @@ class OrcamentoScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text('Detalhamento', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Row(
+                  children: [
+                    Container(
+                      width: 3,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.goldGradient,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Detalhamento', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                ...items.map((o) => _OrcamentoCard(orcamento: o)),
+                ...List.generate(items.length, (i) => StaggeredFadeSlide(
+                  index: i,
+                  child: _OrcamentoCard(orcamento: items[i]),
+                )),
               ],
             ),
           );
@@ -108,7 +147,6 @@ class OrcamentoScreen extends ConsumerWidget {
 
   String _currency(double value) {
     final formatted = value.toStringAsFixed(2).replaceAll('.', ',');
-    // Simple thousand separator
     final parts = formatted.split(',');
     final intPart = parts[0].replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -172,7 +210,7 @@ class _OrcamentoCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(
                 value: (pct / 100).clamp(0, 1),
-                backgroundColor: AppColors.border,
+                backgroundColor: AppColors.borderDefault,
                 valueColor: AlwaysStoppedAnimation(pct > 100 ? AppColors.red : pct > 80 ? AppColors.warn : AppColors.green),
                 minHeight: 4,
               ),

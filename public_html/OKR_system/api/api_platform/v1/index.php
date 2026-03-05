@@ -92,6 +92,8 @@ $routes = [
   ['PUT',    'iniciativas/:id/status',       'iniciativas/update_status.php'],
 
   // Orçamentos
+  ['GET',    'orcamentos',                     'orcamentos/resumo.php'],
+  ['GET',    'orcamento-resumo',               'orcamentos/resumo.php'],
   ['GET',    'krs/:id_kr/orcamento-dashboard', 'orcamentos/dashboard.php'],
   ['GET',    'iniciativas/:id_ini/orcamentos', 'orcamentos/list.php'],
   ['POST',   'orcamentos',                    'orcamentos/create.php'],

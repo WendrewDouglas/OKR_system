@@ -4,11 +4,17 @@
 // - Se período mudar: apaga milestones, apontamentos e anexos; recria milestones
 // - Qualquer alteração -> status_aprovacao = 'pendente'
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 session_start();
+
+if (empty($_SESSION['user_id'])) {
+  header('Location: /OKR_system/views/login.php');
+  exit;
+}
+
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/diff_helpers.php';
@@ -21,11 +27,6 @@ if (($_GET['mode'] ?? '') === 'edit') {
 }
 
 require_cap('W:kr@ORG', ['id_objetivo' => (int)($_POST['id_objetivo'] ?? 0)]);
-
-if (empty($_SESSION['user_id'])) {
-  header('Location: /OKR_system/views/login.php');
-  exit;
-}
 
 /* ===================== ENDPOINT AJAX (update) ===================== */
 if (isset($_GET['ajax'])) {

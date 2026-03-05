@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../shared/widgets/app_header.dart';
 
 class MenuScreen extends ConsumerWidget {
@@ -17,55 +18,88 @@ class MenuScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // User card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
+          // User card with gradient background
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [AppColors.bgCard, AppColors.goldSubtle.withValues(alpha: 0.3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: AppColors.borderDefault, width: 0.5),
+              boxShadow: AppShadows.cardRest,
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Avatar with gold gradient ring and glow
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.goldGradient,
+                    boxShadow: [
+                      BoxShadow(color: AppColors.gold.withValues(alpha: 0.2), blurRadius: 10),
+                    ],
+                  ),
+                  child: CircleAvatar(
                     radius: 28,
-                    backgroundColor: AppColors.gold.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.bgCard,
                     child: Text(
                       auth.userInitials,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.gold),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.gold),
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(auth.userFullName,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(auth.userFullName,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(auth.userEmail,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                      if (auth.userRole.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(auth.userEmail,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-                        if (auth.userRole.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(auth.userRole,
-                              style: const TextStyle(fontSize: 12, color: AppColors.gold)),
-                        ],
+                        Text(auth.userRole,
+                            style: const TextStyle(fontSize: 12, color: AppColors.gold)),
                       ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
 
-          // Menu items
           _MenuSection(title: 'Gestão', items: [
-            _MenuItem(icon: Icons.check_circle_outline, label: 'Aprovações', onTap: () => context.push('/aprovacoes')),
-            _MenuItem(icon: Icons.notifications_outlined, label: 'Notificações', onTap: () => context.push('/notificacoes')),
+            _MenuItem(icon: Icons.check_circle_outline, label: 'Aprovações', onTap: () {
+              AppHaptics.light();
+              context.push('/aprovacoes');
+            }),
+            _MenuItem(icon: Icons.notifications_outlined, label: 'Notificações', onTap: () {
+              AppHaptics.light();
+              context.push('/notificacoes');
+            }),
           ]),
           const SizedBox(height: 16),
 
           _MenuSection(title: 'Conta', items: [
-            _MenuItem(icon: Icons.person_outline, label: 'Meu Perfil', onTap: () => context.push('/perfil')),
-            _MenuItem(icon: Icons.edit_outlined, label: 'Editar Perfil', onTap: () => context.push('/perfil/editar')),
-            _MenuItem(icon: Icons.lock_outline, label: 'Alterar Senha', onTap: () => context.push('/perfil/senha')),
+            _MenuItem(icon: Icons.person_outline, label: 'Meu Perfil', onTap: () {
+              AppHaptics.light();
+              context.push('/perfil');
+            }),
+            _MenuItem(icon: Icons.edit_outlined, label: 'Editar Perfil', onTap: () {
+              AppHaptics.light();
+              context.push('/perfil/editar');
+            }),
+            _MenuItem(icon: Icons.lock_outline, label: 'Alterar Senha', onTap: () {
+              AppHaptics.light();
+              context.push('/perfil/senha');
+            }),
           ]),
           const SizedBox(height: 16),
 
@@ -74,7 +108,10 @@ class MenuScreen extends ConsumerWidget {
               icon: Icons.logout,
               label: 'Sair',
               color: AppColors.red,
-              onTap: () => ref.read(authProvider.notifier).logout(),
+              onTap: () {
+                AppHaptics.heavy();
+                ref.read(authProvider.notifier).logout();
+              },
             ),
           ]),
         ],

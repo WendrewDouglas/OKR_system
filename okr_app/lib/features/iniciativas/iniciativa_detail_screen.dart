@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/confirm_dialog.dart';
@@ -29,30 +30,56 @@ class IniciativaDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: () async {
+              AppHaptics.light();
               final result = await context.push('/iniciativas/$idIniciativa/editar');
               if (result == true) ref.invalidate(iniciativaDetailProvider(idIniciativa));
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppColors.red),
-            onPressed: () => _delete(context, ref),
+            onPressed: () {
+              AppHaptics.heavy();
+              _delete(context, ref);
+            },
           ),
         ],
       ),
       body: detail.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar iniciativa', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(iniciativaDetailProvider(idIniciativa));
+                },
+              ),
+            ],
+          ),
+        ),
         data: (data) {
           final ini = data['iniciativa'] as Map<String, dynamic>? ?? {};
           final envolvidos = ((ini['envolvidos'] as List?) ?? []).cast<Map<String, dynamic>>();
           final orcs = ((ini['orcamentos'] as List?) ?? []).cast<Map<String, dynamic>>();
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(iniciativaDetailProvider(idIniciativa)),
+            color: AppColors.gold,
+            backgroundColor: AppColors.bgCard,
+            onRefresh: () async {
+              AppHaptics.medium();
+              ref.invalidate(iniciativaDetailProvider(idIniciativa));
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Main card
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -84,7 +111,6 @@ class IniciativaDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Envolvidos
                 if (envolvidos.isNotEmpty) ...[
                   const Text('Envolvidos', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   const SizedBox(height: 8),
@@ -105,7 +131,6 @@ class IniciativaDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                 ],
 
-                // Orçamentos
                 if (orcs.isNotEmpty) ...[
                   const Text('Orçamentos', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   const SizedBox(height: 8),
@@ -131,7 +156,6 @@ class IniciativaDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                 ],
 
-                // Status change buttons
                 _StatusChanger(idIniciativa: idIniciativa, currentStatus: ini['status'] ?? '', ref: ref),
               ],
             ),
@@ -187,7 +211,10 @@ class _StatusChanger extends StatelessWidget {
           spacing: 8,
           runSpacing: 6,
           children: statuses.map((s) => OutlinedButton(
-            onPressed: () => _changeStatus(context, s),
+            onPressed: () {
+              AppHaptics.light();
+              _changeStatus(context, s);
+            },
             child: Text(s, style: const TextStyle(fontSize: 13)),
           )).toList(),
         ),
@@ -197,6 +224,7 @@ class _StatusChanger extends StatelessWidget {
 
   Future<void> _changeStatus(BuildContext context, String newStatus) async {
     final obsCtrl = TextEditingController();
+    AppHaptics.medium();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -209,8 +237,14 @@ class _StatusChanger extends StatelessWidget {
           decoration: const InputDecoration(hintText: 'Observação (obrigatória)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Confirmar')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Confirmar'),
+          ),
         ],
       ),
     );

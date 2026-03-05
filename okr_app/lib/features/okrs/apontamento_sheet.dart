@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 
 Future<bool?> showApontamentoSheet(BuildContext context, String idKr) {
+  AppHaptics.medium();
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -94,10 +96,12 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
       return;
     }
 
+    AppHaptics.medium();
     setState(() => _isSaving = true);
     try {
       final api = ref.read(apiClientProvider);
       await api.dio.post('/krs/${widget.idKr}/apontamentos', data: {'items': items});
+      AppHaptics.success();
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -115,7 +119,24 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
       return const Padding(padding: EdgeInsets.all(24), child: LoadingShimmer());
     }
     if (_error != null) {
-      return Center(child: Text('Erro: $_error', style: const TextStyle(color: AppColors.red)));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+            const SizedBox(height: 12),
+            Text('Erro ao carregar dados', style: const TextStyle(color: AppColors.red)),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                setState(() { _isLoading = true; _error = null; });
+                _loadData();
+              },
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
     }
 
     final kr = _modalData!['kr'] as Map<String, dynamic>;
@@ -123,11 +144,14 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
     final unidade = kr['unidade_medida'] ?? '';
 
     return Column(children: [
-      // Handle
+      // Handle — gold tinted
       Container(
         margin: const EdgeInsets.only(top: 12, bottom: 8),
         width: 40, height: 4,
-        decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+        decoration: BoxDecoration(
+          gradient: AppColors.goldGradient,
+          borderRadius: BorderRadius.circular(2),
+        ),
       ),
       // Header
       Padding(
@@ -167,8 +191,9 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
                 color: AppColors.bgSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: currentVal != null ? AppColors.green.withValues(alpha: 0.3) : AppColors.border,
+                  color: currentVal != null ? AppColors.green.withValues(alpha: 0.3) : AppColors.borderDefault,
                 ),
+                boxShadow: AppShadows.cardRest,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +233,7 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
           child: ElevatedButton(
             onPressed: _isSaving ? null : _save,
             child: _isSaving
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                 : const Text('Salvar Apontamentos'),
           ),
         ),

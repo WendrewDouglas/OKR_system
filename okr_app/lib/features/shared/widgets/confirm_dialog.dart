@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/haptics.dart';
 
 Future<bool> showConfirmDialog(
   BuildContext context, {
@@ -9,20 +10,63 @@ Future<bool> showConfirmDialog(
   String cancelLabel = 'Cancelar',
   bool isDanger = false,
 }) async {
-  final result = await showDialog<bool>(
+  AppHaptics.medium();
+  final accentColor = isDanger ? AppColors.red : AppColors.gold;
+
+  final result = await showGeneralDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 250),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return ScaleTransition(
+        scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved),
+        child: FadeTransition(opacity: curved, child: child),
+      );
+    },
+    pageBuilder: (ctx, _, __) => AlertDialog(
       backgroundColor: AppColors.bgCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.borderDefault, width: 0.5),
+      ),
+      titlePadding: EdgeInsets.zero,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gold/red accent line at top
+          Container(
+            height: 3,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accentColor.withValues(alpha: 0.0), accentColor, accentColor.withValues(alpha: 0.0)],
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
       content: Text(message, style: const TextStyle(color: AppColors.textMuted)),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
+          onPressed: () {
+            AppHaptics.light();
+            Navigator.of(ctx).pop(false);
+          },
           child: Text(cancelLabel, style: const TextStyle(color: AppColors.textMuted)),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
+          onPressed: () {
+            AppHaptics.medium();
+            Navigator.of(ctx).pop(true);
+          },
           style: isDanger
               ? ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white)
               : null,

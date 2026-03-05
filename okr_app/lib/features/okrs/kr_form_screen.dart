@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 import '../shared/widgets/loading_shimmer.dart';
 
 class KrFormScreen extends ConsumerStatefulWidget {
-  final String? idKr;         // null = create
-  final String? idObjetivo;   // required for create
+  final String? idKr;
+  final String? idObjetivo;
   const KrFormScreen({super.key, this.idKr, this.idObjetivo});
 
   @override
@@ -82,6 +83,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    AppHaptics.medium();
 
     setState(() => _isLoading = true);
     try {
@@ -107,6 +109,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         await api.dio.post('/krs', data: body);
       }
 
+      AppHaptics.success();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(isEditing ? 'KR atualizado!' : 'KR criado!')),
@@ -138,7 +141,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Descrição
                   TextFormField(
                     controller: _descricaoCtrl,
                     maxLines: 2,
@@ -146,8 +148,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // Baseline & Meta
                   Row(children: [
                     Expanded(
                       child: TextFormField(
@@ -168,8 +168,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ]),
                   const SizedBox(height: 16),
-
-                  // Unidade & Direção
                   Row(children: [
                     Expanded(
                       child: TextFormField(
@@ -191,8 +189,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ]),
                   const SizedBox(height: 16),
-
-                  // Natureza
                   naturezas.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -208,8 +204,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Tipo KR
                   tiposKr.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -225,8 +219,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Frequência Milestones
                   freqs.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -242,8 +234,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Ciclo
                   if (!isEditing)
                     ciclos.when(
                       loading: () => const SizedBox.shrink(),
@@ -260,8 +250,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       ),
                     ),
                   const SizedBox(height: 16),
-
-                  // Responsável
                   responsaveis.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -276,8 +264,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Auto-generate milestones
                   if (!isEditing)
                     SwitchListTile(
                       value: _autoMilestones,
@@ -288,15 +274,13 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       contentPadding: EdgeInsets.zero,
                     ),
                   const SizedBox(height: 24),
-
-                  // Submit
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submit,
                       child: _isLoading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgSoft))
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.bgDeep))
                           : Text(isEditing ? 'Salvar Alterações' : 'Criar Key Result'),
                     ),
                   ),

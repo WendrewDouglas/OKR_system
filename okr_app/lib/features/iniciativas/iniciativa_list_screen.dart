@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/empty_state.dart';
@@ -26,7 +28,25 @@ class IniciativaListScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Iniciativas')),
       body: inis.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e', style: const TextStyle(color: AppColors.red))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar iniciativas', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(iniciativasProvider(idKr));
+                },
+              ),
+            ],
+          ),
+        ),
         data: (items) => items.isEmpty
             ? EmptyState(
                 icon: Icons.rocket_launch,
@@ -36,24 +56,32 @@ class IniciativaListScreen extends ConsumerWidget {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Nova Iniciativa'),
                   onPressed: () async {
+                    AppHaptics.medium();
                     final result = await context.push('/krs/$idKr/iniciativas/nova');
                     if (result == true) ref.invalidate(iniciativasProvider(idKr));
                   },
                 ),
               )
             : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(iniciativasProvider(idKr)),
+                color: AppColors.gold,
+                backgroundColor: AppColors.bgCard,
+                onRefresh: () async {
+                  AppHaptics.medium();
+                  ref.invalidate(iniciativasProvider(idKr));
+                },
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,
-                  itemBuilder: (ctx, i) => _IniciativaCard(ini: items[i], idKr: idKr),
+                  itemBuilder: (ctx, i) => StaggeredFadeSlide(
+                    index: i,
+                    child: _IniciativaCard(ini: items[i], idKr: idKr),
+                  ),
                 ),
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.gold,
-        foregroundColor: AppColors.bgSoft,
         onPressed: () async {
+          AppHaptics.medium();
           final result = await context.push('/krs/$idKr/iniciativas/nova');
           if (result == true) ref.invalidate(iniciativasProvider(idKr));
         },
@@ -78,7 +106,10 @@ class _IniciativaCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/iniciativas/${ini['id_iniciativa']}'),
+        onTap: () {
+          AppHaptics.light();
+          context.push('/iniciativas/${ini['id_iniciativa']}');
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -33,9 +33,19 @@ if ((int)$stLim->fetchColumn() >= 3) {
 }
 
 // Generate selector + verifier (split-token pattern)
-$selector = bin2hex(random_bytes(8));
+// selector 16 bytes (32 hex) + verifier 32 bytes (64 hex) — matches generateSelectorVerifier()
+$selector = bin2hex(random_bytes(16));
 $verifier = bin2hex(random_bytes(32));
-$verifierHash = hash('sha256', $verifier);
+
+// Load functions.php early so we can use hashVerifier() (peppered hash)
+$ROOT = dirname(__DIR__, 4);
+$functionsFile = $ROOT . '/auth/functions.php';
+if (is_file($functionsFile)) {
+  require_once $functionsFile;
+}
+$verifierHash = function_exists('hashVerifier')
+  ? hashVerifier($verifier)
+  : hash('sha256', (defined('APP_TOKEN_PEPPER') ? APP_TOKEN_PEPPER : '') . $verifier);
 
 $stIns = $pdo->prepare("
   INSERT INTO usuarios_password_resets (user_id, selector, verifier_hash, expira_em, created_at, ip_request, user_agent_request)
@@ -52,15 +62,10 @@ $stIns->execute([
 // Build reset URL (app deep link)
 $resetToken = $selector . ':' . $verifier;
 
-// Tenta enviar e-mail se mailer disponível
-$ROOT = dirname(__DIR__, 4);
-$functionsFile = $ROOT . '/auth/functions.php';
-if (is_file($functionsFile)) {
+// Tenta enviar e-mail (functions.php já carregado acima)
+if (function_exists('sendPasswordResetEmail')) {
   try {
-    require_once $functionsFile;
-    if (function_exists('sendPasswordResetEmail')) {
-      sendPasswordResetEmail($email, $selector, $verifier);
-    }
+    sendPasswordResetEmail($email, $selector, $verifier);
   } catch (\Throwable $e) {
     api_log('Erro ao enviar email de reset: ' . $e->getMessage());
   }

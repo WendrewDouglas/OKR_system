@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -18,12 +19,22 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Center(
-            child: CircleAvatar(
-              radius: 44,
-              backgroundColor: AppColors.gold.withValues(alpha: 0.2),
-              child: Text(
-                (auth.userName.isNotEmpty ? auth.userName[0] : '?').toUpperCase(),
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.gold),
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.goldGradient,
+                boxShadow: [
+                  BoxShadow(color: AppColors.gold.withValues(alpha: 0.2), blurRadius: 16, spreadRadius: 2),
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 44,
+                backgroundColor: AppColors.bgCard,
+                child: Text(
+                  (auth.userName.isNotEmpty ? auth.userName[0] : '?').toUpperCase(),
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.gold),
+                ),
               ),
             ),
           ),
@@ -34,14 +45,23 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Center(child: Text(user['empresa'] ?? '', style: const TextStyle(color: AppColors.textMuted, fontSize: 13))),
           const SizedBox(height: 32),
-          _ProfileTile(icon: Icons.person_outline, label: 'Editar perfil', onTap: () => context.push('/perfil/editar')),
-          _ProfileTile(icon: Icons.lock_outline, label: 'Alterar senha', onTap: () => context.push('/perfil/senha')),
+          _ProfileTile(icon: Icons.person_outline, label: 'Editar perfil', onTap: () {
+            AppHaptics.light();
+            context.push('/perfil/editar');
+          }),
+          _ProfileTile(icon: Icons.lock_outline, label: 'Alterar senha', onTap: () {
+            AppHaptics.light();
+            context.push('/perfil/senha');
+          }),
           const Divider(height: 32),
           _ProfileTile(
             icon: Icons.logout,
             label: 'Sair',
             color: AppColors.red,
-            onTap: () => ref.read(authProvider.notifier).logout(),
+            onTap: () {
+              AppHaptics.heavy();
+              ref.read(authProvider.notifier).logout();
+            },
           ),
         ],
       ),

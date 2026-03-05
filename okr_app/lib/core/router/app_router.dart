@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_provider.dart';
+import '../utils/animations.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/forgot_password_screen.dart';
+import '../../features/auth/reset_password_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/okrs/okr_list_screen.dart';
@@ -56,8 +58,20 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final authStatus = authNotifier.status;
+      final uri = state.uri;
       final loc = state.matchedLocation;
-      final publicRoutes = ['/login', '/forgot-password'];
+
+      // Deep link: web URL → app route
+      if (uri.path.contains('password_reset.php')) {
+        final selector = uri.queryParameters['selector'] ?? '';
+        final verifier = uri.queryParameters['verifier'] ?? '';
+        return Uri(path: '/reset-password', queryParameters: {
+          'selector': selector,
+          'verifier': verifier,
+        }).toString();
+      }
+
+      final publicRoutes = ['/login', '/forgot-password', '/reset-password'];
 
       if (authStatus == AuthStatus.unknown) return null;
       if (authStatus != AuthStatus.authenticated && !publicRoutes.contains(loc)) {
@@ -69,45 +83,124 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Public routes
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
+      // Public routes — fade transitions
+      GoRoute(
+        path: '/login',
+        pageBuilder: (_, __) => fadeTransitionPage(child: const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (_, __) => fadeTransitionPage(child: const ForgotPasswordScreen()),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        pageBuilder: (_, state) {
+          final selector = state.uri.queryParameters['selector'] ?? '';
+          final verifier = state.uri.queryParameters['verifier'] ?? '';
+          return fadeTransitionPage(
+            child: ResetPasswordScreen(selector: selector, verifier: verifier),
+          );
+        },
+      ),
 
       // Shell routes (bottom nav)
       ShellRoute(
         builder: (_, __, child) => AppShell(child: child),
         routes: [
-          // === Bottom nav tabs ===
+          // === Bottom nav tabs — instant (no transition) ===
           GoRoute(path: '/dashboard', pageBuilder: (_, __) => const NoTransitionPage(child: DashboardScreen())),
           GoRoute(path: '/okrs', pageBuilder: (_, __) => const NoTransitionPage(child: OkrListScreen())),
           GoRoute(path: '/tarefas', pageBuilder: (_, __) => const NoTransitionPage(child: MinhasTarefasScreen())),
           GoRoute(path: '/orcamento', pageBuilder: (_, __) => const NoTransitionPage(child: OrcamentoScreen())),
           GoRoute(path: '/menu', pageBuilder: (_, __) => const NoTransitionPage(child: MenuScreen())),
 
-          // === Menu sub-pages ===
-          GoRoute(path: '/aprovacoes', builder: (_, __) => const AprovacaoListScreen()),
-          GoRoute(path: '/notificacoes', builder: (_, __) => const NotificacoesScreen()),
-          GoRoute(path: '/perfil', builder: (_, __) => const ProfileScreen()),
+          // === Menu sub-pages — slide up ===
+          GoRoute(
+            path: '/aprovacoes',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const AprovacaoListScreen()),
+          ),
+          GoRoute(
+            path: '/notificacoes',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const NotificacoesScreen()),
+          ),
+          GoRoute(
+            path: '/perfil',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const ProfileScreen()),
+          ),
 
-          // === OKR routes ===
-          GoRoute(path: '/okrs/novo', builder: (_, __) => const ObjetivoFormScreen()),
-          GoRoute(path: '/okrs/:id', builder: (_, state) => OkrDetailScreen(idObjetivo: state.pathParameters['id']!)),
-          GoRoute(path: '/okrs/:id/editar', builder: (_, state) => ObjetivoFormScreen(idObjetivo: state.pathParameters['id']!)),
-          GoRoute(path: '/okrs/:idObj/krs/novo', builder: (_, state) => KrFormScreen(idObjetivo: state.pathParameters['idObj']!)),
+          // === OKR routes — slide up for detail/forms ===
+          GoRoute(
+            path: '/okrs/novo',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const ObjetivoFormScreen()),
+          ),
+          GoRoute(
+            path: '/okrs/:id',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: OkrDetailScreen(idObjetivo: state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/okrs/:id/editar',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: ObjetivoFormScreen(idObjetivo: state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/okrs/:idObj/krs/novo',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: KrFormScreen(idObjetivo: state.pathParameters['idObj']!),
+            ),
+          ),
 
           // KR routes
-          GoRoute(path: '/krs/:id', builder: (_, state) => KrDetailScreen(idKr: state.pathParameters['id']!)),
-          GoRoute(path: '/krs/:id/editar', builder: (_, state) => KrFormScreen(idKr: state.pathParameters['id']!)),
+          GoRoute(
+            path: '/krs/:id',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: KrDetailScreen(idKr: state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/krs/:id/editar',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: KrFormScreen(idKr: state.pathParameters['id']!),
+            ),
+          ),
 
           // Iniciativas routes
-          GoRoute(path: '/krs/:idKr/iniciativas', builder: (_, state) => IniciativaListScreen(idKr: state.pathParameters['idKr']!)),
-          GoRoute(path: '/krs/:idKr/iniciativas/nova', builder: (_, state) => IniciativaFormScreen(idKr: state.pathParameters['idKr']!)),
-          GoRoute(path: '/iniciativas/:id', builder: (_, state) => IniciativaDetailScreen(idIniciativa: state.pathParameters['id']!)),
-          GoRoute(path: '/iniciativas/:id/editar', builder: (_, state) => IniciativaFormScreen(idIniciativa: state.pathParameters['id']!)),
+          GoRoute(
+            path: '/krs/:idKr/iniciativas',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: IniciativaListScreen(idKr: state.pathParameters['idKr']!),
+            ),
+          ),
+          GoRoute(
+            path: '/krs/:idKr/iniciativas/nova',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: IniciativaFormScreen(idKr: state.pathParameters['idKr']!),
+            ),
+          ),
+          GoRoute(
+            path: '/iniciativas/:id',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: IniciativaDetailScreen(idIniciativa: state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/iniciativas/:id/editar',
+            pageBuilder: (_, state) => slideUpTransitionPage(
+              child: IniciativaFormScreen(idIniciativa: state.pathParameters['id']!),
+            ),
+          ),
 
           // Profile routes
-          GoRoute(path: '/perfil/editar', builder: (_, __) => const EditProfileScreen()),
-          GoRoute(path: '/perfil/senha', builder: (_, __) => const ChangePasswordScreen()),
+          GoRoute(
+            path: '/perfil/editar',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const EditProfileScreen()),
+          ),
+          GoRoute(
+            path: '/perfil/senha',
+            pageBuilder: (_, __) => slideUpTransitionPage(child: const ChangePasswordScreen()),
+          ),
         ],
       ),
     ],

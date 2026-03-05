@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 
 final aprovacoesProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -21,14 +23,37 @@ class AprovacaoListScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Aprovações')),
       body: data.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text('Erro ao carregar aprovações', style: TextStyle(color: AppColors.red)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  AppHaptics.light();
+                  ref.invalidate(aprovacoesProvider);
+                },
+              ),
+            ],
+          ),
+        ),
         data: (json) {
           final stats = json['stats'] as Map<String, dynamic>? ?? {};
           final paraAprovar = ((json['para_aprovar'] as List?) ?? []).cast<Map<String, dynamic>>();
           final minhas = ((json['minhas_pendentes'] as List?) ?? []).cast<Map<String, dynamic>>();
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(aprovacoesProvider),
+            color: AppColors.gold,
+            backgroundColor: AppColors.bgCard,
+            onRefresh: () async {
+              AppHaptics.medium();
+              ref.invalidate(aprovacoesProvider);
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -41,13 +66,19 @@ class AprovacaoListScreen extends ConsumerWidget {
                 if (paraAprovar.isNotEmpty) ...[
                   Text('Para aprovar', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
-                  ...paraAprovar.map((item) => _AprovacaoCard(item: item, isAction: true, ref: ref)),
+                  ...List.generate(paraAprovar.length, (i) => StaggeredFadeSlide(
+                    index: i,
+                    child: _AprovacaoCard(item: paraAprovar[i], isAction: true, ref: ref),
+                  )),
                 ],
                 if (minhas.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Text('Minhas pendências', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
-                  ...minhas.map((item) => _AprovacaoCard(item: item, isAction: false, ref: ref)),
+                  ...List.generate(minhas.length, (i) => StaggeredFadeSlide(
+                    index: paraAprovar.length + i,
+                    child: _AprovacaoCard(item: minhas[i], isAction: false, ref: ref),
+                  )),
                 ],
                 if (paraAprovar.isEmpty && minhas.isEmpty)
                   const Center(child: Padding(
@@ -77,6 +108,7 @@ class _StatChip extends StatelessWidget {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 6)],
       ),
       child: Text('$value $label', style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
     );
@@ -113,12 +145,18 @@ class _AprovacaoCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                 TextButton(
-                  onPressed: () => _decide(context, 'reprovado'),
+                  onPressed: () {
+                    AppHaptics.light();
+                    _decide(context, 'reprovado');
+                  },
                   child: const Text('Rejeitar', style: TextStyle(color: AppColors.red)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () => _decide(context, 'aprovado'),
+                  onPressed: () {
+                    AppHaptics.medium();
+                    _decide(context, 'aprovado');
+                  },
                   child: const Text('Aprovar'),
                 ),
               ]),
@@ -138,6 +176,7 @@ class _AprovacaoCard extends StatelessWidget {
         'decisao': decisao,
         'comentarios': decisao == 'reprovado' ? 'Rejeitado via app' : '',
       });
+      AppHaptics.success();
       ref.invalidate(aprovacoesProvider);
     } catch (e) {
       if (context.mounted) {

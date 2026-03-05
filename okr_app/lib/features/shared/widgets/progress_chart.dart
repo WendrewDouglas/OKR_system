@@ -48,7 +48,7 @@ class ProgressChart extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => FlLine(color: AppColors.border, strokeWidth: 0.5),
+            getDrawingHorizontalLine: (_) => FlLine(color: AppColors.borderDefault, strokeWidth: 0.5),
           ),
           titlesData: FlTitlesData(
             topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -96,7 +96,7 @@ class ProgressChart extends StatelessWidget {
                 dotData: const FlDotData(show: false),
                 dashArray: [6, 4],
               ),
-            // Actual line (solid)
+            // Actual line (solid) with gradient fill
             if (realSpots.isNotEmpty)
               LineChartBarData(
                 spots: realSpots,
@@ -106,22 +106,33 @@ class ProgressChart extends StatelessWidget {
                 barWidth: 3,
                 dotData: FlDotData(
                   show: true,
-                  getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                    radius: 3,
-                    color: AppColors.gold,
-                    strokeWidth: 1.5,
-                    strokeColor: AppColors.bgCard,
-                  ),
+                  getDotPainter: (spot, percent, bar, index) {
+                    final isLast = index == realSpots.length - 1;
+                    return FlDotCirclePainter(
+                      radius: isLast ? 4 : 3,
+                      color: AppColors.gold,
+                      strokeWidth: isLast ? 2 : 1.5,
+                      strokeColor: isLast ? AppColors.goldLight : AppColors.bgCard,
+                    );
+                  },
                 ),
                 belowBarData: BarAreaData(
                   show: true,
-                  color: AppColors.gold.withValues(alpha: 0.08),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.gold.withValues(alpha: 0.15),
+                      AppColors.gold.withValues(alpha: 0.0),
+                    ],
+                  ),
                 ),
               ),
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => AppColors.bgCard,
+              getTooltipColor: (_) => AppColors.bgElevated,
+              tooltipBorder: const BorderSide(color: AppColors.borderDefault, width: 0.5),
               getTooltipItems: (spots) => spots.map((s) {
                 final isEsperado = s.barIndex == 0 && esperadoSpots.isNotEmpty;
                 return LineTooltipItem(

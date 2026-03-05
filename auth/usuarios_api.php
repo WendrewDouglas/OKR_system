@@ -192,6 +192,11 @@ function safe_delete_user_rows(PDO $pdo, string $table, int $uid): void {
   $sql = "DELETE FROM `$table` WHERE `$col` = ?";
   $pdo->prepare($sql)->execute([$uid]);
 }
+function colExists_safe(PDO $pdo, string $table, string $col): bool {
+  $st = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=? LIMIT 1");
+  $st->execute([$table, $col]);
+  return (bool)$st->fetchColumn();
+}
 
 /* ----------------------- Auth ----------------------- */
 if (empty($_SESSION['user_id'])) jexit(401, ['success'=>false,'error'=>'Não autenticado']);
@@ -902,14 +907,36 @@ if ($method==='POST' && $action==='delete') {
 
   $pdo->beginTransaction();
   try {
-    // RBAC
-    safe_delete_user_rows($pdo, 'rbac_user_capability', $id);
-    safe_delete_user_rows($pdo, 'rbac_user_role',       $id);
+    // SET NULL em tabelas de negócio (preserva dados, remove referência ao user)
+    $nullifyCols = [
+      ['objetivos',    'dono'],
+      ['objetivos',    'id_user_criador'],
+      ['key_results',  'responsavel'],
+      ['iniciativas',  'id_user_criador'],
+      ['iniciativas',  'id_user_responsavel'],
+      ['company_style','created_by'],
+      ['company_style','okr_master_user_id'],
+      ['usuarios',     'id_user_alteracao'],
+      ['usuarios',     'id_user_criador'],
+    ];
+    foreach ($nullifyCols as [$tbl, $col]) {
+      if (table_exists($pdo, $tbl) && colExists_safe($pdo, $tbl, $col)) {
+        $pdo->prepare("UPDATE `$tbl` SET `$col` = NULL WHERE `$col` = ?")->execute([$id]);
+      }
+    }
 
-    // Tabelas legadas comuns (se existirem)
+    // DELETE em tabelas auxiliares (dados dependentes do user)
+    safe_delete_user_rows($pdo, 'rbac_user_capability',      $id);
+    safe_delete_user_rows($pdo, 'rbac_user_role',            $id);
+    safe_delete_user_rows($pdo, 'aprovadores',               $id);
+    safe_delete_user_rows($pdo, 'permissoes_aprovador',      $id);
+    safe_delete_user_rows($pdo, 'iniciativas_envolvidos',    $id);
+    safe_delete_user_rows($pdo, 'okr_kr_envolvidos',         $id);
+    safe_delete_user_rows($pdo, 'notificacoes',              $id);
     safe_delete_user_rows($pdo, 'usuarios_permissoes',       $id);
     safe_delete_user_rows($pdo, 'usuarios_paginas',          $id);
     safe_delete_user_rows($pdo, 'usuarios_planos',           $id);
+    safe_delete_user_rows($pdo, 'usuarios_perfis',           $id);
     safe_delete_user_rows($pdo, 'usuarios_credenciais',      $id);
     safe_delete_user_rows($pdo, 'usuarios_password_resets',  $id);
 
