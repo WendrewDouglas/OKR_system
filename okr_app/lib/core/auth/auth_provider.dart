@@ -8,14 +8,16 @@ class AuthState {
   final AuthStatus status;
   final Map<String, dynamic>? user;
   final bool isLoading;
+  final String? loginError;
 
-  const AuthState({this.status = AuthStatus.unknown, this.user, this.isLoading = false});
+  const AuthState({this.status = AuthStatus.unknown, this.user, this.isLoading = false, this.loginError});
 
-  AuthState copyWith({AuthStatus? status, Map<String, dynamic>? user, bool? isLoading}) {
+  AuthState copyWith({AuthStatus? status, Map<String, dynamic>? user, bool? isLoading, String? loginError, bool clearError = false}) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
+      loginError: clearError ? null : (loginError ?? this.loginError),
     );
   }
 
@@ -65,8 +67,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login(String email, String password) async {
-    state = state.copyWith(isLoading: true);
+  Future<void> login(String email, String password) async {
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final res = await _api.dio.post('/auth/login', data: {
         'email': email,
@@ -79,38 +81,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: res.data['user'] as Map<String, dynamic>,
           isLoading: false,
         );
-        return null;
+        return;
       }
-      state = state.copyWith(isLoading: false);
-      return _extractMessage(res.data) ?? 'E-mail ou senha incorretos.';
+      state = state.copyWith(
+        isLoading: false,
+        loginError: _extractMessage(res.data) ?? 'E-mail ou senha incorretos.',
+      );
     } on DioException catch (e) {
-      state = state.copyWith(isLoading: false);
+      String msg;
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
-        return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
+        msg = 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
+      } else {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        if (status == 429) {
+          msg = 'Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.';
+        } else if (status == 400) {
+          msg = _extractMessage(data) ?? 'Preencha o e-mail e a senha para continuar.';
+        } else if (status == 401) {
+          msg = _extractMessage(data) ?? 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
+        } else if (status == 403) {
+          msg = _extractMessage(data) ?? 'Acesso negado. Sua conta pode estar inativa. Entre em contato com o suporte.';
+        } else if (status != null && status >= 500) {
+          msg = 'Servidor temporariamente indisponível. Tente novamente em alguns instantes.';
+        } else {
+          msg = _extractMessage(data) ?? 'Falha na conexão. Tente novamente.';
+        }
       }
-      final status = e.response?.statusCode;
-      final data = e.response?.data;
-      if (status == 429) {
-        return 'Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.';
-      }
-      if (status == 400) {
-        return _extractMessage(data) ?? 'Preencha o e-mail e a senha para continuar.';
-      }
-      if (status == 401) {
-        return _extractMessage(data) ?? 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
-      }
-      if (status == 403) {
-        return _extractMessage(data) ?? 'Acesso negado. Sua conta pode estar inativa. Entre em contato com o suporte.';
-      }
-      if (status != null && status >= 500) {
-        return 'Servidor temporariamente indisponível. Tente novamente em alguns instantes.';
-      }
-      return _extractMessage(data) ?? 'Falha na conexão. Tente novamente.';
+      state = state.copyWith(isLoading: false, loginError: msg);
     } catch (_) {
-      state = state.copyWith(isLoading: false);
-      return 'Erro inesperado. Tente novamente ou entre em contato com o suporte.';
+      state = state.copyWith(
+        isLoading: false,
+        loginError: 'Erro inesperado. Tente novamente ou entre em contato com o suporte.',
+      );
     }
   }
 

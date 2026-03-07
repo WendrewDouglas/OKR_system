@@ -63,25 +63,31 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      // Try refresh
-      final token = await _storage.read(key: ApiConstants.tokenKey);
-      if (token != null) {
-        try {
-          final res = await _dio.post('/auth/refresh-token',
-            options: Options(headers: {'Authorization': 'Bearer $token'}),
-          );
-          if (res.data['ok'] == true) {
-            final newToken = res.data['token'] as String;
-            await _storage.write(key: ApiConstants.tokenKey, value: newToken);
-            // Retry original request
-            final opts = err.requestOptions;
-            opts.headers['Authorization'] = 'Bearer $newToken';
-            final retryRes = await _dio.fetch(opts);
-            return handler.resolve(retryRes);
-          }
-        } catch (_) {}
+      // Skip token refresh for public endpoints (e.g. login returns 401 for bad credentials)
+      final publicPaths = ['auth/login', 'auth/register', 'auth/forgot-password', 'auth/reset-password'];
+      final isPublic = publicPaths.any((p) => err.requestOptions.path.contains(p));
+
+      if (!isPublic) {
+        // Try refresh token for authenticated routes only
+        final token = await _storage.read(key: ApiConstants.tokenKey);
+        if (token != null) {
+          try {
+            final res = await _dio.post('/auth/refresh-token',
+              options: Options(headers: {'Authorization': 'Bearer $token'}),
+            );
+            if (res.data['ok'] == true) {
+              final newToken = res.data['token'] as String;
+              await _storage.write(key: ApiConstants.tokenKey, value: newToken);
+              // Retry original request
+              final opts = err.requestOptions;
+              opts.headers['Authorization'] = 'Bearer $newToken';
+              final retryRes = await _dio.fetch(opts);
+              return handler.resolve(retryRes);
+            }
+          } catch (_) {}
+        }
+        await _storage.delete(key: ApiConstants.tokenKey);
       }
-      await _storage.delete(key: ApiConstants.tokenKey);
     }
     handler.next(err);
   }

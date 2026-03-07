@@ -18,7 +18,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscure = true;
-  String? _error;
 
   late final AnimationController _logoCtrl;
   late final Animation<double> _logoScale;
@@ -50,20 +49,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     AppHaptics.medium();
-    setState(() => _error = null);
-    final err = await ref.read(authProvider.notifier).login(
+    await ref.read(authProvider.notifier).login(
       _emailCtrl.text.trim(),
       _passCtrl.text,
     );
-    if (err != null && mounted) {
+    // Error is now in authProvider.loginError — widget rebuilds via ref.watch
+    if (mounted && ref.read(authProvider).loginError != null) {
       AppHaptics.error();
-      setState(() => _error = err);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authProvider).isLoading;
+    final authState = ref.watch(authProvider);
+    final isLoading = authState.isLoading;
+    final error = authState.loginError;
 
     return CarbonFiberBackground(
       child: Scaffold(
@@ -151,9 +151,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutCubic,
                         child: AnimatedOpacity(
-                          opacity: _error != null ? 1.0 : 0.0,
+                          opacity: error != null ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 250),
-                          child: _error != null
+                          child: error != null
                               ? Container(
                                   width: double.infinity,
                                   margin: const EdgeInsets.only(bottom: 16),
@@ -169,7 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          _error!,
+                                          error,
                                           style: const TextStyle(color: AppColors.red, fontSize: 13),
                                         ),
                                       ),

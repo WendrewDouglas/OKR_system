@@ -259,22 +259,20 @@ class _PillarTileState extends State<_PillarTile>
       padding: const EdgeInsets.only(bottom: 12),
       child: Card(
         margin: EdgeInsets.zero,
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              // Colored left border
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Colored left border — stretches with content
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: color,
               ),
-              Expanded(
-                child: Column(
+            ),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                   children: [
                     // Header (tappable)
                     InkWell(
@@ -358,7 +356,6 @@ class _PillarTileState extends State<_PillarTile>
             ],
           ),
         ),
-      ),
     );
   }
 }
