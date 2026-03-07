@@ -63,7 +63,7 @@ if (class_exists(\Dompdf\Dompdf::class)) {
 if (!$ok) fail('Dompdf não disponível no host. Instale dompdf/dompdf no OKR_system para gerar o PDF.', 500);
 
 // grava caminho no BD (relativo à webroot)
-$rel = '/LP/Quizz-01/pdf/' . $fname;
+$rel = '/OKR_system/LP/Quizz-01/pdf/' . $fname;
 $upd = $pdo->prepare("UPDATE lp001_quiz_scores SET pdf_path=?, pdf_hash=?, pdf_gerado_dt=NOW() WHERE id_sessao=?");
 $upd->execute([$rel, $hash, (int)$ses['id_sessao']]);
 
