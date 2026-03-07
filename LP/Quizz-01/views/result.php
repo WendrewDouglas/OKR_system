@@ -413,6 +413,14 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
       const cta = makePersonalCTA({name:userFirst, tier:cls.tier, lows});
       document.getElementById('ctaPersonal').innerHTML = cta;
 
+      // GA4 — result page viewed
+      gtag('event', 'quiz_result_view', {
+        event_category: 'quiz',
+        event_label: 'lp001',
+        score_total: out.score_total,
+        classificacao: cls.tier
+      });
+
     }catch(err){
       const m = document.getElementById('resultMsg');
       m.classList.add('error');
@@ -463,6 +471,23 @@ $sid = isset($_GET['sid']) ? trim($_GET['sid']) : '';
         telefone_e164: payloadPhone,
         whatsapp_optin: true
       });
+      // GA4 — lead WhatsApp submitted (principal conversion)
+      gtag('event', 'form_submit', {
+        event_category: 'quiz',
+        event_label: 'whatsapp_lead'
+      });
+      gtag('event', 'conversion_event_submit_lead_form', {
+        event_category: 'quiz',
+        event_label: 'whatsapp_lead',
+        value: 1,
+        currency: 'BRL'
+      });
+      gtag('event', 'lead_whatsapp_submit', {
+        event_category: 'quiz',
+        event_label: 'lp001',
+        country: currentCountry
+      });
+
       w.textContent = (r2.status||'queued') === 'sent'
         ? 'Perfeito! Enviamos seu PDF e as instruções de acesso gratuito por WhatsApp.'
         : 'Solicitação enviada. Você receberá o PDF e as instruções de acesso em instantes.';

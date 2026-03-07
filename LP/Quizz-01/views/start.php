@@ -86,6 +86,13 @@ require __DIR__ . '/partials/header.php';
   // Slug da landing/quiz
   const QUIZ_SLUG = 'lp001';
 
+  // GA4 — quiz landing view
+  gtag('event', 'quiz_landing_view', {
+    event_category: 'quiz',
+    event_label: 'lp001',
+    utm_source: new URLSearchParams(location.search).get('utm_source') || '(direct)'
+  });
+
   // === HELPERS ===
   const $ = s => document.querySelector(s);
   const isCorporate = e => !/@(gmail|hotmail|outlook|yahoo|icloud)\./i.test(e);
@@ -210,6 +217,18 @@ require __DIR__ . '/partials/header.php';
         localStorage.setItem('lead_email', email);
         if (lead && lead.id_lead) localStorage.setItem('lead_id', String(lead.id_lead));
       } catch(_) {}
+
+      // GA4 — quiz started (lead captured)
+      gtag('event', 'quiz_start', {
+        event_category: 'quiz',
+        event_label: 'lp001',
+        lead_id: lead.id_lead || ''
+      });
+      gtag('event', 'generate_lead', {
+        event_category: 'quiz',
+        value: 1,
+        currency: 'BRL'
+      });
 
       // 2) Busca versão ativa já filtrando por slug/cargo
       const qsVersao = new URLSearchParams({ slug: QUIZ_SLUG, id_cargo: String(id_cargo) }).toString();

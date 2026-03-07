@@ -252,6 +252,14 @@ $id_cargo = isset($_GET['id_cargo']) ? (int)$_GET['id_cargo'] : 0;
     try{
       $('#quizMsg').classList.remove('error'); $('#quizMsg').textContent = '';
       await api('POST', API.finalize, { session_token: SID });
+
+      // GA4 — quiz completed
+      gtag('event', 'quiz_complete', {
+        event_category: 'quiz',
+        event_label: 'lp001',
+        questions_answered: state.ordem.length
+      });
+
       location.href = '/OKR_system/LP/Quizz-01/views/result.php?sid=' + encodeURIComponent(SID);
     }catch(err){
       $('#quizMsg').classList.add('error');
@@ -327,6 +335,15 @@ $id_cargo = isset($_GET['id_cargo']) ? (int)$_GET['id_cargo'] : 0;
           ch.style.display = 'block';
           ch.innerHTML = `<b>Sua escolha:</b> ${ans.escolhida.explicacao || '—'}`;
         }
+
+        // GA4 — question answered
+        gtag('event', 'quiz_question_answer', {
+          event_category: 'quiz',
+          event_label: 'question_' + (state.idx + 1),
+          question_index: state.idx + 1,
+          question_total: total,
+          score: ans.escolhida?.score || 0
+        });
 
         state.phase = 'next';
         $('#btnAction').textContent = (state.idx === total-1) ? 'Ver resultado' : 'Próxima';
