@@ -100,44 +100,21 @@ $csrf = $_SESSION['csrf_token'];
   <title>Gerenciar Usuários — OKR System</title>
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
-    :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
-      --accent:#0c4a6e;
-      --radius: 14px;
-    }
+    :root{ --radius: 14px; --chat-w:0px; }
     body{ background:#fff !important; color:#111; }
-    :root{ --chat-w:0px; }
     .content{ background:transparent; }
     main.users{
       padding:24px; display:grid; grid-template-columns:1fr; gap:16px;
       margin-right:var(--chat-w); transition:margin-right .25s ease;
     }
 
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:#0c4a6e; text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.8; }
-
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:#e5e7eb; position:relative; overflow:hidden;
-      border:1px solid #223047;
-    }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-
     .head-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-    .head-meta{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill i{ font-size:.9rem; opacity:.9; }
 
     .btn { border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
@@ -198,8 +175,6 @@ $csrf = $_SESSION['csrf_token'];
     @keyframes sh{ to { transform: translateX(100%); } }
 
     /* ===== Overlay/Modal base ===== */
-    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
-    .overlay.show{ display:grid; }
     .modal-card{
       width:min(980px,95vw); background:#0b1020; color:#e6e9f2;
       border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:18px; position:relative; overflow:hidden;
@@ -254,6 +229,12 @@ $csrf = $_SESSION['csrf_token'];
     .none{ opacity:.25; font-size:.8rem; }
     .hl{ outline:2px solid #2563eb; outline-offset:-2px; border-radius:8px; }
     .sticky-left{ position:sticky; left:0; background:#0b1326; z-index:3; }
+
+    /* Toast notifications */
+    .toast-wrap{ position:fixed; bottom:20px; right:20px; z-index:3000; display:flex; flex-direction:column; gap:8px; }
+    .toast{ background:#0b7a44; color:#eafff5; padding:12px 18px; border-radius:10px; font-weight:700; box-shadow:0 10px 30px rgba(0,0,0,.25); transition:opacity .4s, transform .4s; max-width:420px; }
+    .toast-success{ background:#0b7a44; color:#eafff5; }
+    .toast-warn{ background:#92400e; color:#fef3c7; }
   </style>
 </head>
 <body>
@@ -262,12 +243,13 @@ $csrf = $_SESSION['csrf_token'];
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="users">
-      <nav class="crumbs" aria-label="breadcrumb">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard" aria-label="Voltar ao dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <span aria-current="page"><i class="fa-solid fa-users-gear"></i> Gerenciar Usuários</span>
-      </nav>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Gerenciar Usuários', 'icon' => 'fa-solid fa-users-gear'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <section class="head-card">
         <div class="head-top">
@@ -321,10 +303,11 @@ $csrf = $_SESSION['csrf_token'];
       <div class="modal-header"><h3 id="delTitle" class="cap-title"><i class="fa-regular fa-trash-can"></i> Excluir usuário</h3></div>
       <div class="modal-body uf-grid">
         <div id="delMsg">Tem certeza que deseja excluir?</div>
+        <div id="delDetail" style="margin-top:8px;padding:10px;border:1px solid #334155;border-radius:10px;background:#0c1118;font-size:.9rem;color:#cbd5e1;display:none;"></div>
       </div>
       <div class="modal-actions">
         <button class="btn" id="delCancel">Cancelar</button>
-        <button class="btn btn-danger" id="delConfirm">Excluir</button>
+        <button class="btn btn-danger" id="delConfirm"><i class="fa-regular fa-trash-can"></i> Excluir</button>
       </div>
     </div>
   </div>
@@ -472,13 +455,14 @@ const CSRF = '<?= htmlspecialchars($csrf, ENT_QUOTES, "UTF-8") ?>';
 const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-function toast(msg){
+function toast(msg, type){
   const div = document.createElement('div');
-  div.className = 'toast';
+  div.className = 'toast' + (type ? ' toast-' + type : '');
   div.textContent = msg;
   $('#toastWrap').appendChild(div);
-  setTimeout(()=>{ div.style.opacity='0'; div.style.transform='translateY(4px)'; }, 2200);
-  setTimeout(()=> div.remove(), 3000);
+  const dur = type === 'warn' ? 4500 : 2200;
+  setTimeout(()=>{ div.style.opacity='0'; div.style.transform='translateY(4px)'; }, dur);
+  setTimeout(()=> div.remove(), dur + 800);
 }
 function show(el){ el?.classList.add('show'); el?.setAttribute('aria-hidden','false'); }
 function hide(el){ el?.classList.remove('show'); el?.setAttribute('aria-hidden','true'); }
@@ -1239,14 +1223,51 @@ async function loadList(){
 
 /* ====================== DELETE ====================== */
 let pendingDeleteId=null;
-function askDelete(btn){
+let pendingDeleteScenario=null;
+async function askDelete(btn){
   pendingDeleteId = parseInt(btn.dataset.id,10);
+  pendingDeleteScenario = null;
   const nm = btn.dataset.name || ('#'+pendingDeleteId);
-  show($('#modalDel'));
+  const detail = $('#delDetail');
+  detail.style.display = 'none';
+  detail.innerHTML = '';
   $('#delMsg').textContent = `Tem certeza que deseja excluir ${nm}?`;
+  $('#delConfirm').disabled = true;
+  $('#delConfirm').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando…';
+  show($('#modalDel'));
+
+  try{
+    const r = await fetch(API+`?action=pre_delete_check&id=${pendingDeleteId}`, {cache:'no-store'});
+    const j = await r.json();
+    if (!r.ok || !j.success){
+      detail.textContent = j.error || 'Não foi possível verificar os impactos.';
+      detail.style.display = 'block';
+      return;
+    }
+    pendingDeleteScenario = j.scenario;
+    if (j.scenario === 'solo'){
+      detail.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> <strong>Este é o único usuário da empresa "${j.company_name || '?'}".</strong><br>A empresa e <strong>TODOS</strong> os dados OKR serão excluídos permanentemente.`;
+    } else {
+      if (j.item_count > 0){
+        detail.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left" style="color:#60a5fa;"></i> Este usuário possui <strong>${j.item_count}</strong> item(ns) OKR que serão reatribuídos para <strong>${j.reassign_to_name || '?'}</strong>.`;
+      } else {
+        detail.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> Este usuário não possui itens OKR vinculados. A exclusão é direta.`;
+      }
+    }
+    detail.style.display = 'block';
+  }catch(e){
+    logClient('askDelete.preCheck.fail', { id: pendingDeleteId, error: String(e?.message||e) });
+    detail.textContent = 'Não foi possível verificar impactos. A exclusão continuará normalmente.';
+    detail.style.display = 'block';
+  } finally {
+    $('#delConfirm').disabled = false;
+    $('#delConfirm').innerHTML = '<i class="fa-regular fa-trash-can"></i> Excluir';
+  }
 }
 async function doDelete(){
   if (!pendingDeleteId) return;
+  $('#delConfirm').disabled = true;
+  $('#delConfirm').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Excluindo…';
   try{
     const fd = new FormData();
     fd.append('action','delete');
@@ -1255,13 +1276,19 @@ async function doDelete(){
     const r = await fetch(API, { method:'POST', body:fd });
     const j = await r.json();
     if (!r.ok || !j.success) throw new Error(j.error || 'Falha ao excluir');
+    const sc = j.scenario || pendingDeleteScenario;
     pendingDeleteId = null;
+    pendingDeleteScenario = null;
     hide($('#modalDel'));
     await loadList();
-    toast('Usuário excluído com sucesso.');
+    if (sc === 'solo') toast('Usuário e empresa excluídos com sucesso.');
+    else toast('Usuário excluído. Itens reatribuídos com sucesso.');
   }catch(e){
     logClient('doDelete.fail', { id: pendingDeleteId, error: String(e?.message||e) });
     alert(e.message||'Erro de rede');
+  } finally {
+    $('#delConfirm').disabled = false;
+    $('#delConfirm').innerHTML = '<i class="fa-regular fa-trash-can"></i> Excluir';
   }
 }
 
@@ -1425,7 +1452,13 @@ async function saveUser(){
       throw new Error(j.error || 'Falha ao salvar');
     }
     hide($('#userFormModal'));
-    toast('Usuário salvo com sucesso.');
+    if (j.email_sent === true) {
+      toast('Usuário criado! E-mail de boas-vindas enviado.', 'success');
+    } else if (j.email_sent === false) {
+      toast('Usuário criado, mas o e-mail de boas-vindas falhou ao enviar. Verifique as configurações SMTP.', 'warn');
+    } else {
+      toast('Usuário salvo com sucesso.');
+    }
     await loadList();
   }catch(e){
     logClient('saveUser.catch', { error: String(e?.message||e) });

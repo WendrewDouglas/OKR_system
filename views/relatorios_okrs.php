@@ -661,15 +661,11 @@ try{
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relatórios de OKRs — OKR System</title>
 <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+<link rel="stylesheet" href="/OKR_system/assets/css/components.css">
 <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
 <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 <style>
-:root{
-  --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-  --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-  --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
-}
 body{ background:#fff !important; color:#111; }
 .content{ background:transparent; }
 .sidebar{ background:var(--card); color:var(--gold); border-right:1px solid var(--border) !important; }
@@ -677,9 +673,6 @@ body{ background:#fff !important; color:#111; }
 .sidebar .active, .sidebar .current{ color:#fff !important; }
 .header{ background:#fff !important; color:#eaeef6 !important; }
 main.report{ font-size:12px; padding:12px; display:grid; grid-template-columns:1fr; gap:10px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
-.crumbs{ color:#333; font-size:.72rem; display:flex; align-items:center; gap:6px; }
-.crumbs a{ color:#0c4a6e; text-decoration:none; }
-.crumbs .sep{ opacity:.5; margin:0 2px; }
 .rep-card{ position:relative; background:linear-gradient(180deg, #1b202a, #0d1117); border:1px solid var(--border); border-radius:10px; padding:10px 38px 10px 10px; color:#eaeef6; }
 .rep-title{ font-size:.85rem; font-weight:900; margin:0 0 6px; display:flex; gap:8px; align-items:center; }
 .rep-title i{ color:var(--gold); }
@@ -819,12 +812,13 @@ main.report{ font-size:12px; padding:12px; display:grid; grid-template-columns:1
 <?php include __DIR__ . '/partials/header.php'; ?>
 
 <main class="report" id="reportArea">
-  <div class="crumbs">
-    <i class="fa-solid fa-route"></i>
-    <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-    <span class="sep">/</span>
-    <span><i class="fa-solid fa-chart-line"></i> Relatórios de OKRs</span>
-  </div>
+  <?php
+    $breadcrumbs = [
+      ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+      ['label' => 'Relatórios de OKRs', 'icon' => 'fa-solid fa-chart-line'],
+    ];
+    include __DIR__ . '/partials/breadcrumbs.php';
+  ?>
 
   <section class="rep-card">
     <button class="share-fab" title="Compartilhar" onclick="navigator.clipboard.writeText(location.href)"><i class="fa-solid fa-share-nodes"></i></button>
@@ -852,6 +846,19 @@ main.report{ font-size:12px; padding:12px; display:grid; grid-template-columns:1
       <span class="chip"><i class="fa-solid fa-magnifying-glass"></i> <input id="f_q" type="text" placeholder="Busca" style="background:transparent;border:none;color:#eaeef6;outline:none;width:160px"></span>
       <button class="btn" id="btnAplicar"><i class="fa-solid fa-filter"></i>&nbsp;Aplicar</button>
       <button class="btn btn-outline" id="btnPrint"><i class="fa-regular fa-file-lines"></i>&nbsp;Exportar</button>
+    </div>
+
+    <!-- Presets de período -->
+    <div class="no-print" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn btn-outline preset-btn" data-preset="tri_atual" style="font-size:.82rem;padding:6px 12px;border-radius:999px;">
+        <i class="fa-regular fa-calendar"></i> Trimestre Atual
+      </button>
+      <button class="btn btn-outline preset-btn" data-preset="tri_anterior" style="font-size:.82rem;padding:6px 12px;border-radius:999px;">
+        <i class="fa-regular fa-calendar-minus"></i> Trimestre Anterior
+      </button>
+      <button class="btn btn-outline preset-btn" data-preset="ano_atual" style="font-size:.82rem;padding:6px 12px;border-radius:999px;">
+        <i class="fa-regular fa-calendar-days"></i> Ano Atual
+      </button>
     </div>
 
     <!-- KPIs -->
@@ -2048,6 +2055,72 @@ document.getElementById('btnAplicar')?.addEventListener('click', ()=>{
   carregar(readFilters());
 });
 
+/* ========== Presets de filtro ========== */
+function pad2(n){ return String(n).padStart(2,'0'); }
+function setPreset(preset){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-indexed
+  let di, df;
+
+  if (preset === 'tri_atual') {
+    const q = Math.floor(m / 3);
+    const sm = q * 3;
+    di = `${y}-${pad2(sm+1)}-01`;
+    const em = sm + 2;
+    const ld = new Date(y, em + 1, 0).getDate();
+    df = `${y}-${pad2(em+1)}-${pad2(ld)}`;
+  } else if (preset === 'tri_anterior') {
+    let q = Math.floor(m / 3) - 1;
+    let py = y;
+    if (q < 0) { q = 3; py = y - 1; }
+    const sm = q * 3;
+    di = `${py}-${pad2(sm+1)}-01`;
+    const em = sm + 2;
+    const ld = new Date(py, em + 1, 0).getDate();
+    df = `${py}-${pad2(em+1)}-${pad2(ld)}`;
+  } else if (preset === 'ano_atual') {
+    di = `${y}-01-01`;
+    df = `${y}-12-31`;
+  }
+
+  if (di && df) {
+    const fDi = $('#f_dt_ini');
+    const fDf = $('#f_dt_fim');
+    if (fDi) fDi.value = di;
+    if (fDf) fDf.value = df;
+    // Clear other filters
+    if ($('#f_pilar'))  $('#f_pilar').value = '';
+    if ($('#f_status')) $('#f_status').value = '';
+    if ($('#f_dono'))   $('#f_dono').value = '';
+    if ($('#f_q'))      $('#f_q').value = '';
+    // Highlight active preset
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      b.style.borderColor = (b.dataset.preset === preset) ? 'var(--gold)' : '';
+      b.style.color = (b.dataset.preset === preset) ? 'var(--gold)' : '';
+    });
+    carregar(readFilters());
+  }
+}
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => setPreset(btn.dataset.preset));
+});
+
+/* ========== Auto-apply com debounce 300ms ========== */
+let _filterDebounce = null;
+function debouncedApply(){
+  clearTimeout(_filterDebounce);
+  _filterDebounce = setTimeout(() => carregar(readFilters()), 300);
+}
+['#f_dt_ini','#f_dt_fim','#f_pilar','#f_status'].forEach(sel => {
+  const el = document.querySelector(sel);
+  if (el) el.addEventListener('change', debouncedApply);
+});
+['#f_dono','#f_q'].forEach(sel => {
+  const el = document.querySelector(sel);
+  if (el) el.addEventListener('input', debouncedApply);
+});
+
 document.getElementById('btnPrint')?.addEventListener('click', ()=>{
   finalizeChartsForPrint();
   const pf = document.getElementById('printFooter');
@@ -2060,33 +2133,9 @@ document.getElementById('btnPrint')?.addEventListener('click', ()=>{
   window.print();
 });
 
-/* =================== Ajuste com chat lateral =================== */
-const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-function isOpen(el){
-  const st=getComputedStyle(el);
-  const vis=st.display!=='none'&&st.visibility!=='hidden';
-  const w=el.offsetWidth;
-  return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show');
-}
-function updateChatWidth(){
-  const el=findChatEl();
-  const w=(el && isOpen(el))?el.offsetWidth:0;
-  document.documentElement.style.setProperty('--chat-w',(w||0)+'px');
-}
-function setupChatObservers(){
-  const chat=findChatEl();
-  if(!chat) return;
-  const mo=new MutationObserver(()=>{ updateChatWidth(); });
-  mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
-  window.addEventListener('resize',updateChatWidth);
-  TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200))));
-  updateChatWidth();
-}
+/* Chat-width is now handled centrally by partials/chat.php */
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  setupChatObservers();
   carregar({}); // primeira carga com filtros vazios
 });
 </script>

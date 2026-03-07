@@ -46,6 +46,7 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
 <title>Aprovações — OKR System</title>
 
 <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+<link rel="stylesheet" href="/OKR_system/assets/css/components.css">
 <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
 <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
@@ -96,28 +97,11 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
   /* Estados de loading */
   .btn[disabled]{ opacity:.7; cursor:not-allowed; }
 
-  :root{
-    --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-    --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-    --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a; --accent:#0c4a6e; --chip:#0e131a;
-    --ok:#16a34a; --no:#dc2626; --warn:#f59e0b;
-  }
   body{ background:#fff !important; color:#111; }
   :root{ --chat-w:0px; }
   .content{ background:transparent; }
   main.approval{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
-  .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-  .crumbs a{ color:var(--accent); text-decoration:none; }
-  .crumbs .sep{ opacity:.5; margin:0 2px; }
-  .crumbs i{ opacity:.8; }
-
-  .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border);
-    border-radius:16px; padding:16px; box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden; }
-  .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-  .head-title i{ color:var(--gold); }
-  .head-meta{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-  .pill{ display:inline-flex; align-items:center; gap:8px; background:var(--chip); border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
   .pill.good{ color:#c7f9cc; border-color:#14532d; background:rgba(20,83,45,.35); }
   .pill.warn{ color:#fff7ed; border-color:#854d0e; background:rgba(133,77,14,.32); }
   .pill.bad { color:#fee2e2; border-color:#7f1d1d; background:rgba(127,29,29,.28); }
@@ -168,6 +152,18 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
   .changes th{ background:#0b1118; color:#cbd5e1; text-align:left; }
   .changes td small{ opacity:.85; }
   .just{ margin-top:6px; color:#cdd6e0; font-size:.92rem; }
+
+  .bulk-check { display:flex; align-items:center; }
+  .bulk-cb { width:18px; height:18px; accent-color:var(--gold); cursor:pointer; }
+  .bulk-bar {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(180deg, var(--card), #0b1020);
+    border:1px solid var(--gold); border-radius:14px; padding:10px 20px;
+    display:none; align-items:center; gap:12px;
+    box-shadow:0 10px 40px rgba(0,0,0,.4); z-index:2000; color:var(--text);
+  }
+  .bulk-bar.show { display:flex; }
+  .bulk-bar .bulk-count { font-weight:800; color:var(--gold); }
 </style>
 </head>
 <body>
@@ -176,12 +172,13 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="approval">
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <span><i class="fa-solid fa-badge-check"></i> Aprovações</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Aprovações', 'icon' => 'fa-solid fa-badge-check'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <section class="head-card">
         <h1 class="head-title"><i class="fa-solid fa-clipboard-check"></i> Central de Aprovações</h1>
@@ -230,6 +227,12 @@ $meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
       <section class="list" id="list"></section>
 
       <?php include __DIR__ . '/partials/chat.php'; ?>
+
+      <div class="bulk-bar" id="bulkBar">
+        <span>Selecionados: <strong class="bulk-count" id="bulkCount">0</strong></span>
+        <button class="btn btn-approve" id="bulkApprove"><i class="fa-solid fa-check"></i> Aprovar selecionados</button>
+        <button class="btn btn-ghost" id="bulkCancel"><i class="fa-regular fa-circle-xmark"></i> Cancelar</button>
+      </div>
     </main>
   </div>
 
@@ -287,14 +290,6 @@ function hide(el){
   el.setAttribute('hidden','');
 }
 function clampText(el, lines=2){ el.style.display='-webkit-box'; el.style.webkitLineClamp=lines; el.style.webkitBoxOrient='vertical'; el.style.overflow='hidden'; }
-
-// chat lateral
-const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
 
 // Estado
 const API = '/OKR_system/auth/aprovacao_api.php';
@@ -373,9 +368,12 @@ function card(row){
   const canApprove = row.scope==='para_aprovar' && row.status_aprovacao==='pendente';
   const canResend  = row.scope!=='para_aprovar' && row.status_aprovacao==='reprovado' && String(row.usuario_criador_id||'')===MEU_ID;
 
+  const checkbox = canApprove ? `<label class="bulk-check"><input type="checkbox" class="bulk-cb" data-module="${row.module}" data-id="${row.id}"></label>` : '';
+
   return `
     <article class="card" data-key="${row.module}|${row.id}">
       <div class="left">
+        ${checkbox}
         <div class="title">
           ${modChip(row.module)}
           <span>${title}</span>
@@ -404,19 +402,22 @@ function card(row){
       <div class="right">
         <button class="btn btn-ghost btn-toggle"><i class="fa-regular fa-eye"></i></button>
         ${canApprove ? `
-          <button class="btn btn-approve btn-acao" data-action="approve"><i class="fa-solid fa-check"></i></button>
-          <button class="btn btn-reject  btn-acao" data-action="reject"><i class="fa-solid fa-xmark"></i></button>
+          <button class="btn btn-approve btn-acao" data-action="approve"><i class="fa-solid fa-check"></i> <span class="btn-label">Aprovar</span></button>
+          <button class="btn btn-reject  btn-acao" data-action="reject"><i class="fa-solid fa-xmark"></i> <span class="btn-label">Reprovar</span></button>
         `:''}
-        ${canResend ? `<button class="btn btn-resend btn-acao" data-action="resubmit"><i class="fa-solid fa-paper-plane"></i></button>`:''}
+        ${canResend ? `<button class="btn btn-resend btn-acao" data-action="resubmit"><i class="fa-solid fa-paper-plane"></i> <span class="btn-label">Reenviar</span></button>`:''}
       </div>
     </article>
   `;
 }
 
 function render(){
-  $('#pillPendente').innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pendentes: ${DATA?.stats?.pendentes ?? '—'}`;
-  $('#pillReprovado').innerHTML = `<i class="fa-solid fa-xmark"></i> Reprovados: ${DATA?.stats?.reprovados ?? '—'}`;
-  $('#pillAprovado').innerHTML = `<i class="fa-solid fa-check"></i> Aprovados (últimos 30d): ${DATA?.stats?.aprovados30 ?? '—'}`;
+  const sPend = Number.isFinite(DATA?.stats?.pendentes) ? parseInt(DATA.stats.pendentes,10) : '—';
+  const sRep  = Number.isFinite(DATA?.stats?.reprovados) ? parseInt(DATA.stats.reprovados,10) : '—';
+  const sApr  = Number.isFinite(DATA?.stats?.aprovados30) ? parseInt(DATA.stats.aprovados30,10) : '—';
+  $('#pillPendente').innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pendentes: ${sPend}`;
+  $('#pillReprovado').innerHTML = `<i class="fa-solid fa-xmark"></i> Reprovados: ${sRep}`;
+  $('#pillAprovado').innerHTML = `<i class="fa-solid fa-check"></i> Aprovados (últimos 30d): ${sApr}`;
 
   const mod = $('#fModulo').value;
   const sts = $('#fStatus').value;
@@ -618,7 +619,64 @@ async function loadData(){
 }
 
 // Boot
-document.addEventListener('DOMContentLoaded', ()=>{ setupChatObservers(); loadData(); });
+document.addEventListener('DOMContentLoaded', ()=>{ loadData(); });
+
+// Bulk approve
+function updateBulkBar(){
+  const checked = $$('.bulk-cb:checked');
+  const bar = $('#bulkBar');
+  const count = $('#bulkCount');
+  if(checked.length > 0){
+    bar.classList.add('show');
+    count.textContent = checked.length;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+document.addEventListener('change', e=>{
+  if(e.target.classList.contains('bulk-cb')) updateBulkBar();
+});
+
+$('#bulkCancel')?.addEventListener('click', ()=>{
+  $$('.bulk-cb:checked').forEach(cb=>cb.checked=false);
+  updateBulkBar();
+});
+
+$('#bulkApprove')?.addEventListener('click', async ()=>{
+  const checked = $$('.bulk-cb:checked');
+  if(!checked.length) return;
+
+  const btn = $('#bulkApprove');
+  const prevHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Aprovando...';
+
+  let successCount = 0;
+  for(const cb of checked){
+    try{
+      const fd = new FormData();
+      fd.append('csrf_token', CSRF);
+      fd.append('action', 'approve');
+      fd.append('module', cb.dataset.module);
+      fd.append('id', cb.dataset.id);
+      fd.append('comentarios', '');
+      const res = await fetch(API, { method:'POST', body:fd });
+      const data = await res.json().catch(()=>({}));
+      if(res.ok && data.success) successCount++;
+    }catch(e){}
+  }
+
+  btn.innerHTML = prevHTML;
+  btn.disabled = false;
+  $$('.bulk-cb:checked').forEach(cb=>cb.checked=false);
+  updateBulkBar();
+
+  if(successCount > 0) await loadData();
+  if(successCount < checked.length){
+    alert(`${successCount} de ${checked.length} itens aprovados. Alguns falharam.`);
+  }
+});
 </script>
 </body>
 </html>

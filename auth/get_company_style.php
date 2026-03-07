@@ -2,10 +2,6 @@
 // auth/get_company_style.php
 // Retorna estilo da organização (se existir).
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 require_once __DIR__ . '/config.php';
@@ -32,6 +28,7 @@ try {
   $rec = $st->fetch();
   echo json_encode(['success'=>true, 'record'=>$rec ?: null]);
 } catch (PDOException $e) {
+  error_log('get_company_style: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false, 'error'=>'Erro: '.$e->getMessage()]);
+  echo json_encode(['success'=>false, 'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
 }

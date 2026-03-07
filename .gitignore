@@ -5,6 +5,7 @@ tmp_my.cnf
 
 # IDE
 .idea/
+.vscode/
 
 # Claude Code
 .claude/
@@ -14,34 +15,47 @@ tmp_my.cnf
 *.MOV
 
 # Dependências (instalar via composer install / pip install)
-public_html/OKR_system/vendor/
-public_html/OKR_system/Ambiente_Python/.venv/
+vendor/
+Ambiente_Python/.venv/
+**/.venv/
 node_modules/
 
-# Ambiente dev (cópia separada)
-public_html/dev-okr.planningbi.com.br/
-
 # Logs e runtime
-public_html/OKR_system/logs/
-public_html/OKR_system/error_log
+logs/
 **/error_log
+*.log
 
 # Backups e migrations locais
 backup_pre_migration_*.sql
 migration_lopa_data.sql
 
 # Uploads de usuários
-public_html/OKR_system/uploads/
+uploads/
 
-# WordPress core (não é código do projeto)
-public_html/wp-*
-public_html/xmlrpc.php
-public_html/license.txt
-public_html/readme.html
-public_html/index.php
-public_html/wp-content/
-public_html/r/
+# Cache Python
+__pycache__/
+*.pyc
+
+# Cache PHPUnit
+.phpunit.cache/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Outbox de emails (dados sensíveis)
+auth/outbox/
+
+# Arquivos de deploy antigos (FTP)
+*.bat
+*_commands.txt
+sftp_download_batch.txt
+sync_from_server.sh
+sync_from_server_sftp.sh
+.ftpquota
+
+# Flutter app source (código fonte separado do build)
+# okr_app/ fica no repo, app/ é o build web
+
+# Estrutura antiga (já consolidada na raiz)
+public_html/

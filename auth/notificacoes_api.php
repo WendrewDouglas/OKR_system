@@ -1,10 +1,6 @@
 <?php
 // auth/notificacoes_api.php
 declare(strict_types=1);
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(E_ALL);
-
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -18,7 +14,7 @@ try {
   $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4", DB_USER, DB_PASS, [
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
   ]);
-} catch (PDOException $e) { http_response_code(500); echo json_encode(['error'=>$e->getMessage()]); exit; }
+} catch (PDOException $e) { error_log('notificacoes_api: '.$e->getMessage()); http_response_code(500); echo json_encode(['error'=>'Falha ao processar. Tente novamente ou contate o administrador.']); exit; }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');

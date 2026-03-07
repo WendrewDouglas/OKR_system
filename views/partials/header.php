@@ -188,6 +188,31 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
     </a>
   </div>
   <div class="right">
+    <!-- Quick Actions: + Objetivo / + KR -->
+    <?php
+      // Load ACL if not yet loaded (safe to require_once)
+      $aclPath = dirname(__DIR__, 2) . '/auth/acl.php';
+      if (is_file($aclPath)) { require_once $aclPath; }
+      $canWrite = function_exists('has_cap') && has_cap('W:objetivo@ORG');
+    ?>
+    <?php if ($canWrite): ?>
+    <div class="header-quick-actions">
+      <a href="/OKR_system/views/novo_objetivo.php" class="header-qa-btn" title="Novo Objetivo">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <span class="qa-label">Objetivo</span>
+      </a>
+      <a href="/OKR_system/views/novo_key_result.php" class="header-qa-btn" title="Novo Key Result">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <span class="qa-label">KR</span>
+      </a>
+    </div>
+    <?php endif; ?>
+
+    <!-- Tutorial -->
+    <button class="notif-link" onclick="tutOpen()" aria-label="Tutorial do sistema" title="Tour pelo sistema" style="background:none;border:none;cursor:pointer">
+      <i class="fa-solid fa-graduation-cap" aria-hidden="true" style="color:#128C7E"></i>
+    </button>
+
     <!-- Envelope + badge numérico -->
     <a href="/OKR_system/views/notificacoes.php" class="notif-link" aria-label="Abrir notificações">
       <i class="fa-regular fa-envelope" aria-hidden="true"></i>

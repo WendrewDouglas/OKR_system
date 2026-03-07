@@ -98,6 +98,7 @@ if (env_bool('APP_DEBUG', false)) {
 // ===== Banco =====
 define('DB_HOST',     (string)env('DB_HOST', 'localhost'));
 define('DB_NAME',     (string)env('DB_NAME', ''));
+define('DB_NAME_DEV', (string)env('DB_NAME', ''));
 define('DB_USER',     (string)env('DB_USER', ''));
 define('DB_PASS',     (string)env('DB_PASS', ''));
 define('DB_CHARSET',  (string)env('DB_CHARSET', 'utf8mb4'));

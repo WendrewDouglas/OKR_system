@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/functions.php';
 
 function notify_inapp(PDO $pdo, int $userId, string $titulo, string $mensagem, ?string $url=null, array $meta=[]): void {
   $st = $pdo->prepare("INSERT INTO notificacoes (id_user, tipo, titulo, mensagem, url, meta_json) VALUES (?, 'aprovacao', ?, ?, ?, JSON_OBJECT())");
@@ -128,4 +129,228 @@ function notify_event(PDO $pdo, array $context): void {
       notify_inapp($pdo, (int)$r['id_user'], "Reenvio recebido: {$module} {$id}", "Há um item reenviado aguardando nova análise.", $url);
     }
   }
+}
+
+// ==========================================
+// Notificação de novo item pendente para aprovadores
+// ==========================================
+
+/**
+ * Gera linhas <tr> de detalhes conforme o módulo.
+ */
+function build_detail_rows(string $module, array $details): string {
+    $extras = $details['extras'] ?? [];
+    $rows = '';
+
+    $addRow = function(string $label, ?string $value) use (&$rows) {
+        if ($value === null || $value === '') return;
+        $v = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        $l = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+        $rows .= "<tr><td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;width:40%;\">{$l}</td>"
+                . "<td style=\"padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#1f2937;\">{$v}</td></tr>";
+    };
+
+    switch ($module) {
+        case 'objetivo':
+            $addRow('Tipo', 'Objetivo');
+            $addRow('Criador', $details['criador_nome'] ?? null);
+            $addRow('Ciclo', $extras['tipo_ciclo'] ?? null);
+            $addRow('Período', $extras['ciclo'] ?? null);
+            $addRow('Prazo', $extras['dt_prazo'] ?? null);
+            break;
+
+        case 'kr':
+            $addRow('Tipo', 'Key Result');
+            $addRow('Criador', $details['criador_nome'] ?? null);
+            $addRow('Objetivo vinculado', $extras['id_objetivo'] ?? null);
+            $addRow('Baseline', isset($extras['baseline']) ? (string)$extras['baseline'] : null);
+            $addRow('Meta', isset($extras['meta']) ? (string)$extras['meta'] : null);
+            $addRow('Unidade', $extras['unidade_medida'] ?? null);
+            $addRow('Período', ($extras['data_inicio'] ?? '') . ' a ' . ($extras['data_fim'] ?? ''));
+            break;
+
+        case 'orcamento':
+            $addRow('Tipo', 'Orçamento');
+            $addRow('Criador', $details['criador_nome'] ?? null);
+            $addRow('Iniciativa', $extras['id_iniciativa'] ?? null);
+            $addRow('Valor', isset($extras['valor']) ? 'R$ ' . number_format((float)$extras['valor'], 2, ',', '.') : null);
+            $addRow('Justificativa', $extras['justificativa'] ?? null);
+            break;
+    }
+
+    return $rows;
+}
+
+/**
+ * Monta o HTML completo do email de aprovação pendente.
+ */
+function build_approval_email_html(string $module, array $details, string $approverName): string {
+    $colors = [
+        'objetivo'  => '#0c4a6e',
+        'kr'        => '#065f46',
+        'orcamento' => '#92400e',
+    ];
+    $labels = [
+        'objetivo'  => 'Objetivo',
+        'kr'        => 'Key Result',
+        'orcamento' => 'Orçamento',
+    ];
+
+    $accent     = $colors[$module] ?? '#0c4a6e';
+    $label      = $labels[$module] ?? ucfirst($module);
+    $descricao  = htmlspecialchars($details['descricao'] ?? '', ENT_QUOTES, 'UTF-8');
+    $criador    = htmlspecialchars($details['criador_nome'] ?? '', ENT_QUOTES, 'UTF-8');
+    $dataHora   = date('d/m/Y \à\s H:i');
+    $saudacao   = htmlspecialchars($approverName, ENT_QUOTES, 'UTF-8');
+    $detailRows = build_detail_rows($module, $details);
+    $ctaUrl     = 'https://planningbi.com.br/OKR_system/views/aprovacao.php';
+    $logoUrl    = 'https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizonta-brancfa-sem-fundol-1024x267.png';
+
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
+<tr><td align="center" style="padding:24px 16px;">
+
+<!-- Container 600px -->
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+  <!-- Header gradient -->
+  <tr>
+    <td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:32px 40px;text-align:center;">
+      <img src="{$logoUrl}" alt="Planning BI" width="180" style="max-width:180px;height:auto;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td style="background-color:{$accent};color:#ffffff;font-size:13px;font-weight:700;padding:6px 18px;border-radius:20px;letter-spacing:0.5px;">
+            NOVA APROVAÇÃO PENDENTE
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Body -->
+  <tr>
+    <td style="padding:32px 40px;">
+
+      <!-- Saudação -->
+      <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#1f2937;">Olá, {$saudacao}!</p>
+      <p style="margin:0 0 24px;font-size:13px;color:#9ca3af;">{$dataHora}</p>
+
+      <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+        Um novo <strong>{$label}</strong> foi submetido e aguarda sua análise e aprovação.
+      </p>
+
+      <!-- Card destaque -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr>
+          <td style="border-left:4px solid {$accent};background-color:#f8fafc;padding:16px 20px;border-radius:0 8px 8px 0;">
+            <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">{$descricao}</p>
+            <p style="margin:0;font-size:13px;color:#6b7280;">Criado por <strong>{$criador}</strong></p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Tabela de detalhes -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:28px;font-size:14px;">
+        <tr>
+          <td colspan="2" style="padding:10px 12px;background-color:#f9fafb;font-weight:700;color:#374151;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;">
+            Detalhes
+          </td>
+        </tr>
+        {$detailRows}
+      </table>
+
+      <!-- CTA -->
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td style="background-color:{$accent};border-radius:8px;">
+            <a href="{$ctaUrl}" target="_blank" style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.3px;">
+              Revisar e Aprovar
+            </a>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="padding:20px 40px;background-color:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;">
+        Enviado automaticamente pelo <strong>OKR System</strong> · Planning BI
+      </p>
+    </td>
+  </tr>
+
+</table>
+<!-- /Container -->
+
+</td></tr>
+</table>
+</body>
+</html>
+HTML;
+}
+
+/**
+ * Notifica todos os aprovadores ativos sobre um novo item pendente.
+ * Non-blocking: falhas não impedem o fluxo principal.
+ */
+function notify_approvers_new_item(PDO $pdo, string $module, string $itemId, array $details): void {
+    try {
+        $companyId = (int)($details['company_id'] ?? 0);
+        if ($companyId <= 0) return;
+
+        $labels = ['objetivo' => 'Objetivo', 'kr' => 'Key Result', 'orcamento' => 'Orçamento'];
+        $label  = $labels[$module] ?? ucfirst($module);
+        $desc   = $details['descricao'] ?? '';
+
+        // Busca aprovadores habilitados da mesma empresa com email
+        $st = $pdo->prepare("
+            SELECT a.id_user,
+                   u.email_corporativo,
+                   CONCAT(u.primeiro_nome, ' ', COALESCE(u.ultimo_nome, '')) AS nome
+            FROM aprovadores a
+            JOIN usuarios u ON u.id_user = a.id_user
+            WHERE a.habilitado = 1
+              AND u.id_company = :cid
+              AND u.email_corporativo IS NOT NULL
+              AND u.email_corporativo != ''
+        ");
+        $st->execute([':cid' => $companyId]);
+        $aprovadores = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($aprovadores)) return;
+
+        $url = '/OKR_system/views/aprovacao.php';
+        $subject = "[OKR] Nova aprovação pendente: {$label}";
+
+        foreach ($aprovadores as $apr) {
+            try {
+                // Notificação in-app
+                notify_inapp(
+                    $pdo,
+                    (int)$apr['id_user'],
+                    "Novo {$label} pendente",
+                    htmlspecialchars("O {$label} \"{$desc}\" foi criado e aguarda sua aprovação.", ENT_QUOTES, 'UTF-8'),
+                    $url
+                );
+
+                // Email via sendTransactionalMail (PHPMailer + SMTP)
+                $email = trim((string)($apr['email_corporativo'] ?? ''));
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $html = build_approval_email_html($module, $details, trim((string)$apr['nome']));
+                    sendTransactionalMail($email, $subject, $html);
+                }
+            } catch (Throwable $inner) {
+                error_log("notify_approvers_new_item: falha ao notificar aprovador {$apr['id_user']}: " . $inner->getMessage());
+            }
+        }
+    } catch (Throwable $e) {
+        error_log("notify_approvers_new_item: erro global: " . $e->getMessage());
+    }
 }

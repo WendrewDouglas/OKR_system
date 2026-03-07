@@ -196,6 +196,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
   <title>Novo Key Result – OKR System</title>
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
@@ -205,42 +206,6 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     .content{ background:transparent; }
     main.nkr{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
-    :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
-    }
-
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:#0c4a6e; text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.8; }
-
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden;
-    }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-    .head-meta{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill i{ font-size:.9rem; opacity:.9; }
-
-    .pill-gold{
-      border-color: var(--gold);
-      color: var(--gold);
-      background: rgba(246,195,67,.10);
-      box-shadow: 0 0 0 1px rgba(246,195,67,.10), 0 6px 18px rgba(246,195,67,.10);
-    }
-    .pill-gold i{ color: var(--gold); }
-
-    .form-card{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text);
-    }
-    .form-card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; }
     .grid-2{ display:grid; grid-template-columns:2fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
     .split{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center; }
@@ -264,36 +229,6 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     .btn:hover{ border-color:#2a3342; transform:translateY(-1px); transition:.15s; }
     .btn-primary{ background:#1f2937; }
 
-    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
-    .overlay.show{ display:grid; }
-    .ai-card{
-      width:min(920px,94vw); background:#0b1020; color:#e6e9f2;
-      border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:18px; position:relative; overflow:hidden;
-      border:1px solid #223047;
-    }
-    .ai-card::after{
-      content:""; position:absolute; inset:0;
-      background: radial-gradient(1000px 300px at 10% -20%, rgba(64,140,255,.18), transparent 60%),
-                  radial-gradient(700px 220px at 100% 0%, rgba(0,196,204,.12), transparent 60%);
-      pointer-events:none;
-    }
-    .ai-header{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .ai-avatar{ width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800;
-      background:conic-gradient(from 180deg at 50% 50%, #3b82f6, #06b6d4, #8b5cf6, #3b82f6); box-shadow:0 6px 18px rgba(59,130,246,.35); }
-    .ai-title{ font-size:.95rem; opacity:.9; }
-    .ai-subtle{ font-size:.85rem; opacity:.7; }
-    .ai-bubble{ background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:16px; margin:8px 0 14px; }
-
-    .score-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
-    .score-pill{ font-weight:900; font-size:2.25rem; padding:6px 14px; border-radius:12px;
-      background:linear-gradient(135deg, rgba(59,130,246,.16), rgba(2,132,199,.12)); border:1px solid rgba(255,255,255,.08); }
-    .quality-badge{ padding:4px 10px; border-radius:999px; font-size:.8rem; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); text-transform:capitalize; }
-    .q-pessimo{ background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.25); }
-    .q-ruim{ background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.25); }
-    .q-moderado{ background:rgba(14,165,233,.15); border-color:rgba(14,165,233,.25); }
-    .q-bom{ background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.25); }
-    .q-otimo{ background:rgba(168,85,247,.16); border-color:rgba(168,85,247,.25); }
-
     .note{ font-size:.82rem; color:#cbd5e1; margin-top:6px; }
     .note strong{ color:#e5e7eb; }
 
@@ -314,14 +249,14 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
 
     <main class="nkr">
       <!-- Breadcrumb -->
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <a href="/OKR_system/meus_okrs"><i class="fa-solid fa-bullseye"></i> Meus OKRs</a>
-        <span class="sep">/</span>
-        <span><i class="fa-solid fa-circle-plus"></i> Novo Key Result</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Meus OKRs', 'icon' => 'fa-solid fa-bullseye', 'href' => '/OKR_system/meus_okrs'],
+          ['label' => 'Novo Key Result', 'icon' => 'fa-solid fa-circle-plus'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <!-- Cabeçalho -->
       <section class="head-card">
@@ -357,6 +292,14 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
           <input type="hidden" id="data_fim"    name="data_fim"    value="">
           <input type="hidden" id="autogerar_milestones" name="autogerar_milestones" value="1">
 
+          <fieldset class="pd-fieldset open" id="pdStep1">
+            <div class="pd-legend" onclick="document.getElementById('pdStep1').classList.toggle('open')">
+              <i class="fa-solid fa-1" aria-hidden="true"></i>
+              Essenciais — Objetivo, Descrição, Tipo e Direção
+              <i class="fa-solid fa-chevron-down pd-chev" aria-hidden="true"></i>
+            </div>
+            <div class="pd-body">
+
           <!-- Objetivo + Status -->
           <div class="grid-2">
             <div>
@@ -385,6 +328,52 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
             <label for="descricao_kr"><i class="fa-regular fa-pen-to-square"></i> Descrição do Key Result <span class="helper">(obrigatório)</span></label>
             <textarea id="descricao_kr" name="descricao" required></textarea>
           </div>
+
+          <!-- Direção, Natureza, Tipo -->
+          <div class="grid-3" style="margin-top:12px;">
+            <div>
+              <label for="direcao_metrica"><i class="fa-solid fa-arrow-up-wide-short"></i> Direção da métrica</label>
+              <select id="direcao_metrica" name="direcao_metrica">
+                <option value="">Selecione...</option>
+                <option value="MAIOR_MELHOR">Maior Melhor</option>
+                <option value="MENOR_MELHOR">Menor Melhor</option>
+                <option value="INTERVALO_IDEAL">Intervalo Ideal</option>
+              </select>
+            </div>
+            <div>
+              <label for="natureza_kr"><i class="fa-solid fa-shapes"></i> Natureza do KR</label>
+              <select id="natureza_kr" name="natureza_kr">
+                <option value="">Selecione...</option>
+                <?php foreach($naturezas as $n): ?>
+                  <option value="<?= htmlspecialchars(trim($n['id_natureza']), ENT_QUOTES, 'UTF-8') ?>">
+                    <?= htmlspecialchars($n['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <div id="natureza_help" class="note"></div>
+            </div>
+            <div>
+              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR</label>
+              <select id="tipo_kr" name="tipo_kr">
+                <option value="">Selecione...</option>
+                <?php foreach($tiposKr as $t): ?>
+                  <option value="<?= htmlspecialchars($t['id_tipo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <div id="tipo_help" class="note"></div>
+            </div>
+          </div>
+
+            </div><!-- /.pd-body -->
+          </fieldset>
+
+          <fieldset class="pd-fieldset" id="pdStep2" style="margin-top:12px;">
+            <div class="pd-legend" onclick="document.getElementById('pdStep2').classList.toggle('open')">
+              <i class="fa-solid fa-2" aria-hidden="true"></i>
+              Métricas — Meta, Baseline, Ciclo e Frequência
+              <i class="fa-solid fa-chevron-down pd-chev" aria-hidden="true"></i>
+            </div>
+            <div class="pd-body">
 
           <!-- Baseline, Meta, Unidade -->
           <div class="grid-3" style="margin-top:12px;">
@@ -430,41 +419,6 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
                   <option value="kg">Quilograma (kg)</option><option value="g">Grama (g)</option>
                 </optgroup>
               </select>
-            </div>
-          </div>
-
-          <!-- Direção, Natureza, Tipo -->
-          <div class="grid-3" style="margin-top:12px;">
-            <div>
-              <label for="direcao_metrica"><i class="fa-solid fa-arrow-up-wide-short"></i> Direção da métrica</label>
-              <select id="direcao_metrica" name="direcao_metrica">
-                <option value="">Selecione...</option>
-                <option value="MAIOR_MELHOR">Maior Melhor</option>
-                <option value="MENOR_MELHOR">Menor Melhor</option>
-                <option value="INTERVALO_IDEAL">Intervalo Ideal</option>
-              </select>
-            </div>
-            <div>
-              <label for="natureza_kr"><i class="fa-solid fa-shapes"></i> Natureza do KR</label>
-              <select id="natureza_kr" name="natureza_kr">
-                <option value="">Selecione...</option>
-                <?php foreach($naturezas as $n): ?>
-                  <option value="<?= htmlspecialchars(trim($n['id_natureza']), ENT_QUOTES, 'UTF-8') ?>">
-                    <?= htmlspecialchars($n['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-              <div id="natureza_help" class="note"></div>
-            </div>
-            <div>
-              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR</label>
-              <select id="tipo_kr" name="tipo_kr">
-                <option value="">Selecione...</option>
-                <?php foreach($tiposKr as $t): ?>
-                  <option value="<?= htmlspecialchars($t['id_tipo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <div id="tipo_help" class="note"></div>
             </div>
           </div>
 
@@ -583,6 +537,17 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
             </div>
           </div>
 
+            </div><!-- /.pd-body -->
+          </fieldset>
+
+          <fieldset class="pd-fieldset" id="pdStep3" style="margin-top:12px;">
+            <div class="pd-legend" onclick="document.getElementById('pdStep3').classList.toggle('open')">
+              <i class="fa-solid fa-3" aria-hidden="true"></i>
+              Finalização — Observações e Prévia
+              <i class="fa-solid fa-chevron-down pd-chev" aria-hidden="true"></i>
+            </div>
+            <div class="pd-body">
+
           <!-- Observações -->
           <div style="margin-top:12px;">
             <label for="observacoes"><i class="fa-regular fa-note-sticky"></i> Observações</label>
@@ -610,6 +575,9 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
           <div class="save-row">
             <button type="submit" class="btn btn-primary"><i class="fa-regular fa-floppy-disk"></i> Salvar Key Result</button>
           </div>
+
+            </div><!-- /.pd-body -->
+          </fieldset>
         </form>
       </section>
 
@@ -723,12 +691,6 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
   function show(el){ el?.classList.add('show'); el?.setAttribute('aria-hidden','false'); }
   function hide(el){ el?.classList.remove('show'); el?.setAttribute('aria-hidden','true'); }
-
-  // ========= Ajuste com chat lateral =========
-  const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-  function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-  function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-  function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
 
   // ========= IA helpers =========
   function scoreToQuality(score){
@@ -1152,10 +1114,16 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
       const res = await fetch($('#krForm').action, {
         method:'POST',
         body:fd,
-        headers: { 'X-Request-Id': REQ_ID }
+        headers: { 'Accept': 'application/json', 'X-Request-Id': REQ_ID }
       });
       const data = await res.json().catch(()=> ({}));
       setLoading(false);
+
+      // Erro de permissão ou servidor
+      if (data.error) {
+        alert(data.error + `\n\nCódigo: ${data.log_id || REQ_ID}`);
+        return;
+      }
 
       if(res.status===422 && Array.isArray(data.errors)){
         const lista = data.errors.map(e=>`• ${e.message}`).join('\n');
@@ -1195,7 +1163,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
       const res = await fetch($('#krForm').action, {
         method:'POST',
         body:fd,
-        headers: { 'X-Request-Id': REQ_ID }
+        headers: { 'Accept': 'application/json', 'X-Request-Id': REQ_ID }
       });
       const data = await res.json().catch(()=> ({}));
       setLoading(false);
@@ -1217,15 +1185,6 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
 
   // ===== Setup de interface =====
   document.addEventListener('DOMContentLoaded', ()=>{
-    // Ajuste de layout quando o chat lateral abrir/fechar
-    const chat = findChatEl();
-    if (chat){
-      const mo=new MutationObserver(()=>updateChatWidth());
-      mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
-      window.addEventListener('resize',updateChatWidth);
-      updateChatWidth();
-    }
-
     // Objetivo -> status + badge
     const selObj = $('#id_objetivo');
     const statusField = $('#status_objetivo');
@@ -1298,6 +1257,17 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
         ensurePeriodFields(); renderMilestonesPreview();
       });
 
+      // mensal
+      fillYears($('#ciclo_mensal_ano'));
+      const selMes = $('#ciclo_mensal_mes');
+      if (selMes) {
+        selMes.innerHTML = '';
+        const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                       'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        meses.forEach((m, i) => selMes.add(new Option(m, String(i + 1))));
+        selMes.value = String(new Date().getMonth() + 1);
+      }
+
       // Toggle dos blocos por tipo
       const tipoCiclo = $('#ciclo_tipo');
       const boxes = {
@@ -1363,6 +1333,31 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     // Prévia inicial
     ensurePeriodFields();
     renderMilestonesPreview();
+
+    // === Progressive disclosure: auto-open steps ===
+    function checkKRStep1(){
+      const obj = ($('#id_objetivo')?.value||'').trim();
+      const desc = ($('#descricao_kr')?.value||'').trim();
+      const step2 = document.getElementById('pdStep2');
+      if(obj && desc && step2 && !step2.classList.contains('open')){
+        step2.classList.add('open');
+      }
+    }
+    function checkKRStep2(){
+      const base = ($('#baseline')?.value||'').trim();
+      const meta = ($('#meta')?.value||'').trim();
+      const freq = ($('#frequencia_apontamento')?.value||'').trim();
+      const step3 = document.getElementById('pdStep3');
+      if(base && meta && freq && step3 && !step3.classList.contains('open')){
+        step3.classList.add('open');
+      }
+    }
+    ['#id_objetivo','#descricao_kr','#direcao_metrica'].forEach(sel=>{
+      const el=$(sel); if(el){ el.addEventListener('input',checkKRStep1); el.addEventListener('change',checkKRStep1); }
+    });
+    ['#baseline','#meta','#frequencia_apontamento'].forEach(sel=>{
+      const el=$(sel); if(el){ el.addEventListener('input',checkKRStep2); el.addEventListener('change',checkKRStep2); }
+    });
   });
   </script>
 </body>

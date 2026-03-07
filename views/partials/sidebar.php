@@ -30,6 +30,8 @@ $isSettings         = ($isConfigStyle || $isOrgConfig || $isUsersMgmt);
 $newMessages        = $_SESSION['new_messages'] ?? 0;
 $isRelOKRs          = ($currentPath === '/OKR_system/views/relatorios_okrs.php');
 $isReports          = ($isRelOKRs || $currentPath === '/OKR_system/views/rel_desempenho.php');
+$isMinhasTarefas    = in_array($currentPath, ['/OKR_system/views/minhas_tarefas.php','/OKR_system/minhas_tarefas']);
+$isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.php','/OKR_system/system_health']);
 
 /* ===================== DADOS DE USUÁRIO/ORG ===================== */
 $firstName = trim((string)($_SESSION['primeiro_nome'] ?? $_SESSION['first_name'] ?? ''));
@@ -228,6 +230,13 @@ body.collapsed .sidebar-footer .org { display: none; }
       <?php endif; ?>
     </li>
     <li>
+      <div class="menu-item <?= $isMinhasTarefas ? 'active' : '' ?>"
+           data-href="/OKR_system/views/minhas_tarefas.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-list-check icon-main"></i><span>Minhas Tarefas</span>
+      </div>
+    </li>
+    <li>
       <?php if (can_open_path('/OKR_system/views/mapa_estrategico.php')): ?>
       <div class="menu-item <?= $isMapaEstrategico ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/mapa_estrategico"
@@ -318,6 +327,15 @@ body.collapsed .sidebar-footer .org { display: none; }
         <?php endif; ?>
       </ul>
     </li>
+    <?php if (can_open_path('/OKR_system/views/system_health.php')): ?>
+    <li>
+      <div class="menu-item <?= $isSystemHealth ? 'active' : '' ?>"
+           data-href="/OKR_system/views/system_health.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-heartbeat icon-main"></i><span>System Health</span>
+      </div>
+    </li>
+    <?php endif; ?>
   </ul>
 
   <!-- Rodapé -->

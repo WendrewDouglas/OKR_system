@@ -30,6 +30,7 @@ class AuthState {
     return '${first.isNotEmpty ? first[0] : ''}${last.isNotEmpty ? last[0] : ''}'.toUpperCase();
   }
   int get companyId => (user?['id_company'] as int?) ?? 0;
+  String? get avatarUrl => user?['avatar_url'] as String?;
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {

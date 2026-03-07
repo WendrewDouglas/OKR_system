@@ -8,11 +8,12 @@ declare(strict_types=1);
  * - Compatível com seu schema (auto-descoberta de colunas).
  */
 
-define('LOGIN_DEBUG', true); // mude para false após estabilizar
+define('LOGIN_DEBUG', false);
 
 /* ===== Sessão endurecida ===== */
 @ini_set('session.use_strict_mode', '1');
 @ini_set('session.cookie_httponly', '1');
+@ini_set('session.cookie_samesite', 'Lax');
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') { @ini_set('session.cookie_secure', '1'); }
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -260,6 +261,7 @@ try {
       u.`{$idCol}`    AS id,
       u.`{$nameCol}`  AS nome,
       u.`{$emailCol}` AS email,
+      u.`id_company`  AS id_company,
       ".($actCol ? "u.`{$actCol}` AS ativo," : "1 AS ativo,")."
       ".($hasCredTable ? "c.`{$hashColCred}` AS password_hash" : "NULL AS password_hash")."
     FROM `usuarios` u
@@ -285,9 +287,11 @@ if (!(int)($user['ativo'] ?? 1)) {
 
 /* ===== Sessão ===== */
 session_regenerate_id(true);
-$_SESSION['user_id']    = (string)$user['id'];
-$_SESSION['user_name']  = (string)$user['nome'];
-$_SESSION['user_email'] = (string)$user['email'];
+$_SESSION['user_id']       = (string)$user['id'];
+$_SESSION['user_name']     = (string)$user['nome'];
+$_SESSION['user_email']    = (string)$user['email'];
+$_SESSION['id_company']    = (int)($user['id_company'] ?? 0);
+$_SESSION['last_activity'] = time();
 
 $pepper = envget('APP_TOKEN_PEPPER', '');
 if ($pepper !== '') {

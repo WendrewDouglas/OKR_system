@@ -5,6 +5,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/app_header.dart';
+import '../shared/widgets/user_avatar.dart';
 
 class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
@@ -35,21 +36,18 @@ class MenuScreen extends ConsumerWidget {
               children: [
                 // Avatar with gold gradient ring and glow
                 Container(
-                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.goldGradient,
                     boxShadow: [
                       BoxShadow(color: AppColors.gold.withValues(alpha: 0.2), blurRadius: 10),
                     ],
                   ),
-                  child: CircleAvatar(
+                  child: UserAvatar(
+                    avatarUrl: auth.avatarUrl,
+                    firstName: auth.userName,
+                    lastName: (auth.user?['ultimo_nome'] as String?) ?? '',
                     radius: 28,
-                    backgroundColor: AppColors.bgCard,
-                    child: Text(
-                      auth.userInitials,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.gold),
-                    ),
+                    showGoldRing: true,
                   ),
                 ),
                 const SizedBox(width: 14),

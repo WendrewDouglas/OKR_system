@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/haptics.dart';
+import 'user_avatar.dart';
 
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   const AppHeader({super.key});
@@ -27,49 +28,49 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               height: kToolbarHeight - 1,
               child: Row(
                 children: [
-                  // Avatar with gold ring
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppColors.goldGradient,
-                    ),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.bgCard,
-                      child: Text(
-                        auth.userInitials.isNotEmpty ? auth.userInitials : '?',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Name + Role
+                  // Avatar + Name → tap to profile
                   Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.userFullName.isNotEmpty ? auth.userFullName : 'OKR System',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
+                    child: GestureDetector(
+                      onTap: () {
+                        AppHaptics.light();
+                        context.push('/perfil');
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        children: [
+                          UserAvatar(
+                            avatarUrl: auth.avatarUrl,
+                            firstName: auth.userName,
+                            lastName: (auth.user?['ultimo_nome'] as String?) ?? '',
+                            radius: 18,
+                            showGoldRing: true,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (auth.userRole.isNotEmpty)
-                          Text(
-                            auth.userRole,
-                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  auth.userFullName.isNotEmpty ? auth.userFullName : 'OKR System',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.text,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (auth.userRole.isNotEmpty)
+                                  Text(
+                                    auth.userRole,
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   // Notification bell

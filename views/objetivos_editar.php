@@ -380,50 +380,21 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
   <title>Editar Objetivo – OKR System</title>
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
     body{ background:#fff !important; color:#111; }
-    :root{ --chat-w:0px; }
     .content{ background:transparent; }
     main.eobj{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
 
-    :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
-    }
-
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:#0c4a6e; text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.85; }
-
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden;
-    }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-    .head-meta{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill i{ font-size:.9rem; opacity:.9; }
-
-    .form-card{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text);
-    }
     .form-card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; }
 
     .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; }
-
-    }
+    @media (max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
 
     label{ display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
     input[type="text"], input[type="month"], textarea, select{
@@ -434,7 +405,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     .multi-select-container { position:relative; }
     .chips-input { display:flex; flex-wrap:wrap; gap:6px; padding:6px; background:#0c1118; border:1px solid #1f2635; border-radius:10px; }
     .chips-input-field { flex:1; border:none; outline:none; min-width:160px; background:transparent; color:#e5e7eb; padding:6px; }
-    .chip { background:#101626; border:1px solid #1f2635; border-radius:999px; padding:4px 10px; display:flex; align-items:center; gap:8px; color:#d1d5db; font-size:.88rem; }
     .remove-chip { cursor:pointer; font-weight:900; opacity:.8; }
     .dropdown-list { position:absolute; top:calc(100% + 6px); left:0; width:100%; max-height:240px; overflow:auto; background:#0b1020; border:1px solid #223047; border-radius:10px; z-index:1000; }
     .dropdown-list ul { list-style:none; margin:0; padding:6px; }
@@ -448,19 +418,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:700; }
     .btn:hover{ border-color:#2a3342; transform:translateY(-1px); transition:.15s; }
     .btn-primary{ background:#1f2937; }
-
-    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
-    .overlay.show{ display:grid; }
-    .ai-card{ width:min(720px,94vw); background:#0b1020; color:#e6e9f2; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:18px; position:relative; overflow:hidden; border:1px solid #223047; }
-    .ai-card::after{ content:""; position:absolute; inset:0;
-      background: radial-gradient(800px 260px at 10% -20%, rgba(64,140,255,.18), transparent 60%),
-                  radial-gradient(600px 200px at 100% 0%, rgba(0,196,204,.12), transparent 60%); pointer-events:none; }
-    .ai-header{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .ai-avatar{ width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800;
-      background:conic-gradient(from 180deg at 50% 50%, #3b82f6, #06b6d4, #8b5cf6, #3b82f6); box-shadow:0 6px 18px rgba(59,130,246,.35); }
-    .ai-title{ font-size:.95rem; opacity:.9; }
-    .ai-subtle{ font-size:.85rem; opacity:.7; }
-    .ai-bubble{ background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:16px; margin:8px 0 14px; }
   </style>
 </head>
 <body>
@@ -469,14 +426,14 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="eobj">
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <a href="/OKR_system/meus_okrs"><i class="fa-solid fa-bullseye"></i> Meus OKRs</a>
-        <span class="sep">/</span>
-        <span><i class="fa-regular fa-pen-to-square"></i> Editar Objetivo</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Meus OKRs', 'icon' => 'fa-solid fa-bullseye', 'href' => '/OKR_system/meus_okrs'],
+          ['label' => 'Editar Objetivo', 'icon' => 'fa-regular fa-pen-to-square'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <section class="head-card">
         <h1 class="head-title"><i class="fa-solid fa-bullseye"></i>Editar Objetivo</h1>
@@ -934,17 +891,10 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
       bootstrapChipsFromHidden();
     }
 
-    // Chat lateral (acomoda largura)
-    const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-    const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-    function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-    function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-    function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-    function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
+    // Chat-width is now handled centrally by partials/chat.php
 
     // Fluxo de Edição
     document.addEventListener('DOMContentLoaded', () => {
-      setupChatObservers();
       populateCycles();
 
       // Se já vier com dt_inicio/dt_prazo gravados, marcamos "personalizado"

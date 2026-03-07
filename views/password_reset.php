@@ -174,6 +174,23 @@ unset($_SESSION['reset_error']);
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
+  <style>
+    .input-icon{ position:relative; }
+    .input-icon .addon{
+      position:absolute; right:.5rem; top:50%; transform:translateY(-50%);
+      display:inline-flex; align-items:center; gap:.35rem;
+      font-size:1rem; color:#6b7280; cursor:pointer; user-select:none;
+      background:none; border:none; padding:0;
+    }
+    .input-icon input{ padding-right:2.7rem; }
+    .ps-meter{ height:8px; background:#f3f4f6; border-radius:999px; overflow:hidden; margin:.5rem 0; }
+    .ps-meter > span{ display:block; height:100%; width:0%; background:linear-gradient(90deg, #f43f5e, #f59e0b, #10b981); transition:width .25s ease; }
+    .ps-checks{ display:grid; grid-template-columns:1fr 1fr; gap:.35rem .75rem; margin:.35rem 0 0; font-size:.85rem; }
+    .ps-checks .ok{ color:var(--okr-success, #10b981); }
+    .ps-checks .no{ color:var(--okr-muted, #9ca3af); }
+    .caps{ color:var(--okr-warning, #f59e0b); font-size:.82rem; display:none; }
+    .help{ font-size:.8rem; color:var(--okr-muted, #9ca3af); margin-top:.25rem; }
+  </style>
 </head>
 <body class="fullscreen-center">
 
@@ -194,20 +211,48 @@ unset($_SESSION['reset_error']);
           <a class="btn btn-secondary w-100" href="/OKR_system/views/password_reset_request.php">Voltar para recuperar senha</a>
         </div>
       <?php else: ?>
-        <form action="/OKR_system/views/password_reset.php" method="POST" novalidate>
+        <form id="resetForm" action="/OKR_system/views/password_reset.php" method="POST" novalidate>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
           <input type="hidden" name="selector"   value="<?= htmlspecialchars($selector, ENT_QUOTES) ?>">
           <input type="hidden" name="verifier"   value="<?= htmlspecialchars($verifier, ENT_QUOTES) ?>">
 
           <div class="mb-3">
             <label for="senha" class="form-label">Nova senha</label>
-            <input type="password" id="senha" name="senha" class="form-control" placeholder="Crie uma nova senha" required>
-            <small class="text-muted">Mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.</small>
+            <div class="input-icon">
+              <input type="password"
+                     id="senha" name="senha"
+                     class="form-control"
+                     placeholder="Crie uma senha forte"
+                     autocomplete="new-password"
+                     required minlength="8"
+                     pattern="(?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*\W).*$"
+                     aria-describedby="help_senha ps_checks ps_caps">
+              <button type="button" class="addon toggle-password" data-target="#senha" aria-label="Mostrar senha">👁️</button>
+            </div>
+            <div class="caps" id="ps_caps" aria-live="polite">Caps Lock ativado</div>
+            <div class="ps-meter" aria-hidden="true"><span id="ps_bar"></span></div>
+            <div id="ps_checks" class="ps-checks" aria-live="polite">
+              <span id="pc_len" class="no">8+ caracteres</span>
+              <span id="pc_up"  class="no">Letra maiúscula</span>
+              <span id="pc_lo"  class="no">Letra minúscula</span>
+              <span id="pc_num" class="no">Número</span>
+              <span id="pc_sym" class="no">Símbolo</span>
+            </div>
+            <div id="help_senha" class="help">Dica: combine frases, números e símbolos.</div>
           </div>
 
           <div class="mb-3">
             <label for="senha_confirm" class="form-label">Confirmar nova senha</label>
-            <input type="password" id="senha_confirm" name="senha_confirm" class="form-control" placeholder="Repita a senha" required>
+            <div class="input-icon">
+              <input type="password"
+                     id="senha_confirm" name="senha_confirm"
+                     class="form-control"
+                     placeholder="Repita a senha"
+                     autocomplete="new-password"
+                     required aria-describedby="ps_feedback">
+              <button type="button" class="addon toggle-password" data-target="#senha_confirm" aria-label="Mostrar senha">👁️</button>
+            </div>
+            <div id="ps_feedback" class="help" aria-live="polite"></div>
           </div>
 
           <?php if (!empty($flashError)): ?>
@@ -215,7 +260,7 @@ unset($_SESSION['reset_error']);
           <?php endif; ?>
 
           <div class="mb-3">
-            <button type="submit" class="btn btn-primary w-100">Salvar nova senha</button>
+            <button type="submit" id="submitBtn" class="btn btn-primary w-100">Salvar nova senha</button>
           </div>
           <div>
             <a href="/OKR_system/views/login.php" class="password-reset-link">Voltar ao login</a>
@@ -225,5 +270,96 @@ unset($_SESSION['reset_error']);
     </div>
   </div>
 
+<script>
+(function(){
+  const form      = document.getElementById('resetForm');
+  if (!form) return;
+
+  const elSenha   = document.getElementById('senha');
+  const elConfirm = document.getElementById('senha_confirm');
+  const elFeed    = document.getElementById('ps_feedback');
+  const bar       = document.getElementById('ps_bar');
+  const caps      = document.getElementById('ps_caps');
+  const submitBtn = document.getElementById('submitBtn');
+
+  // Toggle senha
+  document.querySelectorAll('.toggle-password').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const targetSel = btn.getAttribute('data-target');
+      const input = document.querySelector(targetSel);
+      if (!input) return;
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btn.textContent = isPass ? '🙈' : '👁️';
+      btn.setAttribute('aria-label', isPass ? 'Esconder senha' : 'Mostrar senha');
+    });
+  });
+
+  // Caps Lock
+  function handleCaps(e){
+    if (typeof e.getModifierState === 'function') {
+      caps.style.display = e.getModifierState('CapsLock') ? 'block' : 'none';
+    }
+  }
+  elSenha.addEventListener('keydown', handleCaps);
+  elSenha.addEventListener('keyup', handleCaps);
+
+  // Força da senha + checklist
+  const pc_len = document.getElementById('pc_len');
+  const pc_up  = document.getElementById('pc_up');
+  const pc_lo  = document.getElementById('pc_lo');
+  const pc_num = document.getElementById('pc_num');
+  const pc_sym = document.getElementById('pc_sym');
+
+  function passScore(s){
+    const hasLen = s.length >= 8;
+    const hasUp  = /[A-Z]/.test(s);
+    const hasLo  = /[a-z]/.test(s);
+    const hasNum = /\d/.test(s);
+    const hasSym = /\W/.test(s);
+
+    pc_len.className = hasLen ? 'ok' : 'no';
+    pc_up.className  = hasUp  ? 'ok' : 'no';
+    pc_lo.className  = hasLo  ? 'ok' : 'no';
+    pc_num.className = hasNum ? 'ok' : 'no';
+    pc_sym.className = hasSym ? 'ok' : 'no';
+
+    return [hasLen,hasUp,hasLo,hasNum,hasSym].filter(Boolean).length;
+  }
+  function updateBar(score){ bar.style.width = ((score/5)*100) + '%'; }
+  function updateMatch(){
+    const s = elSenha.value, c = elConfirm.value;
+    if (!c){ elFeed.textContent = ''; return; }
+    if (s === c){
+      elFeed.textContent = '✅ Senhas conferem.';
+      elFeed.style.color = '#065f46';
+    } else {
+      elFeed.textContent = '❌ Senhas não coincidem.';
+      elFeed.style.color = '#b91c1c';
+    }
+  }
+  elSenha.addEventListener('input', ()=>{ updateBar(passScore(elSenha.value)); updateMatch(); });
+  elConfirm.addEventListener('input', updateMatch);
+
+  // Validação client-side no submit
+  const complex = /(?=^.{8,}$)(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*\W).*$/;
+  form.addEventListener('submit', function(e){
+    if (!complex.test(elSenha.value)){
+      e.preventDefault();
+      elSenha.focus();
+      alert('Sua senha precisa atender aos requisitos mínimos: 8+ caracteres, maiúscula, minúscula, número e símbolo.');
+      return;
+    }
+    if (elSenha.value !== elConfirm.value){
+      e.preventDefault();
+      elConfirm.focus();
+      alert('As senhas não coincidem.');
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salvando…';
+  });
+})();
+</script>
 </body>
 </html>

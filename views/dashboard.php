@@ -68,6 +68,7 @@ if (empty($company['id_company'])) {
 }
 
 $_SESSION['company_id'] = (int)$company['id_company'];
+$_SESSION['id_company'] = (int)$company['id_company'];
 $companyId = (int)$company['id_company'];
 $companyName = $company['organizacao'] ?: ($company['razao_social'] ?: 'Sua Empresa');
 $companyHasCNPJ = !empty($company['cnpj']);
@@ -482,6 +483,7 @@ $mapaUrl = '/OKR_system/views/mapa_estrategico.php';
 
   <!-- CSS globais -->
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
@@ -492,9 +494,6 @@ $mapaUrl = '/OKR_system/views/mapa_estrategico.php';
 
   <style>
     :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
       --mini-min-h: 64px;        /* cards menores */
       --mini-pad: 8px;
       --pillar-stripe-w: 8px;
@@ -822,33 +821,12 @@ $mapaUrl = '/OKR_system/views/mapa_estrategico.php';
       });
     }
 
-    // Espaço do chat
-    const CHAT_SELECTORS = ['#chatPanel', '.chat-panel', '.chat-container', '#chat', '.drawer-chat'];
-    const TOGGLE_SELECTORS = ['#chatToggle', '.chat-toggle', '.btn-chat-toggle', '.chat-icon', '.chat-open'];
-    function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-    function isOpen(el){
-      const style = getComputedStyle(el);
-      const visible = style.display!=='none' && style.visibility!=='hidden';
-      const w = el.offsetWidth;
-      return (visible && w>0) || el.classList.contains('open') || el.classList.contains('show') || el.getAttribute('aria-expanded')==='true';
-    }
-    function updateChatWidth(){ const el = findChatEl(); const w = (el && isOpen(el)) ? el.offsetWidth : 0; document.documentElement.style.setProperty('--chat-w', (w||0)+'px'); }
-    function setupChatObservers(){
-      const chat = findChatEl(); if(!chat) return;
-      const mo = new MutationObserver(()=>updateChatWidth());
-      mo.observe(chat, { attributes:true, attributeFilter:['style','class','aria-expanded'] });
-      window.addEventListener('resize', updateChatWidth);
-      document.querySelectorAll(TOGGLE_SELECTORS.join(',')).forEach(btn=>btn.addEventListener('click', ()=>setTimeout(updateChatWidth, 200)));
-      updateChatWidth();
-    }
-
     document.addEventListener('DOMContentLoaded', ()=>{
       document.querySelectorAll('.countup[data-target]').forEach(el=>{
         const tgt = parseInt(el.getAttribute('data-target')||'0',10);
         animateCounter(el, tgt, 700 + Math.random()*300);
       });
       animateProgressBars();
-      setupChatObservers();
 
       // Acessibilidade: Enter/Espaço abre links dos cards
       document.querySelectorAll('.pillar-card, .kpi-card').forEach(card=>{
@@ -961,11 +939,14 @@ $mapaUrl = '/OKR_system/views/mapa_estrategico.php';
             alert(data.error || 'Erro ao salvar.');
           }
         } else {
-          const html = data.html || '';
+          const rawHtml = data.html || '';
+          const parser = new DOMParser();
+          const parsed = parser.parseFromString(rawHtml, 'text/html');
+          const safeText = parsed.body.textContent || '';
           if (data.tipo === 'visao'){
-            document.getElementById('visaoText').innerHTML = html;
+            document.getElementById('visaoText').textContent = safeText;
           } else {
-            document.getElementById('missaoText').innerHTML = html;
+            document.getElementById('missaoText').textContent = safeText;
           }
           closeVMModal();
         }

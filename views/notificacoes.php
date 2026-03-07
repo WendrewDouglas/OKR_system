@@ -16,18 +16,13 @@ $csrf = $_SESSION['csrf_token'];
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Notificações — OKR System</title>
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
   <style>
-    :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
-    }
     body{ background:#fff !important; color:#111; }
     main.noti{ padding:24px; display:grid; gap:16px; }
-    .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px; color:var(--text); box-shadow:var(--shadow); }
     .list{ display:grid; gap:10px; }
     .card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:14px; padding:12px; color:var(--text); display:grid; grid-template-columns:1fr auto; gap:8px; }
     .title{ font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
@@ -38,7 +33,6 @@ $csrf = $_SESSION['csrf_token'];
     .btn{ border:1px solid var(--border); background:var(--gold); color:#222222; padding:8px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
     .empty{ border:1px dashed #334155; color:#cbd5e1; padding:16px; border-radius:12px; text-align:center; background:#0b1118; }
-    .pill{ display:inline-flex; gap:6px; align-items:center; border:1px solid #334155; padding:6px 10px; border-radius:999px; }
   </style>
 </head>
 <body>

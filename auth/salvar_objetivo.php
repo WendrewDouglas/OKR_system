@@ -2,16 +2,12 @@
 // auth/salvar_objetivo.php
 declare(strict_types=1);
 
-// === DEV ONLY (remova em produção) ===
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
-
 // 1) Sessão e bootstrap
 session_start();
 $logger = require dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/notify.php';
 require_once __DIR__.'/../auth/acl.php';
 // criar objetivo
 require_cap('W:objetivo@ORG');
@@ -84,48 +80,8 @@ switch ($tipo_ciclo) {
     break;
 }
 
-// 4.2) Datas do ciclo
-function calcularDatasCiclo(string $tipo_ciclo, array $dados): array {
-  $dt_inicio = ''; $dt_prazo = '';
-  switch ($tipo_ciclo) {
-    case 'anual':
-      $y = (int)($dados['ciclo_anual_ano'] ?? 0);
-      if ($y) { $dt_inicio="$y-01-01"; $dt_prazo="$y-12-31"; }
-      break;
-    case 'semestral':
-      if (preg_match('/^S([12])\/(\d{4})$/', (string)($dados['ciclo_semestral'] ?? ''), $m)) {
-        $s=(int)$m[1]; $y=(int)$m[2];
-        $dt_inicio = $s===1 ? "$y-01-01" : "$y-07-01";
-        $dt_prazo  = $s===1 ? "$y-06-30" : "$y-12-31";
-      }
-      break;
-    case 'trimestral':
-      if (preg_match('/^Q([1-4])\/(\d{4})$/', (string)($dados['ciclo_trimestral'] ?? ''), $m)) {
-        $q=(int)$m[1]; $y=(int)$m[2];
-        $map=[1=>['01-01','03-31'],2=>['04-01','06-30'],3=>['07-01','09-30'],4=>['10-01','12-31']];
-        $dt_inicio="$y-{$map[$q][0]}"; $dt_prazo="$y-{$map[$q][1]}";
-      }
-      break;
-    case 'bimestral':
-      if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', (string)($dados['ciclo_bimestral'] ?? ''), $m)) {
-        $m1=(int)$m[1]; $m2=(int)$m[2]; $y=(int)$m[3];
-        $dt_inicio = sprintf('%04d-%02d-01', $y, $m1);
-        $dt_prazo  = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m2)));
-      }
-      break;
-    case 'mensal':
-      $mm=(int)($dados['ciclo_mensal_mes'] ?? 0);
-      $yy=(int)($dados['ciclo_mensal_ano'] ?? 0);
-      if ($mm && $yy) { $dt_inicio=sprintf('%04d-%02d-01',$yy,$mm); $dt_prazo=date('Y-m-t', strtotime("$yy-$mm-01")); }
-      break;
-    case 'personalizado':
-      $ini=(string)($dados['ciclo_pers_inicio'] ?? '');
-      $fim=(string)($dados['ciclo_pers_fim'] ?? '');
-      if ($ini && $fim) { $dt_inicio="$ini-01"; $dt_prazo=date('Y-m-t', strtotime("$fim-01")); }
-      break;
-  }
-  return [$dt_inicio, $dt_prazo];
-}
+// 4.2) Datas do ciclo (função extraída para helpers/)
+require_once __DIR__ . '/helpers/cycle_calc.php';
 [$dt_inicio, $dt_prazo] = calcularDatasCiclo($tipo_ciclo, $_POST);
 
 // 4.3) Validação mínima
@@ -143,8 +99,9 @@ try {
     [ PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC ]
   );
 } catch (Throwable $e) {
+  error_log('salvar_objetivo conexão: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['error'=>'Erro de conexão: '.$e->getMessage()]);
+  echo json_encode(['error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
   exit;
 }
 
@@ -323,10 +280,27 @@ try {
   $newId = (int)$pdo->lastInsertId();
   $pdo->commit();
 
+  // Notifica aprovadores sobre novo objetivo pendente
+  try {
+      notify_approvers_new_item($pdo, 'objetivo', (string)$newId, [
+          'descricao'    => $descricao,
+          'criador_nome' => $creatorName,
+          'criador_id'   => $userId,
+          'company_id'   => $companyId,
+          'extras'       => [
+              'tipo_ciclo' => $tipo_ciclo,
+              'ciclo'      => $ciclo_detalhe,
+              'dt_prazo'   => $dt_prazo,
+          ],
+      ]);
+  } catch (Throwable $e) {
+      error_log('salvar_objetivo notify: ' . $e->getMessage());
+  }
+
   echo json_encode(['success'=>true, 'id_objetivo'=>$newId]);
 } catch (Throwable $e) {
   if ($pdo->inTransaction()) $pdo->rollBack();
   error_log(date('[Y-m-d H:i:s] ').$e->getMessage()."\n", 3, dirname(__DIR__).'/error_log');
   http_response_code(500);
-  echo json_encode(['error'=>'Falha ao salvar: '.$e->getMessage()]);
+  echo json_encode(['error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
 }

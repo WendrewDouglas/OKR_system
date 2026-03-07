@@ -1,10 +1,6 @@
 <?php
 // auth/aprovacao_api.php — versão com permissões, IDs de aprovador, notificações
 declare(strict_types=1);
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(E_ALL);
-
 date_default_timezone_set('America/Sao_Paulo');
 
 session_start();
@@ -30,12 +26,28 @@ try {
   $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4", DB_USER, DB_PASS, [
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
   ]);
-} catch (PDOException $e) { jexit(500,['success'=>false,'error'=>'Erro ao conectar: '.$e->getMessage()]); }
+} catch (PDOException $e) { error_log('aprovacao_api conexão: '.$e->getMessage()); jexit(500,['success'=>false,'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']); }
 
 $st = $pdo->prepare("SELECT primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome FROM usuarios WHERE id_user=?");
 $st->execute([$MEU_ID]);
 $u = $st->fetch() ?: ['primeiro_nome'=>'Usuário','ultimo_nome'=>''];
 $MEU_NOME = trim(($u['primeiro_nome']??'').' '.($u['ultimo_nome']??''));
+
+// Contexto de empresa e role RBAC
+$stCtx = $pdo->prepare("
+    SELECT u.id_company,
+           EXISTS(SELECT 1 FROM rbac_user_role ur
+                  JOIN rbac_roles r ON r.role_id=ur.role_id
+                  WHERE ur.user_id=u.id_user AND r.role_key='admin_master' AND r.is_active=1
+           ) AS is_admin_master
+    FROM usuarios u WHERE u.id_user=?
+");
+$stCtx->execute([$MEU_ID]);
+$ctxRow = $stCtx->fetch();
+$MY_COMPANY      = (int)($ctxRow['id_company'] ?? 0);
+$IS_ADMIN_MASTER = (bool)($ctxRow['is_admin_master'] ?? false);
+// admin_master vê tudo; demais veem só sua company
+$COMPANY_FILTER  = $IS_ADMIN_MASTER ? null : $MY_COMPANY;
 
 $st = $pdo->prepare("SELECT tudo, habilitado FROM aprovadores WHERE id_user=? LIMIT 1");
 $st->execute([$MEU_ID]);
@@ -60,6 +72,9 @@ function allowedModules(PDO $pdo, string $uid, bool $isMaster): array {
 // [MOV] Subselect que pega o último movimento por referência & módulo
 function mov_join_sql(string $mod): string {
   $mod = strtolower($mod);
+  if (!in_array($mod, ['objetivo','key_result','iniciativa','kr','orcamento'], true)) {
+    throw new InvalidArgumentException('Módulo inválido para mov_join_sql');
+  }
   return "
     LEFT JOIN (
       SELECT m.*
@@ -76,8 +91,10 @@ function mov_join_sql(string $mod): string {
 }
 
 /* ===== consultas ===== */
-function q_para_aprovar(PDO $pdo, array $mods): array {
+function q_para_aprovar(PDO $pdo, array $mods, ?int $companyId = null): array {
   $rows = [];
+  $cFilter = $companyId !== null;
+
   if (in_array('objetivo',$mods,true)) {
     $sql = "
       SELECT 'objetivo' AS module, o.id_objetivo AS id, o.descricao,
@@ -91,8 +108,10 @@ function q_para_aprovar(PDO $pdo, array $mods): array {
       FROM objetivos o
       ".str_replace('{ID_COL}','o.id_objetivo', mov_join_sql('objetivo'))."
       WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'
+      ".($cFilter ? " AND o.id_company = :cid" : "")."
     ";
-    $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
+    if ($cFilter) { $st=$pdo->prepare($sql); $st->execute([':cid'=>$companyId]); $rows=array_merge($rows,$st->fetchAll()?:[]); }
+    else { $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []); }
   }
   if (in_array('kr',$mods,true)) {
     $sql = "
@@ -109,27 +128,34 @@ function q_para_aprovar(PDO $pdo, array $mods): array {
       LEFT JOIN objetivos o ON o.id_objetivo=k.id_objetivo
       ".str_replace('{ID_COL}','k.id_kr', mov_join_sql('kr'))."
       WHERE LOWER(COALESCE(k.status_aprovacao,''))='pendente'
+      ".($cFilter ? " AND o.id_company = :cid" : "")."
     ";
-    $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
+    if ($cFilter) { $st=$pdo->prepare($sql); $st->execute([':cid'=>$companyId]); $rows=array_merge($rows,$st->fetchAll()?:[]); }
+    else { $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []); }
   }
   if (in_array('orcamento',$mods,true)) {
     $sql = "
-      SELECT 'orcamento' AS module, o.id_orcamento AS id, NULL AS descricao,
-             LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
+      SELECT 'orcamento' AS module, orc.id_orcamento AS id, NULL AS descricao,
+             LOWER(COALESCE(orc.status_aprovacao,'')) AS status_aprovacao,
              CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome,
-             o.id_user_criador AS usuario_criador_id,
-             DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
-             DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-             o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
+             orc.id_user_criador AS usuario_criador_id,
+             DATE_FORMAT(orc.dt_criacao,'%d/%m/%Y') AS dt_criacao,
+             DATE_FORMAT(orc.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
+             orc.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(orc.id_iniciativa,'—')) AS resumo,
              NULL AS objetivo_id, NULL AS objetivo_desc,
-             o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+             orc.id_iniciativa, orc.valor, orc.justificativa_orcamento AS justificativa,
              mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
-      FROM orcamentos o
-      LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
-      ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
-      WHERE LOWER(COALESCE(o.status_aprovacao,''))='pendente'
+      FROM orcamentos orc
+      LEFT JOIN usuarios u ON u.id_user=orc.id_user_criador
+      ".($cFilter ? "LEFT JOIN iniciativas i ON i.id_iniciativa=orc.id_iniciativa
+      LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
+      LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo" : "")."
+      ".str_replace('{ID_COL}','orc.id_orcamento', mov_join_sql('orcamento'))."
+      WHERE LOWER(COALESCE(orc.status_aprovacao,''))='pendente'
+      ".($cFilter ? " AND obj.id_company = :cid" : "")."
     ";
-    $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []);
+    if ($cFilter) { $st=$pdo->prepare($sql); $st->execute([':cid'=>$companyId]); $rows=array_merge($rows,$st->fetchAll()?:[]); }
+    else { $rows = array_merge($rows, $pdo->query($sql)->fetchAll() ?: []); }
   }
   foreach ($rows as &$r) { $r['scope']='para_aprovar'; }
   return $rows;
@@ -244,12 +270,25 @@ function q_reprovados_do_meu_usuario(PDO $pdo, string $MEU_ID, string $MEU_NOME)
 }
 
 /* ===== stats ===== */
-function stats_pills(PDO $pdo, string $MEU_ID, string $MEU_NOME, bool $IS_APROVADOR, array $mods): array {
+function stats_pills(PDO $pdo, string $MEU_ID, string $MEU_NOME, bool $IS_APROVADOR, array $mods, ?int $companyId = null): array {
   $pend=0;
+  $cFilter = $companyId !== null;
   if ($IS_APROVADOR) {
-    if (in_array('objetivo',$mods,true))  $pend += (int)$pdo->query("SELECT COUNT(*) c FROM objetivos  WHERE LOWER(COALESCE(status_aprovacao,''))='pendente'")->fetch()['c'];
-    if (in_array('kr',$mods,true))        $pend += (int)$pdo->query("SELECT COUNT(*) c FROM key_results WHERE LOWER(COALESCE(status_aprovacao,''))='pendente'")->fetch()['c'];
-    if (in_array('orcamento',$mods,true)) $pend += (int)$pdo->query("SELECT COUNT(*) c FROM orcamentos  WHERE LOWER(COALESCE(status_aprovacao,''))='pendente'")->fetch()['c'];
+    if (in_array('objetivo',$mods,true)) {
+      $sq = "SELECT COUNT(*) c FROM objetivos WHERE LOWER(COALESCE(status_aprovacao,''))='pendente'".($cFilter ? " AND id_company=:cid" : "");
+      if ($cFilter) { $st=$pdo->prepare($sq); $st->execute([':cid'=>$companyId]); $pend+=(int)$st->fetch()['c']; }
+      else { $pend += (int)$pdo->query($sq)->fetch()['c']; }
+    }
+    if (in_array('kr',$mods,true)) {
+      $sq = "SELECT COUNT(*) c FROM key_results k".($cFilter ? " JOIN objetivos o ON o.id_objetivo=k.id_objetivo" : "")." WHERE LOWER(COALESCE(k.status_aprovacao,''))='pendente'".($cFilter ? " AND o.id_company=:cid" : "");
+      if ($cFilter) { $st=$pdo->prepare($sq); $st->execute([':cid'=>$companyId]); $pend+=(int)$st->fetch()['c']; }
+      else { $pend += (int)$pdo->query($sq)->fetch()['c']; }
+    }
+    if (in_array('orcamento',$mods,true)) {
+      $sq = "SELECT COUNT(*) c FROM orcamentos orc".($cFilter ? " LEFT JOIN iniciativas i ON i.id_iniciativa=orc.id_iniciativa LEFT JOIN key_results kr ON kr.id_kr=i.id_kr LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo" : "")." WHERE LOWER(COALESCE(orc.status_aprovacao,''))='pendente'".($cFilter ? " AND obj.id_company=:cid" : "");
+      if ($cFilter) { $st=$pdo->prepare($sq); $st->execute([':cid'=>$companyId]); $pend+=(int)$st->fetch()['c']; }
+      else { $pend += (int)$pdo->query($sq)->fetch()['c']; }
+    }
   }
   $st=$pdo->prepare("SELECT COUNT(*) c FROM objetivos WHERE (id_user_criador=:id OR (id_user_criador IS NULL AND usuario_criador=:nome)) AND LOWER(COALESCE(status_aprovacao,''))='reprovado'");
   $st->execute([':id'=>$MEU_ID, ':nome'=>$MEU_NOME]); $reprob=(int)($st->fetch()['c']??0);
@@ -275,7 +314,7 @@ if ($method==='GET') {
 
   $mods = $IS_APROVADOR ? allowedModules($pdo, $MEU_ID, $IS_MASTER) : [];
   $rows = [];
-  if ($IS_APROVADOR && $mods) $rows = array_merge($rows, q_para_aprovar($pdo, $mods));
+  if ($IS_APROVADOR && $mods) $rows = array_merge($rows, q_para_aprovar($pdo, $mods, $COMPANY_FILTER));
   $rows = array_merge($rows, q_minhas($pdo, $MEU_ID, $MEU_NOME));
   $rows = array_merge($rows, q_reprovados_do_meu_usuario($pdo, $MEU_ID, $MEU_NOME));
 
@@ -290,7 +329,7 @@ if ($method==='GET') {
     unset($r['mov_campos_json']);
   }
 
-  $stats = stats_pills($pdo, $MEU_ID, $MEU_NOME, $IS_APROVADOR, $mods);
+  $stats = stats_pills($pdo, $MEU_ID, $MEU_NOME, $IS_APROVADOR, $mods, $COMPANY_FILTER);
   jexit(200, ['success'=>true,'stats'=>$stats,'rows'=>$rows]);
 }
 

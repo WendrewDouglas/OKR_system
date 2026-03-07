@@ -7,7 +7,14 @@ if (!defined('DB_HOST')) {
   require_once __DIR__ . '/../config/db.php';
 }
 
+function pdo_conn_override(?PDO $pdo = null): void {
+  $GLOBALS['__test_pdo'] = $pdo;
+}
+
 function pdo_conn(): PDO {
+  if (isset($GLOBALS['__test_pdo']) && $GLOBALS['__test_pdo'] instanceof PDO) {
+    return $GLOBALS['__test_pdo'];
+  }
   static $pdo = null;
   if ($pdo) return $pdo;
   $pdo = new PDO(
@@ -72,8 +79,7 @@ function deny_with_modal(string $msg = 'Você não tem permissão para acessar o
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
       'success' => false,
-      'error'   => 'NO_PERMISSION',
-      'message' => $msg
+      'error'   => $msg,
     ], JSON_UNESCAPED_UNICODE);
     exit;
   }
@@ -133,7 +139,19 @@ function has_cap(string $capKey, array $ctx = []): bool {
   }
 
   $userId      = (int)$_SESSION['user_id'];
-  $userCompany = (int)($_SESSION['id_company'] ?? 0);
+  $userCompany = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
+
+  // Fallback: se a sessão não tem id_company, busca do DB e persiste
+  if ($userCompany === 0) {
+    $pdo = pdo_conn();
+    $stCo = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ? LIMIT 1");
+    $stCo->execute([$userId]);
+    $userCompany = (int)$stCo->fetchColumn();
+    if ($userCompany > 0) {
+      $_SESSION['id_company'] = $userCompany;
+    }
+  }
+
   [$needAct, $needRes, $needScope] = parse_cap_key($capKey);
 
   // Segurança: capKey malformado
@@ -207,7 +225,10 @@ function has_cap(string $capKey, array $ctx = []): bool {
   $adminRes = ['relatorio','user','company','config_okrs','config_notify'];
   $mustCheckTenant = ($needScope === 'ORG' && !in_array($needRes, $adminRes, true));
 
-  if ($mustCheckTenant) {
+  // Só verifica tenant quando há contexto (id do recurso).
+  // Chamadas de gate de página (gate_page_by_path) não passam contexto,
+  // pois não há recurso específico — o tenant será checado nas ações individuais.
+  if ($mustCheckTenant && !empty($ctx)) {
     $resCompany = resolve_resource_company($pdo, $needRes, $ctx);
     if ($resCompany === null || (int)$resCompany !== $userCompany) return false;
   }
@@ -244,6 +265,15 @@ function gate_page_by_path(string $path): void {
   if (session_status() === PHP_SESSION_NONE) session_start();
   if (empty($_SESSION['user_id'])) return;
 
+  // ✅ CORREÇÃO ESSENCIAL:
+  // Garante que o path usado para lookup em dom_paginas NÃO venha com query string (?ajax=...).
+  // Isso evita negar acesso em chamadas AJAX do tipo detalhe_okr.php?ajax=load_krs...
+  $path = trim((string)$path);
+  if ($path === '') {
+    $path = $_SERVER['REQUEST_URI'] ?? '';
+  }
+  $path = parse_url($path, PHP_URL_PATH) ?? $path;
+
   $pdo = pdo_conn();
   $st  = $pdo->prepare("SELECT requires_cap FROM dom_paginas WHERE path = ? LIMIT 1");
   $st->execute([$path]);
@@ -270,16 +300,24 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
       return $val !== false ? (int)$val : null;
     }
     case 'kr': {
-      $id = $ctx['id_kr'] ?? null; if ($id === null) return null;
-      $sql = "SELECT u.id_company
-                FROM key_results k
-                JOIN objetivos o ON o.id_objetivo = k.id_objetivo
-                JOIN usuarios  u ON u.id_user = o.dono
-               WHERE k.id_kr = ?";
-      $st = $pdo->prepare($sql);
-      $st->execute([$id]);
-      $val = $st->fetchColumn();
-      return $val !== false ? (int)$val : null;
+      $id = $ctx['id_kr'] ?? null;
+      if ($id !== null) {
+        $sql = "SELECT u.id_company
+                  FROM key_results k
+                  JOIN objetivos o ON o.id_objetivo = k.id_objetivo
+                  JOIN usuarios  u ON u.id_user = o.dono
+                 WHERE k.id_kr = ?";
+        $st = $pdo->prepare($sql);
+        $st->execute([$id]);
+        $val = $st->fetchColumn();
+        return $val !== false ? (int)$val : null;
+      }
+      // Fallback: criação de KR passa id_objetivo (KR ainda não existe)
+      $idObj = $ctx['id_objetivo'] ?? null;
+      if ($idObj !== null) {
+        return resolve_resource_company($pdo, 'objetivo', ['id_objetivo' => $idObj]);
+      }
+      return null;
     }
     case 'milestone': {
       $id = $ctx['id_ms'] ?? null; if ($id === null) return null;
@@ -368,6 +406,12 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
 function can_open_path(string $path): bool {
   if (session_status() === PHP_SESSION_NONE) session_start();
   if (empty($_SESSION['user_id'])) return false;
+
+  // ✅ CORREÇÃO ESSENCIAL:
+  // Normaliza o path para não carregar query string e manter o lookup consistente com dom_paginas.path.
+  $path = trim((string)$path);
+  if ($path === '') return false;
+  $path = parse_url($path, PHP_URL_PATH) ?? $path;
 
   $pdo = pdo_conn();
   $st  = $pdo->prepare("SELECT requires_cap FROM dom_paginas WHERE path = ? LIMIT 1");

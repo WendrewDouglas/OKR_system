@@ -382,18 +382,14 @@ if (isset($_GET['ajax'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
     /* ===== Correções de layout e estilo ===== */
-    :root{
-      --chat-w:0px;
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20);
-    }
+    :root{ --chat-w:0px; }
     html, body { overflow-x: hidden; }
     body{ background:#fff !important; color:#111; }
     .content{ background:transparent; max-width:100vw; overflow-x:hidden; }
@@ -404,22 +400,6 @@ if (isset($_GET['ajax'])) {
       box-sizing: border-box;
       transition: width .25s ease;
     }
-
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:#0c4a6e; text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.8; }
-
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden;
-    }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-    .head-meta{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill-gold{ border-color:var(--gold); color:var(--gold); background:rgba(246,195,67,.10); box-shadow:0 0 0 1px rgba(246,195,67,.10), 0 6px 18px rgba(246,195,67,.10); }
 
     .card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); color:var(--text); }
     .card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; display:flex; align-items:center; gap:8px; }
@@ -515,12 +495,13 @@ if (isset($_GET['ajax'])) {
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="orc">
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <span><i class="fa-solid fa-coins"></i> Análise de Orçamentos</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Análise de Orçamentos', 'icon' => 'fa-solid fa-coins'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <section class="head-card">
         <h1 class="head-title"><i class="fa-solid fa-chart-pie"></i> Análise de Orçamentos</h1>
@@ -939,28 +920,7 @@ if (isset($_GET['ajax'])) {
       runSearch();
     });
 
-    // Ajuste responsivo ao chat lateral
-    (function chatAdjust(){
-      const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-      const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-      function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-      function chatWidth(){
-        const el = findChatEl(); if (!el) return 0;
-        const cs = getComputedStyle(el);
-        const hidden = (cs.display==='none' || cs.visibility==='hidden' || cs.opacity==='0');
-        if (hidden) return 0;
-        const rect = el.getBoundingClientRect();
-        const vw = Math.max(document.documentElement.clientWidth, window.innerWidth||0);
-        if (rect.width && rect.left >= 0 && rect.right <= vw) return rect.width;
-        return el.offsetWidth || 0;
-      }
-      function updateChatWidth(){ document.documentElement.style.setProperty('--chat-w', (chatWidth()||0)+'px'); }
-      const el = findChatEl(); if (el){ const mo=new MutationObserver(updateChatWidth); mo.observe(el,{attributes:true, attributeFilter:['style','class','aria-expanded','hidden']}); }
-      window.addEventListener('resize', updateChatWidth);
-      let poll = setInterval(updateChatWidth, 300); setTimeout(()=>clearInterval(poll), 5000);
-      TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,220))));
-      updateChatWidth();
-    })();
+    // Chat-width is now handled centrally by partials/chat.php
 
     (async function init(){
       await loadFilters();

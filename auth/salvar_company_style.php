@@ -4,10 +4,6 @@
 // Regra: somente a empresa vinculada ao usuário logado pode ser personalizada.
 // Somente permite salvar se a empresa possuir CNPJ válido.
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -162,6 +158,7 @@ try {
 
   echo json_encode(['success'=>true, 'record'=>$record]);
 } catch (PDOException $e) {
+  error_log('salvar_company_style: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false,'error'=>'Erro ao salvar: '.$e->getMessage()]);
+  echo json_encode(['success'=>false,'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
 }

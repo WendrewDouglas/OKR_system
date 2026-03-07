@@ -69,6 +69,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
   <title>Novo Objetivo – OKR System</title>
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
@@ -78,37 +79,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     :root{ --chat-w:0px; }
     .content{ background:transparent; }
     main.nobj{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; }
-
-    :root{
-      --bg-soft:#171b21; --card: var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
-    }
-
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:#0c4a6e; text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.85; }
-
-    .head-card{
-      background:linear-gradient(180deg, var(--card), #0d1117);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden;
-    }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-    .head-meta{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill i{ font-size:.9rem; opacity:.9; }
-    .pill-gold{ border-color: var(--gold); color: var(--gold); background: rgba(246,195,67,.10); box-shadow: 0 0 0 1px rgba(246,195,67,.10), 0 6px 18px rgba(246,195,67,.10); }
-    .pill-gold i{ color: var(--gold); }
-
-    .form-card{
-      background:linear-gradient(180deg, var(--card), #0e1319);
-      border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); color:var(--text);
-    }
-    .form-card h2{ font-size:1.05rem; margin:0 0 12px; letter-spacing:.2px; color:#e5e7eb; }
 
     .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
@@ -141,26 +111,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     .grid-2.align-center { align-items: center; }
     #ciclo_detalhe_wrapper > label { display:block; margin-bottom:6px; color:#cbd5e1; font-size:.9rem; }
 
-    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:3000; }
-    .overlay.show{ display:grid; }
-    .ai-card{ width:min(920px,94vw); background:#0b1020; color:#e6e9f2; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:18px; position:relative; overflow:hidden; border:1px solid #223047; }
-    .ai-card::after{ content:""; position:absolute; inset:0;
-      background: radial-gradient(1000px 300px at 10% -20%, rgba(64,140,255,.18), transparent 60%),
-                  radial-gradient(700px 220px at 100% 0%, rgba(0,196,204,.12), transparent 60%); pointer-events:none; }
-    .ai-header{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .ai-avatar{ width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800;
-      background:conic-gradient(from 180deg at 50% 50%, #3b82f6, #06b6d4, #8b5cf6, #3b82f6); box-shadow:0 6px 18px rgba(59,130,246,.35); }
-    .ai-title{ font-size:.95rem; opacity:.9; }
-    .ai-subtle{ font-size:.85rem; opacity:.7; }
-    .ai-bubble{ background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:16px; margin:8px 0 14px; }
-    .score-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
-    .score-pill{ font-weight:900; font-size:2.25rem; padding:6px 14px; border-radius:12px; background:linear-gradient(135deg, rgba(59,130,246,.16), rgba(2,132,199,.12)); border:1px solid rgba(255,255,255,.08); }
-    .quality-badge{ padding:4px 10px; border-radius:999px; font-size:.8rem; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); text-transform:capitalize; }
-    .q-pessimo{ background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.25); }
-    .q-ruim{ background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.25); }
-    .q-moderado{ background:rgba(14,165,233,.15); border-color:rgba(14,165,233,.25); }
-    .q-bom{ background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.25); }
-    .q-otimo{ background:rgba(168,85,247,.16); border-color:rgba(168,85,247,.25); }
   </style>
 </head>
 <body>
@@ -169,14 +119,14 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     <?php include __DIR__ . '/partials/header.php'; ?>
 
     <main class="nobj">
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <a href="/OKR_system/meus_okrs"><i class="fa-solid fa-bullseye"></i> Meus OKRs</a>
-        <span class="sep">/</span>
-        <span><i class="fa-solid fa-circle-plus"></i> Novo Objetivo</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Meus OKRs', 'icon' => 'fa-solid fa-bullseye', 'href' => '/OKR_system/meus_okrs'],
+          ['label' => 'Novo Objetivo', 'icon' => 'fa-solid fa-circle-plus'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <section class="head-card">
         <h1 class="head-title"><i class="fa-solid fa-bullseye"></i>Novo Objetivo</h1>
@@ -201,103 +151,123 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
           <input type="hidden" id="qualidade" name="qualidade" value="">
           <input type="hidden" id="justificativa_ia" name="justificativa_ia" value="">
 
-          <div>
-            <label for="nome_objetivo"><i class="fa-regular fa-pen-to-square"></i> Nome do Objetivo <span class="helper">(obrigatório)</span></label>
-            <input type="text" id="nome_objetivo" name="nome_objetivo" required>
-          </div>
-
-          <div class="grid-2" style="margin-top:12px;">
-            <div>
-              <label for="tipo_objetivo"><i class="fa-regular fa-square-check"></i> Tipo de Objetivo <span class="helper">(obrigatório)</span></label>
-              <select id="tipo_objetivo" name="tipo_objetivo" required>
-                <option value="">Selecione...</option>
-                <?php foreach ($tipos as $t): ?>
-                  <option value="<?= htmlspecialchars($t['id_tipo']) ?>"><?= htmlspecialchars($t['descricao_exibicao']) ?></option>
-                <?php endforeach; ?>
-              </select>
+          <!-- Passo 1: Essenciais (aberto por padrão) -->
+          <fieldset class="pd-fieldset open" id="pdStep1">
+            <div class="pd-legend" onclick="document.getElementById('pdStep1').classList.toggle('open')">
+              <i class="fa-solid fa-1" aria-hidden="true"></i>
+              Essenciais — Nome, Tipo e Pilar
+              <i class="fa-solid fa-chevron-down pd-chev" aria-hidden="true"></i>
             </div>
-            <div>
-              <label for="pilar_bsc"><i class="fa-solid fa-layer-group"></i> Pilar BSC <span class="helper">(obrigatório)</span></label>
-              <select id="pilar_bsc" name="pilar_bsc" required>
-                <option value="">Selecione...</option>
-                <?php foreach ($pilares as $p): ?>
-                  <option value="<?= htmlspecialchars($p['id_pilar']) ?>"><?= htmlspecialchars($p['descricao_exibicao']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid-2 align-center" style="margin-top:12px;">
-            <div>
-              <label for="ciclo_tipo"><i class="fa-regular fa-calendar-days"></i> Ciclo <span class="helper">(obrigatório)</span></label>
-              <select id="ciclo_tipo" name="ciclo_tipo" required>
-                <?php foreach ($ciclos as $c): ?>
-                  <option value="<?= htmlspecialchars($c['nome_ciclo']) ?>" <?= $c['nome_ciclo']==='trimestral' ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['descricao']) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-
-            <div id="ciclo_detalhe_wrapper" role="group" aria-labelledby="lblPeriodo">
-              <label id="lblPeriodo"><i class="fa-regular fa-calendar"></i> Período <span class="helper">(obrigatório)</span></label>
-
-              <div id="ciclo_detalhe_anual" class="detalhe d-none">
-                <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
+            <div class="pd-body">
+              <div>
+                <label for="nome_objetivo"><i class="fa-regular fa-pen-to-square"></i> Nome do Objetivo <span class="helper">(obrigatório)</span></label>
+                <input type="text" id="nome_objetivo" name="nome_objetivo" required>
               </div>
 
-              <div id="ciclo_detalhe_semestral" class="detalhe d-none">
-                <select id="ciclo_semestral" name="ciclo_semestral"></select>
-              </div>
-
-              <div id="ciclo_detalhe_trimestral" class="detalhe">
-                <select id="ciclo_trimestral" name="ciclo_trimestral"></select>
-              </div>
-
-              <div id="ciclo_detalhe_bimestral" class="detalhe d-none">
-                <select id="ciclo_bimestral" name="ciclo_bimestral"></select>
-              </div>
-
-              <div id="ciclo_detalhe_mensal" class="detalhe d-none">
-                <div class="grid-2">
-                  <select id="ciclo_mensal_mes" name="ciclo_mensal_mes"></select>
-                  <select id="ciclo_mensal_ano" name="ciclo_mensal_ano"></select>
+              <div class="grid-2" style="margin-top:12px;">
+                <div>
+                  <label for="tipo_objetivo"><i class="fa-regular fa-square-check"></i> Tipo de Objetivo <span class="helper">(obrigatório)</span></label>
+                  <select id="tipo_objetivo" name="tipo_objetivo" required>
+                    <option value="">Selecione...</option>
+                    <?php foreach ($tipos as $t): ?>
+                      <option value="<?= htmlspecialchars($t['id_tipo']) ?>"><?= htmlspecialchars($t['descricao_exibicao']) ?></option>
+                    <?php endforeach; ?>
+                  </select>
                 </div>
-              </div>
-
-              <div id="ciclo_detalhe_personalizado" class="detalhe d-none">
-                <div class="grid-2">
-                  <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
-                  <input type="month" id="ciclo_pers_fim"    name="ciclo_pers_fim">
+                <div>
+                  <label for="pilar_bsc"><i class="fa-solid fa-layer-group"></i> Pilar BSC <span class="helper">(obrigatório)</span></label>
+                  <select id="pilar_bsc" name="pilar_bsc" required>
+                    <option value="">Selecione...</option>
+                    <?php foreach ($pilares as $p): ?>
+                      <option value="<?= htmlspecialchars($p['id_pilar']) ?>"><?= htmlspecialchars($p['descricao_exibicao']) ?></option>
+                    <?php endforeach; ?>
+                  </select>
                 </div>
               </div>
             </div>
-          </div>
+          </fieldset>
 
-          <div style="margin-top:12px;">
-            <label><i class="fa-regular fa-user"></i> Responsável(es) <span class="helper">(obrigatório)</span></label>
-            <div class="multi-select-container">
-              <div class="chips-input" id="responsavel_container">
-                <input type="text" id="responsavel_input" class="chips-input-field" placeholder="Clique para selecionar...">
+          <!-- Passo 2: Detalhes (abre automaticamente quando Passo 1 está preenchido) -->
+          <fieldset class="pd-fieldset" id="pdStep2" style="margin-top:12px;">
+            <div class="pd-legend" onclick="document.getElementById('pdStep2').classList.toggle('open')">
+              <i class="fa-solid fa-2" aria-hidden="true"></i>
+              Detalhes — Ciclo, Responsáveis e Observações
+              <i class="fa-solid fa-chevron-down pd-chev" aria-hidden="true"></i>
+            </div>
+            <div class="pd-body">
+              <div class="grid-2 align-center">
+                <div>
+                  <label for="ciclo_tipo"><i class="fa-regular fa-calendar-days"></i> Ciclo <span class="helper">(obrigatório)</span></label>
+                  <select id="ciclo_tipo" name="ciclo_tipo" required>
+                    <?php foreach ($ciclos as $c): ?>
+                      <option value="<?= htmlspecialchars($c['nome_ciclo']) ?>" <?= $c['nome_ciclo']==='trimestral' ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['descricao']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+
+                <div id="ciclo_detalhe_wrapper" role="group" aria-labelledby="lblPeriodo">
+                  <label id="lblPeriodo"><i class="fa-regular fa-calendar"></i> Período <span class="helper">(obrigatório)</span></label>
+
+                  <div id="ciclo_detalhe_anual" class="detalhe d-none">
+                    <select id="ciclo_anual_ano" name="ciclo_anual_ano"></select>
+                  </div>
+
+                  <div id="ciclo_detalhe_semestral" class="detalhe d-none">
+                    <select id="ciclo_semestral" name="ciclo_semestral"></select>
+                  </div>
+
+                  <div id="ciclo_detalhe_trimestral" class="detalhe">
+                    <select id="ciclo_trimestral" name="ciclo_trimestral"></select>
+                  </div>
+
+                  <div id="ciclo_detalhe_bimestral" class="detalhe d-none">
+                    <select id="ciclo_bimestral" name="ciclo_bimestral"></select>
+                  </div>
+
+                  <div id="ciclo_detalhe_mensal" class="detalhe d-none">
+                    <div class="grid-2">
+                      <select id="ciclo_mensal_mes" name="ciclo_mensal_mes"></select>
+                      <select id="ciclo_mensal_ano" name="ciclo_mensal_ano"></select>
+                    </div>
+                  </div>
+
+                  <div id="ciclo_detalhe_personalizado" class="detalhe d-none">
+                    <div class="grid-2">
+                      <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
+                      <input type="month" id="ciclo_pers_fim"    name="ciclo_pers_fim">
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="dropdown-list d-none" id="responsavel_list">
-                <ul>
-                  <?php foreach($users as $u): ?>
-                    <li data-id="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
-                  <?php endforeach; ?>
-                </ul>
+
+              <div style="margin-top:12px;">
+                <label><i class="fa-regular fa-user"></i> Responsável(es) <span class="helper">(obrigatório)</span></label>
+                <div class="multi-select-container">
+                  <div class="chips-input" id="responsavel_container">
+                    <input type="text" id="responsavel_input" class="chips-input-field" placeholder="Clique para selecionar...">
+                  </div>
+                  <div class="dropdown-list d-none" id="responsavel_list">
+                    <ul>
+                      <?php foreach($users as $u): ?>
+                        <li data-id="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                </div>
+                <input type="hidden" id="responsavel" name="responsavel">
+                <small id="responsavel_warning" class="warning-text d-none">
+                  ⚠️ Prefira um único responsável para evitar ambiguidades e garantir foco.
+                </small>
+              </div>
+
+              <div style="margin-top:12px;">
+                <label for="observacoes"><i class="fa-regular fa-note-sticky"></i> Observações</label>
+                <textarea id="observacoes" name="observacoes" rows="4"></textarea>
               </div>
             </div>
-            <input type="hidden" id="responsavel" name="responsavel">
-            <small id="responsavel_warning" class="warning-text d-none">
-              ⚠️ Prefira um único responsável para evitar ambiguidades e garantir foco.
-            </small>
-          </div>
-
-          <div style="margin-top:12px;">
-            <label for="observacoes"><i class="fa-regular fa-note-sticky"></i> Observações</label>
-            <textarea id="observacoes" name="observacoes" rows="4"></textarea>
-          </div>
+          </fieldset>
 
           <div class="save-row">
             <button type="submit" class="btn btn-primary"><i class="fa-regular fa-floppy-disk"></i> Salvar Objetivo</button>
@@ -571,19 +541,30 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     }
   }
 
-  // Chat lateral (acomoda largura)
-  const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-  const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-  function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-  function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-  function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-  function setupChatObservers(){ const chat=findChatEl(); if(!chat) return; const mo=new MutationObserver(()=>updateChatWidth()); mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']}); window.addEventListener('resize',updateChatWidth); TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(updateChatWidth,200)))); updateChatWidth(); }
+  // Progressive Disclosure: auto-open Step 2 when Step 1 is filled
+  function checkStep1Complete(){
+    const nome  = ($('#nome_objetivo')?.value || '').trim();
+    const tipo  = ($('#tipo_objetivo')?.value || '').trim();
+    const pilar = ($('#pilar_bsc')?.value || '').trim();
+    const step2 = document.getElementById('pdStep2');
+    if (nome && tipo && pilar && step2 && !step2.classList.contains('open')) {
+      step2.classList.add('open');
+    }
+  }
 
   // Fluxo IA
   document.addEventListener('DOMContentLoaded', () => {
-    setupChatObservers();
     populateCycles();
     toggleCycleDetail();
+
+    // Watch Step 1 fields for progressive disclosure
+    ['#nome_objetivo','#tipo_objetivo','#pilar_bsc'].forEach(sel => {
+      const el = $(sel);
+      if (el) {
+        el.addEventListener('input', checkStep1Complete);
+        el.addEventListener('change', checkStep1Complete);
+      }
+    });
 
     $('#ciclo_tipo')?.addEventListener('change', toggleCycleDetail);
     ['#ciclo_anual_ano','#ciclo_semestral','#ciclo_trimestral','#ciclo_bimestral','#ciclo_mensal_mes','#ciclo_mensal_ano','#ciclo_pers_inicio','#ciclo_pers_fim']
@@ -616,10 +597,18 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
       setLoading(true);
 
       try {
-        const res  = await fetch(form.action, { method:'POST', body:fd });
+        const res  = await fetch(form.action, {
+          method:'POST', body:fd,
+          headers:{ 'Accept':'application/json' }
+        });
         const data = await res.json();
 
         setLoading(false);
+
+        if (data.error || data.message) {
+          alert(data.error || data.message);
+          return;
+        }
 
         if (typeof data?.score !== 'number' || typeof data?.justification !== 'string') {
           throw new Error('Resposta IA inválida');
@@ -646,9 +635,17 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
           fd2.delete('evaluate');
 
           try {
-            const res2 = await fetch(form.action, { method:'POST', body:fd2 });
+            const res2 = await fetch(form.action, {
+              method:'POST', body:fd2,
+              headers:{ 'Accept':'application/json' }
+            });
             const ret  = await res2.json();
             setLoading(false);
+
+            if (ret.error || ret.message) {
+              alert(ret.error || ret.message);
+              return;
+            }
 
             if (ret?.success) {
               const el = $('#saveAiMessage');

@@ -1,3 +1,14 @@
+<Files ".env">
+  Require all denied
+</Files>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /OKR_system/
@@ -8,4 +19,9 @@
 
   # Redireciona para index.php com o parâmetro da rota
   RewriteRule ^(.+)$ index.php?path=$1 [QSA,L]
+
+  RewriteEngine On
+
+# detalhe_okr/123 -> views/detalhe_okr.php?id=123
+RewriteRule ^detalhe_okr/([0-9]+)/?$ views/detalhe_okr.php?id=$1 [L,QSA]
 </IfModule>

@@ -2,10 +2,6 @@
 // auth/salvar_company.php
 // Insere ou atualiza uma organização. Se houver CNPJ, valida e consulta a BrasilAPI.
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -147,8 +143,9 @@ try {
     [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC ]
   );
 } catch (PDOException $e) {
+  error_log('salvar_company conexão: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false,'error'=>'Erro ao conectar: '.$e->getMessage()]); exit;
+  echo json_encode(['success'=>false,'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']); exit;
 }
 
 // --------- Permissões (update só da própria empresa, a não ser admin) ----------
@@ -346,6 +343,7 @@ try {
     http_response_code(409);
     echo json_encode(['success'=>false,'error'=>'Violação de unicidade (provável CNPJ já cadastrado).']); exit;
   }
+  error_log('salvar_company: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false,'error'=>'Erro ao salvar: '.$e->getMessage()]);
+  echo json_encode(['success'=>false,'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
 }

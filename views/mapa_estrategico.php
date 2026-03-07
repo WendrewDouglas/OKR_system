@@ -492,33 +492,18 @@ $totalPil = count($pilares);
   <title>Mapa Estratégico — OKR System</title>
 
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
 
   <style>
-    :root{
-      --bg-soft:#171b21; --card:var(--bg1, #222222); --muted:#a6adbb; --text:#eaeef6;
-      --gold:var(--bg2, #F1C40F); --green:#22c55e; --blue:#60a5fa; --red:#ef4444;
-      --border:#222733; --shadow:0 10px 30px rgba(0,0,0,.20); --btn:#0e131a;
-      --accent:#0c4a6e; --chat-w:0px;
-    }
     body{ background:#fff !important; color:#111; }
     .content{ background:transparent; }
     main.mapa{ padding:24px; display:grid; grid-template-columns:1fr; gap:16px; margin-right:var(--chat-w); transition:margin-right .25s ease; position:relative; }
-    .crumbs{ color:#333; font-size:.9rem; display:flex; align-items:center; gap:6px; }
-    .crumbs a{ color:var(--accent); text-decoration:none; }
-    .crumbs .sep{ opacity:.5; margin:0 2px; }
-    .crumbs i{ opacity:.8; }
 
-    .head-card{ background:linear-gradient(180deg, var(--card), #0d1117); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); color:var(--text); position:relative; overflow:hidden; }
     .head-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-    .head-title{ margin:0; font-size:1.35rem; font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .head-title i{ color:var(--gold); }
-    .head-meta{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
 
-    .pill{ display:inline-flex; align-items:center; gap:8px; background:#0e131a; border:1px solid var(--border); color: var(--muted); padding:6px 10px; border-radius:999px; font-size:.82rem; font-weight:700; }
-    .pill i{ font-size:.9rem; opacity:.9; }
     .btn{ border:1px solid var(--border); background:var(--btn); color:#e5e7eb; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; }
     .btn:hover{ transform:translateY(-1px); transition:.15s; }
     .btn-gold{ background:var(--gold); color:#111; border:1px solid rgba(246,195,67,.9); padding:10px 16px; border-radius:12px; font-weight:900; white-space:nowrap; box-shadow:0 6px 20px rgba(246,195,67,.22); }
@@ -730,12 +715,13 @@ $totalPil = count($pilares);
 
     <main class="mapa">
       <!-- Breadcrumb -->
-      <div class="crumbs">
-        <i class="fa-solid fa-route"></i>
-        <a href="/OKR_system/dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
-        <span class="sep">/</span>
-        <span><i class="fa-solid fa-sitemap"></i> Mapa Estratégico</span>
-      </div>
+      <?php
+        $breadcrumbs = [
+          ['label' => 'Dashboard', 'icon' => 'fa-solid fa-house', 'href' => '/OKR_system/dashboard'],
+          ['label' => 'Mapa Estratégico', 'icon' => 'fa-solid fa-sitemap'],
+        ];
+        include __DIR__ . '/partials/breadcrumbs.php';
+      ?>
 
       <!-- Cabeçalho -->
       <section class="head-card">
@@ -907,21 +893,7 @@ $totalPil = count($pilares);
     });
   }
 
-  // ===== Ajuste com chat lateral
-  const CHAT_SELECTORS=['#chatPanel','.chat-panel','.chat-container','#chat','.drawer-chat'];
-  const TOGGLE_SELECTORS=['#chatToggle','.chat-toggle','.btn-chat-toggle','.chat-icon','.chat-open'];
-  function findChatEl(){ for(const s of CHAT_SELECTORS){ const el=document.querySelector(s); if(el) return el; } return null; }
-  function isOpen(el){ const st=getComputedStyle(el); const vis=st.display!=='none'&&st.visibility!=='hidden'; const w=el.offsetWidth; return (vis&&w>0)||el.classList.contains('open')||el.classList.contains('show'); }
-  function updateChatWidth(){ const el=findChatEl(); const w=(el && isOpen(el))?el.offsetWidth:0; document.documentElement.style.setProperty('--chat-w',(w||0)+'px'); }
-  function setupChatObservers(){
-    const chat=findChatEl(); if(!chat) return;
-    const mo=new MutationObserver(()=>{ updateChatWidth(); drawLinks(); });
-    mo.observe(chat,{attributes:true,attributeFilter:['style','class','aria-expanded']});
-    window.addEventListener('resize',()=>{ updateChatWidth(); drawLinks(); });
-    TOGGLE_SELECTORS.forEach(s=>document.querySelectorAll(s).forEach(btn=>btn.addEventListener('click',()=>setTimeout(()=>{ updateChatWidth(); drawLinks(); },200))));
-    updateChatWidth();
-  }
-  document.addEventListener('DOMContentLoaded', ()=>{ setupChatObservers(); });
+  // ===== Chat-width is now handled centrally by partials/chat.php =====
 
   // ===== Dados do backend
   window.__links = <?= json_encode($links, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;

@@ -2,10 +2,6 @@
 // auth/reset_company_style.php
 // Restaura o estilo (cores + logo) para o padrão em company_style da empresa do usuário.
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -194,6 +190,7 @@ try {
   echo json_encode(['success'=>true, 'record'=>$record]);
 } catch (Throwable $e) {
   if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
+  error_log('reset_company_style: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false,'error'=>'Erro ao resetar: '.$e->getMessage()]);
+  echo json_encode(['success'=>false,'error'=>'Falha ao processar. Tente novamente ou contate o administrador.']);
 }

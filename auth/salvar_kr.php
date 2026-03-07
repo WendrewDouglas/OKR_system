@@ -1,11 +1,6 @@
 <?php
 // auth/salvar_kr.php
 
-// ===== DEV ONLY: exibe erros na tela (remova em produção)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // 1) Sessão
 session_start();
 
@@ -37,6 +32,7 @@ set_exception_handler(function($ex){
 $logger = require dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/notify.php';
 require_once __DIR__.'/../auth/acl.php';
 
 require_cap('W:kr@ORG', ['id_objetivo' => (int)($_POST['id_objetivo'] ?? 0)]);
@@ -108,60 +104,8 @@ if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_tok
     exit;
 }
 
-// ======== Helpers ========
-
-function calcularDatasCiclo(string $tipo, array $d): array {
-    $ini = $fim = '';
-    switch ($tipo) {
-        case 'anual':
-            if (!empty($d['ciclo_anual_ano'])) {
-                $ano = (int)$d['ciclo_anual_ano'];
-                $ini = sprintf('%04d-01-01', $ano);
-                $fim = sprintf('%04d-12-31', $ano);
-            }
-            break;
-        case 'semestral':
-            if (preg_match('/^S([12])\/(\d{4})$/', $d['ciclo_semestral'] ?? '', $m)) {
-                $ano = $m[2];
-                if ($m[1] === '1') { $ini = "$ano-01-01"; $fim = "$ano-06-30"; }
-                else               { $ini = "$ano-07-01"; $fim = "$ano-12-31"; }
-            }
-            break;
-        case 'trimestral':
-            if (preg_match('/^Q([1-4])\/(\d{4})$/', $d['ciclo_trimestral'] ?? '', $m)) {
-                $map = [
-                    '1'=>['01-01','03-31'],
-                    '2'=>['04-01','06-30'],
-                    '3'=>['07-01','09-30'],
-                    '4'=>['10-01','12-31'],
-                ];
-                $ini = "{$m[2]}-{$map[$m[1]][0]}";
-                $fim = "{$m[2]}-{$map[$m[1]][1]}";
-            }
-            break;
-        case 'bimestral':
-            if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $d['ciclo_bimestral'] ?? '', $m)) {
-                $ini = "{$m[3]}-{$m[1]}-01";
-                $fim = date('Y-m-t', strtotime("{$m[3]}-{$m[2]}-01"));
-            }
-            break;
-        case 'mensal':
-            if (!empty($d['ciclo_mensal_mes']) && !empty($d['ciclo_mensal_ano'])) {
-                $mes = (int)$d['ciclo_mensal_mes'];
-                $ano = (int)$d['ciclo_mensal_ano'];
-                $ini = sprintf('%04d-%02d-01', $ano, $mes);
-                $fim = date('Y-m-t', strtotime("$ano-$mes-01"));
-            }
-            break;
-        case 'personalizado':
-            if (!empty($d['ciclo_pers_inicio']) && !empty($d['ciclo_pers_fim'])) {
-                $ini = $d['ciclo_pers_inicio'].'-01';
-                $fim = date('Y-m-t', strtotime($d['ciclo_pers_fim'].'-01'));
-            }
-            break;
-    }
-    return [$ini, $fim];
-}
+// ======== Helpers (extraídos para auth/helpers/) ========
+require_once __DIR__ . '/helpers/kr_helpers.php';
 
 $tipo_ciclo = trim($_POST['ciclo_tipo'] ?? '');
 
@@ -190,67 +134,6 @@ if ($tipo_ciclo === 'bimestral' && empty($_POST['ciclo_bimestral'])) {
 }
 
 
-function validarObrigatorios(string $modo, array $post): array {
-    $errors = [];
-    if (empty($post['id_objetivo']))              $errors[] = ['field' => 'id_objetivo', 'message' => 'Objetivo associado é obrigatório'];
-    if (empty(trim($post['descricao'] ?? '')))    $errors[] = ['field' => 'descricao', 'message' => 'Descrição do KR é obrigatória'];
-
-    $tipo_ciclo = trim($post['ciclo_tipo'] ?? '');
-    if ($tipo_ciclo === '') {
-        $errors[] = ['field' => 'ciclo_tipo', 'message' => 'Tipo de ciclo é obrigatório'];
-    } else {
-        switch ($tipo_ciclo) {
-            case 'anual':
-                if (empty($post['ciclo_anual_ano'])) $errors[] = ['field' => 'ciclo_anual_ano', 'message' => 'Ano do ciclo anual é obrigatório'];
-                break;
-            case 'semestral':
-                if (empty($post['ciclo_semestral'])) $errors[] = ['field' => 'ciclo_semestral', 'message' => 'Semestre do ciclo é obrigatório'];
-                break;
-            case 'trimestral':
-                if (empty($post['ciclo_trimestral'])) $errors[] = ['field' => 'ciclo_trimestral', 'message' => 'Trimestre do ciclo é obrigatório'];
-                break;
-            case 'bimestral':
-                if (empty($post['ciclo_bimestral'])) $errors[] = ['field' => 'ciclo_bimestral', 'message' => 'Bimestre do ciclo é obrigatório'];
-                break;
-            case 'mensal':
-                if (empty($post['ciclo_mensal_mes'])) $errors[] = ['field' => 'ciclo_mensal_mes', 'message' => 'Mês do ciclo é obrigatório'];
-                if (empty($post['ciclo_mensal_ano'])) $errors[] = ['field' => 'ciclo_mensal_ano', 'message' => 'Ano do ciclo é obrigatório'];
-                break;
-            case 'personalizado':
-                if (empty($post['ciclo_pers_inicio'])) $errors[] = ['field' => 'ciclo_pers_inicio', 'message' => 'Início do ciclo é obrigatório'];
-                if (empty($post['ciclo_pers_fim']))    $errors[] = ['field' => 'ciclo_pers_fim', 'message' => 'Fim do ciclo é obrigatório'];
-                break;
-        }
-    }
-
-    if (!isset($post['baseline']) || $post['baseline'] === '' || !is_numeric($post['baseline']))
-        $errors[] = ['field' => 'baseline', 'message' => 'Baseline é obrigatória'];
-    if (!isset($post['meta']) || $post['meta'] === '' || !is_numeric($post['meta']))
-        $errors[] = ['field' => 'meta', 'message' => 'Meta é obrigatória'];
-
-    if ($modo === 'save') {
-        $temFreq = array_key_exists('tipo_frequencia_milestone', $post)
-               && trim((string)$post['tipo_frequencia_milestone']) !== '';
-        if (!$temFreq) {
-            $errors[] = ['field'=>'tipo_frequencia_milestone','message'=>'Frequência de apontamento é obrigatória para salvar'];
-        }
-    }
-
-    list($ini, $fim) = calcularDatasCiclo($tipo_ciclo, $post);
-    if ($tipo_ciclo !== '' && ($ini === '' || $fim === '')) {
-        $errors[] = ['field' => 'ciclo_tipo', 'message' => 'Não foi possível derivar o período do ciclo selecionado'];
-    }
-    return $errors;
-}
-
-function mapScoreToQualidade(?int $score): ?string {
-    if ($score === null) return null;
-    if ($score <= 2) return 'péssimo';
-    if ($score <= 4) return 'ruim';
-    if ($score <= 6) return 'moderado';
-    if ($score <= 8) return 'bom';
-    return 'ótimo';
-}
 
 function avaliarKR_viaOpenAI(string $apiKey, array $dados, $logger): array {
     $system = "Você é um especialista em OKR. Responda ESTRITAMENTE em JSON válido, no formato: {\"score\": <inteiro de 0 a 10>, \"justification\": \"texto (até 150 caracteres)\"}. Sem texto extra.";
@@ -357,25 +240,6 @@ function ensureFrequenciaDominio(PDO $pdo, string $slug): void {
     app_log('info', 'Frequência criada no domínio (auto)', ['slug'=>$slug,'descricao'=>$desc]);
 }
 
-// Natureza com suporte a Binário (binaria)
-// helpers: slug igual ao front
-function _slugify_nat(string $s): string {
-    $s = trim($s);
-    $s = mb_strtolower($s, 'UTF-8');
-    $s = iconv('UTF-8','ASCII//TRANSLIT',$s);
-    $s = preg_replace('/\s+/', '_', $s);
-    $s = preg_replace('/[^a-z0-9_]/', '', $s);
-
-    if (in_array($s, ['acumulativo','acumulativa','acumulativo_constante','acumulado_constante','constante'], true))
-        return 'acumulativo_constante';
-
-    if ($s === 'acumulativo_exponencial' || $s === 'acumulado_exponencial' || $s === 'exponencial' || $s === 'expo' || str_starts_with($s, 'acumulativo_exponen'))
-        return 'acumulativo_exponencial';
-
-    if (in_array($s, ['binario','binaria'], true)) return 'binario';
-    if (in_array($s, ['pontual','flutuante'], true)) return 'pontual';
-    return $s;
-}
 
 /** Preserva o slug do front: 'acumulativo_constante' | 'acumulativo_exponencial' | 'pontual' | 'binario' */
 function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
@@ -404,52 +268,6 @@ function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
     return 'acumulativo_constante';
 }
 
-function unidadeRequerInteiro(?string $u): bool {
-    $u = strtolower(trim((string)$u));
-    $ints = ['unid','itens','pcs','ord','proc','contratos','processos','pessoas','casos','tickets','visitas'];
-    return in_array($u, $ints, true);
-}
-
-// Série de datas para milestones (espelha front)
-// - semanal: +7d; quinzenal: +15d
-// - demais: último dia do mês do período e sempre inclui data_fim
-function gerarSerieDatas(string $data_inicio, string $data_fim, string $freq): array {
-    $out = [];
-    $start = new DateTime($data_inicio);
-    $end   = new DateTime($data_fim);
-    if ($end < $start) $end = clone $start;
-
-    $freq = strtolower($freq);
-    $pushUnique = function(array &$arr, DateTime $d) {
-        $iso = $d->format('Y-m-d');
-        if (empty($arr) || end($arr) !== $iso) $arr[] = $iso;
-    };
-
-    if ($freq === 'semanal' || $freq === 'quinzenal') {
-        $stepDays = ($freq === 'semanal') ? 7 : 15;
-        $d = (clone $start)->modify("+{$stepDays} days");
-        while ($d < $end) { $pushUnique($out, $d); $d->modify("+{$stepDays} days"); }
-        $pushUnique($out, $end);
-    } else {
-        $stepMonths = ['mensal'=>1, 'bimestral'=>2, 'trimestral'=>3, 'semestral'=>6, 'anual'=>12][$freq] ?? 1;
-        $d = clone $start;
-        $firstEnd = (clone $d)->modify('last day of this month');
-        if ($stepMonths > 1) {
-            $tmp = (clone $d)->modify('first day of this month')->modify('+'.($stepMonths-1).' months');
-            $firstEnd = $tmp->modify('last day of this month');
-        }
-        if ($firstEnd > $end) {
-            $pushUnique($out, $end);
-        } else {
-            $pushUnique($out, $firstEnd);
-            $d = (clone $firstEnd)->modify('+'.$stepMonths.' months')->modify('last day of this month');
-            while ($d < $end) { $pushUnique($out, $d); $d = $d->modify('+'.$stepMonths.' months')->modify('last day of this month'); }
-            $pushUnique($out, $end);
-        }
-    }
-    if (count($out) === 0) $out[] = $end->format('Y-m-d');
-    return $out;
-}
 
 function gerarMilestonesParaKR(
     PDO $pdo,
@@ -554,15 +372,6 @@ function gerarMilestonesParaKR(
 
     return $N;
 }
-
-app_log('info', 'Gerar milestones (natureza/direcao)', [
-  'slug'     => $naturezaSlug,
-  'direcao'  => $direcao_metrica,
-  'baseline' => $baseline,
-  'meta'     => $meta,
-  'freq'     => $freqSlug
-]);
-
 
 /** Normaliza STATUS para um id válido em dom_status_kr */
 function normalizarStatus(PDO $pdo, $raw): ?string {
@@ -714,6 +523,7 @@ $statusNorm    = normalizarStatus($pdo, $status);
 ensureFrequenciaDominio($pdo, $freqSlug);
 
 app_log('info', 'Normalizações', ['freq'=>$freqSlug, 'natureza'=>$naturezaSlug, 'status_raw'=>$status, 'status_norm'=>$statusNorm]);
+app_log('info', 'Milestones context', ['slug'=>$naturezaSlug, 'direcao'=>$direcao_metrica, 'baseline'=>$baseline, 'meta'=>$meta, 'freq'=>$freqSlug]);
 
 // Coerção server-side para binário (robustez: baseline 0, meta 1)
 if ($naturezaSlug === 'binario') { // aceita só o slug normalizado
@@ -805,6 +615,31 @@ try {
 
     $pdo->commit();
     app_log('info', 'Transação concluída com sucesso', ['id_kr'=>$id_kr]);
+
+    // Notifica aprovadores sobre novo KR pendente
+    try {
+        $stCreator = $pdo->prepare("SELECT CONCAT(primeiro_nome,' ',COALESCE(ultimo_nome,'')) AS nome, id_company FROM usuarios WHERE id_user=:u LIMIT 1");
+        $stCreator->execute([':u' => $usuario_criador]);
+        $creatorRow = $stCreator->fetch(PDO::FETCH_ASSOC);
+        if ($creatorRow && !empty($creatorRow['id_company'])) {
+            notify_approvers_new_item($pdo, 'kr', $id_kr, [
+                'descricao'    => $descricao,
+                'criador_nome' => trim($creatorRow['nome']),
+                'criador_id'   => $usuario_criador,
+                'company_id'   => (int)$creatorRow['id_company'],
+                'extras'       => [
+                    'id_objetivo'   => (string)$id_objetivo,
+                    'baseline'      => $baseline,
+                    'meta'          => $meta,
+                    'unidade_medida'=> $unidade_medida,
+                    'data_inicio'   => $data_inicio,
+                    'data_fim'      => $data_fim,
+                ],
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('salvar_kr notify: ' . $e->getMessage());
+    }
 
     echo json_encode(['success' => true, 'id_kr' => $id_kr, 'key_result_num' => $key_result_num, 'milestones'=>$qtdeMilestones]);
 } catch (PDOException $e) {

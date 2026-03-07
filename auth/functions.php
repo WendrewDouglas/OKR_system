@@ -280,17 +280,33 @@ function sendPasswordResetEmail(string $to, string $selector, string $verifier):
     $link   = $base . '?' . $query;
 
     $html = <<<HTML
-    <html>
-    <head><meta charset="UTF-8"><title>Recuperação de Senha</title></head>
-    <body style="font-family:Arial,Helvetica,sans-serif; font-size:15px; color:#111">
-      <p>Olá,</p>
-      <p>Use o link abaixo para redefinir sua senha do OKR System (expira em 1 hora):</p>
-      <p><a href="{$link}" target="_blank" rel="noopener">Redefinir minha senha</a></p>
-      <p>Se você não solicitou, pode ignorar este aviso com segurança.</p>
-      <hr style="border:none; border-top:1px solid #eee; margin:16px 0">
-      <p>PlanningBI – OKR System</p>
-    </body></html>
-    HTML;
+<html>
+<head><meta charset="UTF-8"><title>Recuperação de Senha</title></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+  <tr><td style="background-color:#0D1117;padding:24px;text-align:center;">
+    <span style="color:#F1C40F;font-size:22px;font-weight:bold;">OKR System</span>
+  </td></tr>
+  <tr><td style="padding:32px 24px;">
+    <p style="font-size:15px;color:#333;margin:0 0 16px;">Olá,</p>
+    <p style="font-size:15px;color:#333;margin:0 0 24px;">Recebemos uma solicitação para redefinir sua senha. Clique no botão abaixo para criar uma nova senha (válido por 1 hora):</p>
+    <p style="text-align:center;margin:0 0 24px;">
+      <a href="{$link}" target="_blank" rel="noopener" style="display:inline-block;background-color:#F1C40F;color:#0D1117;font-weight:bold;font-size:16px;padding:14px 32px;border-radius:8px;text-decoration:none;">Redefinir minha senha</a>
+    </p>
+    <p style="font-size:13px;color:#666;margin:0 0 8px;">Se o botão não funcionar, copie e cole este link no navegador:</p>
+    <p style="font-size:12px;color:#0066cc;word-break:break-all;margin:0 0 24px;">{$link}</p>
+    <p style="font-size:13px;color:#999;margin:0;">Se você não solicitou, ignore este e-mail.</p>
+  </td></tr>
+  <tr><td style="background-color:#f8f8f8;padding:16px 24px;text-align:center;border-top:1px solid #eee;">
+    <span style="font-size:12px;color:#999;">PlanningBI – OKR System</span>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>
+HTML;
 
     $from     = defined('SMTP_FROM')      ? SMTP_FROM      : 'no-reply@planningbi.com.br';
     $fromName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'OKR System';

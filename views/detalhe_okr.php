@@ -18,8 +18,6 @@ if (isset($_GET['ajax'])) {
     require_cap('W:objetivo@ORG');
   }
 
-  require_cap('W:apontamento@ORG', ['id_kr' => $_POST['id_kr'] ?? null]);
-  require_cap('W:orcamento@ORG', ['id_orcamento' => (int)($_POST['id_orcamento'] ?? 0)]);
   header('Content-Type: application/json; charset=utf-8');
 
   if (!isset($_SESSION['user_id'])) {
@@ -1606,6 +1604,7 @@ foreach ($milestones as $m) {
 
   /* ---------- APONTAMENTO: SALVAR (multi-linhas por milestone) ---------- */
   if ($action === 'apont_save') {
+    require_cap('W:apontamento@ORG', ['id_kr' => $_POST['id_kr'] ?? null]);
     if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
       http_response_code(403);
       echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
@@ -1798,6 +1797,7 @@ foreach ($milestones as $m) {
 
 /* ---------- APONTAMENTO: UPLOAD DE EVIDÊNCIA (por milestone) ---------- */
 if ($action === 'apont_file_upload') {
+  require_cap('W:apontamento@ORG', ['id_kr' => $_POST['id_kr'] ?? null]);
   if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
     http_response_code(403);
     echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
@@ -1870,6 +1870,7 @@ if ($action === 'apont_file_list') {
 
 /* ---------- APONTAMENTO: EXCLUIR (remove do log e re-sincroniza o milestone) ---------- */
 if ($action === 'apont_delete') {
+  require_cap('W:apontamento@ORG', ['id_kr' => $_POST['id_kr'] ?? null]);
   if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
     http_response_code(403);
     echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
@@ -2205,7 +2206,7 @@ $stKpi = $pdo->prepare("
          SUM(CASE WHEN farol='vermelho' THEN 1 ELSE 0 END) AS criticos,
          SUM(CASE WHEN farol='amarelo'  THEN 1 ELSE 0 END) AS em_risco
   FROM `key_results`
-  WHERE `id_objetivo`=:id AND (`ativo`='sim' OR `ativo` IS NULL)
+  WHERE `id_objetivo`=:id
 ");
 $stKpi->execute(['id'=>$id_objetivo]);
 $kpi = $stKpi->fetch() ?: [];
@@ -3568,79 +3569,6 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           </article>
         `);
       });
-      async function loadKRs(){
-      const cont = $('#krContainer');
-      cont.innerHTML = `<div class="chip"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando KRs...</div>`;
-
-      const res  = await fetch(`${SCRIPT}?ajax=load_krs&id_objetivo=${idObjetivo}`);
-      const data = await res.json();
-
-      if(!data.success){
-        cont.innerHTML = `<div class="chip" style="background:#5b1b1b;color:#ffe4e6;border-color:#7a1020"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar</div>`;
-        return;
-      }
-
-      // Acumuladores para o progresso do OBJETIVO (média dos KRs)
-      let sumAtual = 0, sumEsper = 0, n = 0;
-
-      const toNum = v => (v === null || v === undefined || v === '' || isNaN(v)) ? null : Number(v);
-
-      cont.innerHTML = '';
-      data.krs.forEach(kr=>{
-        const id = kr.id_kr;
-        const isCancel = (kr.status || '').toLowerCase().includes('cancel');
-
-        // Progresso do KR
-        const pctAtualNum = toNum(kr?.progress?.pct_atual);
-        const pctEsperNum = toNum(kr?.progress?.pct_esperado);
-        const okFlag = (kr?.progress?.ok === true) ? true : ((kr?.progress?.ok === false) ? false : null);
-
-        if (pctAtualNum !== null && pctEsperNum !== null) {
-          sumAtual += pctAtualNum;
-          sumEsper += pctEsperNum;
-          n++;
-        }
-
-        const pctLabel  = pctAtualNum !== null ? `${pctAtualNum}%` : '—';
-        const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
-        const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
-
-        cont.insertAdjacentHTML('beforeend', `
-          <article class="kr-card${isCancel ? ' cancelado' : ''}" data-id="${id}">
-            <div class="kr-head">
-              <div>
-                <div class="kr-title"><i class="fa-solid fa-flag"></i> KR${kr.key_result_num ? ' ' + kr.key_result_num : ''}: ${escapeHtml(truncate(kr.descricao||'', 160))}</div>
-                <div class="meta-line">
-                  <!-- PROGRESSO EM PRIMEIRO LUGAR -->
-                  <span class="meta-pill ${progCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
-                    <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
-                  </span>
-
-                  <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
-                  <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
-                  <span class="meta-pill ${farolCls}" title="Farol">
-                    <i class="fa-solid fa-traffic-light"></i> ${farolText}
-                  </span>
-                  <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
-                  <span class="meta-pill" title="Meta"><i class="fa-solid fa-bullseye"></i>${fmtNum(kr.meta)} ${escapeHtml(kr.unidade_medida||'')}</span>
-                  <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
-                  <span class="meta-pill" title="Frequência de apontamento"><i class="fa-solid fa-clock-rotate-left"></i>${escapeHtml(kr.tipo_frequencia_milestone||'—')}</span>
-                </div>
-              </div>
-              <div class="kr-actions">
-                <button class="btn btn-gold btn-sm" data-act="apont" data-id="${id}"><i class="fa-regular fa-pen-to-square"></i> Novo apontamento</button>
-                <button class="btn btn-outline btn-sm" data-act="nova" data-id="${id}"><i class="fa-solid fa-screwdriver-wrench"></i> Incluir iniciativa</button>
-                <button class="kr-toggle gold" title="Expandir" data-act="toggle" data-id="${id}">
-                  <i class="fa-solid fa-chevron-down"></i>
-                </button>
-              </div>
-            </div>
-            <div class="kr-body">
-              ${renderTabs(id)}
-            </div>
-          </article>
-        `);
-      });
 
       // ====== CHIP DE PROGRESSO DO OBJETIVO (média dos KRs) ======
       const objPctAtual = n > 0 ? Math.round(sumAtual / n) : null;
@@ -3689,7 +3617,6 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }
 
     }
-  }
 
 
     function renderTabs(id){

@@ -1,7 +1,8 @@
-/* ----------------------------
- * Botões
- * ---------------------------- */
-.btn {
+/* ============================================================
+ * Estilos de Login/Register (escopados para não afetar o app)
+ * ============================================================ */
+.login-card .btn,
+.login-form-wrapper .btn {
   display: inline-block;
   font-weight: 600;
   text-align: center;
@@ -11,81 +12,72 @@
   transition: background-color .2s ease;
 }
 
-/* Cards */
-.card {
+.login-card .card {
   background-color: var(--white);
   border-radius: .75rem;
   box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
 }
 
-/* Formulários */
-.form-label {
+.login-form-wrapper .form-label {
   font-weight: 500;
 }
-.form-control {
+.login-form-wrapper .form-control {
   border-radius: .5rem;
   padding: .75rem;
 }
 
-/* 1. Aumentar espaçamento entre os campos do formulário */
-.mb-3 {
-  margin-bottom: 1.75rem !important; /* de 1rem para 1.75rem */
+.login-form-wrapper .mb-3 {
+  margin-bottom: 1.75rem !important;
 }
 
-/* 2. Centralizar o conteúdo do form e ajustar largura */
-form {
+.login-form-wrapper form {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* Inputs e botão com largura fixa mas responsiva */
-.form-control,
-.btn-primary {
+.login-form-wrapper .form-control,
+.login-form-wrapper .btn-primary {
   width: 100%;
-  max-width: 300px; /* ou ajuste para o tamanho que preferir */
+  max-width: 300px;
 }
 
-/* 3. Estilizar o link “Esqueci minha senha” */
+/* Link “Esqueci minha senha” */
 .password-reset-link {
   display: block;
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #007bff;           /* azul padrão de link */
+  color: #007bff;
   text-decoration: underline;
   background: none;
   border: none;
   padding: 0;
 }
-
-/* Em hover, escurecer um pouco */
 .password-reset-link:hover {
   color: #0056b3;
   text-decoration: none;
 }
 
-/* Card principal */
+/* Card principal de login */
 .login-card {
   background-color: var(--white);
-  border: 1px solid rgba(0,0,0,0.05);  /* borda leve */
-  border-radius: 1rem;                  /* cantos arredondados */
-  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08); /* sombra suave */
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
   display: flex;
-  flex-direction: column;               /* padrão mobile; será sobrescrito em desktop */
-  padding: 0;                           /* padding será aplicado nos filhos */
-  overflow: hidden;                     /* garante cantos arredondados */
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
 }
 
-/* Em desktop, alinhar imagem + conteúdo lado a lado */
 @media (min-width: 992px) {
   .login-card {
     flex-direction: row;
   }
 }
 
-/* Área da ilustração */
 .login-illustration {
-  display: none;  /* escondido no mobile */
+  display: none;
 }
 
 @media (min-width: 992px) {
@@ -95,15 +87,315 @@ form {
     justify-content: center;
     background-color: var(--light-gray);
     padding: 2rem;
-    flex: 1;      /* ocupa metade do card */
+    flex: 1;
   }
 }
 
-/* Área do formulário */
 .login-form-wrapper {
   padding: 2rem;
-  flex: 1;        /* ocupa metade do card */
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+/* ============================================================
+ * Componentes OKR compartilhados (extraídos das views)
+ * ============================================================ */
+
+/* --- Breadcrumbs --- */
+.crumbs {
+  color: #333;
+  font-size: .9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.crumbs a {
+  color: var(--accent, #0c4a6e);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  text-decoration: underline;
+}
+.crumbs .sep {
+  opacity: .5;
+  margin: 0 2px;
+}
+.crumbs i {
+  opacity: .85;
+}
+
+/* --- Pills --- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--chip, #0e131a);
+  border: 1px solid var(--border, #222733);
+  color: var(--muted, #a6adbb);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 700;
+}
+.pill i {
+  font-size: .9rem;
+  opacity: .9;
+}
+.pill-gold {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(246,195,67,.10);
+  box-shadow: 0 0 0 1px rgba(246,195,67,.10), 0 6px 18px rgba(246,195,67,.10);
+}
+.pill-gold i {
+  color: var(--gold);
+}
+
+/* --- Head Card --- */
+.head-card {
+  background: linear-gradient(180deg, var(--card), #0d1117);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
+}
+.head-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: .2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.head-title i {
+  color: var(--gold);
+}
+.head-meta {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- Form Card --- */
+.form-card {
+  background: linear-gradient(180deg, var(--card), #0e1319);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+.form-card h2 {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+  letter-spacing: .2px;
+  color: #e5e7eb;
+}
+
+/* --- Overlay / Modal --- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  background: rgba(0,0,0,.55);
+  z-index: 3000;
+}
+.overlay.show {
+  display: grid;
+}
+
+/* --- AI Card (shared modal) --- */
+.ai-card {
+  width: min(920px, 94vw);
+  background: #0b1020;
+  color: #e6e9f2;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #223047;
+}
+.ai-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1000px 300px at 10% -20%, rgba(64,140,255,.18), transparent 60%),
+    radial-gradient(700px 220px at 100% 0%, rgba(0,196,204,.12), transparent 60%);
+  pointer-events: none;
+}
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ai-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  background: conic-gradient(from 180deg at 50% 50%, #3b82f6, #06b6d4, #8b5cf6, #3b82f6);
+  box-shadow: 0 6px 18px rgba(59,130,246,.35);
+}
+.ai-title {
+  font-size: .95rem;
+  opacity: .9;
+}
+.ai-subtle {
+  font-size: .85rem;
+  opacity: .7;
+}
+.ai-bubble {
+  background: #111833;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 8px 0 14px;
+}
+.ai-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* --- Score / Quality badges --- */
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.score-pill {
+  font-weight: 900;
+  font-size: 2.25rem;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(59,130,246,.16), rgba(2,132,199,.12));
+  border: 1px solid rgba(255,255,255,.08);
+}
+.quality-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .8rem;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  text-transform: capitalize;
+}
+.q-pessimo  { background: rgba(239,68,68,.15);  border-color: rgba(239,68,68,.25); }
+.q-ruim     { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.25); }
+.q-moderado { background: rgba(14,165,233,.15); border-color: rgba(14,165,233,.25); }
+.q-bom      { background: rgba(34,197,94,.15);  border-color: rgba(34,197,94,.25); }
+.q-otimo    { background: rgba(168,85,247,.16); border-color: rgba(168,85,247,.25); }
+
+/* --- Chips --- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: .70rem;
+  font-weight: 400;
+  border: 1px solid var(--border);
+  background: #0e131a;
+  color: var(--muted);
+  line-height: 1;
+}
+
+/* --- Progressive Disclosure fieldset --- */
+.pd-fieldset {
+  border: 1px solid var(--border, #222733);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color .2s ease;
+}
+.pd-fieldset.open {
+  border-color: rgba(246,195,67,.25);
+}
+.pd-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(14,19,26,.6);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700;
+  color: var(--text, #eaeef6);
+  font-size: .95rem;
+}
+.pd-legend i.pd-chev {
+  margin-left: auto;
+  transition: transform .25s ease;
+  font-size: .85rem;
+  color: var(--muted, #a6adbb);
+}
+.pd-fieldset.open .pd-legend i.pd-chev {
+  transform: rotate(180deg);
+}
+.pd-body {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0 16px;
+  transition: max-height .35s ease, opacity .25s ease, padding .25s ease;
+}
+.pd-fieldset.open .pd-body {
+  max-height: 800px;
+  opacity: 1;
+  padding: 12px 16px 16px;
+}
+
+/* --- Quick Action Buttons (Header) --- */
+.header-quick-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.header-qa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--bg2, #F1C40F);
+  color: #111;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform .15s, filter .15s;
+  white-space: nowrap;
+}
+.header-qa-btn:hover {
+  filter: brightness(.92);
+  transform: translateY(-1px);
+}
+.header-qa-btn i {
+  font-size: .75rem;
+}
+/* Hide text on mobile, show only icon */
+@media (max-width: 768px) {
+  .header-qa-btn .qa-label {
+    display: none;
+  }
+  .header-qa-btn {
+    padding: 6px 8px;
+  }
 }

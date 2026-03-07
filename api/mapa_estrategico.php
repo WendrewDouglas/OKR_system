@@ -1,9 +1,5 @@
 <?php
 // /OKR_system/api/mapa_estrategico.php
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(E_ALL);
-
 header('Content-Type: application/json; charset=utf-8');
 
 session_start();
@@ -50,6 +46,14 @@ $normPilar = static function($raw){
   return ucfirst($k ?: 'Outros');
 };
 
+/* ===== Validação de identificadores SQL dinâmicos ===== */
+$safeName = static function(string $name): string {
+  if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $name)) {
+    throw new RuntimeException('Identificador SQL inválido: '.$name);
+  }
+  return $name;
+};
+
 /* ===== Descobrir tabelas/colunas ===== */
 if (!$tableExists($pdo,'objetivos') || !$tableExists($pdo,'key_results')) {
   echo json_encode(['success'=>false,'error'=>'Tabelas objetivos/key_results não encontradas']); exit;
@@ -60,22 +64,22 @@ $KR  = 'key_results';
 /* objetivos: possív. colunas */
 $oc = $getCols($pdo,$OBJ);
 $have = fn($name)=>array_search($name, array_column($oc,'Field'))!==false;
-$OBJ_ID     = $have('id_objetivo') ? 'id_objetivo' : ($have('id') ? 'id' : array_column($oc,'Field')[0]);
-$OBJ_DESC   = $have('descricao') ? 'descricao' : ($have('nome') ? 'nome' : $OBJ_ID);
-$OBJ_PILAR  = $have('pilar_bsc') ? 'pilar_bsc' : ($have('pilar') ? 'pilar' : null);
-$OBJ_TIPO   = $have('tipo') ? 'tipo' : null;
-$OBJ_STATUS = $have('status') ? 'status' : null;
-$OBJ_DONO   = $have('dono') ? 'dono' : null;
-$OBJ_PRAZO  = $have('dt_prazo') ? 'dt_prazo' : ( $have('data_fim') ? 'data_fim' : null);
-$OBJ_QUALI  = $have('qualidade') ? 'qualidade' : null;
+$OBJ_ID     = $safeName($have('id_objetivo') ? 'id_objetivo' : ($have('id') ? 'id' : array_column($oc,'Field')[0]));
+$OBJ_DESC   = $safeName($have('descricao') ? 'descricao' : ($have('nome') ? 'nome' : $OBJ_ID));
+$OBJ_PILAR  = $have('pilar_bsc') ? $safeName('pilar_bsc') : ($have('pilar') ? $safeName('pilar') : null);
+$OBJ_TIPO   = $have('tipo') ? $safeName('tipo') : null;
+$OBJ_STATUS = $have('status') ? $safeName('status') : null;
+$OBJ_DONO   = $have('dono') ? $safeName('dono') : null;
+$OBJ_PRAZO  = $have('dt_prazo') ? $safeName('dt_prazo') : ( $have('data_fim') ? $safeName('data_fim') : null);
+$OBJ_QUALI  = $have('qualidade') ? $safeName('qualidade') : null;
 
 /* key_results: possív. colunas */
 $kc = $getCols($pdo,$KR);
 $kHave = fn($name)=>array_search($name, array_column($kc,'Field'))!==false;
-$KR_ID        = $kHave('id_kr') ? 'id_kr' : ($kHave('id') ? 'id' : array_column($kc,'Field')[0]);
-$KR_OBJ       = $kHave('id_objetivo') ? 'id_objetivo' : null;
-$KR_FAROL     = $kHave('farol') ? 'farol' : null;
-$KR_STATUS    = $kHave('status') ? 'status' : null;
+$KR_ID        = $safeName($kHave('id_kr') ? 'id_kr' : ($kHave('id') ? 'id' : array_column($kc,'Field')[0]));
+$KR_OBJ       = $kHave('id_objetivo') ? $safeName('id_objetivo') : null;
+$KR_FAROL     = $kHave('farol') ? $safeName('farol') : null;
+$KR_STATUS    = $kHave('status') ? $safeName('status') : null;
 
 /* milestones table + colunas */
 $MS_T = null; foreach(['milestones_kr','milestones'] as $t){ if($tableExists($pdo,$t)){ $MS_T=$t; break; } }

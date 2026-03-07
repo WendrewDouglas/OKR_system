@@ -15,9 +15,10 @@ session_start();
 
 require_once __DIR__ . '/bootstrap_logging.php';
 
-$ip = substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45);
+/*$ip = substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45);
 $captchaToken = $_POST['g-recaptcha-response'] ?? $_POST['h-captcha-response'] ?? $_POST['captcha_token'] ?? null;
-verifyCaptchaOrFail($captchaToken, $ip);
+verifyCaptchaOrFail($captchaToken, $ip);*/
+//TEste//
 
 
 /* ===================================
@@ -430,12 +431,14 @@ try {
     $findCompany->execute([':org' => $empresaLower]);
     $company = $findCompany->fetch();
 
+    $isNewCompany = false;
     if ($company) {
         $idCompany = (int)$company['id_company'];
     } else {
         $insertCompany = $pdo->prepare('INSERT INTO company (organizacao, created_at) VALUES (:org, NOW())');
         $insertCompany->execute([':org' => $empresa]);
         $idCompany = (int)$pdo->lastInsertId();
+        $isNewCompany = true;
     }
 
     // 8.1) Resolver papel user_admin para ambas as tabelas (INT ou VARCHAR)
@@ -491,9 +494,24 @@ try {
     $stmtCred = $pdo->prepare('INSERT INTO usuarios_credenciais (id_user, senha_hash) VALUES (:id, :hash)');
     $stmtCred->execute([':id' => $newId, ':hash' => $hash]);
 
-    // 8.5) Permissões (tabela de junção)
+    // 8.5) Permissões (tabela de junção legada)
     $stmtPerm = $pdo->prepare('INSERT INTO usuarios_permissoes (id_user, id_permissao) VALUES (:id, :perm)');
     $stmtPerm->execute([':id' => $newId, ':perm' => $permForUsuariosPerm]);
+
+    // 8.6) Vincular papel no RBAC (sistema atual de permissões)
+    $qRole = $pdo->prepare("SELECT role_id FROM rbac_roles WHERE role_key = :k AND is_active = 1 LIMIT 1");
+    $qRole->execute([':k' => DEFAULT_USER_ROLE_SLUG]);
+    $rbacRoleId = $qRole->fetchColumn();
+    if ($rbacRoleId) {
+        $pdo->prepare("INSERT INTO rbac_user_role (user_id, role_id, valid_from) VALUES (:uid, :rid, NOW())")
+            ->execute([':uid' => $newId, ':rid' => (int)$rbacRoleId]);
+    }
+
+    // 8.7) Fundador de nova empresa → aprovador master (aprova tudo)
+    if ($isNewCompany) {
+        $pdo->prepare("INSERT INTO aprovadores (id_user, tudo, habilitado) VALUES (:uid, 1, 1)")
+            ->execute([':uid' => (int)$newId]);
+    }
 
     $pdo->commit();
 
