@@ -81,24 +81,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         return null;
       }
-      // Generic message — never expose API details
       state = state.copyWith(isLoading: false);
-      return 'E-mail ou senha incorretos.';
+      return _extractMessage(res.data) ?? 'E-mail ou senha incorretos.';
     } on DioException catch (e) {
       state = state.copyWith(isLoading: false);
-      if (e.response?.statusCode == 429) {
-        return 'Muitas tentativas. Aguarde alguns minutos.';
-      }
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
-        return 'Sem conexão. Verifique sua internet.';
+        return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
       }
-      return 'E-mail ou senha incorretos.';
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+      if (status == 429) {
+        return 'Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente.';
+      }
+      if (status == 400) {
+        return _extractMessage(data) ?? 'Preencha o e-mail e a senha para continuar.';
+      }
+      if (status == 401) {
+        return _extractMessage(data) ?? 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
+      }
+      if (status == 403) {
+        return _extractMessage(data) ?? 'Acesso negado. Sua conta pode estar inativa. Entre em contato com o suporte.';
+      }
+      if (status != null && status >= 500) {
+        return 'Servidor temporariamente indisponível. Tente novamente em alguns instantes.';
+      }
+      return _extractMessage(data) ?? 'Falha na conexão. Tente novamente.';
     } catch (_) {
       state = state.copyWith(isLoading: false);
-      return 'Erro inesperado. Tente novamente.';
+      return 'Erro inesperado. Tente novamente ou entre em contato com o suporte.';
     }
+  }
+
+  String? _extractMessage(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final msg = data['message'] ?? data['error'];
+      if (msg is String && msg.isNotEmpty) return msg;
+    }
+    return null;
   }
 
   Future<void> logout() async {
