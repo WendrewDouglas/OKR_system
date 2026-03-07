@@ -10,8 +10,8 @@ class AppShell extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/dashboard')) return 0;
-    if (location.startsWith('/okrs')) return 1;
+    if (location.startsWith('/okrs')) return 0;
+    if (location.startsWith('/responsaveis')) return 1;
     if (location.startsWith('/tarefas')) return 2;
     if (location.startsWith('/orcamento')) return 3;
     if (location.startsWith('/menu')) return 4;
@@ -21,8 +21,8 @@ class AppShell extends StatelessWidget {
   void _onTap(BuildContext context, int i) {
     AppHaptics.selection();
     switch (i) {
-      case 0: context.go('/dashboard');
-      case 1: context.go('/okrs');
+      case 0: context.go('/okrs');
+      case 1: context.go('/responsaveis');
       case 2: context.go('/tarefas');
       case 3: context.go('/orcamento');
       case 4: context.go('/menu');
@@ -51,16 +51,16 @@ class AppShell extends StatelessWidget {
             child: Row(
               children: [
                 _NavItem(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home,
-                  label: 'Home',
+                  icon: Icons.account_tree_outlined,
+                  activeIcon: Icons.account_tree,
+                  label: 'OKRs',
                   isActive: current == 0,
                   onTap: () => _onTap(context, 0),
                 ),
                 _NavItem(
-                  icon: Icons.flag_outlined,
-                  activeIcon: Icons.flag,
-                  label: 'OKRs',
+                  icon: Icons.people_outline,
+                  activeIcon: Icons.people,
+                  label: 'Responsáveis',
                   isActive: current == 1,
                   onTap: () => _onTap(context, 1),
                 ),

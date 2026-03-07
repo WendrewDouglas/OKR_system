@@ -8,8 +8,8 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/forgot_password_screen.dart';
 import '../../features/auth/reset_password_screen.dart';
 import '../../features/shell/app_shell.dart';
-import '../../features/dashboard/dashboard_screen.dart';
-import '../../features/okrs/okr_list_screen.dart';
+import '../../features/okrs/okr_map_screen.dart';
+import '../../features/responsaveis/responsaveis_screen.dart';
 import '../../features/okrs/okr_detail_screen.dart';
 import '../../features/okrs/objetivo_form_screen.dart';
 import '../../features/okrs/kr_detail_screen.dart';
@@ -54,7 +54,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/okrs',
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final authStatus = authNotifier.status;
@@ -78,7 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (authStatus == AuthStatus.authenticated && publicRoutes.contains(loc)) {
-        return '/dashboard';
+        return '/okrs';
       }
       return null;
     },
@@ -108,8 +108,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __, child) => AppShell(child: child),
         routes: [
           // === Bottom nav tabs — instant (no transition) ===
-          GoRoute(path: '/dashboard', pageBuilder: (_, __) => const NoTransitionPage(child: DashboardScreen())),
-          GoRoute(path: '/okrs', pageBuilder: (_, __) => const NoTransitionPage(child: OkrListScreen())),
+          GoRoute(path: '/okrs', pageBuilder: (_, __) => const NoTransitionPage(child: OkrMapScreen())),
+          GoRoute(path: '/responsaveis', pageBuilder: (_, __) => const NoTransitionPage(child: ResponsaveisScreen())),
           GoRoute(path: '/tarefas', pageBuilder: (_, __) => const NoTransitionPage(child: MinhasTarefasScreen())),
           GoRoute(path: '/orcamento', pageBuilder: (_, __) => const NoTransitionPage(child: OrcamentoScreen())),
           GoRoute(path: '/menu', pageBuilder: (_, __) => const NoTransitionPage(child: MenuScreen())),
