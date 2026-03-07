@@ -1,11 +1,11 @@
 {
-    "name": "planningbi_okr",
-    "short_name": "planningbi_okr",
+    "name": "okr_app",
+    "short_name": "okr_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "PlanningBI OKR System mobile & web app",
+    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
