@@ -2,7 +2,6 @@
 // auth/salvar_company_style.php
 // Salva/atualiza cores, logo (base64) e okr_master_user_id (inativo) para uma organização.
 // Regra: somente a empresa vinculada ao usuário logado pode ser personalizada.
-// Somente permite salvar se a empresa possuir CNPJ válido.
 
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
@@ -26,18 +25,6 @@ if (empty($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['cs
 }
 
 // ---- Helpers ----
-function only_digits_local($s){ return preg_replace('/\D+/', '', (string)$s); }
-function validaCNPJlocal($cnpj) {
-  $cnpj = only_digits_local($cnpj);
-  if (strlen($cnpj) !== 14) return false;
-  if (preg_match('/^(\d)\1{13}$/', $cnpj)) return false;
-  $b = array_map('intval', str_split($cnpj));
-  $p1=[5,4,3,2,9,8,7,6,5,4,3,2]; $p2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
-  $s=0; for($i=0;$i<12;$i++) $s += $b[$i]*$p1[$i]; $d1 = ($s%11<2)?0:11-$s%11;
-  if ($b[12] !== $d1) return false;
-  $s=0; for($i=0;$i<13;$i++) $s += $b[$i]*$p2[$i]; $d2 = ($s%11<2)?0:11-$s%11;
-  return $b[13] === $d2;
-}
 function is_hex_color($c){
   return is_string($c) && preg_match('/^#[0-9A-Fa-f]{6}$/', $c);
 }
@@ -84,21 +71,13 @@ try {
     echo json_encode(['success'=>false,'error'=>'Sem permissão para personalizar esta organização.']); exit;
   }
 
-  // -------- Empresa deve existir e ter CNPJ válido --------
-  $stComp = $pdo->prepare("SELECT id_company, organizacao, cnpj FROM company WHERE id_company=:c LIMIT 1");
+  // -------- Empresa deve existir --------
+  $stComp = $pdo->prepare("SELECT id_company, organizacao FROM company WHERE id_company=:c LIMIT 1");
   $stComp->execute([':c'=>$id_company]);
   $company = $stComp->fetch();
   if (!$company) {
     http_response_code(404);
     echo json_encode(['success'=>false,'error'=>'Organização não encontrada.']); exit;
-  }
-  $cnpjDigits = only_digits_local($company['cnpj'] ?? '');
-  if (!$cnpjDigits || !validaCNPJlocal($cnpjDigits)) {
-    http_response_code(422);
-    echo json_encode([
-      'success'=>false,
-      'error'=>'Para salvar o estilo é obrigatório que a organização possua um CNPJ válido.'
-    ]); exit;
   }
 
   // -------- Logo: aceita png/jpg/jpeg/svg, tamanho máx ~ 1.5MB --------

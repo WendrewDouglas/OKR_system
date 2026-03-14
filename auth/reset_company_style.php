@@ -29,19 +29,6 @@ const RESET_BG2 = '#f1c40f';
 const RESET_LOGO_URL = 'https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg';
 const RESET_LOGO_MAX_BYTES = 2_097_152; // 2MB
 
-function only_digits_reset($s){ return preg_replace('/\D+/', '', (string)$s); }
-function validaCNPJ_reset($cnpj) {
-  $cnpj = only_digits_reset($cnpj);
-  if (strlen($cnpj) != 14) return false;
-  if (preg_match('/^(\\d)\\1{13}$/', $cnpj)) return false;
-  $b = array_map('intval', str_split($cnpj));
-  $p1=[5,4,3,2,9,8,7,6,5,4,3,2]; $p2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
-  $s=0; for($i=0;$i<12;$i++) $s += $b[$i]*$p1[$i]; $d1 = ($s%11<2)?0:11-$s%11;
-  if ($b[12] !== $d1) return false;
-  $s=0; for($i=0;$i<13;$i++) $s += $b[$i]*$p2[$i]; $d2 = ($s%11<2)?0:11-$s%11;
-  return $b[13] === $d2;
-}
-
 function downloadLogoDataUri_reset(string $url, int $maxBytes = RESET_LOGO_MAX_BYTES): ?string {
   $raw = null; $mime = null;
 
@@ -140,16 +127,7 @@ try {
     echo json_encode(['success'=>false,'error'=>'Acesso negado para esta empresa.']); exit;
   }
 
-  // 2) Exige CNPJ válido
-  $stC = $pdo->prepare("SELECT cnpj FROM company WHERE id_company = :cid");
-  $stC->execute([':cid'=>$id_company]);
-  $cnpj = $stC->fetchColumn();
-  if (!$cnpj || !validaCNPJ_reset($cnpj)) {
-    http_response_code(422);
-    echo json_encode(['success'=>false,'error'=>'A empresa não possui CNPJ válido.']); exit;
-  }
-
-  // 3) Monta defaults
+  // 2) Monta defaults
   $logo = downloadLogoDataUri_reset(RESET_LOGO_URL);
   // Se não conseguir baixar logo, ainda assim reseta cores (logo pode ficar null)
   $pdo->beginTransaction();

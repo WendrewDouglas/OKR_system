@@ -36,20 +36,6 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
 // Carrega SOMENTE a empresa do usuário logado
 $userCompany = null;
 $hasCompany = false;
-$hasValidCNPJ = false;
-
-function only_digits_local($s){ return preg_replace('/\D+/', '', (string)$s); }
-function validaCNPJlocal($cnpj) {
-  $cnpj = only_digits_local($cnpj);
-  if (strlen($cnpj) !== 14) return false;
-  if (preg_match('/^(\d)\1{13}$/', $cnpj)) return false;
-  $b = array_map('intval', str_split($cnpj));
-  $p1=[5,4,3,2,9,8,7,6,5,4,3,2]; $p2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
-  $s=0; for($i=0;$i<12;$i++) $s += $b[$i]*$p1[$i]; $d1 = ($s%11<2)?0:11-$s%11;
-  if ($b[12] !== $d1) return false;
-  $s=0; for($i=0;$i<13;$i++) $s += $b[$i]*$p2[$i]; $d2 = ($s%11<2)?0:11-$s%11;
-  return $b[13] === $d2;
-}
 
 try {
   $pdo = new PDO(
@@ -70,8 +56,6 @@ try {
 
   if ($userCompany && !empty($userCompany['id_company'])) {
     $hasCompany = true;
-    $cnpjDigits = only_digits_local($userCompany['cnpj'] ?? '');
-    $hasValidCNPJ = $cnpjDigits ? validaCNPJlocal($cnpjDigits) : false;
   }
 } catch (PDOException $e) {
   // silencioso
@@ -307,14 +291,7 @@ $companyName = $userCompany['organizacao'] ?? '';
 
         <?php if (!$hasCompany): ?>
           <div class="status-line is-open warn" style="margin-bottom:10px">
-            Seu usuário ainda não está vinculado a uma organização. <a href="/OKR_system/views/organizacao.php" style="color:#fff;text-decoration:underline">Cadastre/edite sua organização</a> para habilitar a personalização.
-          </div>
-        <?php endif; ?>
-
-        <?php if ($hasCompany && !$hasValidCNPJ): ?>
-          <div class="status-line is-open warn" id="cnpjGuard" style="margin-bottom:10px">
-            Para <strong>personalizar o estilo</strong>, é necessário que sua organização possua um <strong>CNPJ válido</strong>.
-            Vá em <a href="/OKR_system/views/organizacao.php" style="color:#fff;text-decoration:underline">Organização</a>, informe e valide o CNPJ. Depois retorne aqui.
+            Seu usuário ainda não está vinculado a uma organização. <a href="/OKR_system/views/organizacao.php" style="color:#fff;text-decoration:underline">Cadastre/edite sua organização</a> para vincular a personalização.
           </div>
         <?php endif; ?>
 
@@ -330,8 +307,7 @@ $companyName = $userCompany['organizacao'] ?? '';
             </div>
           </div>
 
-          <!-- Fieldset desativado quando não houver CNPJ válido -->
-          <fieldset id="fsStyle" <?= ($hasCompany && $hasValidCNPJ) ? '' : 'disabled' ?>>
+          <fieldset id="fsStyle">
             <div class="form-row">
               <div class="form-group">
                 <label>Background 1 (escuro)</label>
@@ -459,7 +435,6 @@ $companyName = $userCompany['organizacao'] ?? '';
   <script>
     // Flags do PHP
     const HAS_COMPANY = <?= $hasCompany ? 'true' : 'false' ?>;
-    const HAS_VALID_CNPJ = <?= $hasValidCNPJ ? 'true' : 'false' ?>;
     const COMPANY_ID = <?= (int)$companyId ?>;
 
     // Status helpers
@@ -575,10 +550,6 @@ $companyName = $userCompany['organizacao'] ?? '';
         showStatus(statusStyle, '<strong>Erro:</strong> seu usuário não está vinculado a uma organização.', 'error');
         return;
       }
-      if (!HAS_VALID_CNPJ) {
-        showStatus(statusStyle, '<strong>Erro:</strong> para salvar o estilo é obrigatório ter um CNPJ válido na organização.', 'error');
-        return;
-      }
 
       overlayStyle.classList.add('show');
       try {
@@ -619,7 +590,6 @@ $companyName = $userCompany['organizacao'] ?? '';
     btnReset?.addEventListener('click', () => {
       hideStatus(statusStyle);
       if (!HAS_COMPANY) { showStatus(statusStyle, 'Seu usuário não está vinculado a uma organização.', 'error'); return; }
-      if (!HAS_VALID_CNPJ) { showStatus(statusStyle, 'É obrigatório ter um CNPJ válido para personalizar/resetar o estilo.', 'error'); return; }
       resetModal?.show();
     });
 
@@ -667,9 +637,6 @@ $companyName = $userCompany['organizacao'] ?? '';
     updatePreview();
     loadExistingStyle();
 
-    if (!HAS_VALID_CNPJ) {
-      document.getElementById('fsStyle').disabled = true;
-    }
 
     async function hardReload(expected){ 
   // 1) aguarda o backend refletir (poll em get_company_style)

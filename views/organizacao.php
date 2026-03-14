@@ -252,29 +252,23 @@ function h($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
           <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
           <input type="hidden" name="id_company" value="<?= (int)$userCompanyId ?>">
 
-          <?php if (!$hasCompany): ?>
-            <div class="status-line show" style="margin-bottom:10px">
-              Vincule seu usuário a uma organização antes de editar Missão & Visão.
-            </div>
-          <?php endif; ?>
-
           <div class="form-row">
             <div class="form-group" style="grid-column: 1 / -1;">
               <label for="missao">Missão</label>
               <textarea class="form-control" id="missao" name="missao" rows="3"
-                        placeholder="Descreva a missão da organização" <?= $hasCompany ? '' : 'disabled' ?>><?= h($userCompany['missao'] ?? '') ?></textarea>
+                        placeholder="Descreva a missão da organização"><?= h($userCompany['missao'] ?? '') ?></textarea>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group" style="grid-column: 1 / -1;">
               <label for="visao">Visão</label>
               <textarea class="form-control" id="visao" name="visao" rows="3"
-                        placeholder="Descreva a visão da organização" <?= $hasCompany ? '' : 'disabled' ?>><?= h($userCompany['visao'] ?? '') ?></textarea>
+                        placeholder="Descreva a visão da organização"><?= h($userCompany['visao'] ?? '') ?></textarea>
             </div>
           </div>
 
           <div class="actions">
-            <button type="submit" id="btnSaveMV" class="btn-modern btn-primary-modern" <?= $hasCompany ? '' : 'disabled' ?>>
+            <button type="submit" id="btnSaveMV" class="btn-modern btn-primary-modern">
               <i class="fa-solid fa-floppy-disk"></i> Salvar Missão & Visão
             </button>
           </div>

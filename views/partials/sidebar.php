@@ -32,6 +32,8 @@ $isRelOKRs          = ($currentPath === '/OKR_system/views/relatorios_okrs.php')
 $isReports          = ($isRelOKRs || $currentPath === '/OKR_system/views/rel_desempenho.php');
 $isMinhasTarefas    = in_array($currentPath, ['/OKR_system/views/minhas_tarefas.php','/OKR_system/minhas_tarefas']);
 $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.php','/OKR_system/system_health']);
+$isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
+$isAdminGroup       = ($isSystemHealth || $isAdminCompanies);
 
 /* ===================== DADOS DE USUÁRIO/ORG ===================== */
 $firstName = trim((string)($_SESSION['primeiro_nome'] ?? $_SESSION['first_name'] ?? ''));
@@ -106,6 +108,21 @@ if ($pdo && $companyId && !$orgName) {
 }
 $companyIdText = ($companyId !== null && $companyId !== '') ? (string)$companyId : '–';
 $orgText       = ($orgName !== null && $orgName !== '') ? (string)$orgName : '–';
+
+/* --- detecta admin_master via RBAC --- */
+$isAdminMaster = false;
+if ($pdo && $userId) {
+  try {
+    $stAdm = $pdo->prepare("
+      SELECT 1 FROM rbac_user_role ur
+        JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
+       WHERE ur.user_id = :uid AND r.role_key = 'admin_master'
+       LIMIT 1
+    ");
+    $stAdm->execute([':uid' => $userId]);
+    $isAdminMaster = (bool)$stAdm->fetchColumn();
+  } catch (Throwable $e) { /* ignora */ }
+}
 ?>
 <!-- ===================== SIDEBAR ===================== -->
 <style>
@@ -327,13 +344,26 @@ body.collapsed .sidebar-footer .org { display: none; }
         <?php endif; ?>
       </ul>
     </li>
-    <?php if (can_open_path('/OKR_system/views/system_health.php')): ?>
-    <li>
-      <div class="menu-item <?= $isSystemHealth ? 'active' : '' ?>"
-           data-href="/OKR_system/views/system_health.php"
-           onclick="onMenuClick(this, event)">
-        <i class="fas fa-heartbeat icon-main"></i><span>System Health</span>
+    <?php if ($isAdminMaster): ?>
+    <li class="<?= $isAdminGroup ? 'open' : '' ?>">
+      <div class="menu-item <?= $isAdminGroup ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
+        <i class="fas fa-shield-halved icon-main"></i><span>Administrador</span>
+        <i class="fas fa-chevron-down icon-chevron"
+           title="Abrir/Fechar"
+           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
       </div>
+      <ul class="submenu">
+        <li class="<?= $isSystemHealth ? 'active' : '' ?>"
+            data-href="/OKR_system/views/system_health.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-heartbeat"></i><span>System Health</span>
+        </li>
+        <li class="<?= $isAdminCompanies ? 'active' : '' ?>"
+            data-href="/OKR_system/views/admin_companies.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-building-circle-check"></i><span>Empresas & Usuários</span>
+        </li>
+      </ul>
     </li>
     <?php endif; ?>
   </ul>
