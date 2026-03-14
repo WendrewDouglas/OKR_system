@@ -1,7 +1,7 @@
 <?php
 /**
  * Empresas & Usuarios — Painel Administrativo
- * Acesso restrito a admin_master.
+ * Acesso restrito a gestor_master.
  * Consulta de companies com usuarios vinculados.
  */
 declare(strict_types=1);
@@ -18,8 +18,16 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 
-// Verifica admin_master
-if (!has_cap('M:company@SYS')) {
+// Verifica gestor_master
+$_pdo_check = pdo_conn();
+$_stRole = $_pdo_check->prepare("
+  SELECT 1 FROM rbac_user_role ur
+    JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
+   WHERE ur.user_id = :uid AND r.role_key = 'gestor_master'
+   LIMIT 1
+");
+$_stRole->execute([':uid' => (int)$_SESSION['user_id']]);
+if (!$_stRole->fetchColumn()) {
   deny_with_modal('Acesso restrito a administradores do sistema.');
 }
 
