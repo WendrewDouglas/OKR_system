@@ -18,12 +18,12 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 
-// Verifica gestor_master ou admin_master
+// Verifica admin_master
 $_pdo_check = pdo_conn();
 $_stRole = $_pdo_check->prepare("
   SELECT 1 FROM rbac_user_role ur
     JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
-   WHERE ur.user_id = :uid AND r.role_key IN ('gestor_master','admin_master')
+   WHERE ur.user_id = :uid AND r.role_key = 'admin_master'
    LIMIT 1
 ");
 $_stRole->execute([':uid' => (int)$_SESSION['user_id']]);

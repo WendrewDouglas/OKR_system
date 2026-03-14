@@ -109,14 +109,14 @@ if ($pdo && $companyId && !$orgName) {
 $companyIdText = ($companyId !== null && $companyId !== '') ? (string)$companyId : '–';
 $orgText       = ($orgName !== null && $orgName !== '') ? (string)$orgName : '–';
 
-/* --- detecta gestor_master ou admin_master via RBAC --- */
+/* --- detecta admin_master via RBAC --- */
 $isAdminMaster = false;
 if ($pdo && $userId) {
   try {
     $stAdm = $pdo->prepare("
       SELECT 1 FROM rbac_user_role ur
         JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
-       WHERE ur.user_id = :uid AND r.role_key IN ('gestor_master','admin_master')
+       WHERE ur.user_id = :uid AND r.role_key = 'admin_master'
        LIMIT 1
     ");
     $stAdm->execute([':uid' => $userId]);
