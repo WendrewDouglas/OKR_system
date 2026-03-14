@@ -33,7 +33,8 @@ $isReports          = ($isRelOKRs || $currentPath === '/OKR_system/views/rel_des
 $isMinhasTarefas    = in_array($currentPath, ['/OKR_system/views/minhas_tarefas.php','/OKR_system/minhas_tarefas']);
 $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.php','/OKR_system/system_health']);
 $isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
-$isAdminGroup       = ($isSystemHealth || $isAdminCompanies);
+$isAdminPush        = in_array($currentPath, ['/OKR_system/views/admin_push.php','/OKR_system/admin_push']);
+$isAdminGroup       = ($isSystemHealth || $isAdminCompanies || $isAdminPush);
 
 /* ===================== DADOS DE USUÁRIO/ORG ===================== */
 $firstName = trim((string)($_SESSION['primeiro_nome'] ?? $_SESSION['first_name'] ?? ''));
@@ -362,6 +363,11 @@ body.collapsed .sidebar-footer .org { display: none; }
             data-href="/OKR_system/views/admin_companies.php"
             onclick="onSubmenuClick(this)">
           <i class="fas fa-building-circle-check"></i><span>Empresas & Usuários</span>
+        </li>
+        <li class="<?= $isAdminPush ? 'active' : '' ?>"
+            data-href="/OKR_system/views/admin_push.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-paper-plane"></i><span>Envios Push</span>
         </li>
       </ul>
     </li>

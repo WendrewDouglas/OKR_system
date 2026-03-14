@@ -126,6 +126,26 @@ $routes = [
   // Domínios (tabelas de lookup)
   ['GET',    'dominios/:tabela',               'dominios/get.php'],
   ['GET',    'responsaveis',                   'dominios/responsaveis.php'],
+
+  // Push Notifications
+  ['GET',    'push/campaigns',                     'push/campaigns_list.php'],
+  ['GET',    'push/campaigns/:id',                 'push/campaigns_get.php'],
+  ['POST',   'push/campaigns/:id/send-test',       'push/campaigns_send_test.php'],
+  ['POST',   'push/campaigns/:id/cancel',          'push/campaigns_cancel.php'],
+  ['POST',   'push/campaigns/:id/duplicate',       'push/campaigns_duplicate.php'],
+  ['POST',   'push/audience/preview',              'push/audience_preview.php'],
+  ['GET',    'push/segments',                      'push/segments_crud.php'],
+  ['POST',   'push/segments',                      'push/segments_crud.php'],
+  ['GET',    'push/segments/:id',                  'push/segments_crud.php'],
+  ['PUT',    'push/segments/:id',                  'push/segments_crud.php'],
+  ['DELETE', 'push/segments/:id',                  'push/segments_crud.php'],
+  ['POST',   'push/ai/suggestions',               'push/ai_suggestions.php'],
+  ['POST',   'push/devices/register',              'push/devices_register.php'],
+  ['POST',   'push/devices/refresh-token',         'push/devices_register.php'],
+  ['POST',   'push/devices/unregister',            'push/devices_register.php'],
+  ['GET',    'push/preferences',                   'push/preferences.php'],
+  ['PUT',    'push/preferences',                   'push/preferences.php'],
+  ['POST',   'push/events/:event_type',            'push/events.php'],
 ];
 
 /* ===================== ROUTE MATCHING ===================== */
