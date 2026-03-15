@@ -9,7 +9,11 @@ $uid = (int)$auth['sub'];
 $cid = (int)($auth['cid'] ?? 0);
 
 $in = api_input();
-$action = api_param('action') ?? 'register';
+// Extrai action do path: push/devices/register -> register
+$uri = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
+if (strpos($uri, 'unregister') !== false) $action = 'unregister';
+elseif (strpos($uri, 'refresh-token') !== false) $action = 'refresh-token';
+else $action = 'register';
 
 if ($action === 'register' || $action === 'refresh-token') {
   $token = api_str($in['token'] ?? '');
@@ -44,8 +48,8 @@ if ($action === 'register' || $action === 'refresh-token') {
     $pdo->prepare("INSERT INTO push_devices
       (id_user, id_company, platform, push_provider, token, token_hash, app_version, os_version,
        device_model, locale, timezone, notifications_enabled, last_seen_at, last_token_refresh_at)
-      VALUES (?,?,'$platform','fcm',?,?,?,?,?,?,?,?,NOW(),NOW())")
-      ->execute([$uid, $cid ?: null, $token, $tokenHash, $appVersion, $osVersion,
+      VALUES (?,?,?,'fcm',?,?,?,?,?,?,?,?,NOW(),NOW())")
+      ->execute([$uid, $cid ?: null, $platform, $token, $tokenHash, $appVersion, $osVersion,
         $deviceModel, $locale, $timezone, $pushEnabled]);
     $deviceId = (int)$pdo->lastInsertId();
   }
