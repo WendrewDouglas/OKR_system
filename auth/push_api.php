@@ -5,10 +5,16 @@
  * Acoes: send-test, cancel, duplicate, segments-list, segments-save, segments-delete
  */
 declare(strict_types=1);
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+ob_start();
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/acl.php';
 require_once __DIR__ . '/push_helpers.php';
+ob_clean();
 
 if (!isset($_SESSION['user_id'])) {
   http_response_code(401);
