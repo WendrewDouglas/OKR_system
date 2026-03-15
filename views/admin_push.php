@@ -675,9 +675,9 @@ function collectFilters() {
 async function previewAudience() {
   const filters = collectFilters();
   try {
-    const r = await fetch(API+'/push/audience/preview', {
-      method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({filters, csrf_token: CSRF})
+    const r = await fetch('/OKR_system/auth/push_audience_preview.php', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({filters})
     });
     const d = await r.json();
     if (d.ok) {
@@ -711,8 +711,8 @@ async function sendTest() {
   const campId = document.getElementById('f_id_campaign').value;
   if (!campId) { showFormStatus('Salve a campanha como rascunho primeiro.', 'err'); return; }
   try {
-    const r = await fetch(API+'/push/campaigns/'+campId+'/send-test', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({csrf_token:CSRF})
+    const r = await fetch('/OKR_system/auth/push_api.php?action=send-test', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id_campaign:campId})
     });
     const d = await r.json();
     showFormStatus(d.ok ? 'Envio teste realizado!' : (d.message||'Erro'), d.ok ? 'ok' : 'err');
@@ -726,9 +726,9 @@ async function generateAI() {
   const btn = document.getElementById('btnAI');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
   try {
-    const r = await fetch(API+'/push/ai/suggestions', {
+    const r = await fetch('/OKR_system/auth/push_ai_suggest.php', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt, tom:document.getElementById('f_ai_tom').value, urgencia:document.getElementById('f_ai_urgencia').value, categoria:document.getElementById('f_categoria').value, csrf_token:CSRF})
+      body:JSON.stringify({prompt, tom:document.getElementById('f_ai_tom').value, urgencia:document.getElementById('f_ai_urgencia').value, categoria:document.getElementById('f_categoria').value})
     });
     const d = await r.json();
     const box = document.getElementById('aiSuggestions');
@@ -780,9 +780,9 @@ async function saveSegment() {
   const nome = prompt('Nome do segmento:');
   if (!nome) return;
   try {
-    const r = await fetch(API+'/push/segments', {
+    const r = await fetch('/OKR_system/auth/push_api.php?action=segments-save', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nome, filters_json:JSON.stringify(collectFilters()), csrf_token:CSRF})
+      body:JSON.stringify({nome, filters_json:JSON.stringify(collectFilters())})
     });
     const d = await r.json();
     if (d.ok) { showFormStatus('Segmento salvo!', 'ok'); setTimeout(()=>location.reload(),1000); }
@@ -807,19 +807,19 @@ function loadSegmentById(id) {
 }
 async function deleteSegment(id) {
   if (!confirm('Excluir segmento?')) return;
-  await fetch(API+'/push/segments/'+id, {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf_token:CSRF})});
+  await fetch('/OKR_system/auth/push_api.php?action=segments-delete', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_segment:id})});
   location.reload();
 }
 
 // Campaign actions
 async function duplicateCampaign(id) {
-  const r = await fetch(API+'/push/campaigns/'+id+'/duplicate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf_token:CSRF})});
+  const r = await fetch('/OKR_system/auth/push_api.php?action=duplicate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_campaign:id})});
   const d = await r.json();
   if (d.ok) { showFormStatus('Campanha duplicada!', 'ok'); setTimeout(()=>location.reload(),1000); }
 }
 async function cancelCampaign(id) {
   if (!confirm('Cancelar campanha agendada?')) return;
-  const r = await fetch(API+'/push/campaigns/'+id+'/cancel', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf_token:CSRF})});
+  const r = await fetch('/OKR_system/auth/push_api.php?action=cancel', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_campaign:id})});
   const d = await r.json();
   if (d.ok) location.reload();
 }
