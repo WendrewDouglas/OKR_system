@@ -174,39 +174,138 @@ function push_list_audience(array $filters, PDO $pdo, int $limit = 200, int $off
 /* ===================== ENVIO FCM ===================== */
 
 /**
- * Envia push via Firebase Cloud Messaging (HTTP v1 ou Legacy).
+ * Obtem access token OAuth2 para FCM V1 via service account.
+ * Cache em arquivo por 50 minutos (token dura 60 min).
+ */
+function push_fcm_access_token(): ?string {
+  $saFile = (string)env('FCM_SERVICE_ACCOUNT_PATH', '');
+  if (!$saFile) {
+    // Tenta encontrar automaticamente na raiz do projeto
+    $root = dirname(__DIR__);
+    $candidates = glob($root . '/*firebase-adminsdk*.json');
+    $saFile = $candidates[0] ?? '';
+  }
+  if (!$saFile || !is_file($saFile)) return null;
+
+  // Cache em /tmp
+  $cacheFile = sys_get_temp_dir() . '/fcm_token_' . md5($saFile) . '.json';
+  if (is_file($cacheFile)) {
+    $cached = json_decode(file_get_contents($cacheFile), true);
+    if (($cached['expires_at'] ?? 0) > time() + 60) {
+      return $cached['access_token'];
+    }
+  }
+
+  $sa = json_decode(file_get_contents($saFile), true);
+  if (!$sa || empty($sa['private_key']) || empty($sa['client_email']) || empty($sa['token_uri'])) return null;
+
+  // Cria JWT assertion
+  $now = time();
+  $header = json_encode(['alg'=>'RS256','typ'=>'JWT']);
+  $claim = json_encode([
+    'iss'   => $sa['client_email'],
+    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+    'aud'   => $sa['token_uri'],
+    'iat'   => $now,
+    'exp'   => $now + 3600,
+  ]);
+
+  $b64h = rtrim(strtr(base64_encode($header), '+/', '-_'), '=');
+  $b64c = rtrim(strtr(base64_encode($claim), '+/', '-_'), '=');
+  $sigInput = $b64h . '.' . $b64c;
+
+  $pkey = openssl_pkey_get_private($sa['private_key']);
+  if (!$pkey) return null;
+  openssl_sign($sigInput, $sig, $pkey, OPENSSL_ALGO_SHA256);
+  $b64s = rtrim(strtr(base64_encode($sig), '+/', '-_'), '=');
+  $jwt = $sigInput . '.' . $b64s;
+
+  // Troca JWT por access token
+  $ch = curl_init($sa['token_uri']);
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => http_build_query([
+      'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      'assertion'  => $jwt,
+    ]),
+    CURLOPT_TIMEOUT => 10,
+  ]);
+  $resp = curl_exec($ch);
+  curl_close($ch);
+
+  $data = json_decode($resp ?: '', true);
+  $accessToken = $data['access_token'] ?? null;
+  if (!$accessToken) return null;
+
+  // Salva cache
+  file_put_contents($cacheFile, json_encode([
+    'access_token' => $accessToken,
+    'expires_at'   => $now + ($data['expires_in'] ?? 3500),
+  ]));
+
+  return $accessToken;
+}
+
+/**
+ * Retorna o project_id do Firebase a partir do service account.
+ */
+function push_fcm_project_id(): ?string {
+  $saFile = (string)env('FCM_SERVICE_ACCOUNT_PATH', '');
+  if (!$saFile) {
+    $root = dirname(__DIR__);
+    $candidates = glob($root . '/*firebase-adminsdk*.json');
+    $saFile = $candidates[0] ?? '';
+  }
+  if (!$saFile || !is_file($saFile)) return null;
+  $sa = json_decode(file_get_contents($saFile), true);
+  return $sa['project_id'] ?? null;
+}
+
+/**
+ * Envia push via Firebase Cloud Messaging API V1.
  * Retorna ['success'=>bool, 'message_id'=>string|null, 'error'=>string|null]
  */
 function push_send_fcm(string $token, array $payload): array {
-  $serverKey = (string)env('FCM_SERVER_KEY', '');
-  if (!$serverKey) {
-    return ['success' => false, 'message_id' => null, 'error' => 'FCM_SERVER_KEY not configured'];
+  $accessToken = push_fcm_access_token();
+  if (!$accessToken) {
+    return ['success' => false, 'message_id' => null, 'error' => 'FCM service account not configured or token generation failed'];
+  }
+
+  $projectId = push_fcm_project_id();
+  if (!$projectId) {
+    return ['success' => false, 'message_id' => null, 'error' => 'FCM project_id not found'];
+  }
+
+  $notification = [
+    'title' => $payload['title'] ?? '',
+    'body'  => $payload['body'] ?? '',
+  ];
+  if (!empty($payload['image'])) {
+    $notification['image'] = $payload['image'];
   }
 
   $message = [
-    'to' => $token,
-    'notification' => [
-      'title' => $payload['title'] ?? '',
-      'body'  => $payload['body'] ?? '',
+    'message' => [
+      'token'        => $token,
+      'notification' => $notification,
+      'data'         => array_map('strval', $payload['data'] ?? []),
     ],
-    'data' => $payload['data'] ?? [],
   ];
 
-  if (!empty($payload['image'])) {
-    $message['notification']['image'] = $payload['image'];
-  }
-
   if (($payload['priority'] ?? 'normal') === 'high') {
-    $message['priority'] = 'high';
+    $message['message']['android'] = ['priority' => 'HIGH'];
   }
 
-  $ch = curl_init('https://fcm.googleapis.com/fcm/send');
+  $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+  $ch = curl_init($url);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
     CURLOPT_HTTPHEADER     => [
       'Content-Type: application/json',
-      'Authorization: key=' . $serverKey,
+      'Authorization: Bearer ' . $accessToken,
     ],
     CURLOPT_POSTFIELDS => json_encode($message, JSON_UNESCAPED_UNICODE),
     CURLOPT_TIMEOUT    => 15,
@@ -221,13 +320,14 @@ function push_send_fcm(string $token, array $payload): array {
   }
 
   $data = json_decode($resp, true);
-  if ($httpCode >= 200 && $httpCode < 300 && ($data['success'] ?? 0) >= 1) {
-    $msgId = $data['results'][0]['message_id'] ?? null;
-    return ['success' => true, 'message_id' => $msgId, 'error' => null];
+  if ($httpCode >= 200 && $httpCode < 300 && !empty($data['name'])) {
+    return ['success' => true, 'message_id' => $data['name'], 'error' => null];
   }
 
-  $errMsg = $data['results'][0]['error'] ?? ($data['error'] ?? "HTTP {$httpCode}");
-  return ['success' => false, 'message_id' => null, 'error' => $errMsg];
+  $errMsg = $data['error']['message'] ?? ($data['error']['status'] ?? "HTTP {$httpCode}");
+  $errCode = $data['error']['details'][0]['errorCode'] ?? '';
+
+  return ['success' => false, 'message_id' => null, 'error' => $errCode ? "{$errCode}: {$errMsg}" : $errMsg];
 }
 
 /* ===================== ESPELHO INBOX ===================== */

@@ -2,6 +2,8 @@
 .env
 sftp.json
 tmp_my.cnf
+*firebase-adminsdk*.json
+google-services.json
 
 # IDE
 .idea/
