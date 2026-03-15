@@ -207,13 +207,50 @@ function statusBadge(string $s): string {
                   <label class="ap-label">Categoria</label>
                   <input class="ap-input" id="f_categoria" name="categoria" placeholder="Ex: lembrete, novidade, alerta">
                 </div>
+                <!-- IA Sugestoes (antes dos campos manuais) -->
                 <div class="ap-field full">
-                  <label class="ap-label">Titulo <small>(max 200 chars)</small></label>
-                  <input class="ap-input" id="f_titulo" name="titulo" maxlength="200" placeholder="Titulo do push" required oninput="updatePreview()">
+                  <div class="ap-card" style="margin:0;padding:.75rem;border-color:rgba(168,85,247,.25);background:rgba(168,85,247,.05)">
+                    <div class="ap-card-title" style="margin-bottom:.5rem;font-size:.85rem">
+                      <i class="fas fa-wand-magic-sparkles" style="color:#c084fc"></i> Gerar com IA
+                    </div>
+                    <div class="ap-field">
+                      <textarea class="ap-textarea" id="f_ai_prompt" rows="2" placeholder="Descreva o objetivo do push. Ex: Lembrar gestores sobre KRs vencidos esta semana" style="font-size:.8rem"></textarea>
+                    </div>
+                    <div class="ap-grid" style="margin-top:.4rem">
+                      <div class="ap-field">
+                        <label class="ap-label">Tom</label>
+                        <select class="ap-select" id="f_ai_tom" style="font-size:.78rem">
+                          <option value="profissional">Profissional</option>
+                          <option value="motivacional">Motivacional</option>
+                          <option value="urgente">Urgente</option>
+                          <option value="casual">Casual</option>
+                        </select>
+                      </div>
+                      <div class="ap-field">
+                        <label class="ap-label">Urgencia</label>
+                        <select class="ap-select" id="f_ai_urgencia" style="font-size:.78rem">
+                          <option value="normal">Normal</option>
+                          <option value="alta">Alta</option>
+                          <option value="baixa">Baixa</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style="margin-top:.5rem">
+                      <button type="button" class="ap-btn" onclick="generateAI()" id="btnAI" style="font-size:.78rem">
+                        <i class="fas fa-sparkles"></i> Gerar sugestoes
+                      </button>
+                    </div>
+                    <div class="ap-ai-suggestions" id="aiSuggestions"></div>
+                  </div>
+                </div>
+
+                <div class="ap-field full">
+                  <label class="ap-label">Titulo <small>(max 200 chars — emojis permitidos)</small></label>
+                  <input class="ap-input" id="f_titulo" name="titulo" maxlength="200" placeholder="Titulo do push (use emojis se quiser)" required oninput="updatePreview()">
                 </div>
                 <div class="ap-field full">
-                  <label class="ap-label">Descricao <small>(max ~120 chars ideal)</small></label>
-                  <textarea class="ap-textarea" id="f_descricao" name="descricao" maxlength="2000" placeholder="Corpo do push" required oninput="updatePreview()"></textarea>
+                  <label class="ap-label">Descricao <small>(max ~120 chars ideal — emojis permitidos)</small></label>
+                  <textarea class="ap-textarea" id="f_descricao" name="descricao" maxlength="2000" placeholder="Corpo do push (use emojis se quiser)" required oninput="updatePreview()"></textarea>
                 </div>
                 <div class="ap-field">
                   <label class="ap-label">Deep link / Rota do app</label>
@@ -447,28 +484,6 @@ function statusBadge(string $s): string {
             </div>
           </div>
 
-          <!-- IA Sugestoes -->
-          <div class="ap-card">
-            <div class="ap-card-title"><i class="fas fa-wand-magic-sparkles"></i> Ajuda da IA</div>
-            <div class="ap-field">
-              <label class="ap-label">Descreva o objetivo do push</label>
-              <textarea class="ap-textarea" id="f_ai_prompt" placeholder="Ex: Lembrar gestores que tem KRs com prazo proximo de vencer nesta semana"></textarea>
-            </div>
-            <div class="ap-grid" style="margin-top:.5rem">
-              <div class="ap-field">
-                <label class="ap-label">Tom</label>
-                <select class="ap-select" id="f_ai_tom"><option value="profissional">Profissional</option><option value="motivacional">Motivacional</option><option value="urgente">Urgente</option><option value="casual">Casual</option></select>
-              </div>
-              <div class="ap-field">
-                <label class="ap-label">Urgencia</label>
-                <select class="ap-select" id="f_ai_urgencia"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
-              </div>
-            </div>
-            <div class="ap-actions">
-              <button type="button" class="ap-btn" onclick="generateAI()" id="btnAI"><i class="fas fa-sparkles"></i> Gerar sugestoes</button>
-            </div>
-            <div class="ap-ai-suggestions" id="aiSuggestions"></div>
-          </div>
         </div>
 
         <!-- Right: Preview -->
@@ -719,11 +734,28 @@ async function generateAI() {
     const box = document.getElementById('aiSuggestions');
     box.innerHTML = '';
     if (d.ok && d.suggestions) {
-      d.suggestions.forEach(s => {
+      d.suggestions.forEach((s, i) => {
         const div = document.createElement('div');
         div.className = 'ap-ai-option';
-        div.innerHTML = '<div class="ai-title">'+esc(s.titulo)+'</div><div class="ai-body">'+esc(s.descricao)+'</div>';
-        div.onclick = () => { document.getElementById('f_titulo').value = s.titulo; document.getElementById('f_descricao').value = s.descricao; updatePreview(); };
+        div.innerHTML = `<div style="display:flex;align-items:flex-start;gap:.5rem">
+          <div style="flex:1">
+            <div class="ai-title">${s.titulo}</div>
+            <div class="ai-body">${s.descricao}</div>
+          </div>
+          <button type="button" class="ap-btn primary" style="font-size:.7rem;padding:4px 10px;flex-shrink:0;white-space:nowrap" data-idx="${i}">
+            <i class="fas fa-check"></i> Usar
+          </button>
+        </div>`;
+        div.querySelector('button').onclick = (e) => {
+          e.stopPropagation();
+          document.getElementById('f_titulo').value = s.titulo;
+          document.getElementById('f_descricao').value = s.descricao;
+          updatePreview();
+          // Highlight selecionada
+          box.querySelectorAll('.ap-ai-option').forEach(o => o.style.borderColor = '');
+          div.style.borderColor = 'var(--gold, #F1C40F)';
+          showFormStatus('Sugestao aplicada ao titulo e descricao!', 'ok');
+        };
         box.appendChild(div);
       });
     } else { box.innerHTML = '<p style="color:#f87171;font-size:.8rem">'+(d.message||'Sem sugestoes')+'</p>'; }

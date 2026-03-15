@@ -410,15 +410,16 @@ function push_ai_suggest(string $prompt, array $context = []): array {
   $apiKey = (string)env('OPENAI_API_KEY', '');
   if (!$apiKey) return ['error' => 'OPENAI_API_KEY not configured'];
 
-  $systemPrompt = "Voce e um especialista em push notifications para apps corporativos de gestao de OKRs.
+  $systemPrompt = "Voce e um especialista em push notifications para apps corporativos de gestao de OKRs (PlanningBI).
 Gere sugestoes curtas e objetivas para notificacoes push.
 Regras:
-- Titulo: maximo 50 caracteres, direto, sem emojis
-- Descricao: maximo 120 caracteres, clara, objetiva
-- Gere exatamente 4 opcoes diferentes
-- Retorne um JSON array com objetos {\"titulo\":\"...\",\"descricao\":\"...\"}
-- Use tom profissional e motivacional
-- Considere o contexto fornecido";
+- Titulo: maximo 50 caracteres, direto, use emojis relevantes no inicio para chamar atencao
+- Descricao: maximo 120 caracteres, clara, objetiva, pode incluir emojis contextuais
+- Gere exatamente 4 opcoes diferentes com estilos variados (mais formal, mais casual, mais urgente, mais motivacional)
+- Retorne SOMENTE um JSON array com objetos {\"titulo\":\"...\",\"descricao\":\"...\"}
+- Use emojis que fiquem bonitos em push notification (ex: 🎯 🚀 ⚡ 📊 🔔 ✅ 📈 💡 🏆 ⏰ 📋)
+- Considere o contexto fornecido
+- O app e de gestao de OKRs (Objectives and Key Results) da marca PlanningBI";
 
   $userMsg = $prompt;
   if (!empty($context['categoria'])) $userMsg .= "\nCategoria: " . $context['categoria'];
