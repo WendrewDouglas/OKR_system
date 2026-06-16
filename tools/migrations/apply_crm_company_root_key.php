@@ -66,58 +66,50 @@ function crm_migration_company_root_key(?string $company): ?string
 }
 
 $pdo = crm_db();
-$pdo->beginTransaction();
 
-try {
-    $columnExists = (bool)$pdo->query("
-        SELECT COUNT(*)
-          FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'crm_accounts'
-           AND COLUMN_NAME = 'company_root_key'
-    ")->fetchColumn();
+$columnExists = (bool)$pdo->query("
+    SELECT COUNT(*)
+      FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'crm_accounts'
+       AND COLUMN_NAME = 'company_root_key'
+")->fetchColumn();
 
-    if (!$columnExists) {
-        $pdo->exec("
-            ALTER TABLE crm_accounts
-              ADD COLUMN company_root_key VARCHAR(120) DEFAULT NULL AFTER normalized_name
-        ");
+if (!$columnExists) {
+    $pdo->exec("
+        ALTER TABLE crm_accounts
+          ADD COLUMN company_root_key VARCHAR(120) DEFAULT NULL AFTER normalized_name
+    ");
+}
+
+$indexExists = (bool)$pdo->query("
+    SELECT COUNT(*)
+      FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'crm_accounts'
+       AND INDEX_NAME = 'idx_crm_accounts_root_key'
+")->fetchColumn();
+
+if (!$indexExists) {
+    $pdo->exec("ALTER TABLE crm_accounts ADD INDEX idx_crm_accounts_root_key (company_root_key)");
+}
+
+$rows = $pdo->query("
+    SELECT id_account, account_name
+      FROM crm_accounts
+     WHERE company_root_key IS NULL OR company_root_key = ''
+     ORDER BY id_account
+")->fetchAll();
+
+$updated = 0;
+$st = $pdo->prepare("UPDATE crm_accounts SET company_root_key = ? WHERE id_account = ?");
+foreach ($rows as $row) {
+    $rootKey = crm_migration_company_root_key((string)$row['account_name']);
+    if ($rootKey === null) {
+        continue;
     }
-
-    $indexExists = (bool)$pdo->query("
-        SELECT COUNT(*)
-          FROM information_schema.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'crm_accounts'
-           AND INDEX_NAME = 'idx_crm_accounts_root_key'
-    ")->fetchColumn();
-
-    if (!$indexExists) {
-        $pdo->exec("ALTER TABLE crm_accounts ADD INDEX idx_crm_accounts_root_key (company_root_key)");
-    }
-
-    $rows = $pdo->query("
-        SELECT id_account, account_name
-          FROM crm_accounts
-         WHERE company_root_key IS NULL OR company_root_key = ''
-         ORDER BY id_account
-    ")->fetchAll();
-
-    $updated = 0;
-    $st = $pdo->prepare("UPDATE crm_accounts SET company_root_key = ? WHERE id_account = ?");
-    foreach ($rows as $row) {
-        $rootKey = crm_migration_company_root_key((string)$row['account_name']);
-        if ($rootKey === null) {
-            continue;
-        }
-        $st->execute([$rootKey, (int)$row['id_account']]);
-        $updated += $st->rowCount();
-    }
-
-    $pdo->commit();
-} catch (Throwable $e) {
-    $pdo->rollBack();
-    throw $e;
+    $st->execute([$rootKey, (int)$row['id_account']]);
+    $updated += $st->rowCount();
 }
 
 $summary = [
