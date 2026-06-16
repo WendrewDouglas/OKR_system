@@ -8,3 +8,4 @@ export 'kr_repository.dart';
 export 'objetivo_repository.dart';
 export 'repository.dart';
 export 'tarefa_repository.dart';
+export 'usuario_repository.dart';

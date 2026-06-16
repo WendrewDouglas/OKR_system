@@ -25,6 +25,8 @@ import '../../features/notificacoes/notificacoes_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/profile/edit_profile_screen.dart';
 import '../../features/profile/change_password_screen.dart';
+import '../../features/usuarios/usuarios_list_screen.dart';
+import '../../features/usuarios/usuario_form_screen.dart';
 
 /// Notifies GoRouter to re-evaluate redirects when auth changes
 class AuthChangeNotifier extends ChangeNotifier {
@@ -174,6 +176,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/iniciativas/:id/editar',
         pageBuilder: (_, state) => slideUpTransitionPage(child: IniciativaFormScreen(idIniciativa: state.pathParameters['id']!)),
+      ),
+
+      // Usuários (gestão — admin)
+      GoRoute(path: '/usuarios', pageBuilder: (_, __) => slideUpTransitionPage(child: const UsuariosListScreen())),
+      GoRoute(path: '/usuarios/novo', pageBuilder: (_, __) => slideUpTransitionPage(child: const UsuarioFormScreen())),
+      GoRoute(
+        path: '/usuarios/:id/editar',
+        pageBuilder: (_, state) => slideUpTransitionPage(
+          child: UsuarioFormScreen(idUser: int.tryParse(state.pathParameters['id'] ?? '')),
+        ),
       ),
     ],
   );

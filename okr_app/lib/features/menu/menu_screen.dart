@@ -82,6 +82,10 @@ class MenuScreen extends ConsumerWidget {
               AppHaptics.light();
               context.push('/notificacoes');
             }),
+            _MenuItem(icon: Icons.people_outline, label: 'Usuários', onTap: () {
+              AppHaptics.light();
+              context.push('/usuarios');
+            }),
           ]),
           const SizedBox(height: 16),
 

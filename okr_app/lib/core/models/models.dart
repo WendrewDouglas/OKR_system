@@ -10,3 +10,4 @@ export 'key_result.dart';
 export 'minhas_tarefas.dart';
 export 'objetivo.dart';
 export 'user_ref.dart';
+export 'usuario.dart';

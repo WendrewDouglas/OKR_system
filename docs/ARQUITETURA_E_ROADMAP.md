@@ -409,3 +409,22 @@ envelope padrão (`api_ok`) e com RBAC.
 
 > **Workflow:** o desenvolvimento desta branch agora ocorre no **git worktree**
 > `D:/Meus_Projetos/okr_hardening` (o checkout principal fica livre para o time de CRM/LP).
+
+---
+
+## 14. F2 — Consumo no app (em andamento)
+
+Telas que passam a consumir o backend (DTOs + repositórios + envelope).
+
+### 14.1 Gestão de usuários ✅ (2026-06-16)
+- DTO `Usuario` + `UsuarioRepository` (list paginado, get, create, update, delete, setRole).
+- Telas: `UsuariosListScreen` (lista + busca implícita, badge de papel, excluir com confirmação)
+  e `UsuarioFormScreen` (criar/editar; papel via dropdown; senha só na criação; e-mail imutável na edição).
+- Rotas `/usuarios`, `/usuarios/novo`, `/usuarios/:id/editar`; link na seção **Gestão** do menu.
+- Testes `test/usuarios/usuario_repository_test.dart` (DTO + repositório). API faz o gate RBAC (403).
+- ⏳ Polish: ocultar item do menu para não-admin (hoje a API barra com 403).
+
+### 14.2 Pendentes
+- Gestão de **empresas** (admin_master) + **estilo/reset** + **system health**.
+- **Relatório PDF** (abrir/baixar) e **Matriz de prioridade** (visualização dos quadrantes).
+- **Gestão de campanhas push** (listar/criar/editar/disparar).
