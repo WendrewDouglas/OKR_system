@@ -104,6 +104,15 @@ define('DB_PASS',     (string)env('DB_PASS', ''));
 define('DB_CHARSET',  (string)env('DB_CHARSET', 'utf8mb4'));
 define('DB_COLLATION',(string)env('DB_COLLATION', 'utf8mb4_unicode_ci'));
 
+// ===== Banco CRM =====
+// Por padrao usa a mesma conta MySQL do OKR_system, isolada em outro schema.
+define('CRM_DB_HOST',      (string)env('CRM_DB_HOST', DB_HOST));
+define('CRM_DB_NAME',      (string)env('CRM_DB_NAME', 'planni40_crm'));
+define('CRM_DB_USER',      (string)env('CRM_DB_USER', DB_USER));
+define('CRM_DB_PASS',      (string)env('CRM_DB_PASS', DB_PASS));
+define('CRM_DB_CHARSET',   (string)env('CRM_DB_CHARSET', DB_CHARSET));
+define('CRM_DB_COLLATION', (string)env('CRM_DB_COLLATION', DB_COLLATION));
+
 // Opções PDO padrão (seguras)
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
