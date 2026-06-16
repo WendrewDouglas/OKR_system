@@ -14,6 +14,12 @@ function lp_db(): PDO
         return $pdo;
     }
 
+    // Test seam: permite injetar um PDO (ex.: SQLite) em testes de integração.
+    // Em produção este global nunca é definido — código inerte.
+    if (isset($GLOBALS['__LP_TEST_PDO']) && $GLOBALS['__LP_TEST_PDO'] instanceof PDO) {
+        return $pdo = $GLOBALS['__LP_TEST_PDO'];
+    }
+
     $host     = defined('LP_DB_HOST') ? LP_DB_HOST : (defined('DB_HOST') ? DB_HOST : 'localhost');
     $name     = defined('LP_DB_NAME') ? LP_DB_NAME : 'planni40_lp';
     $user     = defined('LP_DB_USER') ? LP_DB_USER : (defined('DB_USER') ? DB_USER : '');
