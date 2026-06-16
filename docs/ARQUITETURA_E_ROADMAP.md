@@ -379,9 +379,17 @@ envelope padrão (`api_ok`) e com RBAC.
 - Teste de contrato: `tests/Integration/Api/RelatorioPdfTest.php` (valida `%PDF` + 403/404).
 - ⚠️ Geração de PDF não é testável em CI sem servidor/banco — validar em ambiente de teste.
 
-### 13.3 Lotes seguintes (pendentes)
-- **Missão/Visão multi-empresa** + reset de estilo (`DELETE /company/style`).
+### 13.3 Lote 2 — Estilo/identidade ✅ (2026-06-16)
+- **Reset de estilo**: `DELETE /company/style` → restaura cores padrão (#222222/#f1c40f)
+  e logo nulo (front usa padrão). Admin da empresa (`api_is_admin`). Teste `CompanyStyleTest`.
+- **Missão/Visão**: já coberto — `PUT /company/me` (própria empresa; whitelist inclui
+  `missao`/`visao`) e `PUT /companies/:id` (admin_master, qualquer empresa). Sem endpoint novo.
+
+### 13.4 Lotes seguintes (pendentes)
 - **Relatório consolidado / lote** (vários objetivos) e/ou versão **JSON** do relatório para a UI.
 - **Matriz de prioridade** (`GET /matriz-prioridade`).
 - **Push**: criar/editar/disparar campanha (`POST/PUT /push/campaigns`, `POST /push/campaigns/:id/send`).
 - Em seguida, **consumo no app** (F2) das telas de admin/analítico/relatório.
+
+> **Workflow:** o desenvolvimento desta branch agora ocorre no **git worktree**
+> `D:/Meus_Projetos/okr_hardening` (o checkout principal fica livre para o time de CRM/LP).

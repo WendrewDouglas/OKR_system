@@ -53,6 +53,7 @@ $routes = [
   ['PUT',    'company/me',             'company/me_update.php'],
   ['GET',    'company/style',          'company/style.php'],
   ['PUT',    'company/style',          'company/style_update.php'],
+  ['DELETE', 'company/style',          'company/style_reset.php'],
 
   // Minhas Tarefas
   ['GET',    'minhas-tarefas',         'tarefas/minhas.php'],
