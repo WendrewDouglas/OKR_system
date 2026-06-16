@@ -385,9 +385,15 @@ envelope padrão (`api_ok`) e com RBAC.
 - **Missão/Visão**: já coberto — `PUT /company/me` (própria empresa; whitelist inclui
   `missao`/`visao`) e `PUT /companies/:id` (admin_master, qualquer empresa). Sem endpoint novo.
 
-### 13.4 Lotes seguintes (pendentes)
+### 13.4 Lote 4 — Matriz de prioridade ✅ (2026-06-16)
+- **`GET /matriz-prioridade`** → matriz de Eisenhower das **iniciativas** da empresa.
+  Importância = `peso` do KR pai ≥ média do escopo; urgência = `dt_prazo` vencido ou ≤ 15 dias.
+  Exclui Concluído/Cancelado. 4 quadrantes (fazer/planejar/delegar/revisar) + totais + limiar.
+  Read-only, escopo por empresa (auth + tenant). Teste `MatrizPrioridadeTest`.
+- ⚠️ Semântica **definida do zero** (web era stub); revisar limiares com o time se necessário.
+
+### 13.5 Lotes seguintes (pendentes)
 - **Relatório consolidado / lote** (vários objetivos) e/ou versão **JSON** do relatório para a UI.
-- **Matriz de prioridade** (`GET /matriz-prioridade`).
 - **Push**: criar/editar/disparar campanha (`POST/PUT /push/campaigns`, `POST /push/campaigns/:id/send`).
 - Em seguida, **consumo no app** (F2) das telas de admin/analítico/relatório.
 

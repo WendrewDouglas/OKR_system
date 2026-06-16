@@ -138,6 +138,9 @@ $routes = [
   // System (admin_master)
   ['GET',    'system/health',                  'system/health.php'],
 
+  // Matriz de prioridade (Eisenhower de iniciativas — escopo da empresa)
+  ['GET',    'matriz-prioridade',              'matriz/prioridade.php'],
+
   // Push Notifications
   ['GET',    'push/campaigns',                     'push/campaigns_list.php'],
   ['GET',    'push/campaigns/:id',                 'push/campaigns_get.php'],
