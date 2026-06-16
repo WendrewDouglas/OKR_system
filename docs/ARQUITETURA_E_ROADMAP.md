@@ -392,9 +392,19 @@ envelope padrão (`api_ok`) e com RBAC.
   Read-only, escopo por empresa (auth + tenant). Teste `MatrizPrioridadeTest`.
 - ⚠️ Semântica **definida do zero** (web era stub); revisar limiares com o time se necessário.
 
-### 13.5 Lotes seguintes (pendentes)
+### 13.5 Lote 5 — Push: criar/editar/disparar ✅ (2026-06-16)
+- **`POST /push/campaigns`** (cria rascunho + estima audiência via `push_count_audience`),
+  **`PUT /push/campaigns/:id`** (edita só enquanto `draft`),
+  **`POST /push/campaigns/:id/send`** (dispara de verdade via `push_process_campaign`:
+  resolve audiência → FCM em lotes → inbox → recipients → status `sent`). admin_master.
+- ⚠️ Envio **síncrono** (lotes de 100); audiências grandes podem pedir fila/worker no futuro.
+- ⚠️ Dispatch FCM **não automatizado em teste** (efeitos colaterais) — validar manualmente.
+- Teste de contrato `PushCampaignTest` (create 403/201/422). **F3 concluída.**
+
+### 13.6 Pendências/futuro (fora do F3 atual)
 - **Relatório consolidado / lote** (vários objetivos) e/ou versão **JSON** do relatório para a UI.
-- **Push**: criar/editar/disparar campanha (`POST/PUT /push/campaigns`, `POST /push/campaigns/:id/send`).
+- **F2 — consumo no app**: telas de admin (usuários/empresas/estilo/system health),
+  analítico (relatório PDF, matriz de prioridade) e gestão de campanhas push.
 - Em seguida, **consumo no app** (F2) das telas de admin/analítico/relatório.
 
 > **Workflow:** o desenvolvimento desta branch agora ocorre no **git worktree**

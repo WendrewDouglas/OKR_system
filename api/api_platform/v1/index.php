@@ -143,7 +143,10 @@ $routes = [
 
   // Push Notifications
   ['GET',    'push/campaigns',                     'push/campaigns_list.php'],
+  ['POST',   'push/campaigns',                     'push/campaigns_create.php'],
   ['GET',    'push/campaigns/:id',                 'push/campaigns_get.php'],
+  ['PUT',    'push/campaigns/:id',                 'push/campaigns_update.php'],
+  ['POST',   'push/campaigns/:id/send',            'push/campaigns_send.php'],
   ['POST',   'push/campaigns/:id/send-test',       'push/campaigns_send_test.php'],
   ['POST',   'push/campaigns/:id/cancel',          'push/campaigns_cancel.php'],
   ['POST',   'push/campaigns/:id/duplicate',       'push/campaigns_duplicate.php'],
