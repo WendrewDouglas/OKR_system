@@ -22,7 +22,7 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/payments.php';
 
 $opts    = getopt('', ['days::', 'verbose']);
-$days    = isset($opts['days']) ? max(1, min(30, (int) $opts['days'])) : 3;
+$days    = isset($opts['days']) ? max(1, min(29, (int) $opts['days'])) : 3;
 $verbose = array_key_exists('verbose', $opts);
 
 $email = getenv('LP_PAGSEGURO_EMAIL');
