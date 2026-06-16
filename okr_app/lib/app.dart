@@ -44,7 +44,7 @@ class _OkrAppState extends ConsumerState<OkrApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
-    final authState = ref.watch(authProvider);
+    ref.watch(authProvider); // reconstrói ao mudar o estado de auth
 
     // Registra device apos autenticacao
     ref.listen<AuthState>(authProvider, (prev, next) {
