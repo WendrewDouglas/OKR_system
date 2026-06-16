@@ -24,7 +24,7 @@ if ($co === false || (int)$co !== $cid) {
 }
 
 $stA = $pdo->prepare("
-  SELECT a.id_apontamento, a.id_milestone, a.data_ref AS dt_evidencia,
+  SELECT a.id_apontamento, a.id_milestone, a.dt_evidencia,
          a.valor_real, a.observacao, a.justificativa, a.origem,
          a.dt_apontamento, a.usuario_id,
          m.data_ref AS milestone_data, m.valor_esperado
@@ -35,9 +35,7 @@ $stA = $pdo->prepare("
 ");
 $stA->execute([$idKr]);
 
-api_json([
-  'ok'           => true,
-  'apontamentos' => array_map(fn($r) => [
+$apontamentos = array_map(fn($r) => [
     'id_apontamento'  => (int)$r['id_apontamento'],
     'id_milestone'    => $r['id_milestone'] ? (int)$r['id_milestone'] : null,
     'milestone_data'  => $r['milestone_data'],
@@ -49,5 +47,6 @@ api_json([
     'origem'          => $r['origem'],
     'dt_apontamento'  => $r['dt_apontamento'],
     'usuario_id'      => $r['usuario_id'],
-  ], $stA->fetchAll()),
-]);
+  ], $stA->fetchAll());
+
+api_ok($apontamentos, ['apontamentos' => $apontamentos]);

@@ -17,6 +17,9 @@ if (!api_is_admin($pdo, $uid)) {
   api_error('E_FORBIDDEN', 'Apenas administradores podem alterar roles.', 403);
 }
 
+// Isolamento multi-tenant: alvo deve ser da mesma empresa (salvo admin_master)
+api_require_same_company_user($pdo, $id, $cid, $uid);
+
 $in = api_input();
 api_require_fields($in, ['role_key']);
 $roleKey = api_str($in['role_key']);

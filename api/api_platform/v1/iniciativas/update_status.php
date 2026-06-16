@@ -18,6 +18,9 @@ api_require_fields($in, ['status', 'observacao']);
 $novoStatus = api_str($in['status']);
 $observacao = api_str($in['observacao']);
 
+// Valida status contra o domínio (iniciativas.status → dom_status_kr); 422 em vez de 500 do FK
+api_assert_domain($pdo, 'dom_status_kr', 'id_status', $novoStatus, 'status');
+
 // Tenant
 $st = $pdo->prepare("
   SELECT i.id_iniciativa, o.id_company
@@ -30,6 +33,11 @@ $st->execute([$id]);
 $ini = $st->fetch();
 if (!$ini || (int)$ini['id_company'] !== $cid) {
   api_error('E_NOT_FOUND', 'Iniciativa não encontrada.', 404);
+}
+
+// RBAC: exige permissão de escrita na iniciativa (recurso já confirmado na empresa)
+if (!api_has_cap($pdo, $uid, $cid, 'W:iniciativa@ORG', ['id_iniciativa' => $id])) {
+  api_error('E_FORBIDDEN', 'Sem permissão para alterar o status desta iniciativa.', 403);
 }
 
 $pdo->beginTransaction();

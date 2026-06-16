@@ -45,13 +45,18 @@ class _AuthInterceptor extends Interceptor {
 
   _AuthInterceptor(this._storage, this._dio);
 
+  static const List<String> _publicPaths = [
+    'auth/login', 'auth/register', 'auth/forgot-password', 'auth/reset-password',
+  ];
+  static bool _isPublic(String path) => _publicPaths.any((p) => path.contains(p));
+
+  // SEC-11: garante UM único refresh em voo. N requisições com 401 simultâneo
+  // aguardam o mesmo Future em vez de dispararem N refreshes concorrentes.
+  Future<String?>? _refreshFuture;
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // Skip auth for public endpoints
-    final publicPaths = ['auth/login', 'auth/register', 'auth/forgot-password', 'auth/reset-password'];
-    final isPublic = publicPaths.any((p) => options.path.contains(p));
-
-    if (!isPublic) {
+    if (!_isPublic(options.path)) {
       final token = await _storage.read(key: ApiConstants.tokenKey);
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
@@ -62,33 +67,54 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
-      // Skip token refresh for public endpoints (e.g. login returns 401 for bad credentials)
-      final publicPaths = ['auth/login', 'auth/register', 'auth/forgot-password', 'auth/reset-password'];
-      final isPublic = publicPaths.any((p) => err.requestOptions.path.contains(p));
+    final reqOpts = err.requestOptions;
+    final is401 = err.response?.statusCode == 401;
+    // Flag anti-loop: a requisição já reexecutada após refresh não dispara outro refresh.
+    final alreadyRetried = reqOpts.extra['__retried__'] == true;
+    final isRefreshCall = reqOpts.path.contains('auth/refresh-token');
 
-      if (!isPublic) {
-        // Try refresh token for authenticated routes only
-        final token = await _storage.read(key: ApiConstants.tokenKey);
-        if (token != null) {
-          try {
-            final res = await _dio.post('/auth/refresh-token',
-              options: Options(headers: {'Authorization': 'Bearer $token'}),
-            );
-            if (res.data['ok'] == true) {
-              final newToken = res.data['token'] as String;
-              await _storage.write(key: ApiConstants.tokenKey, value: newToken);
-              // Retry original request
-              final opts = err.requestOptions;
-              opts.headers['Authorization'] = 'Bearer $newToken';
-              final retryRes = await _dio.fetch(opts);
-              return handler.resolve(retryRes);
-            }
-          } catch (_) {}
+    if (is401 && !_isPublic(reqOpts.path) && !isRefreshCall && !alreadyRetried) {
+      final newToken = await _refresh();
+      if (newToken != null) {
+        reqOpts.extra['__retried__'] = true;
+        reqOpts.headers['Authorization'] = 'Bearer $newToken';
+        try {
+          final retryRes = await _dio.fetch(reqOpts);
+          return handler.resolve(retryRes);
+        } catch (_) {
+          // cai para handler.next(err) abaixo
         }
+      } else {
+        // Refresh falhou → sessão expirada
         await _storage.delete(key: ApiConstants.tokenKey);
       }
     }
     handler.next(err);
+  }
+
+  /// Coalesce de refresh: chamadas concorrentes recebem o mesmo Future.
+  Future<String?> _refresh() {
+    return _refreshFuture ??=
+        _doRefresh().whenComplete(() => _refreshFuture = null);
+  }
+
+  Future<String?> _doRefresh() async {
+    final token = await _storage.read(key: ApiConstants.tokenKey);
+    if (token == null) return null;
+    try {
+      final res = await _dio.post(
+        '/auth/refresh-token',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          extra: {'__retried__': true}, // não reentrar no fluxo de refresh
+        ),
+      );
+      if (res.data is Map && res.data['ok'] == true) {
+        final newToken = res.data['token'] as String;
+        await _storage.write(key: ApiConstants.tokenKey, value: newToken);
+        return newToken;
+      }
+    } catch (_) {}
+    return null;
   }
 }

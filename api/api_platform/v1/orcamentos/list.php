@@ -36,15 +36,25 @@ $stO = $pdo->prepare("
 $stO->execute([$idIni]);
 $orcs = $stO->fetchAll();
 
-// Fetch details per orcamento
+// Batch (evita N+1): despesas de TODOS os orçamentos em 1 query, agrupadas em PHP.
+$orcIds = array_column($orcs, 'id_orcamento');
+$despByOrc = [];
+if (!empty($orcIds)) {
+  $ph = implode(',', array_fill(0, count($orcIds), '?'));
+  $stD = $pdo->prepare("
+    SELECT id_orcamento, id_despesa, valor, data_pagamento, descricao, dt_criacao
+      FROM orcamentos_detalhes WHERE id_orcamento IN ($ph) ORDER BY data_pagamento
+  ");
+  $stD->execute($orcIds);
+  foreach ($stD->fetchAll() as $d) {
+    $despByOrc[$d['id_orcamento']][] = $d;
+  }
+}
+
+// Monta resultado por orçamento
 $result = [];
 foreach ($orcs as $o) {
-  $stD = $pdo->prepare("
-    SELECT id_despesa, valor, data_pagamento, descricao, dt_criacao
-      FROM orcamentos_detalhes WHERE id_orcamento = ? ORDER BY data_pagamento
-  ");
-  $stD->execute([$o['id_orcamento']]);
-  $despesas = $stD->fetchAll();
+  $despesas = $despByOrc[$o['id_orcamento']] ?? [];
 
   $totalDespesas = array_sum(array_column($despesas, 'valor'));
 
@@ -68,4 +78,4 @@ foreach ($orcs as $o) {
   ];
 }
 
-api_json(['ok' => true, 'orcamentos' => $result]);
+api_ok($result, ['orcamentos' => $result]);

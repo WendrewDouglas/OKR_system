@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
+import '../services/push_service.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -37,8 +38,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _api;
+  final Ref _ref;
 
-  AuthNotifier(this._api) : super(const AuthState()) {
+  AuthNotifier(this._api, this._ref) : super(const AuthState()) {
     _checkAuth();
   }
 
@@ -128,6 +130,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Desregistra o device do push ANTES de limpar o token, evitando que o
+    // aparelho continue recebendo notificações da conta anterior.
+    try {
+      await _ref.read(pushServiceProvider).unregisterDevice();
+    } catch (_) {}
     await _api.clearToken();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
@@ -136,5 +143,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(apiClientProvider));
+  return AuthNotifier(ref.read(apiClientProvider), ref);
 });

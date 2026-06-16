@@ -63,6 +63,43 @@ class HttpSmokeClient
         return $this->request('GET', $path);
     }
 
+    /* ===================== Bearer token (API) ===================== */
+
+    private function bearer(string $token): array
+    {
+        return ['Authorization: Bearer ' . $token, 'Accept: application/json'];
+    }
+
+    public function getWithToken(string $path, string $token): array
+    {
+        return $this->request('GET', $path, [CURLOPT_HTTPHEADER => $this->bearer($token)]);
+    }
+
+    public function postJsonWithToken(string $path, string $token, array $data = []): array
+    {
+        return $this->request('POST', $path, [
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_HTTPHEADER => array_merge($this->bearer($token), ['Content-Type: application/json']),
+        ]);
+    }
+
+    public function putJsonWithToken(string $path, string $token, array $data = []): array
+    {
+        return $this->request('PUT', $path, [
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_POSTFIELDS    => json_encode($data),
+            CURLOPT_HTTPHEADER    => array_merge($this->bearer($token), ['Content-Type: application/json']),
+        ]);
+    }
+
+    public function deleteWithToken(string $path, string $token): array
+    {
+        return $this->request('DELETE', $path, [
+            CURLOPT_CUSTOMREQUEST => 'DELETE',
+            CURLOPT_HTTPHEADER    => $this->bearer($token),
+        ]);
+    }
+
     public function post(string $path, array $data = []): array
     {
         return $this->request('POST', $path, [

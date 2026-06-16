@@ -36,6 +36,11 @@ if ($co === false || (int)$co !== $cid) {
   api_error('E_NOT_FOUND', 'Iniciativa não encontrada.', 404);
 }
 
+// RBAC: exige permissão de escrita em orçamento (consistente com update/add_despesa)
+if (!api_has_cap($pdo, $uid, $cid, 'W:orcamento@ORG')) {
+  api_error('E_FORBIDDEN', 'Sem permissão para criar orçamentos.', 403);
+}
+
 $pdo->prepare("
   INSERT INTO orcamentos
     (id_iniciativa, valor, data_desembolso, status_aprovacao,

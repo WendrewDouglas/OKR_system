@@ -36,7 +36,7 @@ $stI->execute([$idKr]);
 $inis = $stI->fetchAll();
 
 if (empty($inis)) {
-  api_json(['ok' => true, 'iniciativas' => []]);
+  api_ok([], ['iniciativas' => []]);
 }
 
 // Batch fetch envolvidos
@@ -99,4 +99,4 @@ $result = array_map(function ($i) use ($envolvidos, $orcs) {
   ];
 }, $inis);
 
-api_json(['ok' => true, 'iniciativas' => $result]);
+api_ok($result, ['iniciativas' => $result]);

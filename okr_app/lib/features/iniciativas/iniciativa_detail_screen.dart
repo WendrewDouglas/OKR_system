@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
+import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
 
 final iniciativaDetailProvider = FutureProvider.autoDispose
@@ -46,24 +48,9 @@ class IniciativaDetailScreen extends ConsumerWidget {
       ),
       body: detail.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text('Erro ao carregar iniciativa', style: TextStyle(color: AppColors.red)),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(iniciativaDetailProvider(idIniciativa));
-                },
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar iniciativa',
+          onRetry: () => ref.invalidate(iniciativaDetailProvider(idIniciativa)),
         ),
         data: (data) {
           final ini = data['iniciativa'] as Map<String, dynamic>? ?? {};
@@ -156,7 +143,7 @@ class IniciativaDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                 ],
 
-                _StatusChanger(idIniciativa: idIniciativa, currentStatus: ini['status'] ?? '', ref: ref),
+                _StatusChanger(idIniciativa: idIniciativa, currentStatus: ini['status'] ?? ''),
               ],
             ),
           );
@@ -176,30 +163,35 @@ class IniciativaDetailScreen extends ConsumerWidget {
     if (!confirmed) return;
 
     try {
-      final api = ref.read(apiClientProvider);
-      await api.dio.delete('/iniciativas/$idIniciativa');
+      await ref.read(iniciativaRepositoryProvider).delete(idIniciativa);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Iniciativa excluída.')));
         context.pop();
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
 }
 
-class _StatusChanger extends StatelessWidget {
+class _StatusChanger extends ConsumerStatefulWidget {
   final String idIniciativa;
   final String currentStatus;
-  final WidgetRef ref;
-  const _StatusChanger({required this.idIniciativa, required this.currentStatus, required this.ref});
+  const _StatusChanger({required this.idIniciativa, required this.currentStatus});
+
+  @override
+  ConsumerState<_StatusChanger> createState() => _StatusChangerState();
+}
+
+class _StatusChangerState extends ConsumerState<_StatusChanger> {
+  bool _busy = false;
 
   @override
   Widget build(BuildContext context) {
     final statuses = ['Não Iniciado', 'Em Andamento', 'Concluído', 'Cancelado']
-        .where((s) => s != currentStatus)
+        .where((s) => s != widget.currentStatus)
         .toList();
 
     return Column(
@@ -207,70 +199,75 @@ class _StatusChanger extends StatelessWidget {
       children: [
         const Text('Alterar Status', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: statuses.map((s) => OutlinedButton(
-            onPressed: () {
-              AppHaptics.light();
-              _changeStatus(context, s);
-            },
-            child: Text(s, style: const TextStyle(fontSize: 13)),
-          )).toList(),
-        ),
+        if (_busy)
+          const Padding(
+            padding: EdgeInsets.all(4),
+            child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: statuses.map((s) => OutlinedButton(
+              onPressed: () => _changeStatus(s),
+              child: Text(s, style: const TextStyle(fontSize: 13)),
+            )).toList(),
+          ),
       ],
     );
   }
 
-  Future<void> _changeStatus(BuildContext context, String newStatus) async {
-    final obsCtrl = TextEditingController();
+  Future<void> _changeStatus(String newStatus) async {
     AppHaptics.medium();
-    final confirmed = await showDialog<bool>(
+    final obs = await _promptObs(newStatus);
+    if (obs == null) return; // cancelado ou observação vazia
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(iniciativaRepositoryProvider).updateStatus(widget.idIniciativa, newStatus, obs);
+      ref.invalidate(iniciativaDetailProvider(widget.idIniciativa));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status alterado para $newStatus.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<String?> _promptObs(String newStatus) async {
+    final ctrl = TextEditingController();
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Mudar para "$newStatus"'),
         content: TextField(
-          controller: obsCtrl,
+          controller: ctrl,
+          autofocus: true,
           maxLines: 3,
           decoration: const InputDecoration(hintText: 'Observação (obrigatória)'),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: () {
+              final t = ctrl.text.trim();
+              if (t.isEmpty) return; // observação é obrigatória
+              Navigator.of(ctx).pop(t);
+            },
             child: const Text('Confirmar'),
           ),
         ],
       ),
     );
-
-    if (confirmed != true) return;
-    if (obsCtrl.text.trim().isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Observação obrigatória.')));
-      }
-      return;
-    }
-
-    try {
-      final api = ref.read(apiClientProvider);
-      await api.dio.put('/iniciativas/$idIniciativa/status', data: {
-        'status': newStatus,
-        'observacao': obsCtrl.text.trim(),
-      });
-      ref.invalidate(iniciativaDetailProvider(idIniciativa));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status alterado para $newStatus.')));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
-      }
-    }
+    ctrl.dispose();
+    return result;
   }
 }

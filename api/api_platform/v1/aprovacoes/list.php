@@ -112,8 +112,7 @@ $minhas = array_merge($minhas, $stMinhasKr->fetchAll());
 $pendentes  = count(array_filter($paraAprovar, fn($r) => $r['status_aprovacao'] === 'pendente'));
 $reprovados = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'reprovado'));
 
-api_json([
-  'ok'    => true,
+$payload = [
   'stats' => [
     'pendentes'  => $pendentes,
     'reprovados' => $reprovados,
@@ -133,4 +132,5 @@ api_json([
     'status_aprovacao' => $r['status_aprovacao'],
     'dt_criacao'      => $r['dt_criacao'],
   ], $minhas),
-]);
+];
+api_ok($payload, $payload);

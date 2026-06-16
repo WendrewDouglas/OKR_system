@@ -26,6 +26,11 @@ if (!$ini || (int)$ini['id_company'] !== $cid) {
   api_error('E_NOT_FOUND', 'Iniciativa não encontrada.', 404);
 }
 
+// RBAC: exige permissão de escrita na iniciativa (recurso já confirmado na empresa)
+if (!api_has_cap($pdo, $uid, $cid, 'W:iniciativa@ORG', ['id_iniciativa' => $id])) {
+  api_error('E_FORBIDDEN', 'Sem permissão para editar esta iniciativa.', 403);
+}
+
 $in = api_input();
 $sets   = [];
 $params = [];

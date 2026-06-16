@@ -53,6 +53,37 @@ function api_error(string $code, string $message, int $status = 400, array $extr
   ], $extra), $status);
 }
 
+/**
+ * Resposta de sucesso com ENVELOPE PADRÃO (aditivo).
+ * Sempre inclui `data`; mantém chaves legadas (em $legacy) para não quebrar
+ * consumidores atuais (app Flutter e views/admin_push.php). $pagination opcional.
+ * Novos consumidores devem ler `data` / `pagination`.
+ */
+function api_ok($data, array $legacy = [], ?array $pagination = null): void {
+  $resp = ['ok' => true, 'data' => $data];
+  if ($pagination !== null) $resp['pagination'] = $pagination;
+  foreach ($legacy as $k => $v) $resp[$k] = $v; // compat
+  api_json($resp);
+}
+
+/**
+ * Envelope para listas paginadas (resultado de api_paginated()).
+ * `data` = items; `pagination` = {page,per_page,total,pages}; chaves legadas mantidas.
+ */
+function api_ok_paginated(array $result, array $extraLegacy = []): void {
+  $items = $result['items'] ?? [];
+  $pagination = [
+    'page'     => (int)($result['page'] ?? 1),
+    'per_page' => (int)($result['per_page'] ?? count($items)),
+    'total'    => (int)($result['total'] ?? count($items)),
+    'pages'    => (int)($result['pages'] ?? 1),
+  ];
+  $resp = ['ok' => true, 'data' => $items, 'pagination' => $pagination];
+  foreach ($result as $k => $v) $resp[$k] = $v;      // legado: items/page/per_page/total/pages
+  foreach ($extraLegacy as $k => $v) $resp[$k] = $v;
+  api_json($resp);
+}
+
 function api_log(string $msg): void {
   error_log('[api_platform/v1] ' . $msg);
 }
@@ -353,6 +384,21 @@ function api_enum(string $val, array $allowed, string $name = 'value'): string {
     api_error('E_INPUT', "Campo '$name' deve ser um de: " . implode(', ', $allowed) . '.', 422);
   }
   return $val;
+}
+
+/**
+ * Valida um valor contra uma tabela de domínio (lookup), devolvendo 422 limpo
+ * em vez de deixar o FK do banco lançar 500.
+ *
+ * IMPORTANTE: $table e $idCol são literais internos (nunca input do usuário);
+ * apenas $value é parametrizado.
+ */
+function api_assert_domain(PDO $pdo, string $table, string $idCol, string $value, string $field): void {
+  $st = $pdo->prepare("SELECT 1 FROM `$table` WHERE `$idCol` = ? LIMIT 1");
+  $st->execute([$value]);
+  if (!$st->fetchColumn()) {
+    api_error('E_INPUT', "Valor inválido para '$field': '$value'.", 422);
+  }
 }
 
 

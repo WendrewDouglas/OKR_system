@@ -25,6 +25,11 @@ if (!$ini || (int)$ini['id_company'] !== $cid) {
   api_error('E_NOT_FOUND', 'Iniciativa não encontrada.', 404);
 }
 
+// RBAC: exige permissão de escrita na iniciativa (recurso já confirmado na empresa)
+if (!api_has_cap($pdo, $uid, $cid, 'W:iniciativa@ORG', ['id_iniciativa' => $id])) {
+  api_error('E_FORBIDDEN', 'Sem permissão para excluir esta iniciativa.', 403);
+}
+
 $pdo->beginTransaction();
 try {
   $pdo->prepare("DELETE FROM orcamentos_detalhes WHERE id_orcamento IN (SELECT id_orcamento FROM orcamentos WHERE id_iniciativa = ?)")->execute([$id]);

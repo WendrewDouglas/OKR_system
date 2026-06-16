@@ -85,4 +85,4 @@ $result['items'] = array_map(fn($r) => [
   ],
 ], $result['items']);
 
-api_json(array_merge(['ok' => true], $result));
+api_ok_paginated($result);

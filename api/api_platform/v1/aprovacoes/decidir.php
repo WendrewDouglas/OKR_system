@@ -34,6 +34,21 @@ if (!$ap || (int)$ap['habilitado'] !== 1) {
   }
 }
 
+// Isolamento multi-tenant: o item decidido deve pertencer à empresa do aprovador
+// (admin_master decide cross-empresa por design, consistente com aprovacoes/list).
+$ctxMap = [
+  'objetivo'  => ['id_objetivo'  => $idRef],
+  'kr'        => ['id_kr'        => $idRef],
+  'orcamento' => ['id_orcamento' => $idRef],
+];
+$itemCompany = api_resolve_resource_company($pdo, $modulo, $ctxMap[$modulo]);
+if ($itemCompany === null) {
+  api_error('E_NOT_FOUND', 'Item de aprovação não encontrado.', 404);
+}
+if (!api_is_admin_master($pdo, $uid) && $itemCompany !== $cid) {
+  api_error('E_FORBIDDEN', 'Item pertence a outra empresa.', 403);
+}
+
 $pdo->beginTransaction();
 try {
   switch ($modulo) {

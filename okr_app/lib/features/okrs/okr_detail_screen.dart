@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/models/models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/farol_indicator.dart';
+import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
 
+// Detalhe do objetivo (GET single ainda não enveloppado → mantido como Map por ora).
 final okrDetailProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, id) async {
   final api = ref.read(apiClientProvider);
@@ -16,11 +20,10 @@ final okrDetailProvider = FutureProvider.autoDispose
   return res.data as Map<String, dynamic>;
 });
 
+// KRs do objetivo: camada tipada (KrRepository → DTO KeyResult).
 final krsForObjProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, idObj) async {
-  final api = ref.read(apiClientProvider);
-  final res = await api.dio.get('/objetivos/$idObj/krs');
-  return ((res.data['krs'] as List?) ?? []).cast<Map<String, dynamic>>();
+    .family<List<KeyResult>, String>((ref, idObj) {
+  return ref.read(krRepositoryProvider).listByObjetivo(idObj);
 });
 
 class OkrDetailScreen extends ConsumerWidget {
@@ -57,24 +60,9 @@ class OkrDetailScreen extends ConsumerWidget {
       ),
       body: detail.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text('Erro ao carregar objetivo', style: TextStyle(color: AppColors.red)),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(okrDetailProvider(idObjetivo));
-                },
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar objetivo',
+          onRetry: () => ref.invalidate(okrDetailProvider(idObjetivo)),
         ),
         data: (data) {
           final obj = data['objetivo'] as Map<String, dynamic>? ?? {};
@@ -180,18 +168,9 @@ class OkrDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 krs.when(
                   loading: () => const LoadingShimmer(count: 3),
-                  error: (e, _) => Center(
-                    child: Column(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.red, size: 32),
-                        const SizedBox(height: 8),
-                        const Text('Erro ao carregar KRs', style: TextStyle(color: AppColors.red, fontSize: 13)),
-                        TextButton(
-                          onPressed: () => ref.invalidate(krsForObjProvider(idObjetivo)),
-                          child: const Text('Tentar novamente'),
-                        ),
-                      ],
-                    ),
+                  error: (e, _) => ErrorRetry(
+                    message: 'Erro ao carregar KRs',
+                    onRetry: () => ref.invalidate(krsForObjProvider(idObjetivo)),
                   ),
                   data: (krList) => krList.isEmpty
                       ? const Padding(
@@ -221,34 +200,32 @@ class OkrDetailScreen extends ConsumerWidget {
     if (!confirmed) return;
 
     try {
-      final api = ref.read(apiClientProvider);
-      await api.dio.delete('/objetivos/$idObjetivo');
+      await ref.read(objetivoRepositoryProvider).delete(idObjetivo);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Objetivo excluído.')));
         context.pop();
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao excluir: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
 }
 
 class _KrCard extends StatelessWidget {
-  final Map<String, dynamic> kr;
+  final KeyResult kr;
   const _KrCard({required this.kr});
 
   @override
   Widget build(BuildContext context) {
-    final desc = kr['descricao'] ?? '';
-    final base = (kr['baseline'] as num?)?.toDouble() ?? 0;
-    final meta = (kr['meta'] as num?)?.toDouble() ?? 0;
-    final progress = kr['progress'] as Map<String, dynamic>?;
-    final pctAtual = (progress?['pct_atual'] as num?)?.toDouble();
-    final farol = kr['farol'] ?? '';
-    final unidade = kr['unidade_medida'] ?? '';
-    final idKr = kr['id_kr'] ?? '';
+    final desc = kr.descricao;
+    final base = kr.baseline;
+    final meta = kr.meta;
+    final pctAtual = kr.progress.pctAtual;
+    final farol = kr.farol ?? '';
+    final unidade = kr.unidadeMedida ?? '';
+    final idKr = kr.idKr;
 
     Color farolColor = AppColors.textMuted;
     if (farol == 'verde') farolColor = AppColors.green;

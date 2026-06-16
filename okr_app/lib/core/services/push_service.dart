@@ -85,7 +85,11 @@ class PushService {
 
     // Token
     _currentToken = await FirebaseMessaging.instance.getToken();
-    debugPrint('[Push] Token: $_currentToken');
+    // SEC-10: nunca logar o token (credencial). Só um indicador mascarado, em debug.
+    if (kDebugMode) {
+      debugPrint('[Push] Token obtido: '
+          '${_currentToken == null ? 'null' : '***${_currentToken!.length} chars'}');
+    }
 
     // Token refresh
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
@@ -96,12 +100,22 @@ class PushService {
 
   /// Registra token no servidor (chamar apos login)
   Future<void> registerDevice() async {
-    if (_currentToken == null) {
-      _currentToken = await FirebaseMessaging.instance.getToken();
+    // Retry ate 3 vezes com delay (SERVICE_NOT_AVAILABLE em MIUI/Xiaomi)
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        _currentToken ??= await FirebaseMessaging.instance.getToken();
+        if (_currentToken != null) {
+          await _registerToken(_currentToken!);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[Push] Token attempt ${attempt + 1} failed: $e');
+        if (attempt < 2) {
+          await Future.delayed(Duration(seconds: 3 * (attempt + 1)));
+        }
+      }
     }
-    if (_currentToken != null) {
-      await _registerToken(_currentToken!);
-    }
+    debugPrint('[Push] Could not get FCM token after 3 attempts');
   }
 
   Future<void> _registerToken(String token) async {
@@ -169,7 +183,7 @@ class PushService {
 
   /// Trata clique no push (app em background/terminated)
   void _handleMessageOpenedApp(RemoteMessage message) {
-    debugPrint('[Push] Opened: ${message.data}');
+    if (kDebugMode) debugPrint('[Push] Opened: ${message.data}');
     final route = message.data['route'] as String?;
     if (route != null && route.isNotEmpty && onNavigate != null) {
       onNavigate!(route);

@@ -34,6 +34,24 @@ $st = $pdo->prepare("
 $st->execute([$idObj]);
 $krs = $st->fetchAll();
 
+// Batch (evita N+1): último milestone consolidado (<= hoje) de TODOS os KRs em 1 query.
+$krIds = array_column($krs, 'id_kr');
+$latestByKr = [];
+if (!empty($krIds)) {
+  $ph = implode(',', array_fill(0, count($krIds), '?'));
+  $stM = $pdo->prepare("
+    SELECT id_kr, valor_real_consolidado, valor_esperado, data_ref
+      FROM milestones_kr
+     WHERE id_kr IN ($ph) AND data_ref <= CURDATE() AND valor_real_consolidado IS NOT NULL
+     ORDER BY id_kr, data_ref DESC
+  ");
+  $stM->execute($krIds);
+  foreach ($stM->fetchAll() as $m) {
+    // 1ª ocorrência por id_kr = mais recente (ordenado data_ref DESC)
+    $latestByKr[$m['id_kr']] ??= $m;
+  }
+}
+
 // Calculate progress for each KR
 $result = [];
 foreach ($krs as $kr) {
@@ -41,15 +59,7 @@ foreach ($krs as $kr) {
   $base = (float)($kr['baseline'] ?? 0);
   $meta = (float)($kr['meta'] ?? 0);
 
-  // Get latest milestone with real value
-  $stM = $pdo->prepare("
-    SELECT valor_real_consolidado, valor_esperado, data_ref
-      FROM milestones_kr
-     WHERE id_kr = ? AND data_ref <= CURDATE() AND valor_real_consolidado IS NOT NULL
-     ORDER BY data_ref DESC LIMIT 1
-  ");
-  $stM->execute([$idKr]);
-  $ms = $stM->fetch();
+  $ms = $latestByKr[$idKr] ?? null;
 
   $valorAtual = $ms ? (float)$ms['valor_real_consolidado'] : null;
   $valorEsperado = $ms ? (float)$ms['valor_esperado'] : null;
@@ -86,4 +96,4 @@ foreach ($krs as $kr) {
   ];
 }
 
-api_json(['ok' => true, 'krs' => $result]);
+api_ok($result, ['krs' => $result]);

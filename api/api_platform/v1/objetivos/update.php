@@ -25,6 +25,12 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:objetivo@ORG', ['id_objetivo' => $id])) {
 }
 
 $in = api_input();
+
+// Valida status contra o domínio (objetivos.status → dom_status_kr); 422 em vez de 500 do FK
+if (array_key_exists('status', $in)) {
+  api_assert_domain($pdo, 'dom_status_kr', 'id_status', api_str($in['status']), 'status');
+}
+
 $sets   = [];
 $params = [];
 

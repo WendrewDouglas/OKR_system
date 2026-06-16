@@ -135,6 +135,35 @@ function api_resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?
       $v = $st->fetchColumn();
       return $v !== false ? (int)$v : null;
     }
+    case 'milestone': {
+      // PARITY-02: paridade com acl.php; deriva tenant por objetivos.id_company
+      $id = $ctx['id_milestone'] ?? ($ctx['id_ms'] ?? null);
+      if ($id === null) return null;
+      $st = $pdo->prepare("
+        SELECT o.id_company FROM milestones_kr m
+          JOIN key_results k ON k.id_kr = m.id_kr
+          JOIN objetivos o ON o.id_objetivo = k.id_objetivo
+         WHERE m.id_milestone = ?
+      ");
+      $st->execute([$id]);
+      $v = $st->fetchColumn();
+      return $v !== false ? (int)$v : null;
+    }
+    case 'aprovacao': {
+      // PARITY-02: deriva o tenant pelo identificador disponível no contexto
+      $map = [
+        'id_orcamento'  => 'orcamento',
+        'id_iniciativa' => 'iniciativa',
+        'id_kr'         => 'kr',
+        'id_objetivo'   => 'objetivo',
+      ];
+      foreach ($map as $k => $res) {
+        if (array_key_exists($k, $ctx)) {
+          return api_resolve_resource_company($pdo, $res, [$k => $ctx[$k]]);
+        }
+      }
+      return null;
+    }
     default:
       return null;
   }
@@ -167,10 +196,10 @@ function api_has_cap(PDO $pdo, int $userId, int $userCompany, string $capKey, ar
   // 2) admin_master bypass
   if (in_array('admin_master', $roleKeys, true)) return true;
 
-  // 3) Capabilities via role
+  // 3) Capabilities via role (honra effect ALLOW/DENY do vínculo — PARITY-03)
   $in = implode(',', array_fill(0, count($roleIds), '?'));
   $stC = $pdo->prepare("
-    SELECT c.cap_key, c.resource, c.action, c.scope
+    SELECT c.cap_key, c.resource, c.action, c.scope, rc.effect
       FROM rbac_role_capability rc
       JOIN rbac_capabilities c ON c.capability_id = rc.capability_id
      WHERE rc.role_id IN ($in)
@@ -188,12 +217,16 @@ function api_has_cap(PDO $pdo, int $userId, int $userCompany, string $capKey, ar
   $stU->execute([$userId]);
   $capsUser = $stU->fetchAll();
 
-  // 5) Merge (DENY > ALLOW)
+  // 5) Merge (DENY > ALLOW), inclusive DENY no nível de role (PARITY-03)
   $allow = [];
+  $deny  = [];
   foreach ($capsRole as $c) {
-    $allow[$c['cap_key']] = $c;
+    if (strtoupper($c['effect'] ?? 'ALLOW') === 'DENY') {
+      $deny[$c['cap_key']] = true;
+    } else {
+      $allow[$c['cap_key']] = $c;
+    }
   }
-  $deny = [];
   foreach ($capsUser as $row) {
     $eff = strtoupper($row['effect'] ?? 'ALLOW');
     if ($eff === 'DENY')  $deny[$row['cap_key']] = true;
@@ -248,6 +281,28 @@ function api_require_cap(string $capKey, array $ctx = []): void {
   if (!api_has_cap($pdo, $uid, $cid, $capKey, $ctx)) {
     api_error('E_FORBIDDEN', 'Sem permissão para esta ação.', 403);
   }
+}
+
+/**
+ * Garante isolamento multi-tenant ao operar sobre OUTRO usuário (:id).
+ * O usuário alvo deve pertencer à mesma empresa do ator — exceto admin_master,
+ * que opera cross-tenant por design (super-admin).
+ *
+ * Encerra com 404 se o alvo não existe, ou 403 se for de outra empresa.
+ * Retorna a id_company do alvo.
+ */
+function api_require_same_company_user(PDO $pdo, int $targetUserId, int $actorCid, int $actorUid): int {
+  $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ?");
+  $st->execute([$targetUserId]);
+  $tco = $st->fetchColumn();
+  if ($tco === false) {
+    api_error('E_NOT_FOUND', 'Usuário não encontrado.', 404);
+  }
+  $tco = (int)$tco;
+  if (!api_is_admin_master($pdo, $actorUid) && $tco !== $actorCid) {
+    api_error('E_FORBIDDEN', 'Usuário pertence a outra empresa.', 403);
+  }
+  return $tco;
 }
 
 /**

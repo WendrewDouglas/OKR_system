@@ -11,6 +11,11 @@ $uid  = (int)($auth['sub'] ?? 0);
 $cid  = (int)($auth['cid'] ?? 0);
 $pdo  = api_db();
 
+// RBAC: listar usuários exige leitura no recurso administrativo "user"
+if (!api_has_cap($pdo, $uid, $cid, 'R:user@ORG')) {
+  api_error('E_FORBIDDEN', 'Sem permissão para listar usuários.', 403);
+}
+
 $isMaster = api_is_admin_master($pdo, $uid);
 [$page, $perPage] = api_pagination_params();
 
@@ -62,4 +67,4 @@ $result['items'] = array_map(fn($r) => [
   'dt_cadastro'   => $r['dt_cadastro'],
 ], $result['items']);
 
-api_json(array_merge(['ok' => true], $result));
+api_ok_paginated($result);
