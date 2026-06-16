@@ -18,7 +18,8 @@ $officialCents = lp_setting_int($landingId, 'official_price_cents', 29700);
 $discountCents = lp_setting_int($landingId, 'discount_price_cents', 14700);
 $trainingDate  = trim((string) lp_setting($landingId, 'training_date', ''));
 $trainingTime  = trim((string) lp_setting($landingId, 'training_time', ''));
-$trainingLocal = trim((string) lp_setting($landingId, 'training_location', ''));
+$trainingLocal    = trim((string) lp_setting($landingId, 'training_location', ''));
+$trainingLocalUrl = trim((string) lp_setting($landingId, 'training_location_url', ''));
 $spotsText     = trim((string) lp_setting($landingId, 'spots_status_text', 'Turma limitada para garantir prática assistida.'));
 $btnOficial    = trim((string) lp_setting($landingId, 'btn_text_oficial', 'Garantir minha vaga'));
 
@@ -117,7 +118,7 @@ $entregaveis = [
     <ul class="lp-hero__meta">
       <?php if ($trainingDate !== ''): ?><li>📅 <?= $e($trainingDate) ?></li><?php endif; ?>
       <?php if ($trainingTime !== ''): ?><li>⏰ <?= $e($trainingTime) ?></li><?php endif; ?>
-      <?php if ($trainingLocal !== ''): ?><li>📍 <?= $e($trainingLocal) ?></li><?php endif; ?>
+      <?php if ($trainingLocal !== ''): ?><li>📍 <?php if ($trainingLocalUrl !== ''): ?><a href="<?= $e($trainingLocalUrl) ?>" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline"><?= $e($trainingLocal) ?></a><?php else: ?><?= $e($trainingLocal) ?><?php endif; ?></li><?php endif; ?>
     </ul>
     <?php else: ?>
     <p class="lp-hero__meta lp-hero__meta--tbd">Data, horário e local serão divulgados em breve.</p>
