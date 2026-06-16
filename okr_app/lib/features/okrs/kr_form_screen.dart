@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
@@ -67,7 +68,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     } catch (e) {
       setState(() => _isLoadingEdit = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -87,7 +88,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final api = ref.read(apiClientProvider);
       final body = {
         'descricao': _descricaoCtrl.text.trim(),
         'baseline': double.tryParse(_baselineCtrl.text) ?? 0,
@@ -102,11 +102,12 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         'autogerar_milestones': _autoMilestones ? 1 : 0,
       };
 
+      final repo = ref.read(krRepositoryProvider);
       if (isEditing) {
-        await api.dio.put('/krs/${widget.idKr}', data: body);
+        await repo.update(widget.idKr!, body);
       } else {
         body['id_objetivo'] = _idObjetivo;
-        await api.dio.post('/krs', data: body);
+        await repo.create(body);
       }
 
       AppHaptics.success();
@@ -119,7 +120,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }

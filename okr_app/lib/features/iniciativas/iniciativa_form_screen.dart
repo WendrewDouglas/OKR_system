@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
@@ -18,6 +19,7 @@ class IniciativaFormScreen extends ConsumerStatefulWidget {
 class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descricaoCtrl = TextEditingController();
+  final _prazoCtrl = TextEditingController();
   String _status = 'Não Iniciado';
   String? _dtPrazo;
   Set<int> _selectedResponsaveis = {};
@@ -46,13 +48,14 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
         _descricaoCtrl.text = ini['descricao'] ?? '';
         _status = ini['status'] ?? 'Não Iniciado';
         _dtPrazo = ini['dt_prazo'] as String?;
+        _prazoCtrl.text = ini['dt_prazo'] ?? '';
         _selectedResponsaveis = envolvidos.map((e) => e['id_user'] as int).toSet();
         _isLoadingEdit = false;
       });
     } catch (e) {
       setState(() => _isLoadingEdit = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -60,6 +63,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
   @override
   void dispose() {
     _descricaoCtrl.dispose();
+    _prazoCtrl.dispose();
     super.dispose();
   }
 
@@ -69,7 +73,6 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final api = ref.read(apiClientProvider);
       final body = {
         'descricao': _descricaoCtrl.text.trim(),
         'status': _status,
@@ -78,11 +81,12 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
         if (_selectedResponsaveis.isNotEmpty) 'id_user_responsavel': _selectedResponsaveis.first,
       };
 
+      final repo = ref.read(iniciativaRepositoryProvider);
       if (isEditing) {
-        await api.dio.put('/iniciativas/${widget.idIniciativa}', data: body);
+        await repo.update(widget.idIniciativa!, body);
       } else {
         body['id_kr'] = widget.idKr!;
-        await api.dio.post('/iniciativas', data: body);
+        await repo.create(body);
       }
 
       AppHaptics.success();
@@ -95,7 +99,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -139,7 +143,7 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                       suffixIcon: const Icon(Icons.calendar_today, size: 18),
                       hintText: _dtPrazo ?? 'Selecionar data',
                     ),
-                    controller: TextEditingController(text: _dtPrazo ?? ''),
+                    controller: _prazoCtrl,
                     onTap: () async {
                       final dt = await showDatePicker(
                         context: context,
@@ -148,7 +152,9 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
                         initialDate: DateTime.now(),
                       );
                       if (dt != null) {
-                        setState(() => _dtPrazo = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}');
+                        final s = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+                        setState(() => _dtPrazo = s);
+                        _prazoCtrl.text = s;
                       }
                     },
                   ),

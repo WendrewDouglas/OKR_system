@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
@@ -19,6 +20,8 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descricaoCtrl = TextEditingController();
   final _observacoesCtrl = TextEditingController();
+  final _persInicioCtrl = TextEditingController();
+  final _persFimCtrl = TextEditingController();
 
   String? _pilarBsc;
   String? _tipoObjetivo;
@@ -59,7 +62,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
     } catch (e) {
       setState(() => _isLoadingEdit = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao carregar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -68,6 +71,8 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   void dispose() {
     _descricaoCtrl.dispose();
     _observacoesCtrl.dispose();
+    _persInicioCtrl.dispose();
+    _persFimCtrl.dispose();
     super.dispose();
   }
 
@@ -83,7 +88,6 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
     AppHaptics.medium();
     setState(() => _isLoading = true);
     try {
-      final api = ref.read(apiClientProvider);
       final body = {
         'descricao': _descricaoCtrl.text.trim(),
         'pilar_bsc': _pilarBsc,
@@ -95,10 +99,11 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         if (_cicloPersFim != null) 'ciclo_pers_fim': _cicloPersFim,
       };
 
+      final repo = ref.read(objetivoRepositoryProvider);
       if (isEditing) {
-        await api.dio.put('/objetivos/${widget.idObjetivo}', data: body);
+        await repo.update(widget.idObjetivo!, body);
       } else {
-        await api.dio.post('/objetivos', data: body);
+        await repo.create(body);
       }
 
       AppHaptics.success();
@@ -111,7 +116,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -192,7 +197,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                         child: TextFormField(
                           decoration: const InputDecoration(labelText: 'Data Início'),
                           readOnly: true,
-                          controller: TextEditingController(text: _cicloPersInicio ?? ''),
+                          controller: _persInicioCtrl,
                           onTap: () async {
                             final dt = await showDatePicker(
                               context: context,
@@ -200,7 +205,9 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                               lastDate: DateTime(2030),
                             );
                             if (dt != null) {
-                              setState(() => _cicloPersInicio = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}');
+                              final s = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+                              setState(() => _cicloPersInicio = s);
+                              _persInicioCtrl.text = s;
                             }
                           },
                         ),
@@ -210,7 +217,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                         child: TextFormField(
                           decoration: const InputDecoration(labelText: 'Data Fim'),
                           readOnly: true,
-                          controller: TextEditingController(text: _cicloPersFim ?? ''),
+                          controller: _persFimCtrl,
                           onTap: () async {
                             final dt = await showDatePicker(
                               context: context,
@@ -218,7 +225,9 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                               lastDate: DateTime(2030),
                             );
                             if (dt != null) {
-                              setState(() => _cicloPersFim = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}');
+                              final s = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+                              setState(() => _cicloPersFim = s);
+                              _persFimCtrl.text = s;
                             }
                           },
                         ),
