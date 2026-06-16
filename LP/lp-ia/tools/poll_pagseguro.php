@@ -67,9 +67,10 @@ $initial = date('Y-m-d\TH:i', time() - $days * 86400);
 $paidFound = 0; $processed = 0; $notified = 0; $page = 1; $totalPages = 1;
 
 do {
+    // datas com ':' literal (PagSeguro rejeita %3A); valores sem urlencode (como o curl que validou)
     $url = $ws . '/v3/transactions'
-         . '?email=' . urlencode($email) . '&token=' . urlencode($token)
-         . '&initialDate=' . urlencode($initial) . '&finalDate=' . urlencode($final)
+         . '?email=' . $email . '&token=' . $token
+         . '&initialDate=' . $initial . '&finalDate=' . $final
          . '&page=' . $page . '&maxPageResults=100';
 
     $xmlStr = lp_ws_get($url);
@@ -100,7 +101,7 @@ do {
 
         // consulta detalhes para obter comprador
         $detailStr = lp_ws_get($ws . '/v3/transactions/' . rawurlencode($code)
-            . '?email=' . urlencode($email) . '&token=' . urlencode($token));
+            . '?email=' . $email . '&token=' . $token);
         if ($detailStr === null) { continue; }
         $prev = libxml_use_internal_errors(true);
         $d = simplexml_load_string($detailStr);
