@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/error_retry.dart';
 
 Future<bool?> showApontamentoSheet(BuildContext context, String idKr) {
   AppHaptics.medium();
@@ -59,15 +60,14 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
 
   Future<void> _loadData() async {
     try {
-      final api = ref.read(apiClientProvider);
-      final res = await api.dio.get('/krs/${widget.idKr}/apontamentos/modal-data');
+      final data = await ref.read(apontamentoRepositoryProvider).modalData(widget.idKr);
       setState(() {
-        _modalData = res.data;
+        _modalData = data;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = '$e';
+        _error = apiErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -99,8 +99,7 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
     AppHaptics.medium();
     setState(() => _isSaving = true);
     try {
-      final api = ref.read(apiClientProvider);
-      await api.dio.post('/krs/${widget.idKr}/apontamentos', data: {'items': items});
+      await ref.read(apontamentoRepositoryProvider).create(widget.idKr, items);
       AppHaptics.success();
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -108,7 +107,7 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
     } catch (e) {
       setState(() => _isSaving = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
   }
@@ -119,23 +118,12 @@ class _ApontamentoSheetContentState extends ConsumerState<_ApontamentoSheetConte
       return const Padding(padding: EdgeInsets.all(24), child: LoadingShimmer());
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-            const SizedBox(height: 12),
-            Text('Erro ao carregar dados', style: const TextStyle(color: AppColors.red)),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                setState(() { _isLoading = true; _error = null; });
-                _loadData();
-              },
-              child: const Text('Tentar novamente'),
-            ),
-          ],
-        ),
+      return ErrorRetry(
+        message: _error!,
+        onRetry: () {
+          setState(() { _isLoading = true; _error = null; });
+          _loadData();
+        },
       );
     }
 
