@@ -157,10 +157,10 @@ e então consumida por web e mobile. Evitar lógica de negócio na UI (web ou Fl
 | Usuários + RBAC | ✅ | ⚠️ | ❌ | **furos de tenant/escalonamento na API**; ausente no app |
 | Company + estilo | ✅ | ✅ | ❌ | ausente no app |
 | Missão/Visão | ✅ | ⚠️ parcial | ❌ | sem endpoint dedicado |
-| Gestão multi-empresa (admin_master) | ✅ | ❌ | ❌ | **API ausente** |
-| Relatórios / PDF | ✅ | ❌ | ❌ | **API ausente** |
-| Matriz de prioridade | ✅ | ❌ | ❌ | **API ausente** |
-| System health | ✅ | ❌ | ❌ | **API ausente** |
+| Gestão multi-empresa (admin_master) | ✅ | ✅ (F3) | ❌ | API: list/get/create/update (falta delete); app pendente |
+| Relatórios / PDF | ✅ | ❌ | ❌ | **API ausente** (F3 pendente) |
+| Matriz de prioridade | ✅ | ❌ | ❌ | **API ausente** (F3 pendente) |
+| System health | ✅ | ✅ (F3) | ❌ | API: `GET /system/health`; app pendente |
 | CRM | ⚠️ schema | ❌ | ❌ | **full-stack ausente** |
 
 Legenda: ✅ completo · ⚠️ parcial/com ressalva · ❌ ausente.
@@ -357,3 +357,24 @@ quando nenhum consumidor depender delas (fase futura, com versionamento se preci
 
 > Aplicar o restante incrementalmente conforme a camada de DTOs (passos 2–3) consome cada
 > endpoint, para validar `data`/`pagination` end-to-end a cada migração.
+
+---
+
+## 13. F3 — Backend novo (em andamento)
+
+Endpoints ausentes que estão sendo construídos na API (`api_platform/v1`), todos no
+envelope padrão (`api_ok`) e com RBAC.
+
+### 13.1 Lote 1 — Admin/super-admin ✅ (2026-06-16)
+- **Gestão multi-empresa** (`admin_master`): `GET /companies` (paginado), `GET /companies/:id`,
+  `POST /companies`, `PUT /companies/:id`. Falta `DELETE` (decidir política de exclusão de tenant).
+- **System health** (`admin_master`): `GET /system/health` — db_alive, tabelas core, órfãos
+  (KR/iniciativa/milestone), totais. Espelha `views/system_health.php`.
+- Testes de contrato: `tests/Integration/Api/AdminEndpointsTest.php` (env-driven, skip sem master).
+
+### 13.2 Lotes seguintes (pendentes)
+- **Missão/Visão multi-empresa** + reset de estilo (`DELETE /company/style`).
+- **Relatórios / PDF** (`GET /relatorios/okrs` → dompdf; recurso RBAC `relatorio` já reservado).
+- **Matriz de prioridade** (`GET /matriz-prioridade`).
+- **Push**: criar/editar/disparar campanha (`POST/PUT /push/campaigns`, `POST /push/campaigns/:id/send`).
+- Em seguida, **consumo no app** (F2) das telas de admin/analítico.

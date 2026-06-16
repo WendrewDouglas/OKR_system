@@ -127,6 +127,15 @@ $routes = [
   ['GET',    'dominios/:tabela',               'dominios/get.php'],
   ['GET',    'responsaveis',                   'dominios/responsaveis.php'],
 
+  // Companies (gestão multi-empresa — admin_master)
+  ['GET',    'companies',                      'companies/list.php'],
+  ['POST',   'companies',                      'companies/create.php'],
+  ['GET',    'companies/:id',                  'companies/get.php'],
+  ['PUT',    'companies/:id',                  'companies/update.php'],
+
+  // System (admin_master)
+  ['GET',    'system/health',                  'system/health.php'],
+
   // Push Notifications
   ['GET',    'push/campaigns',                     'push/campaigns_list.php'],
   ['GET',    'push/campaigns/:id',                 'push/campaigns_get.php'],
