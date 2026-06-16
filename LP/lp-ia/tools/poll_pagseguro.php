@@ -60,7 +60,8 @@ function lp_ws_get(string $url): ?string
 }
 
 $pdo = lp_db();
-$final   = date('Y-m-d\TH:i');
+// buffer de 5 min na data final para evitar erro por diferença de relógio
+$final   = date('Y-m-d\TH:i', time() - 300);
 $initial = date('Y-m-d\TH:i', time() - $days * 86400);
 
 $paidFound = 0; $processed = 0; $notified = 0; $page = 1; $totalPages = 1;
