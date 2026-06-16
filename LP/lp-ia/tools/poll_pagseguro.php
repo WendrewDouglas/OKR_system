@@ -47,7 +47,7 @@ function lp_ws_get(string $url): ?string
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 25,
-        CURLOPT_HTTPHEADER     => ['Accept: application/xml'],
+        // PagSeguro (JBoss) retorna 406 se enviarmos Accept: application/xml
     ]);
     $r = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

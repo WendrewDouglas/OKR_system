@@ -153,7 +153,7 @@ function lp_http_get(string $url): ?string
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 20,
-            CURLOPT_HTTPHEADER     => ['Accept: application/xml'],
+            // sem Accept: application/xml (PagSeguro/JBoss responde 406)
         ]);
         $r = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
