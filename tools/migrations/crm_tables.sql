@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS `crm_accounts` (
   `account_name`     VARCHAR(255) NOT NULL,
   `legal_name`       VARCHAR(255) DEFAULT NULL,
   `normalized_name`  VARCHAR(255) DEFAULT NULL,
+  `company_root_key` VARCHAR(120) DEFAULT NULL,
   `linkedin_url`     VARCHAR(500) DEFAULT NULL,
   `linkedin_url_hash` CHAR(64) DEFAULT NULL,
   `website`          VARCHAR(500) DEFAULT NULL,
@@ -97,6 +98,7 @@ CREATE TABLE IF NOT EXISTS `crm_accounts` (
   UNIQUE KEY `uq_crm_accounts_linkedin_hash` (`linkedin_url_hash`),
   UNIQUE KEY `uq_crm_accounts_domain` (`domain`),
   KEY `idx_crm_accounts_name` (`normalized_name`),
+  KEY `idx_crm_accounts_root_key` (`company_root_key`),
   KEY `idx_crm_accounts_status` (`account_status`, `priority`),
   KEY `idx_crm_accounts_score` (`icp_fit_score`),
   KEY `idx_crm_accounts_owner` (`owner_user_id`)
