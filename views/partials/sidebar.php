@@ -35,6 +35,10 @@ $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.p
 $isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
 $isAdminPush        = in_array($currentPath, ['/OKR_system/views/admin_push.php','/OKR_system/admin_push']);
 $isAdminGroup       = ($isSystemHealth || $isAdminCompanies || $isAdminPush);
+$isCrm              = in_array($currentPath, ['/OKR_system/views/crm.php','/OKR_system/crm']);
+$crmView            = $isCrm ? (string)($_GET['view'] ?? 'overview') : '';
+$crmViews           = ['overview','leads','companies','contacts','pipeline','activities','segments','campaigns','imports','settings'];
+$isCrmGroup         = $isCrm && in_array($crmView, $crmViews, true);
 
 /* ===================== DADOS DE USUÁRIO/ORG ===================== */
 $firstName = trim((string)($_SESSION['primeiro_nome'] ?? $_SESSION['first_name'] ?? ''));
@@ -208,6 +212,42 @@ body.collapsed .sidebar .menu-item i.icon-main { margin-right: 0; }
 body.collapsed .submenu { display: none !important; visibility: hidden; }
 body.collapsed .sidebar { overflow-y: auto; }
 
+.sidebar-section-label {
+  margin: .65rem 1rem .25rem;
+  padding-top: .55rem;
+  border-top: 1px solid rgba(255,255,255,.12);
+  color: color-mix(in srgb, var(--bg1-contrast, #FFFFFF) 54%, transparent);
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+body.collapsed .sidebar-section-label {
+  margin: .55rem .7rem .2rem;
+  padding-top: .55rem;
+  font-size: 0;
+}
+.sidebar .menu-item.crm-menu {
+  border-left: 3px solid #14b8a6;
+  background: rgba(20,184,166,.08);
+}
+.sidebar .menu-item.crm-menu i.icon-main,
+.sidebar .menu-item.crm-menu .icon-chevron { color: #5eead4; }
+.sidebar .menu-item.crm-menu.active {
+  background: #14b8a6;
+  color: #06201d;
+}
+.sidebar .menu-item.crm-menu.active i,
+.sidebar .menu-item.crm-menu.active span,
+.sidebar .menu-item.crm-menu.active .icon-chevron { color: #06201d; }
+.submenu.crm-submenu li i { color: #99f6e4; }
+.submenu.crm-submenu li.active {
+  background: #14b8a6;
+  color: #06201d;
+}
+.submenu.crm-submenu li.active i,
+.submenu.crm-submenu li.active span { color: #06201d; }
+
 /* Rodapé */
 .sidebar-footer{
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -315,6 +355,69 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-stamp icon-main"></i><span>Aprovações</span>
       </div>
       <?php endif; ?>
+    </li>
+    <li class="sidebar-section-label">CRM Comercial</li>
+    <li class="<?= $isCrmGroup ? 'open' : '' ?>">
+      <div class="menu-item crm-menu <?= $isCrmGroup ? 'active' : '' ?>"
+           data-href="/OKR_system/views/crm.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-handshake icon-main"></i><span>CRM</span>
+        <i class="fas fa-chevron-down icon-chevron"
+           title="Abrir/Fechar"
+           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
+      </div>
+      <ul class="submenu crm-submenu">
+        <li class="<?= $crmView === 'overview' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-chart-line"></i><span>Visão Geral</span>
+        </li>
+        <li class="<?= $crmView === 'leads' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=leads"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-filter-circle-dollar"></i><span>Leads</span>
+        </li>
+        <li class="<?= $crmView === 'companies' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=companies"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-building"></i><span>Empresas</span>
+        </li>
+        <li class="<?= $crmView === 'contacts' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=contacts"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-address-book"></i><span>Contatos</span>
+        </li>
+        <li class="<?= $crmView === 'pipeline' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=pipeline"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-diagram-project"></i><span>Funil</span>
+        </li>
+        <li class="<?= $crmView === 'activities' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=activities"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-list-check"></i><span>Atividades</span>
+        </li>
+        <li class="<?= $crmView === 'segments' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=segments"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-layer-group"></i><span>Segmentos</span>
+        </li>
+        <li class="<?= $crmView === 'campaigns' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=campaigns"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-bullhorn"></i><span>Campanhas</span>
+        </li>
+        <li class="<?= $crmView === 'imports' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=imports"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-file-import"></i><span>Importações</span>
+        </li>
+        <li class="<?= $crmView === 'settings' ? 'active' : '' ?>"
+            data-href="/OKR_system/views/crm.php?view=settings"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-sliders"></i><span>Configurações</span>
+        </li>
+      </ul>
     </li>
     <li class="<?= $isSettings ? 'open' : '' ?>">
       <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
