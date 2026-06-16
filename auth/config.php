@@ -113,6 +113,15 @@ define('CRM_DB_PASS',      (string)env('CRM_DB_PASS', DB_PASS));
 define('CRM_DB_CHARSET',   (string)env('CRM_DB_CHARSET', DB_CHARSET));
 define('CRM_DB_COLLATION', (string)env('CRM_DB_COLLATION', DB_COLLATION));
 
+// ===== Banco Landing Pages (LP_IA e futuras) =====
+// Por padrao usa a mesma conta MySQL do OKR_system, isolada em outro schema.
+define('LP_DB_HOST',      (string)env('LP_DB_HOST', DB_HOST));
+define('LP_DB_NAME',      (string)env('LP_DB_NAME', 'planni40_lp'));
+define('LP_DB_USER',      (string)env('LP_DB_USER', DB_USER));
+define('LP_DB_PASS',      (string)env('LP_DB_PASS', DB_PASS));
+define('LP_DB_CHARSET',   (string)env('LP_DB_CHARSET', DB_CHARSET));
+define('LP_DB_COLLATION', (string)env('LP_DB_COLLATION', DB_COLLATION));
+
 // Opções PDO padrão (seguras)
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,

@@ -1,0 +1,179 @@
+/* =============================================================
+   LP_IA — IA Aplicada ao Dia a Dia Financeiro
+   Mobile-first. Identidade PlanningBI (laranja #FF5722 / âmbar #FFC107 / Inter).
+   ============================================================= */
+
+:root{
+  --brand:#FF5722;
+  --brand-dark:#e64a19;
+  --amber:#FFC107;
+  --ink:#0e131a;
+  --ink-2:#1a212b;
+  --text:#212529;
+  --muted:#6c757d;
+  --soft:#cfd6e0;
+  --bg:#ffffff;
+  --bg-alt:#f6f8fb;
+  --line:#e7ecf3;
+  --radius:14px;
+  --shadow:0 10px 30px rgba(14,19,26,.10);
+  --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;font-family:var(--font);color:var(--text);background:var(--bg);
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block}
+
+.lp-container{width:100%;max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- Botões ---------- */
+.lp-btn{
+  display:inline-block;background:var(--brand);color:#fff;text-decoration:none;
+  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:1rem;
+  padding:14px 24px;border-radius:12px;text-align:center;transition:transform .12s ease,background .2s ease;
+}
+.lp-btn:hover{background:var(--brand-dark);transform:translateY(-1px)}
+.lp-btn:active{transform:translateY(0)}
+.lp-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.lp-btn--sm{padding:9px 16px;font-size:.9rem;border-radius:10px}
+.lp-btn--lg{padding:16px 30px;font-size:1.05rem}
+.lp-btn--block{display:block;width:100%}
+.lp-btn--ghost{background:transparent;color:var(--brand);border:2px solid var(--brand)}
+.lp-btn--ghost:hover{background:var(--brand);color:#fff}
+.lp-btn--pay{background:#1e8e3e}
+.lp-btn--pay:hover{background:#176f30}
+
+/* ---------- Header ---------- */
+.lp-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.95);
+  backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line)}
+.lp-header__inner{display:flex;align-items:center;justify-content:space-between;height:62px}
+.lp-logo{font-weight:800;font-size:1.25rem;color:var(--ink);letter-spacing:-.5px}
+.lp-logo strong{color:var(--brand)}
+
+/* ---------- Hero ---------- */
+.lp-hero{background:radial-gradient(120% 120% at 0% 0%,#19222e 0%,var(--ink) 60%);color:#fff;
+  padding:48px 0 56px}
+.lp-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.lp-badge{background:rgba(255,193,7,.16);color:var(--amber);border:1px solid rgba(255,193,7,.35);
+  font-size:.78rem;font-weight:600;padding:5px 11px;border-radius:999px}
+.lp-hero__title{font-size:2rem;line-height:1.15;font-weight:800;margin:0 0 14px;letter-spacing:-.5px}
+.lp-hero__subtitle{font-size:1.05rem;color:var(--soft);margin:0 0 22px;max-width:680px}
+.lp-hero__meta{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;padding:0;margin:0 0 26px;
+  color:#fff;font-weight:600}
+.lp-hero__meta--tbd{color:var(--soft);font-weight:500}
+
+/* ---------- Seções ---------- */
+.lp-section{padding:46px 0}
+.lp-section--alt{background:var(--bg-alt)}
+.lp-h2{font-size:1.5rem;font-weight:800;margin:0 0 22px;letter-spacing:-.4px;color:var(--ink)}
+
+/* ---------- Quote ---------- */
+.lp-quote{background:var(--ink-2);color:#fff}
+.lp-quote blockquote{margin:0;font-size:1.2rem;line-height:1.55;font-weight:500;
+  border-left:4px solid var(--brand);padding-left:18px;max-width:820px}
+
+/* ---------- Chips ---------- */
+.lp-chips{list-style:none;display:flex;flex-wrap:wrap;gap:10px;padding:0;margin:0}
+.lp-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;
+  font-weight:600;font-size:.92rem;box-shadow:var(--shadow)}
+
+/* ---------- Grid de cards ---------- */
+.lp-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.lp-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;
+  box-shadow:var(--shadow)}
+.lp-card h3{margin:0 0 6px;font-size:1.05rem;color:var(--brand)}
+.lp-card p{margin:0;color:var(--muted);font-size:.95rem}
+
+/* ---------- Timeline / agenda ---------- */
+.lp-timeline{display:grid;gap:14px}
+.lp-timeline__item{display:flex;gap:14px;background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.lp-timeline__tag{flex:0 0 auto;align-self:flex-start;background:var(--brand);color:#fff;
+  font-weight:700;font-size:.82rem;padding:6px 12px;border-radius:999px}
+.lp-timeline__item h3{margin:0 0 4px;font-size:1.05rem}
+.lp-timeline__item p{margin:0;color:var(--muted);font-size:.93rem}
+
+/* ---------- Entregáveis ---------- */
+.lp-deliverables{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.lp-deliverables li{display:flex;align-items:center;gap:12px;font-weight:500}
+.lp-check{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--ink);
+  font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+
+/* ---------- Vagas ---------- */
+.lp-spots{background:linear-gradient(90deg,var(--brand),#ff8a50);color:#fff;text-align:center}
+.lp-spots__text{margin:0;font-size:1.15rem;font-weight:700}
+
+/* ---------- Oferta / preço / form ---------- */
+.lp-offer{background:var(--bg-alt)}
+.lp-offer__grid{display:grid;gap:22px;grid-template-columns:1fr}
+.lp-price-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;box-shadow:var(--shadow)}
+.lp-price-box__label{display:block;color:var(--muted);font-size:.9rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.lp-price{margin:8px 0}
+.lp-price__old{color:var(--muted);text-decoration:line-through;font-size:1.1rem;margin-right:10px}
+.lp-price__value{font-size:2.3rem;font-weight:800;color:var(--ink)}
+.lp-price__value.is-discount{color:#1e8e3e}
+.lp-price-box__note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.lp-price-box__note.is-success{color:#1e8e3e;font-weight:600}
+
+.lp-coupon label{display:block;font-weight:600;margin-bottom:8px}
+.lp-coupon__row{display:flex;gap:8px}
+.lp-coupon__row input{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+  font-size:1rem;font-family:inherit;text-transform:uppercase}
+.lp-coupon__feedback{margin:10px 0 0;font-size:.9rem;min-height:1.2em}
+.lp-coupon__feedback.is-success{color:#1e8e3e;font-weight:600}
+.lp-coupon__feedback.is-error{color:#d93025}
+
+/* ---------- Form ---------- */
+.lp-form{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;box-shadow:var(--shadow)}
+.lp-field{margin-bottom:16px}
+.lp-field-row{display:grid;grid-template-columns:1fr;gap:0}
+.lp-field label{display:block;font-weight:600;margin-bottom:6px;font-size:.95rem}
+.lp-field input[type=text],.lp-field input[type=email],.lp-field input[type=tel]{
+  width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:1rem;font-family:inherit}
+.lp-field input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,87,34,.15)}
+.lp-field.has-error input{border-color:#d93025;background:#fff7f6}
+
+.lp-consent label{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.86rem;color:var(--muted);cursor:pointer}
+.lp-consent input{margin-top:3px;flex:0 0 auto;width:18px;height:18px;accent-color:var(--brand)}
+.lp-consent.has-error span{color:#d93025}
+
+.lp-form__feedback{min-height:1.2em;margin:4px 0 14px;font-size:.95rem}
+.lp-form__feedback.is-success{color:#1e8e3e;font-weight:600}
+.lp-form__feedback.is-error{color:#d93025;font-weight:600}
+
+/* honeypot oculto */
+.lp-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* checkout revelado */
+.lp-checkout{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}
+.lp-checkout__msg{margin:0 0 14px;font-weight:600;color:#1e8e3e}
+
+/* ---------- Transparência ---------- */
+.lp-transparency{background:var(--ink);color:var(--soft)}
+.lp-transparency .lp-h2{color:#fff}
+.lp-transparency ul{margin:0;padding-left:20px}
+.lp-transparency li{margin-bottom:8px}
+
+/* ---------- Footer ---------- */
+.lp-footer{background:var(--ink-2);color:var(--soft);text-align:center;padding:24px 0;font-size:.85rem}
+
+/* ============ Breakpoints ============ */
+@media (min-width:600px){
+  .lp-field-row{grid-template-columns:1fr 1fr;gap:14px}
+  .lp-grid{grid-template-columns:1fr 1fr}
+}
+@media (min-width:768px){
+  .lp-hero{padding:72px 0 80px}
+  .lp-hero__title{font-size:2.8rem}
+  .lp-h2{font-size:1.9rem}
+}
+@media (min-width:900px){
+  .lp-grid{grid-template-columns:1fr 1fr}
+  .lp-offer__grid{grid-template-columns:0.85fr 1.15fr;align-items:start}
+}
