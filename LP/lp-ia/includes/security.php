@@ -137,10 +137,18 @@ function lp_rate_limit(string $bucket, int $maxHits, int $windowSeconds): bool
 
 function lp_captcha_enabled(): bool
 {
+    // Controle ESPECIFICO da LP, independente do reCAPTCHA do app OKR.
+    // Default DESLIGADO: a LP protege-se com honeypot + rate limit. Ative com
+    // LP_CAPTCHA=on apenas se o front da LP injetar o token reCAPTCHA.
+    $flag = getenv('LP_CAPTCHA');
+    if ($flag === false || !in_array(strtolower((string) $flag), ['1', 'true', 'on', 'yes'], true)) {
+        return false;
+    }
     $provider = defined('CAPTCHA_PROVIDER') ? strtolower((string) CAPTCHA_PROVIDER) : 'off';
     $secret   = defined('CAPTCHA_SECRET') ? (string) CAPTCHA_SECRET : '';
     return $provider !== 'off' && $provider !== '' && $secret !== '';
 }
+
 
 /**
  * Verifica o token do reCAPTCHA quando habilitado. Se desabilitado, retorna true
