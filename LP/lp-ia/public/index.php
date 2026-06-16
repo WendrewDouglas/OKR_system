@@ -63,11 +63,10 @@ $agenda = [
 ];
 $entregaveis = [
     'Certificado de participação',
-    'Kit de prompts para financeiro',
-    'Modelo de checklist de contas a pagar',
-    'Modelo de régua de cobrança',
-    'Modelo simples de fluxo de caixa',
-    'Modelo de prompt para currículo e entrevista',
+    'Apostila com material didático',
+    'Kit de prompts para o financeiro',
+    'Coffee break',
+    'Acesso à comunidade de IA e Ciência de Dados',
 ];
 ?>
 <!doctype html>
