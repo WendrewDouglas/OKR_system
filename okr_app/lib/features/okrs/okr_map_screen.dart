@@ -7,6 +7,7 @@ import '../../core/utils/haptics.dart';
 import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
+import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/app_header.dart';
 
 // ---------------------------------------------------------------------------
@@ -42,27 +43,9 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
       appBar: const AppHeader(),
       body: cascata.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text(
-                'Erro ao carregar mapa OKR',
-                style: TextStyle(color: AppColors.red, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(okrCascataProvider);
-                },
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar mapa OKR',
+          onRetry: () => ref.invalidate(okrCascataProvider),
         ),
         data: (objetivos) {
           if (objetivos.isEmpty) {
@@ -185,20 +168,23 @@ Widget _deadlineDot(String? deadline) {
 String _statusLabel(String? status) => status ?? '';
 
 // ---------------------------------------------------------------------------
-// Pillar tile (Level 0)
+// Tile expansível reutilizável (chevron animado + expand/collapse).
+// Centraliza a lógica que era triplicada em pilar/objetivo/KR.
 // ---------------------------------------------------------------------------
 
-class _PillarTile extends StatefulWidget {
-  final String pillarName;
-  final List<Map<String, dynamic>> objetivos;
+class _ExpandableTile extends StatefulWidget {
+  /// Constrói o cabeçalho; recebe o callback de toggle e a animação do chevron.
+  final Widget Function(BuildContext context, VoidCallback toggle, Animation<double> chevronTurns) header;
+  /// Conteúdo expansível (só é construído quando aberto).
+  final WidgetBuilder children;
 
-  const _PillarTile({required this.pillarName, required this.objetivos});
+  const _ExpandableTile({required this.header, required this.children});
 
   @override
-  State<_PillarTile> createState() => _PillarTileState();
+  State<_ExpandableTile> createState() => _ExpandableTileState();
 }
 
-class _PillarTileState extends State<_PillarTile>
+class _ExpandableTileState extends State<_ExpandableTile>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
   late final AnimationController _chevronCtrl;
@@ -207,15 +193,10 @@ class _PillarTileState extends State<_PillarTile>
   @override
   void initState() {
     super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
+    _chevronCtrl = AnimationController(vsync: this, duration: AppDurations.normal);
+    _chevronTurns = Tween<double>(begin: 0.0, end: 0.25).animate(
+      CurvedAnimation(parent: _chevronCtrl, curve: AppCurves.defaultCurve),
     );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
   }
 
   @override
@@ -232,14 +213,41 @@ class _PillarTileState extends State<_PillarTile>
 
   @override
   Widget build(BuildContext context) {
-    final color = _pillarColor(widget.pillarName);
-    final icon = _pillarIcon(widget.pillarName);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        widget.header(context, _toggle, _chevronTurns),
+        AnimatedSize(
+          duration: AppDurations.normal,
+          curve: AppCurves.defaultCurve,
+          alignment: Alignment.topCenter,
+          child: _expanded ? widget.children(context) : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pillar tile (Level 0)
+// ---------------------------------------------------------------------------
+
+class _PillarTile extends StatelessWidget {
+  final String pillarName;
+  final List<Map<String, dynamic>> objetivos;
+
+  const _PillarTile({required this.pillarName, required this.objetivos});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _pillarColor(pillarName);
+    final icon = _pillarIcon(pillarName);
 
     // Aggregate counts
     int totalKrs = 0;
     int totalIniciativas = 0;
     String? earliestDeadline;
-    for (final obj in widget.objetivos) {
+    for (final obj in objetivos) {
       final krs =
           (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       totalKrs += krs.length;
@@ -264,98 +272,65 @@ class _PillarTileState extends State<_PillarTile>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Colored left border — stretches with content
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: color,
-              ),
-            ),
+            Container(width: 4, decoration: BoxDecoration(color: color)),
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header (tappable)
-                    InkWell(
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
-                      onTap: _toggle,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 14),
-                        child: Row(
-                          children: [
-                            Icon(icon, color: color, size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.pillarName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${widget.objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
-                                    style: const TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+              child: _ExpandableTile(
+                header: (context, toggle, turns) => InkWell(
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  onTap: toggle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: color, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pillarName,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                               ),
-                            ),
-                            _deadlineDot(earliestDeadline),
-                            const SizedBox(width: 8),
-                            RotationTransition(
-                              turns: _chevronTurns,
-                              child: const Icon(
-                                Icons.chevron_right,
-                                color: AppColors.textMuted,
-                                size: 22,
+                              const SizedBox(height: 4),
+                              Text(
+                                '${objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        _deadlineDot(earliestDeadline),
+                        const SizedBox(width: 8),
+                        RotationTransition(
+                          turns: turns,
+                          child: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 22),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                children: (context) => Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                  child: Column(
+                    children: [
+                      Container(height: 0.5, color: AppColors.borderDefault),
+                      const SizedBox(height: 8),
+                      ...List.generate(
+                        objetivos.length,
+                        (i) => _ObjetivoTile(obj: objetivos[i]),
                       ),
-                    ),
-                    // Expandable children
-                    AnimatedSize(
-                      duration: AppDurations.normal,
-                      curve: AppCurves.defaultCurve,
-                      alignment: Alignment.topCenter,
-                      child: _expanded
-                          ? Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 12, right: 12, bottom: 12),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    height: 0.5,
-                                    color: AppColors.borderDefault,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ...List.generate(
-                                    widget.objetivos.length,
-                                    (i) => _ObjetivoTile(
-                                        obj: widget.objetivos[i]),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -364,56 +339,17 @@ class _PillarTileState extends State<_PillarTile>
 // Objetivo tile (Level 1)
 // ---------------------------------------------------------------------------
 
-class _ObjetivoTile extends StatefulWidget {
+class _ObjetivoTile extends StatelessWidget {
   final Map<String, dynamic> obj;
   const _ObjetivoTile({required this.obj});
 
   @override
-  State<_ObjetivoTile> createState() => _ObjetivoTileState();
-}
-
-class _ObjetivoTileState extends State<_ObjetivoTile>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
-  late final AnimationController _chevronCtrl;
-  late final Animation<double> _chevronTurns;
-
-  @override
-  void initState() {
-    super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
-    );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
-  }
-
-  @override
-  void dispose() {
-    _chevronCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    AppHaptics.selection();
-    setState(() => _expanded = !_expanded);
-    _expanded ? _chevronCtrl.forward() : _chevronCtrl.reverse();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final desc = widget.obj['descricao'] ?? '';
-    final status = _statusLabel(widget.obj['status'] as String?);
-    final deadline = widget.obj['dt_prazo'] as String?;
-    final dono =
-        (widget.obj['dono'] as Map<String, dynamic>?)?['nome'] ?? '';
-    final krs = (widget.obj['key_results'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final desc = obj['descricao'] ?? '';
+    final status = _statusLabel(obj['status'] as String?);
+    final deadline = obj['dt_prazo'] as String?;
+    final dono = (obj['dono'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final krs = (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -422,112 +358,81 @@ class _ObjetivoTileState extends State<_ObjetivoTile>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderDefault, width: 0.5),
       ),
-      child: Column(
-        children: [
-          // Header row
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _toggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.flag_outlined,
-                      size: 16, color: AppColors.gold),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          desc,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            _deadlineDot(deadline),
-                            const SizedBox(width: 4),
-                            Text(
-                              status,
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 11,
-                              ),
+      child: _ExpandableTile(
+        header: (context, toggle, turns) => InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.flag_outlined, size: 16, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        desc,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          _deadlineDot(deadline),
+                          const SizedBox(width: 4),
+                          Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                          if (dono.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            const Icon(Icons.person_outline, size: 12, color: AppColors.textMuted),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(dono,
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis),
                             ),
-                            if (dono.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              const Icon(Icons.person_outline,
-                                  size: 12, color: AppColors.textMuted),
-                              const SizedBox(width: 2),
-                              Flexible(
-                                child: Text(
-                                  dono,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  // Tap to navigate
-                  GestureDetector(
-                    onTap: () {
-                      AppHaptics.light();
-                      context.push('/okrs/${widget.obj['id_objetivo']}');
-                    },
-                    child: const Icon(Icons.open_in_new,
-                        size: 16, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                // Tap to navigate
+                GestureDetector(
+                  onTap: () {
+                    AppHaptics.light();
+                    context.push('/okrs/${obj['id_objetivo']}');
+                  },
+                  child: const Icon(Icons.open_in_new, size: 16, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 6),
+                if (krs.isNotEmpty)
+                  RotationTransition(
+                    turns: turns,
+                    child: const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
                   ),
-                  const SizedBox(width: 6),
-                  if (krs.isNotEmpty)
-                    RotationTransition(
-                      turns: _chevronTurns,
-                      child: const Icon(Icons.chevron_right,
-                          size: 18, color: AppColors.textMuted),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
-          // KR children
-          AnimatedSize(
-            duration: AppDurations.normal,
-            curve: AppCurves.defaultCurve,
-            alignment: Alignment.topCenter,
-            child: _expanded && krs.isNotEmpty
-                ? Padding(
-                    padding:
-                        const EdgeInsets.only(left: 16, right: 8, bottom: 8),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          color: AppColors.borderDefault,
-                        ),
-                        ...List.generate(
-                          krs.length,
-                          (i) => _KrTile(kr: krs[i]),
-                        ),
-                      ],
+        ),
+        children: (context) => krs.isEmpty
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.only(left: 16, right: 8, bottom: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 0.5,
+                      margin: const EdgeInsets.only(bottom: 6),
+                      color: AppColors.borderDefault,
                     ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+                    ...List.generate(krs.length, (i) => _KrTile(kr: krs[i])),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -537,45 +442,9 @@ class _ObjetivoTileState extends State<_ObjetivoTile>
 // KR tile (Level 2)
 // ---------------------------------------------------------------------------
 
-class _KrTile extends StatefulWidget {
+class _KrTile extends StatelessWidget {
   final Map<String, dynamic> kr;
   const _KrTile({required this.kr});
-
-  @override
-  State<_KrTile> createState() => _KrTileState();
-}
-
-class _KrTileState extends State<_KrTile>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
-  late final AnimationController _chevronCtrl;
-  late final Animation<double> _chevronTurns;
-
-  @override
-  void initState() {
-    super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
-    );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
-  }
-
-  @override
-  void dispose() {
-    _chevronCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    AppHaptics.selection();
-    setState(() => _expanded = !_expanded);
-    _expanded ? _chevronCtrl.forward() : _chevronCtrl.reverse();
-  }
 
   Color _farolColor(String? farol) {
     switch (farol?.toLowerCase()) {
@@ -592,131 +461,97 @@ class _KrTileState extends State<_KrTile>
 
   @override
   Widget build(BuildContext context) {
-    final desc = widget.kr['descricao'] ?? '';
-    final status = _statusLabel(widget.kr['status'] as String?);
-    final farol = widget.kr['farol'] as String?;
-    final deadline = widget.kr['data_fim'] as String?;
-    final responsavel =
-        (widget.kr['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
-    final iniciativas = (widget.kr['iniciativas'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final desc = kr['descricao'] ?? '';
+    final status = _statusLabel(kr['status'] as String?);
+    final farol = kr['farol'] as String?;
+    final deadline = kr['data_fim'] as String?;
+    final responsavel = (kr['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final iniciativas = (kr['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border(
-          left: BorderSide(color: _farolColor(farol), width: 3),
-        ),
+        border: Border(left: BorderSide(color: _farolColor(farol), width: 3)),
       ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: _toggle,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.track_changes,
-                      size: 14, color: _farolColor(farol)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          desc,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            _deadlineDot(deadline),
-                            const SizedBox(width: 4),
-                            Text(
-                              status,
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 10,
-                              ),
+      child: _ExpandableTile(
+        header: (context, toggle, turns) => InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.track_changes, size: 14, color: _farolColor(farol)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        desc,
+                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          _deadlineDot(deadline),
+                          const SizedBox(width: 4),
+                          Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                          if (responsavel.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.person_outline, size: 10, color: AppColors.textMuted),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(responsavel,
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                                  overflow: TextOverflow.ellipsis),
                             ),
-                            if (responsavel.isNotEmpty) ...[
-                              const SizedBox(width: 6),
-                              const Icon(Icons.person_outline,
-                                  size: 10, color: AppColors.textMuted),
-                              const SizedBox(width: 2),
-                              Flexible(
-                                child: Text(
-                                  responsavel,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 10,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () {
-                      AppHaptics.light();
-                      context.push('/krs/${widget.kr['id_kr']}');
-                    },
-                    child: const Icon(Icons.open_in_new,
-                        size: 14, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    AppHaptics.light();
+                    context.push('/krs/${kr['id_kr']}');
+                  },
+                  child: const Icon(Icons.open_in_new, size: 14, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                if (iniciativas.isNotEmpty)
+                  RotationTransition(
+                    turns: turns,
+                    child: const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
                   ),
-                  const SizedBox(width: 4),
-                  if (iniciativas.isNotEmpty)
-                    RotationTransition(
-                      turns: _chevronTurns,
-                      child: const Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.textMuted),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
-          // Iniciativa children
-          AnimatedSize(
-            duration: AppDurations.normal,
-            curve: AppCurves.defaultCurve,
-            alignment: Alignment.topCenter,
-            child: _expanded && iniciativas.isNotEmpty
-                ? Padding(
-                    padding: const EdgeInsets.only(
-                        left: 14, right: 6, bottom: 6),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.only(bottom: 4),
-                          color: AppColors.borderDefault,
-                        ),
-                        ...List.generate(
-                          iniciativas.length,
-                          (i) =>
-                              _IniciativaTile(iniciativa: iniciativas[i]),
-                        ),
-                      ],
+        ),
+        children: (context) => iniciativas.isEmpty
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.only(left: 14, right: 6, bottom: 6),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 0.5,
+                      margin: const EdgeInsets.only(bottom: 4),
+                      color: AppColors.borderDefault,
                     ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+                    ...List.generate(
+                      iniciativas.length,
+                      (i) => _IniciativaTile(iniciativa: iniciativas[i]),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
