@@ -372,9 +372,16 @@ envelope padrão (`api_ok`) e com RBAC.
   (KR/iniciativa/milestone), totais. Espelha `views/system_health.php`.
 - Testes de contrato: `tests/Integration/Api/AdminEndpointsTest.php` (env-driven, skip sem master).
 
-### 13.2 Lotes seguintes (pendentes)
+### 13.2 Lote 3 — Relatórios/PDF ✅ (2026-06-16)
+- **PDF de objetivo**: `GET /objetivos/:id/relatorio` → `application/pdf` (Dompdf).
+  Reaproveita a lógica do web (`auth/relatorio_gerarpdf.php`), mas adiciona **auth +
+  isolamento de tenant + RBAC `R:relatorio@ORG`** (o web não tinha tenant check).
+- Teste de contrato: `tests/Integration/Api/RelatorioPdfTest.php` (valida `%PDF` + 403/404).
+- ⚠️ Geração de PDF não é testável em CI sem servidor/banco — validar em ambiente de teste.
+
+### 13.3 Lotes seguintes (pendentes)
 - **Missão/Visão multi-empresa** + reset de estilo (`DELETE /company/style`).
-- **Relatórios / PDF** (`GET /relatorios/okrs` → dompdf; recurso RBAC `relatorio` já reservado).
+- **Relatório consolidado / lote** (vários objetivos) e/ou versão **JSON** do relatório para a UI.
 - **Matriz de prioridade** (`GET /matriz-prioridade`).
 - **Push**: criar/editar/disparar campanha (`POST/PUT /push/campaigns`, `POST /push/campaigns/:id/send`).
-- Em seguida, **consumo no app** (F2) das telas de admin/analítico.
+- Em seguida, **consumo no app** (F2) das telas de admin/analítico/relatório.

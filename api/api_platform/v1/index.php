@@ -68,6 +68,7 @@ $routes = [
   ['GET',    'objetivos/:id',          'objetivos/get.php'],
   ['PUT',    'objetivos/:id',          'objetivos/update.php'],
   ['DELETE', 'objetivos/:id',          'objetivos/delete.php'],
+  ['GET',    'objetivos/:id/relatorio', 'relatorios/objetivo_pdf.php'],
 
   // Key Results (nested under objetivo for listing)
   ['GET',    'objetivos/:id_objetivo/krs', 'krs/list.php'],
