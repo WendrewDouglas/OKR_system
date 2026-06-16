@@ -5,38 +5,25 @@ import '../../core/utils/haptics.dart';
 import '../shared/widgets/carbon_fiber_bg.dart';
 
 class AppShell extends StatelessWidget {
-  final Widget child;
-  const AppShell({super.key, required this.child});
+  /// Shell com estado por aba (StatefulShellRoute.indexedStack) — preserva
+  /// scroll/estado de cada aba ao alternar entre elas.
+  final StatefulNavigationShell navigationShell;
+  const AppShell({super.key, required this.navigationShell});
 
-  int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/okrs')) return 0;
-    if (location.startsWith('/responsaveis')) return 1;
-    if (location.startsWith('/tarefas')) return 2;
-    if (location.startsWith('/orcamento')) return 3;
-    if (location.startsWith('/menu')) return 4;
-    return 0;
-  }
-
-  void _onTap(BuildContext context, int i) {
+  void _onTap(int i) {
     AppHaptics.selection();
-    switch (i) {
-      case 0: context.go('/okrs');
-      case 1: context.go('/responsaveis');
-      case 2: context.go('/tarefas');
-      case 3: context.go('/orcamento');
-      case 4: context.go('/menu');
-    }
+    // Tocar na aba ativa volta para a raiz dela (initialLocation).
+    navigationShell.goBranch(i, initialLocation: i == navigationShell.currentIndex);
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = _currentIndex(context);
+    final current = navigationShell.currentIndex;
 
     return CarbonFiberBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: child,
+        body: navigationShell,
         bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.bgCard,
@@ -55,19 +42,19 @@ class AppShell extends StatelessWidget {
                   activeIcon: Icons.account_tree,
                   label: 'OKRs',
                   isActive: current == 0,
-                  onTap: () => _onTap(context, 0),
+                  onTap: () => _onTap(0),
                 ),
                 _NavItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
                   label: 'Responsáveis',
                   isActive: current == 1,
-                  onTap: () => _onTap(context, 1),
+                  onTap: () => _onTap(1),
                 ),
                 // Center button — Minhas Tarefas
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _onTap(context, 2),
+                    onTap: () => _onTap(2),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -106,14 +93,14 @@ class AppShell extends StatelessWidget {
                   activeIcon: Icons.account_balance_wallet,
                   label: 'Orçamento',
                   isActive: current == 3,
-                  onTap: () => _onTap(context, 3),
+                  onTap: () => _onTap(3),
                 ),
                 _NavItem(
                   icon: Icons.menu,
                   activeIcon: Icons.menu,
                   label: 'Menu',
                   isActive: current == 4,
-                  onTap: () => _onTap(context, 4),
+                  onTap: () => _onTap(4),
                 ),
               ],
             ),
