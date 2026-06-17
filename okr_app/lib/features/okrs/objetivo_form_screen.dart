@@ -31,8 +31,23 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   bool _isLoading = false;
   bool _isLoadingEdit = true;
 
-  String? _cicloPersInicio;
-  String? _cicloPersFim;
+  // Sub-seleções de ciclo (formatos esperados por calcularDatasCiclo no backend).
+  String? _cicloAnualAno;        // "2026"
+  String? _cicloSemestral;       // "S1/2026"
+  String? _cicloTrimestral;      // "Q1/2026"
+  String? _cicloBimestral;       // "01-02-2026"
+  int? _cicloMensalMes;          // 1..12
+  String? _cicloMensalAno;       // "2026"
+  String? _cicloPersInicio;      // "2026-03"
+  String? _cicloPersFim;         // "2026-06"
+
+  static const List<String> _meses = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+  ];
+  List<int> get _anos {
+    final y = DateTime.now().year;
+    return [for (int a = y - 1; a <= y + 3; a++) a];
+  }
 
   bool get isEditing => widget.idObjetivo != null;
 
@@ -85,19 +100,26 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
       );
       return;
     }
+    // No cadastro, o backend calcula dt_inicio/dt_prazo a partir do detalhe do
+    // ciclo (calcularDatasCiclo) — então o detalhe é obrigatório ao criar.
+    if (!isEditing && !_cicloParamPreenchido()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha o detalhe do ciclo selecionado.')),
+      );
+      return;
+    }
 
     AppHaptics.medium();
     setState(() => _isLoading = true);
     try {
-      final body = {
+      final body = <String, dynamic>{
         'descricao': _descricaoCtrl.text.trim(),
         'pilar_bsc': _pilarBsc,
         'tipo_objetivo': _tipoObjetivo ?? '',
         'ciclo_tipo': _cicloTipo,
         'observacoes': _observacoesCtrl.text.trim(),
         if (_donoId != null) 'dono': _donoId,
-        if (_cicloPersInicio != null) 'ciclo_pers_inicio': _cicloPersInicio,
-        if (_cicloPersFim != null) 'ciclo_pers_fim': _cicloPersFim,
+        ..._cicloParams(),
       };
 
       final repo = ref.read(objetivoRepositoryProvider);
@@ -119,6 +141,184 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
+    }
+  }
+
+  /// Primeiro valor não-vazio dentre [keys] em um item de domínio.
+  /// As tabelas dom_* têm nomes de coluna específicos (id_pilar, id_tipo,
+  /// nome_ciclo, descricao_exibicao); este helper resolve com fallback.
+  String _domVal(Map<String, dynamic> m, List<String> keys) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v != null && v.toString().isNotEmpty) return v.toString();
+    }
+    return '';
+  }
+
+  /// O detalhe do ciclo selecionado foi preenchido?
+  bool _cicloParamPreenchido() {
+    switch (_cicloTipo) {
+      case 'anual':
+        return _cicloAnualAno != null;
+      case 'semestral':
+        return _cicloSemestral != null;
+      case 'trimestral':
+        return _cicloTrimestral != null;
+      case 'bimestral':
+        return _cicloBimestral != null;
+      case 'mensal':
+        return _cicloMensalMes != null && _cicloMensalAno != null;
+      case 'personalizado':
+        return _cicloPersInicio != null && _cicloPersFim != null;
+      default:
+        return true; // tipo sem detalhe específico
+    }
+  }
+
+  /// Parâmetros de ciclo no formato que o backend (calcularDatasCiclo) espera.
+  Map<String, dynamic> _cicloParams() {
+    switch (_cicloTipo) {
+      case 'anual':
+        return {if (_cicloAnualAno != null) 'ciclo_anual_ano': _cicloAnualAno};
+      case 'semestral':
+        return {if (_cicloSemestral != null) 'ciclo_semestral': _cicloSemestral};
+      case 'trimestral':
+        return {if (_cicloTrimestral != null) 'ciclo_trimestral': _cicloTrimestral};
+      case 'bimestral':
+        return {if (_cicloBimestral != null) 'ciclo_bimestral': _cicloBimestral};
+      case 'mensal':
+        return {
+          if (_cicloMensalMes != null) 'ciclo_mensal_mes': _cicloMensalMes,
+          if (_cicloMensalAno != null) 'ciclo_mensal_ano': _cicloMensalAno,
+        };
+      case 'personalizado':
+        return {
+          if (_cicloPersInicio != null) 'ciclo_pers_inicio': _cicloPersInicio,
+          if (_cicloPersFim != null) 'ciclo_pers_fim': _cicloPersFim,
+        };
+      default:
+        return {};
+    }
+  }
+
+  void _resetCicloParams() {
+    _cicloAnualAno = null;
+    _cicloSemestral = null;
+    _cicloTrimestral = null;
+    _cicloBimestral = null;
+    _cicloMensalMes = null;
+    _cicloMensalAno = null;
+    _cicloPersInicio = null;
+    _cicloPersFim = null;
+    _persInicioCtrl.clear();
+    _persFimCtrl.clear();
+  }
+
+  Future<void> _pickMonth(TextEditingController ctrl, ValueChanged<String> onPicked) async {
+    final now = DateTime.now();
+    final dt = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 3, 12),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (dt != null) {
+      final ym = '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+      onPicked(ym);
+      ctrl.text = '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    }
+  }
+
+  /// Sub-seletor de ciclo conforme o tipo escolhido (paridade com o web).
+  Widget _buildCicloParam() {
+    switch (_cicloTipo) {
+      case 'anual':
+        return DropdownButtonFormField<String>(
+          initialValue: _cicloAnualAno,
+          decoration: const InputDecoration(labelText: 'Ano *'),
+          items: _anos.map((a) => DropdownMenuItem(value: '$a', child: Text('$a'))).toList(),
+          onChanged: (v) => setState(() => _cicloAnualAno = v),
+        );
+      case 'semestral':
+        final opts = [for (final a in _anos) for (final s in [1, 2]) 'S$s/$a'];
+        return DropdownButtonFormField<String>(
+          initialValue: _cicloSemestral,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Semestre *'),
+          items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          onChanged: (v) => setState(() => _cicloSemestral = v),
+        );
+      case 'trimestral':
+        final opts = [for (final a in _anos) for (final q in [1, 2, 3, 4]) 'Q$q/$a'];
+        return DropdownButtonFormField<String>(
+          initialValue: _cicloTrimestral,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Trimestre *'),
+          items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          onChanged: (v) => setState(() => _cicloTrimestral = v),
+        );
+      case 'bimestral':
+        const pairs = [['01', '02'], ['03', '04'], ['05', '06'], ['07', '08'], ['09', '10'], ['11', '12']];
+        final opts = <MapEntry<String, String>>[];
+        for (final a in _anos) {
+          for (final p in pairs) {
+            final value = '${p[0]}-${p[1]}-$a';
+            final label = '${_meses[int.parse(p[0]) - 1]}–${_meses[int.parse(p[1]) - 1]}/$a';
+            opts.add(MapEntry(value, label));
+          }
+        }
+        return DropdownButtonFormField<String>(
+          initialValue: _cicloBimestral,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Bimestre *'),
+          items: opts.map((o) => DropdownMenuItem(value: o.key, child: Text(o.value))).toList(),
+          onChanged: (v) => setState(() => _cicloBimestral = v),
+        );
+      case 'mensal':
+        return Row(children: [
+          Expanded(
+            child: DropdownButtonFormField<int>(
+              initialValue: _cicloMensalMes,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Mês *'),
+              items: [for (int m = 1; m <= 12; m++) DropdownMenuItem(value: m, child: Text(_meses[m - 1]))],
+              onChanged: (v) => setState(() => _cicloMensalMes = v),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _cicloMensalAno,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Ano *'),
+              items: _anos.map((a) => DropdownMenuItem(value: '$a', child: Text('$a'))).toList(),
+              onChanged: (v) => setState(() => _cicloMensalAno = v),
+            ),
+          ),
+        ]);
+      case 'personalizado':
+        return Row(children: [
+          Expanded(
+            child: TextFormField(
+              decoration: const InputDecoration(labelText: 'Mês início'),
+              readOnly: true,
+              controller: _persInicioCtrl,
+              onTap: () => _pickMonth(_persInicioCtrl, (ym) => setState(() => _cicloPersInicio = ym)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              decoration: const InputDecoration(labelText: 'Mês fim'),
+              readOnly: true,
+              controller: _persFimCtrl,
+              onTap: () => _pickMonth(_persFimCtrl, (ym) => setState(() => _cicloPersFim = ym)),
+            ),
+          ),
+        ]);
+      default:
+        return const SizedBox.shrink();
     }
   }
 
@@ -152,9 +352,9 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                       initialValue: _pilarBsc,
                       decoration: const InputDecoration(labelText: 'Pilar BSC *'),
                       items: items.map((p) {
-                        final label = p['descricao_exibicao'] ?? p['descricao'] ?? p['pilar_bsc'] ?? '';
-                        final value = p['pilar_bsc'] ?? p['id'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(p, ['id_pilar', 'pilar_bsc', 'id']);
+                        final label = _domVal(p, ['descricao_exibicao', 'descricao', 'id_pilar']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _pilarBsc = v),
                       validator: (v) => v == null ? 'Obrigatório' : null,
@@ -168,9 +368,9 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                       initialValue: _tipoObjetivo,
                       decoration: const InputDecoration(labelText: 'Tipo de Objetivo'),
                       items: items.map((t) {
-                        final label = t['descricao'] ?? t['tipo_objetivo'] ?? '';
-                        final value = t['tipo_objetivo'] ?? t['id'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(t, ['id_tipo', 'tipo_objetivo', 'id']);
+                        final label = _domVal(t, ['descricao_exibicao', 'descricao', 'id_tipo']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _tipoObjetivo = v),
                     ),
@@ -183,59 +383,22 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                       initialValue: _cicloTipo,
                       decoration: const InputDecoration(labelText: 'Ciclo *'),
                       items: items.map((c) {
-                        final label = c['descricao'] ?? c['ciclo_tipo'] ?? '';
-                        final value = c['ciclo_tipo'] ?? c['id'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(c, ['nome_ciclo', 'ciclo_tipo', 'id_ciclo']);
+                        final label = _domVal(c, ['descricao', 'nome_ciclo']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
-                      onChanged: (v) => setState(() => _cicloTipo = v),
+                      onChanged: (v) => setState(() {
+                        _cicloTipo = v;
+                        _resetCicloParams(); // trocar o tipo limpa o detalhe anterior
+                      }),
                       validator: (v) => v == null ? 'Obrigatório' : null,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  if (_cicloTipo == 'personalizado') ...[
-                    Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          decoration: const InputDecoration(labelText: 'Data Início'),
-                          readOnly: true,
-                          controller: _persInicioCtrl,
-                          onTap: () async {
-                            final dt = await showDatePicker(
-                              context: context,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2030),
-                            );
-                            if (dt != null) {
-                              final s = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-                              setState(() => _cicloPersInicio = s);
-                              _persInicioCtrl.text = s;
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          decoration: const InputDecoration(labelText: 'Data Fim'),
-                          readOnly: true,
-                          controller: _persFimCtrl,
-                          onTap: () async {
-                            final dt = await showDatePicker(
-                              context: context,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2030),
-                            );
-                            if (dt != null) {
-                              final s = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-                              setState(() => _cicloPersFim = s);
-                              _persFimCtrl.text = s;
-                            }
-                          },
-                        ),
-                      ),
-                    ]),
+                  if (_cicloTipo != null) ...[
                     const SizedBox(height: 16),
+                    _buildCicloParam(),
                   ],
+                  const SizedBox(height: 16),
                   responsaveis.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const SizedBox.shrink(),

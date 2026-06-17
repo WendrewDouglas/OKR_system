@@ -41,6 +41,16 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const AppHeader(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          AppHaptics.medium();
+          // A API exige a cap W:objetivo@ORG; quem não tiver recebe 403 no submit.
+          final created = await context.push('/okrs/novo');
+          if (created == true) ref.invalidate(okrCascataProvider);
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Novo Objetivo'),
+      ),
       body: cascata.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(
