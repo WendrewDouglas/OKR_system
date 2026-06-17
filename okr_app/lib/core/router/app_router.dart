@@ -150,7 +150,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => slideUpTransitionPage(child: KrFormScreen(idObjetivo: state.pathParameters['idObj']!)),
       ),
 
-      // KR — detalhe/forms
+      // KR — detalhe/forms ('novo' antes de ':id' para não ser capturado como id)
+      GoRoute(path: '/krs/novo', pageBuilder: (_, __) => slideUpTransitionPage(child: const KrFormScreen())),
       GoRoute(
         path: '/krs/:id',
         pageBuilder: (_, state) => slideUpTransitionPage(child: KrDetailScreen(idKr: state.pathParameters['id']!)),

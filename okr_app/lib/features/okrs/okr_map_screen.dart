@@ -34,6 +34,16 @@ class OkrMapScreen extends ConsumerStatefulWidget {
 }
 
 class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
+  bool _fabOpen = false;
+
+  Future<void> _abrir(String rota) async {
+    setState(() => _fabOpen = false);
+    AppHaptics.light();
+    // A API exige W:objetivo@ORG / W:kr@ORG; quem não tiver recebe 403 no submit.
+    final created = await context.push(rota);
+    if (created == true) ref.invalidate(okrCascataProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cascata = ref.watch(okrCascataProvider);
@@ -41,17 +51,40 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const AppHeader(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          AppHaptics.medium();
-          // A API exige a cap W:objetivo@ORG; quem não tiver recebe 403 no submit.
-          final created = await context.push('/okrs/novo');
-          if (created == true) ref.invalidate(okrCascataProvider);
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Novo Objetivo'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_fabOpen) ...[
+            _SpeedDialAction(
+              label: 'Novo Objetivo',
+              icon: Icons.flag_outlined,
+              onTap: () => _abrir('/okrs/novo'),
+            ),
+            const SizedBox(height: 12),
+            _SpeedDialAction(
+              label: 'Novo KR',
+              icon: Icons.trending_up,
+              onTap: () => _abrir('/krs/novo'),
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton(
+            onPressed: () {
+              AppHaptics.medium();
+              setState(() => _fabOpen = !_fabOpen);
+            },
+            child: AnimatedRotation(
+              turns: _fabOpen ? 0.125 : 0, // "+" gira para "x" quando aberto
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
       ),
-      body: cascata.when(
+      body: Stack(
+        children: [
+          cascata.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(
           message: 'Erro ao carregar mapa OKR',
@@ -126,7 +159,50 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
             ),
           );
         },
+          ),
+          // Scrim: fecha o menu ao tocar fora.
+          if (_fabOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _fabOpen = false),
+                child: const ColoredBox(color: Colors.black54),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+}
+
+/// Ação do speed-dial: rótulo + mini-FAB (usado no menu do botão "+").
+class _SpeedDialAction extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _SpeedDialAction({required this.label, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.borderDefault, width: 0.5),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 6)],
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(width: 12),
+        FloatingActionButton.small(
+          heroTag: 'speeddial_$label',
+          onPressed: onTap,
+          child: Icon(icon),
+        ),
+      ],
     );
   }
 }

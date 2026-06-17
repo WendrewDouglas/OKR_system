@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
+import '../../core/models/models.dart';
 import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/app_scaffold.dart';
+
+/// Objetivos disponíveis para vincular um novo KR (seleção no topo do form
+/// quando ele é aberto sem um objetivo-pai, como no "Novo KR" do botão +).
+final _objetivosParaKrProvider = FutureProvider.autoDispose<List<Objetivo>>((ref) async {
+  final paged = await ref.read(objetivoRepositoryProvider).list(perPage: 200);
+  return paged.items;
+});
 
 class KrFormScreen extends ConsumerStatefulWidget {
   final String? idKr;
@@ -31,12 +39,25 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   String? _freqMilestone;
   String? _cicloTipo;
   int? _responsavelId;
+  String? _selectedObjetivoId;
   bool _autoMilestones = true;
   bool _isLoading = false;
   bool _isLoadingEdit = true;
 
   bool get isEditing => widget.idKr != null;
-  String get _idObjetivo => widget.idObjetivo ?? '';
+  /// Mostra o seletor de objetivo quando o form é aberto sem um objetivo-pai.
+  bool get _precisaSelecionarObjetivo => !isEditing && widget.idObjetivo == null;
+  String get _idObjetivo => widget.idObjetivo ?? _selectedObjetivoId ?? '';
+
+  /// Primeiro valor não-vazio dentre [keys] (as tabelas dom_* têm nomes de
+  /// coluna específicos: id_natureza, id_tipo, id_frequencia, nome_ciclo...).
+  String _domVal(Map<String, dynamic> m, List<String> keys) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v != null && v.toString().isNotEmpty) return v.toString();
+    }
+    return '';
+  }
 
   @override
   void initState() {
@@ -143,6 +164,27 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // 1º campo (como no web): vincular o KR a um objetivo existente.
+                  if (_precisaSelecionarObjetivo) ...[
+                    ref.watch(_objetivosParaKrProvider).when(
+                      loading: () => const LinearProgressIndicator(),
+                      error: (_, __) => const Text('Erro ao carregar objetivos'),
+                      data: (objs) => DropdownButtonFormField<String>(
+                        initialValue: _selectedObjetivoId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Objetivo *'),
+                        items: objs
+                            .map((o) => DropdownMenuItem(
+                                  value: o.idObjetivo,
+                                  child: Text(o.descricao, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _selectedObjetivoId = v),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Selecione o objetivo' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextFormField(
                     controller: _descricaoCtrl,
                     maxLines: 2,
@@ -198,9 +240,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       initialValue: _naturezaKr,
                       decoration: const InputDecoration(labelText: 'Natureza do KR'),
                       items: items.map((n) {
-                        final label = n['descricao'] ?? n['natureza_kr'] ?? '';
-                        final value = n['natureza_kr'] ?? n['slug'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(n, ['id_natureza', 'natureza_kr', 'slug']);
+                        final label = _domVal(n, ['descricao_exibicao', 'descricao', 'id_natureza']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _naturezaKr = v),
                     ),
@@ -213,9 +255,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       initialValue: _tipoKr,
                       decoration: const InputDecoration(labelText: 'Tipo do KR'),
                       items: items.map((t) {
-                        final label = t['descricao'] ?? t['tipo_kr'] ?? '';
-                        final value = t['tipo_kr'] ?? t['slug'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(t, ['id_tipo', 'tipo_kr', 'slug']);
+                        final label = _domVal(t, ['descricao_exibicao', 'descricao', 'id_tipo']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _tipoKr = v),
                     ),
@@ -228,9 +270,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       initialValue: _freqMilestone,
                       decoration: const InputDecoration(labelText: 'Frequência Milestones'),
                       items: items.map((f) {
-                        final label = f['descricao'] ?? f['tipo_frequencia'] ?? '';
-                        final value = f['tipo_frequencia'] ?? f['slug'] ?? label;
-                        return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                        final value = _domVal(f, ['id_frequencia', 'tipo_frequencia', 'slug']);
+                        final label = _domVal(f, ['descricao_exibicao', 'descricao', 'id_frequencia']);
+                        return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _freqMilestone = v),
                     ),
@@ -244,9 +286,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                         initialValue: _cicloTipo,
                         decoration: const InputDecoration(labelText: 'Ciclo'),
                         items: items.map((c) {
-                          final label = c['descricao'] ?? c['ciclo_tipo'] ?? '';
-                          final value = c['ciclo_tipo'] ?? c['id'] ?? label;
-                          return DropdownMenuItem(value: value.toString(), child: Text(label.toString()));
+                          final value = _domVal(c, ['nome_ciclo', 'ciclo_tipo', 'id_ciclo']);
+                          final label = _domVal(c, ['descricao', 'nome_ciclo']);
+                          return DropdownMenuItem(value: value, child: Text(label));
                         }).toList(),
                         onChanged: (v) => setState(() => _cicloTipo = v),
                       ),
