@@ -50,16 +50,16 @@ if ($cicloTipo !== '' && ($dtInicio === '' || $dtFim === '')) {
   [$dtInicio, $dtFim] = calcularDatasCiclo($cicloTipo, $in);
 }
 
-// Normaliza a natureza para o slug canônico (mesma função do web).
+// natureza_kr precisa ser um id_natureza válido (FK dom_natureza_kr). Guardamos
+// o valor cru enviado (ex.: 'acumulativo', 'binario'); a normalização para o
+// slug canônico ('acumulativo_constante'...) ocorre DENTRO de
+// gerarMilestonesParaKR (via _slugify_nat), só para o cálculo — sem afetar o
+// que é gravado nem violar a FK.
 api_load_helper('auth/helpers/kr_helpers.php');
-if (function_exists('inferirNaturezaSlug')) {
-  $natureza = inferirNaturezaSlug($pdo, $natureza !== '' ? $natureza : 'acumulativo_constante');
-} elseif ($natureza === '') {
-  $natureza = 'acumulativo_constante';
-}
+if ($natureza === '') $natureza = 'acumulativo'; // default = acumulativo (constante)
 
-// For binary: coerce baseline/meta
-if ($natureza === 'binario') {
+// Binário: fixa baseline/meta
+if (in_array(strtolower($natureza), ['binario', 'binaria'], true)) {
   $base = 0;
   $meta = 1;
 }
