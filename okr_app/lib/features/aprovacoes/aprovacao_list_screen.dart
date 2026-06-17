@@ -53,6 +53,9 @@ class AprovacaoListScreen extends ConsumerWidget {
                   Text('Para aprovar', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   ...List.generate(paraAprovar.length, (i) => StaggeredFadeSlide(
+                    // Key por identidade do item: ao aprovar/reprovar, o card que
+                    // sai é descartado (e não tem seu State reciclado no vizinho).
+                    key: ValueKey('aprovar:${paraAprovar[i].modulo}:${paraAprovar[i].idRef}'),
                     index: i,
                     child: _AprovacaoCard(item: paraAprovar[i], isAction: true),
                   )),
@@ -62,6 +65,7 @@ class AprovacaoListScreen extends ConsumerWidget {
                   Text('Minhas pendências', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   ...List.generate(minhas.length, (i) => StaggeredFadeSlide(
+                    key: ValueKey('minha:${minhas[i].modulo}:${minhas[i].idRef}'),
                     index: paraAprovar.length + i,
                     child: _AprovacaoCard(item: minhas[i], isAction: false),
                   )),
