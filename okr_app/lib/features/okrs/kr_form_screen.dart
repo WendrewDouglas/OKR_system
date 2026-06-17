@@ -7,8 +7,10 @@ import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
+import '../../core/utils/milestone_calc.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/app_scaffold.dart';
+import '../shared/widgets/ciclo_selector.dart';
 
 /// Objetivos disponíveis para vincular um novo KR (seleção no topo do form
 /// quando ele é aberto sem um objetivo-pai, como no "Novo KR" do botão +).
@@ -37,12 +39,16 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   String? _naturezaKr;
   String? _tipoKr;
   String? _freqMilestone;
-  String? _cicloTipo;
   int? _responsavelId;
   String? _selectedObjetivoId;
   bool _autoMilestones = true;
   bool _isLoading = false;
   bool _isLoadingEdit = true;
+
+  // Ciclo + período derivado (para a prévia de milestones, idêntica ao web).
+  Map<String, dynamic> _cicloParams = {};
+  DateTime? _cicloInicio;
+  DateTime? _cicloFim;
 
   bool get isEditing => widget.idKr != null;
   /// Mostra o seletor de objetivo quando o form é aberto sem um objetivo-pai.
@@ -57,6 +63,88 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
       if (v != null && v.toString().isNotEmpty) return v.toString();
     }
     return '';
+  }
+
+  bool get _isBinario => _naturezaKr != null && MilestoneCalc.normNat(_naturezaKr!) == 'binario';
+  bool get _isIntervalo => (_direcaoMetrica ?? '').toUpperCase() == 'INTERVALO_IDEAL';
+
+  /// Prévia ao vivo dos milestones — idêntica ao que o backend gera ao salvar.
+  Widget _buildMilestonePreview() {
+    final freq = _freqMilestone;
+    final ini = _cicloInicio;
+    final fim = _cicloFim;
+    final base = double.tryParse(_baselineCtrl.text.replaceAll(',', '.'));
+    final meta = double.tryParse(_metaCtrl.text.replaceAll(',', '.'));
+    if (freq == null || freq.isEmpty || ini == null || fim == null || base == null || meta == null) {
+      return const SizedBox.shrink();
+    }
+    final unidade = _unidadeCtrl.text.trim();
+    final ms = MilestoneCalc.gerar(
+      inicio: ini,
+      fim: fim,
+      frequencia: freq,
+      baseline: base,
+      meta: meta,
+      natureza: _naturezaKr ?? 'acumulativo_constante',
+      direcao: _direcaoMetrica,
+      unidade: unidade,
+    );
+    if (ms.isEmpty) return const SizedBox.shrink();
+
+    final isInt = MilestoneCalc.unidadeRequerInteiro(unidade);
+    String fmt(double v) => isInt ? v.toStringAsFixed(0) : v.toStringAsFixed(2).replaceAll('.', ',');
+    String dt(DateTime x) =>
+        '${x.day.toString().padLeft(2, '0')}/${x.month.toString().padLeft(2, '0')}/${x.year}';
+    final intervalo = ms.first.isIntervalo;
+
+    const muted = TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600);
+    const cell = TextStyle(fontSize: 12);
+
+    Widget linha(String a, String b, String c, String? d, {bool header = false}) {
+      final st = header ? muted : cell;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(children: [
+          SizedBox(width: 26, child: Text(a, style: st)),
+          Expanded(child: Text(b, style: st)),
+          SizedBox(width: 96, child: Text(c, textAlign: TextAlign.right, style: st)),
+          if (d != null) SizedBox(width: 96, child: Text(d, textAlign: TextAlign.right, style: st)),
+        ]),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderDefault, width: 0.5),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.science_outlined, size: 18, color: AppColors.gold),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                intervalo ? 'Prévia de milestones (faixa ideal)' : 'Prévia de milestones',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
+            Text('${ms.length}', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700)),
+          ]),
+          const Divider(height: 16, color: AppColors.borderDefault),
+          if (intervalo)
+            linha('#', 'Data ref.', 'Mín', 'Máx', header: true)
+          else
+            linha('#', 'Data ref.', 'Esperado', null, header: true),
+          ...ms.map((m) => intervalo
+              ? linha('${m.ordem}', dt(m.dataRef), fmt(m.esperadoMin!), fmt(m.esperadoMax!))
+              : linha('${m.ordem}', dt(m.dataRef), fmt(m.esperado!), null)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -110,7 +198,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final body = {
+      final body = <String, dynamic>{
         'descricao': _descricaoCtrl.text.trim(),
         'baseline': double.tryParse(_baselineCtrl.text) ?? 0,
         'meta': double.tryParse(_metaCtrl.text) ?? 0,
@@ -120,7 +208,8 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         if (_tipoKr != null) 'tipo_kr': _tipoKr,
         if (_freqMilestone != null) 'tipo_frequencia_milestone': _freqMilestone,
         if (_responsavelId != null) 'responsavel': _responsavelId,
-        if (_cicloTipo != null) 'ciclo_tipo': _cicloTipo,
+        // ciclo_tipo + sub-parâmetros → backend calcula datas e gera milestones.
+        ..._cicloParams,
         'autogerar_milestones': _autoMilestones ? 1 : 0,
       };
 
@@ -152,7 +241,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     final naturezas = ref.watch(domainProvider('dom_natureza_kr'));
     final tiposKr = ref.watch(domainProvider('dom_tipo_kr'));
     final freqs = ref.watch(domainProvider('dom_tipo_frequencia_milestone'));
-    final ciclos = ref.watch(domainProvider('dom_ciclos'));
     final responsaveis = ref.watch(responsaveisProvider);
 
     return AppScaffold(
@@ -196,18 +284,22 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _baselineCtrl,
+                        readOnly: _isBinario,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: const InputDecoration(labelText: 'Baseline *'),
                         validator: (v) => (v == null || double.tryParse(v) == null) ? 'Número' : null,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _metaCtrl,
+                        readOnly: _isBinario,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: const InputDecoration(labelText: 'Meta *'),
                         validator: (v) => (v == null || double.tryParse(v) == null) ? 'Número' : null,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                   ]),
@@ -217,6 +309,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       child: TextFormField(
                         controller: _unidadeCtrl,
                         decoration: const InputDecoration(labelText: 'Unidade', hintText: '%, R\$, un...'),
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -227,8 +320,13 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                         items: const [
                           DropdownMenuItem(value: 'MAIOR_MELHOR', child: Text('Maior melhor')),
                           DropdownMenuItem(value: 'MENOR_MELHOR', child: Text('Menor melhor')),
+                          DropdownMenuItem(value: 'INTERVALO_IDEAL', child: Text('Intervalo ideal')),
                         ],
-                        onChanged: (v) => setState(() => _direcaoMetrica = v),
+                        onChanged: (v) => setState(() {
+                          _direcaoMetrica = v;
+                          // Web: INTERVALO_IDEAL força natureza "pontual".
+                          if ((v ?? '').toUpperCase() == 'INTERVALO_IDEAL') _naturezaKr = 'pontual';
+                        }),
                       ),
                     ),
                   ]),
@@ -244,7 +342,16 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                         final label = _domVal(n, ['descricao_exibicao', 'descricao', 'id_natureza']);
                         return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
-                      onChanged: (v) => setState(() => _naturezaKr = v),
+                      // INTERVALO_IDEAL trava a natureza em "pontual" (igual ao web).
+                      onChanged: _isIntervalo
+                          ? null
+                          : (v) => setState(() {
+                                _naturezaKr = v;
+                                if (MilestoneCalc.normNat(v ?? '') == 'binario') {
+                                  _baselineCtrl.text = '0';
+                                  _metaCtrl.text = '1';
+                                }
+                              }),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -278,21 +385,17 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (!isEditing)
-                    ciclos.when(
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                      data: (items) => DropdownButtonFormField<String>(
-                        initialValue: _cicloTipo,
-                        decoration: const InputDecoration(labelText: 'Ciclo'),
-                        items: items.map((c) {
-                          final value = _domVal(c, ['nome_ciclo', 'ciclo_tipo', 'id_ciclo']);
-                          final label = _domVal(c, ['descricao', 'nome_ciclo']);
-                          return DropdownMenuItem(value: value, child: Text(label));
-                        }).toList(),
-                        onChanged: (v) => setState(() => _cicloTipo = v),
-                      ),
+                  if (!isEditing) ...[
+                    CicloSelector(
+                      onChanged: (tipo, params, ini, fim) => setState(() {
+                        _cicloParams = params;
+                        _cicloInicio = ini;
+                        _cicloFim = fim;
+                      }),
                     ),
+                    const SizedBox(height: 16),
+                    _buildMilestonePreview(),
+                  ],
                   const SizedBox(height: 16),
                   responsaveis.when(
                     loading: () => const LinearProgressIndicator(),
