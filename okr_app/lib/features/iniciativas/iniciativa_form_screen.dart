@@ -6,6 +6,7 @@ import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 class IniciativaFormScreen extends ConsumerStatefulWidget {
   final String? idIniciativa;
@@ -108,8 +109,8 @@ class _IniciativaFormScreenState extends ConsumerState<IniciativaFormScreen> {
   Widget build(BuildContext context) {
     final responsaveis = ref.watch(responsaveisProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Editar Iniciativa' : 'Nova Iniciativa')),
+    return AppScaffold(
+      title: isEditing ? 'Editar Iniciativa' : 'Nova Iniciativa',
       body: _isLoadingEdit
           ? const Center(child: CircularProgressIndicator())
           : Form(

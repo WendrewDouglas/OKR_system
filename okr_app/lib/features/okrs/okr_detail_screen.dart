@@ -11,6 +11,7 @@ import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/farol_indicator.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 // Detalhe do objetivo (GET single ainda não enveloppado → mantido como Map por ora).
 final okrDetailProvider = FutureProvider.autoDispose
@@ -35,29 +36,27 @@ class OkrDetailScreen extends ConsumerWidget {
     final detail = ref.watch(okrDetailProvider(idObjetivo));
     final krs = ref.watch(krsForObjProvider(idObjetivo));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detalhe OKR'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () async {
-              AppHaptics.light();
-              final result = await context.push('/okrs/$idObjetivo/editar');
-              if (result == true) {
-                ref.invalidate(okrDetailProvider(idObjetivo));
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: AppColors.red),
-            onPressed: () {
-              AppHaptics.heavy();
-              _deleteObj(context, ref);
-            },
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Detalhe OKR',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: () async {
+            AppHaptics.light();
+            final result = await context.push('/okrs/$idObjetivo/editar');
+            if (result == true) {
+              ref.invalidate(okrDetailProvider(idObjetivo));
+            }
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: AppColors.red),
+          onPressed: () {
+            AppHaptics.heavy();
+            _deleteObj(context, ref);
+          },
+        ),
+      ],
       body: detail.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(

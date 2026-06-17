@@ -8,6 +8,7 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/user_avatar.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -131,8 +132,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final auth = ref.watch(authProvider);
     final user = auth.user ?? {};
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Meu Perfil')),
+    return AppScaffold(
+      title: 'Meu Perfil',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

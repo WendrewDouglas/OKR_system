@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 class KrFormScreen extends ConsumerStatefulWidget {
   final String? idKr;
@@ -133,8 +134,8 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     final ciclos = ref.watch(domainProvider('dom_ciclos'));
     final responsaveis = ref.watch(responsaveisProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Editar Key Result' : 'Novo Key Result')),
+    return AppScaffold(
+      title: isEditing ? 'Editar Key Result' : 'Novo Key Result',
       body: _isLoadingEdit
           ? const LoadingShimmer()
           : Form(

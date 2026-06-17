@@ -8,6 +8,7 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/user_avatar.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -119,8 +120,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Editar Perfil')),
+    return AppScaffold(
+      title: 'Editar Perfil',
       body: Form(
         key: _formKey,
         child: ListView(

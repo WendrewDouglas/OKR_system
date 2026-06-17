@@ -5,6 +5,7 @@ import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/app_scaffold.dart';
 import 'usuarios_list_screen.dart' show kRoleLabels;
 
 class UsuarioFormScreen extends ConsumerStatefulWidget {
@@ -115,8 +116,8 @@ class _UsuarioFormScreenState extends ConsumerState<UsuarioFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Editar Usuário' : 'Novo Usuário')),
+    return AppScaffold(
+      title: isEditing ? 'Editar Usuário' : 'Novo Usuário',
       body: _isLoadingEdit
           ? const LoadingShimmer()
           : Form(

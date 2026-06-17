@@ -10,6 +10,7 @@ import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/error_retry.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 final iniciativasProvider = FutureProvider.autoDispose
     .family<List<Iniciativa>, String>((ref, idKr) {
@@ -27,8 +28,8 @@ class IniciativaListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inis = ref.watch(iniciativasProvider(idKr));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Iniciativas')),
+    return AppScaffold(
+      title: 'Iniciativas',
       body: inis.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(

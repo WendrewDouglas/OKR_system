@@ -11,6 +11,7 @@ import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 /// Rótulos amigáveis dos papéis RBAC.
 const Map<String, String> kRoleLabels = {
@@ -33,8 +34,8 @@ class UsuariosListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usuarios = ref.watch(usuariosProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Usuários')),
+    return AppScaffold(
+      title: 'Usuários',
       body: usuarios.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(

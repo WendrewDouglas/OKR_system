@@ -8,6 +8,7 @@ import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 final aprovacoesProvider = FutureProvider.autoDispose<AprovacoesData>(
   (ref) => ref.read(aprovacaoRepositoryProvider).list(),
@@ -20,8 +21,8 @@ class AprovacaoListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(aprovacoesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Aprovações')),
+    return AppScaffold(
+      title: 'Aprovações',
       body: data.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(

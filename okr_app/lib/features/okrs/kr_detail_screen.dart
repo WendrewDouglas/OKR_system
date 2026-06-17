@@ -12,6 +12,7 @@ import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/progress_chart.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 import 'apontamento_sheet.dart';
 
 // Detalhe do KR (GET single rico: kr/milestones/chart/agregados) — não enveloppado, mantido como Map.
@@ -36,19 +37,17 @@ class KrDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(krDetailProvider(idKr));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Key Result'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              AppHaptics.light();
-              context.push('/krs/$idKr/editar');
-            },
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Key Result',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: () {
+            AppHaptics.light();
+            context.push('/krs/$idKr/editar');
+          },
+        ),
+      ],
       body: detail.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(

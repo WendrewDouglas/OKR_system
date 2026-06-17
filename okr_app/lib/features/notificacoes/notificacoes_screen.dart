@@ -4,6 +4,7 @@ import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 final notificacoesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final api = ref.read(apiClientProvider);
@@ -18,21 +19,19 @@ class NotificacoesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifs = ref.watch(notificacoesProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notificações'),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              AppHaptics.medium();
-              final api = ref.read(apiClientProvider);
-              await api.dio.put('/notificacoes/todas/lida');
-              ref.invalidate(notificacoesProvider);
-            },
-            child: const Text('Marcar todas', style: TextStyle(color: AppColors.gold, fontSize: 13)),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Notificações',
+      actions: [
+        TextButton(
+          onPressed: () async {
+            AppHaptics.medium();
+            final api = ref.read(apiClientProvider);
+            await api.dio.put('/notificacoes/todas/lida');
+            ref.invalidate(notificacoesProvider);
+          },
+          child: const Text('Marcar todas', style: TextStyle(color: AppColors.gold, fontSize: 13)),
+        ),
+      ],
       body: notifs.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(

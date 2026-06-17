@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/providers/domain_providers.dart';
 import '../shared/widgets/loading_shimmer.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 class ObjetivoFormScreen extends ConsumerStatefulWidget {
   final String? idObjetivo;
@@ -128,8 +129,8 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
     final ciclos = ref.watch(domainProvider('dom_ciclos'));
     final responsaveis = ref.watch(responsaveisProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Editar Objetivo' : 'Novo Objetivo')),
+    return AppScaffold(
+      title: isEditing ? 'Editar Objetivo' : 'Novo Objetivo',
       body: _isLoadingEdit
           ? const LoadingShimmer()
           : Form(

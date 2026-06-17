@@ -9,6 +9,7 @@ import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 final iniciativaDetailProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, id) async {
@@ -25,27 +26,25 @@ class IniciativaDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(iniciativaDetailProvider(idIniciativa));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Iniciativa'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () async {
-              AppHaptics.light();
-              final result = await context.push('/iniciativas/$idIniciativa/editar');
-              if (result == true) ref.invalidate(iniciativaDetailProvider(idIniciativa));
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: AppColors.red),
-            onPressed: () {
-              AppHaptics.heavy();
-              _delete(context, ref);
-            },
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Iniciativa',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: () async {
+            AppHaptics.light();
+            final result = await context.push('/iniciativas/$idIniciativa/editar');
+            if (result == true) ref.invalidate(iniciativaDetailProvider(idIniciativa));
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: AppColors.red),
+          onPressed: () {
+            AppHaptics.heavy();
+            _delete(context, ref);
+          },
+        ),
+      ],
       body: detail.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => ErrorRetry(
