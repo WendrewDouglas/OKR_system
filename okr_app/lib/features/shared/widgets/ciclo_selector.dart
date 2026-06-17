@@ -123,6 +123,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
             _anualAno = v;
             _emit();
           }),
+          validator: (v) => v == null ? 'Obrigatório' : null,
         );
       case 'semestral':
         final opts = [for (final a in _anos) for (final s in [1, 2]) 'S$s/$a'];
@@ -135,6 +136,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
             _semestral = v;
             _emit();
           }),
+          validator: (v) => v == null ? 'Obrigatório' : null,
         );
       case 'trimestral':
         final opts = [for (final a in _anos) for (final q in [1, 2, 3, 4]) 'Q$q/$a'];
@@ -147,6 +149,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
             _trimestral = v;
             _emit();
           }),
+          validator: (v) => v == null ? 'Obrigatório' : null,
         );
       case 'bimestral':
         const pairs = [['01', '02'], ['03', '04'], ['05', '06'], ['07', '08'], ['09', '10'], ['11', '12']];
@@ -166,6 +169,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
             _bimestral = v;
             _emit();
           }),
+          validator: (v) => v == null ? 'Obrigatório' : null,
         );
       case 'mensal':
         return Row(children: [
@@ -179,6 +183,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
                 _mensalMes = v;
                 _emit();
               }),
+              validator: (v) => v == null ? 'Obrigatório' : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -192,6 +197,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
                 _mensalAno = v;
                 _emit();
               }),
+              validator: (v) => v == null ? 'Obrigatório' : null,
             ),
           ),
         ]);
@@ -202,6 +208,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
               decoration: const InputDecoration(labelText: 'Mês início'),
               readOnly: true,
               controller: _persInicioCtrl,
+              validator: (_) => _persInicio == null ? 'Obrigatório' : null,
               onTap: () => _pickMonth(_persInicioCtrl, (ym) => setState(() {
                     _persInicio = ym;
                     _emit();
@@ -214,6 +221,7 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
               decoration: const InputDecoration(labelText: 'Mês fim'),
               readOnly: true,
               controller: _persFimCtrl,
+              validator: (_) => _persFim == null ? 'Obrigatório' : null,
               onTap: () => _pickMonth(_persFimCtrl, (ym) => setState(() {
                     _persFim = ym;
                     _emit();

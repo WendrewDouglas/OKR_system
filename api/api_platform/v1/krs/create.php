@@ -71,7 +71,10 @@ try {
   $stN->execute([$idObj]);
   $num = (int)$stN->fetchColumn();
 
-  $idKr = $num . '-' . $idObj;
+  // id_kr no MESMO formato do web (salvar_kr.php): NNN-OO — num com 3 dígitos,
+  // objetivo com 2 dígitos quando < 100. Ex.: '006-35'.
+  $objFmt = ((int)$idObj < 100) ? str_pad((string)$idObj, 2, '0', STR_PAD_LEFT) : (string)$idObj;
+  $idKr = sprintf('%03d-%s', $num, $objFmt);
 
   $stIns = $pdo->prepare("
     INSERT INTO key_results
@@ -79,14 +82,15 @@ try {
        unidade_medida, direcao_metrica, natureza_kr, tipo_kr,
        tipo_frequencia_milestone, responsavel, margem_confianca,
        data_inicio, data_fim, status, status_aprovacao,
-       id_user_criador, dt_ultima_atualizacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Não Iniciado', 'pendente', ?, NOW())
+       usuario_criador, id_user_criador, dt_criacao, dt_ultima_atualizacao)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, CURDATE(), NOW())
   ");
   $stIns->execute([
     $idKr, $idObj, $num, $desc, $base, $meta,
     $unidade ?: null, $direcao, $natureza ?: null, $tipoKr ?: null,
     $freqMilestone ?: null, $responsavel, $margem,
-    $dtInicio ?: null, $dtFim ?: null, $uid,
+    $dtInicio ?: null, $dtFim ?: null,
+    (string)$uid, $uid, // usuario_criador (como o web) + id_user_criador
   ]);
 
   // Auto-generate milestones
