@@ -135,23 +135,166 @@ if (!function_exists('gerarSerieDatas')) {
             $pushUnique($out, $end);
         } else {
             $stepMonths = ['mensal'=>1, 'bimestral'=>2, 'trimestral'=>3, 'semestral'=>6, 'anual'=>12][$freq] ?? 1;
-            $d = clone $start;
-            $firstEnd = (clone $d)->modify('last day of this month');
-            if ($stepMonths > 1) {
-                $tmp = (clone $d)->modify('first day of this month')->modify('+'.($stepMonths-1).' months');
-                $firstEnd = $tmp->modify('last day of this month');
-            }
+            // Avanço ANCORADO NO 1º DIA DO MÊS. Antes o avanço partia de uma data
+            // de "último dia do mês" e usava modify('+N months'), o que sofre o
+            // overflow do PHP (31/jan + 1 mês = 03/mar) e PULAVA meses
+            // (ex.: trimestral/ano ia para Jul/Out em vez de Jun/Set).
+            $firstOfStart = (clone $start)->modify('first day of this month');
+            $firstTarget  = (clone $firstOfStart)->modify('+'.($stepMonths-1).' months');
+            $firstEnd     = (clone $firstTarget)->modify('last day of this month');
             if ($firstEnd > $end) {
                 $pushUnique($out, $end);
             } else {
                 $pushUnique($out, $firstEnd);
-                $d = (clone $firstEnd)->modify('+'.$stepMonths.' months')->modify('last day of this month');
-                while ($d < $end) { $pushUnique($out, $d); $d = $d->modify('+'.$stepMonths.' months')->modify('last day of this month'); }
+                $cursorFirst = clone $firstTarget; // 1º dia do mês do marco corrente
+                while (true) {
+                    $cursorFirst = $cursorFirst->modify('+'.$stepMonths.' months');
+                    $d = (clone $cursorFirst)->modify('last day of this month');
+                    if ($d < $end) { $pushUnique($out, $d); } else { break; }
+                }
                 $pushUnique($out, $end);
             }
         }
         if (count($out) === 0) $out[] = $end->format('Y-m-d');
         return $out;
+    }
+
+}
+
+if (!function_exists('inferirNaturezaSlug')) {
+
+    /** Preserva o slug do front: 'acumulativo_constante' | 'acumulativo_exponencial' | 'pontual' | 'binario' */
+    function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
+        $val  = (string)$naturezaRaw;
+        $slug = _slugify_nat($val);
+        if (in_array($slug, ['acumulativo_constante','acumulativo_exponencial','pontual','binario'], true)) {
+            return $slug;
+        }
+
+        // Se vier id (numérico), derive pelo texto do domínio
+        if (ctype_digit($val)) {
+            try {
+                $st = $pdo->prepare("SELECT descricao_exibicao FROM dom_natureza_kr WHERE id_natureza = ? LIMIT 1");
+                $st->execute([$val]);
+                $desc = $st->fetchColumn();
+                if ($desc) {
+                    $slug2 = _slugify_nat((string)$desc);
+                    if (in_array($slug2, ['acumulativo_constante','acumulativo_exponencial','pontual','binario'], true)) {
+                        return $slug2;
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // Fallback conservador
+        return 'acumulativo_constante';
+    }
+
+}
+
+if (!function_exists('gerarMilestonesParaKR')) {
+
+    function gerarMilestonesParaKR(
+        PDO $pdo,
+        string $table,
+        string $id_kr,
+        string $data_inicio,
+        string $data_fim,
+        string $freqSlug,
+        float $baseline,
+        float $meta,
+        string $naturezaSlug,
+        ?string $direcao,
+        ?string $unidade_medida
+    ): int {
+        $datas = gerarSerieDatas($data_inicio, $data_fim, $freqSlug);
+        $N = count($datas);
+
+        // zera anteriores
+        $pdo->prepare("DELETE FROM {$table} WHERE id_kr = :id_kr")
+            ->execute([':id_kr' => $id_kr]);
+
+        // agora inserimos também min/max
+        $ins = $pdo->prepare("
+            INSERT INTO {$table} (
+              id_kr, num_ordem, data_ref,
+              valor_esperado, valor_esperado_min, valor_esperado_max,
+              gerado_automatico, editado_manual, bloqueado_para_edicao
+            )
+            VALUES (
+              :id_kr, :num_ordem, :data_ref,
+              :valor_esperado, :valor_esperado_min, :valor_esperado_max,
+              1, 0, 0
+            )
+        ");
+
+        $isIntUnit = unidadeRequerInteiro($unidade_medida);
+        $roundFn = function($v) use ($isIntUnit) {
+            return $isIntUnit ? (int)round($v, 0) : round($v, 2);
+        };
+
+        // normaliza natureza
+        $slug = _slugify_nat($naturezaSlug);
+        $isBin   = ($slug === 'binario' || $slug === 'binaria');
+        $isConst = ($slug === 'acumulativo_constante' || $slug === 'acumulativa');
+        $isExpo  = ($slug === 'acumulativo_exponencial');
+
+        $isIntervalo = strtoupper((string)$direcao) === 'INTERVALO_IDEAL';
+        $delta = $meta - $baseline;
+
+        $expoR = function(int $n): float {
+            if ($n <= 4)  return 1.8;
+            if ($n <= 8)  return 1.5;
+            if ($n <= 16) return 1.3;
+            if ($n <= 32) return 1.2;
+            return 1.12;
+        };
+
+        for ($i = 1; $i <= $N; $i++) {
+            $dataRef = $datas[$i-1];
+
+            if ($isIntervalo) {
+                $lo  = $roundFn(min($baseline, $meta));
+                $hi  = $roundFn(max($baseline, $meta));
+                $mid = $roundFn(($lo + $hi) / 2);
+
+                $ins->execute([
+                    ':id_kr'              => $id_kr,
+                    ':num_ordem'          => $i,
+                    ':data_ref'           => $dataRef,
+                    ':valor_esperado'     => $mid,
+                    ':valor_esperado_min' => $lo,
+                    ':valor_esperado_max' => $hi,
+                ]);
+                continue;
+            }
+
+            // série única esperada
+            $progress = 0.0;
+            if ($isBin) {
+                $progress = ($i === $N) ? 1.0 : 0.0;
+            } elseif ($isConst) {
+                $progress = $N > 0 ? ($i / $N) : 1.0;
+            } elseif ($isExpo) {
+                $r = $expoR($N);
+                if (abs($r - 1.0) < 1e-9) $progress = $N > 0 ? ($i / $N) : 1.0;
+                else $progress = (pow($r, $i) - 1.0) / (pow($r, $N) - 1.0);
+            } else { // pontual
+                $progress = ($i === $N) ? 1.0 : 0.0;
+            }
+
+            $valor = $roundFn($baseline + $delta * $progress);
+            $ins->execute([
+                ':id_kr'              => $id_kr,
+                ':num_ordem'          => $i,
+                ':data_ref'           => $dataRef,
+                ':valor_esperado'     => $valor,
+                ':valor_esperado_min' => null,
+                ':valor_esperado_max' => null,
+            ]);
+        }
+
+        return $N;
     }
 
 }

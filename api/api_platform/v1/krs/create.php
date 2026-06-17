@@ -50,12 +50,12 @@ if ($cicloTipo !== '' && ($dtInicio === '' || $dtFim === '')) {
   [$dtInicio, $dtFim] = calcularDatasCiclo($cicloTipo, $in);
 }
 
-// Infer nature if not provided
-if ($natureza === '') {
-  api_load_helper('auth/helpers/kr_helpers.php');
-  if (function_exists('inferirNaturezaSlug')) {
-    $natureza = inferirNaturezaSlug($base, $meta, $unidade);
-  }
+// Normaliza a natureza para o slug canônico (mesma função do web).
+api_load_helper('auth/helpers/kr_helpers.php');
+if (function_exists('inferirNaturezaSlug')) {
+  $natureza = inferirNaturezaSlug($pdo, $natureza !== '' ? $natureza : 'acumulativo_constante');
+} elseif ($natureza === '') {
+  $natureza = 'acumulativo_constante';
 }
 
 // For binary: coerce baseline/meta

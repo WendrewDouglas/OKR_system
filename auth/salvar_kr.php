@@ -241,6 +241,11 @@ function ensureFrequenciaDominio(PDO $pdo, string $slug): void {
 }
 
 
+// inferirNaturezaSlug / gerarMilestonesParaKR foram movidas para
+// helpers/kr_helpers.php (compartilhadas com a API). Este bloco vira fallback
+// caso o helper não esteja carregado, evitando redeclaração.
+if (!function_exists('gerarMilestonesParaKR')) {
+
 /** Preserva o slug do front: 'acumulativo_constante' | 'acumulativo_exponencial' | 'pontual' | 'binario' */
 function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
     $val  = (string)$naturezaRaw;
@@ -372,6 +377,8 @@ function gerarMilestonesParaKR(
 
     return $N;
 }
+
+} // fim do fallback (inferirNaturezaSlug / gerarMilestonesParaKR vêm de kr_helpers.php)
 
 /** Normaliza STATUS para um id válido em dom_status_kr */
 function normalizarStatus(PDO $pdo, $raw): ?string {
