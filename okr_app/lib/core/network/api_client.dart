@@ -26,7 +26,15 @@ class ApiClient {
   }
 
   Future<String?> getToken() async {
-    return _storage.read(key: ApiConstants.tokenKey);
+    // Resiliência: o secure storage pode travar em alguns Androids (ex.: MIUI).
+    // Timeout + fallback evita o app congelar na inicialização (vai para o login).
+    try {
+      return await _storage
+          .read(key: ApiConstants.tokenKey)
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> clearToken() async {
@@ -57,7 +65,12 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (!_isPublic(options.path)) {
-      final token = await _storage.read(key: ApiConstants.tokenKey);
+      String? token;
+      try {
+        token = await _storage
+            .read(key: ApiConstants.tokenKey)
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {/* storage indisponível: segue sem header → 401 tratado */}
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
