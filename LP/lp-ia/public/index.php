@@ -78,6 +78,24 @@ $entregaveis = [
 <title>IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial</title>
 <meta name="description" content="Treinamento presencial e prático de IA para profissionais financeiros e administrativos. 4 horas, hands-on, certificado e turma limitada.">
 <meta name="robots" content="index,follow">
+
+<!-- Open Graph / prévia ao compartilhar (WhatsApp, Facebook, LinkedIn) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PlanningBI">
+<meta property="og:title" content="IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial">
+<meta property="og:description" content="Treinamento presencial e prático (4h) com certificado, apostila e kit de prompts. Valor especial com cupom. Vagas limitadas.">
+<meta property="og:url" content="https://planningbi.com.br/OKR_system/LP/lp-ia/public/">
+<meta property="og:image" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+<meta property="og:image:secure_url" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="Treinamento IA Aplicada ao Dia a Dia Financeiro — 04/07/2026, Araçatuba/SP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial">
+<meta name="twitter:description" content="Presencial, 4h, certificado, apostila e kit de prompts. Valor especial com cupom. Vagas limitadas.">
+<meta name="twitter:image" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
