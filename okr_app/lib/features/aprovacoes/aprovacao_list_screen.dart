@@ -132,9 +132,11 @@ class _AprovacaoCard extends ConsumerStatefulWidget {
 
 class _AprovacaoCardState extends ConsumerState<_AprovacaoCard> {
   bool _busy = false;
+  bool _done = false; // decidido: some imediatamente (otimista), sem esperar a recarga
 
   @override
   Widget build(BuildContext context) {
+    if (_done) return const SizedBox.shrink();
     final item = widget.item;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -217,8 +219,9 @@ class _AprovacaoCardState extends ConsumerState<_AprovacaoCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(decisao == 'aprovado' ? 'Item aprovado.' : 'Item reprovado.')),
         );
+        setState(() => _done = true); // some na hora, independente da rede
       }
-      ref.invalidate(aprovacoesProvider); // recarrega a lista
+      ref.invalidate(aprovacoesProvider); // sincroniza contadores/lista em seguida
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
