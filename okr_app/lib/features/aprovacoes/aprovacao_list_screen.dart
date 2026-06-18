@@ -30,11 +30,22 @@ String moduloLabel(String m) {
   }
 }
 
-class AprovacaoListScreen extends ConsumerWidget {
+enum _Filtro { pendentes, reprovados, aprovados }
+
+class AprovacaoListScreen extends ConsumerStatefulWidget {
   const AprovacaoListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AprovacaoListScreen> createState() => _AprovacaoListScreenState();
+}
+
+class _AprovacaoListScreenState extends ConsumerState<AprovacaoListScreen> {
+  _Filtro _filtro = _Filtro.pendentes;
+
+  bool _is(AprovacaoItem m, String s) => m.statusAprovacao.toLowerCase() == s;
+
+  @override
+  Widget build(BuildContext context) {
     final data = ref.watch(aprovacoesProvider);
 
     return AppScaffold(
@@ -47,7 +58,13 @@ class AprovacaoListScreen extends ConsumerWidget {
         ),
         data: (ap) {
           final paraAprovar = ap.paraAprovar;
-          final minhas = ap.minhasPendentes;
+          final minhasPend = ap.minhasPendentes.where((m) => _is(m, 'pendente')).toList();
+          final minhasRepr = ap.minhasPendentes.where((m) => _is(m, 'reprovado')).toList();
+          final minhasAprov = ap.minhasPendentes.where((m) => _is(m, 'aprovado')).toList();
+
+          final countPend = paraAprovar.length + minhasPend.length;
+          final countRepr = minhasRepr.length;
+          final countAprov = minhasAprov.length;
 
           return RefreshIndicator(
             color: AppColors.gold,
@@ -59,38 +76,29 @@ class AprovacaoListScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(children: [
-                  _StatChip(label: 'Pendentes', value: ap.pendentes, color: AppColors.warn),
-                  const SizedBox(width: 8),
-                  _StatChip(label: 'Reprovados', value: ap.reprovados, color: AppColors.red),
-                ]),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _StatChip(
+                      label: 'Pendentes', value: countPend, color: AppColors.warn,
+                      selected: _filtro == _Filtro.pendentes,
+                      onTap: () => setState(() => _filtro = _Filtro.pendentes),
+                    ),
+                    _StatChip(
+                      label: 'Reprovados', value: countRepr, color: AppColors.red,
+                      selected: _filtro == _Filtro.reprovados,
+                      onTap: () => setState(() => _filtro = _Filtro.reprovados),
+                    ),
+                    _StatChip(
+                      label: 'Aprovados', value: countAprov, color: AppColors.green,
+                      selected: _filtro == _Filtro.aprovados,
+                      onTap: () => setState(() => _filtro = _Filtro.aprovados),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
-                if (paraAprovar.isNotEmpty) ...[
-                  Text('Para aprovar', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ...List.generate(paraAprovar.length, (i) => StaggeredFadeSlide(
-                    // Key por identidade do item: ao aprovar/reprovar, o card que
-                    // sai é descartado (e não tem seu State reciclado no vizinho).
-                    key: ValueKey('aprovar:${paraAprovar[i].modulo}:${paraAprovar[i].idRef}'),
-                    index: i,
-                    child: _AprovacaoCard(item: paraAprovar[i], isAction: true),
-                  )),
-                ],
-                if (minhas.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Minhas pendências', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ...List.generate(minhas.length, (i) => StaggeredFadeSlide(
-                    key: ValueKey('minha:${minhas[i].modulo}:${minhas[i].idRef}'),
-                    index: paraAprovar.length + i,
-                    child: _AprovacaoCard(item: minhas[i], isAction: false),
-                  )),
-                ],
-                if (paraAprovar.isEmpty && minhas.isEmpty)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Text('Nenhuma aprovação pendente', style: TextStyle(color: AppColors.textMuted)),
-                  )),
+                ..._buildFiltro(context, paraAprovar, minhasPend, minhasRepr, minhasAprov),
               ],
             ),
           );
@@ -98,25 +106,116 @@ class AprovacaoListScreen extends ConsumerWidget {
       ),
     );
   }
+
+  List<Widget> _buildFiltro(
+    BuildContext context,
+    List<AprovacaoItem> paraAprovar,
+    List<AprovacaoItem> pend,
+    List<AprovacaoItem> repr,
+    List<AprovacaoItem> aprov,
+  ) {
+    switch (_filtro) {
+      case _Filtro.pendentes:
+        final w = <Widget>[];
+        if (paraAprovar.isNotEmpty) {
+          w.add(_titulo(context, 'Para aprovar'));
+          for (var i = 0; i < paraAprovar.length; i++) {
+            w.add(StaggeredFadeSlide(
+              key: ValueKey('aprovar:${paraAprovar[i].modulo}:${paraAprovar[i].idRef}'),
+              index: i,
+              child: _AprovacaoCard(item: paraAprovar[i], isAction: true),
+            ));
+          }
+        }
+        if (pend.isNotEmpty) {
+          if (w.isNotEmpty) w.add(const SizedBox(height: 20));
+          w.add(_titulo(context, 'Minhas pendências'));
+          for (var i = 0; i < pend.length; i++) {
+            w.add(StaggeredFadeSlide(
+              key: ValueKey('minhaP:${pend[i].modulo}:${pend[i].idRef}'),
+              index: i,
+              child: _AprovacaoCard(item: pend[i], isAction: false),
+            ));
+          }
+        }
+        if (w.isEmpty) w.add(_vazio('Nenhuma aprovação pendente'));
+        return w;
+      case _Filtro.reprovados:
+        return _listaSimples(context, repr, 'Reprovados', 'Nenhum item reprovado', 'minhaR');
+      case _Filtro.aprovados:
+        return _listaSimples(context, aprov, 'Aprovados', 'Nenhum item aprovado', 'minhaA');
+    }
+  }
+
+  List<Widget> _listaSimples(BuildContext context, List<AprovacaoItem> itens,
+      String titulo, String vazioMsg, String keyPrefix) {
+    if (itens.isEmpty) return [_vazio(vazioMsg)];
+    final w = <Widget>[_titulo(context, titulo)];
+    for (var i = 0; i < itens.length; i++) {
+      w.add(StaggeredFadeSlide(
+        key: ValueKey('$keyPrefix:${itens[i].modulo}:${itens[i].idRef}'),
+        index: i,
+        child: _AprovacaoCard(item: itens[i], isAction: false),
+      ));
+    }
+    return w;
+  }
+
+  Widget _titulo(BuildContext context, String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(t, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      );
+
+  Widget _vazio(String msg) => Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60),
+          child: Text(msg, style: const TextStyle(color: AppColors.textMuted)),
+        ),
+      );
 }
 
 class _StatChip extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-  const _StatChip({required this.label, required this.value, required this.color});
+  final bool selected;
+  final VoidCallback? onTap;
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.selected = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 6)],
+    return GestureDetector(
+      onTap: () {
+        AppHaptics.selection();
+        onTap?.call();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: selected ? 0.22 : 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: color.withValues(alpha: selected ? 0.9 : 0.3),
+            width: selected ? 1.5 : 1,
+          ),
+          boxShadow: selected ? [BoxShadow(color: color.withValues(alpha: 0.18), blurRadius: 8)] : null,
+        ),
+        child: Text(
+          '$value $label',
+          style: TextStyle(
+            color: color,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
       ),
-      child: Text('$value $label', style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
     );
   }
 }

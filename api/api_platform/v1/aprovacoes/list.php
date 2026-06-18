@@ -94,16 +94,18 @@ if (!empty($allowedModules)) {
 // My pending items
 $stMinhasObj = $pdo->prepare("
   SELECT 'objetivo' AS modulo, id_objetivo AS id_ref, descricao,
-         status_aprovacao, dt_criacao
-    FROM objetivos WHERE id_user_criador = ? AND status_aprovacao IN ('pendente','reprovado')
+         LOWER(COALESCE(status_aprovacao,'')) AS status_aprovacao, dt_criacao
+    FROM objetivos
+   WHERE id_user_criador = ? AND LOWER(COALESCE(status_aprovacao,'')) IN ('pendente','reprovado','aprovado')
 ");
 $stMinhasObj->execute([$uid]);
 $minhas = array_merge($minhas, $stMinhasObj->fetchAll());
 
 $stMinhasKr = $pdo->prepare("
   SELECT 'kr' AS modulo, id_kr AS id_ref, descricao,
-         status_aprovacao, dt_ultima_atualizacao AS dt_criacao
-    FROM key_results WHERE id_user_criador = ? AND status_aprovacao IN ('pendente','reprovado')
+         LOWER(COALESCE(status_aprovacao,'')) AS status_aprovacao, dt_ultima_atualizacao AS dt_criacao
+    FROM key_results
+   WHERE id_user_criador = ? AND LOWER(COALESCE(status_aprovacao,'')) IN ('pendente','reprovado','aprovado')
 ");
 $stMinhasKr->execute([$uid]);
 $minhas = array_merge($minhas, $stMinhasKr->fetchAll());
@@ -126,11 +128,13 @@ $paraAprovar = array_merge($paraAprovar, $stSoc->fetchAll());
 // Stats
 $pendentes  = count(array_filter($paraAprovar, fn($r) => $r['status_aprovacao'] === 'pendente'));
 $reprovados = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'reprovado'));
+$aprovados  = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'aprovado'));
 
 $payload = [
   'stats' => [
     'pendentes'  => $pendentes,
     'reprovados' => $reprovados,
+    'aprovados'  => $aprovados,
   ],
   'para_aprovar'  => array_map(fn($r) => [
     'modulo'          => $r['modulo'],

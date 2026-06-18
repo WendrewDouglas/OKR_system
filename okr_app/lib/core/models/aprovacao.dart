@@ -32,12 +32,15 @@ class AprovacaoItem {
 class AprovacoesData {
   final int pendentes;
   final int reprovados;
+  final int aprovados;
   final List<AprovacaoItem> paraAprovar;
+  /// Itens do próprio usuário (pendentes/reprovados/aprovados) — filtrados na UI.
   final List<AprovacaoItem> minhasPendentes;
 
   const AprovacoesData({
     this.pendentes = 0,
     this.reprovados = 0,
+    this.aprovados = 0,
     this.paraAprovar = const [],
     this.minhasPendentes = const [],
   });
@@ -47,6 +50,7 @@ class AprovacoesData {
     return AprovacoesData(
       pendentes: asInt(stats['pendentes']),
       reprovados: asInt(stats['reprovados']),
+      aprovados: asInt(stats['aprovados']),
       paraAprovar: asModelList(json['para_aprovar'], AprovacaoItem.fromJson),
       minhasPendentes: asModelList(json['minhas_pendentes'], AprovacaoItem.fromJson),
     );
