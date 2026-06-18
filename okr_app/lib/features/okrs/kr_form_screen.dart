@@ -19,6 +19,12 @@ final _objetivosParaKrProvider = FutureProvider.autoDispose<List<Objetivo>>((ref
   return paged.items;
 });
 
+/// Entrada de um sócio no formulário (usuário + motivo do convite).
+class _SocioInput {
+  int? userId;
+  final TextEditingController motivo = TextEditingController();
+}
+
 class KrFormScreen extends ConsumerStatefulWidget {
   final String? idKr;
   final String? idObjetivo;
@@ -51,6 +57,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   Map<String, dynamic> _cicloParams = {};
   DateTime? _cicloInicio;
   DateTime? _cicloFim;
+
+  // Sócios (até 3) — convites a serem criados junto com o KR.
+  final List<_SocioInput> _socios = [];
 
   bool get isEditing => widget.idKr != null;
   /// Mostra o seletor de objetivo quando o form é aberto sem um objetivo-pai.
@@ -195,11 +204,27 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     _unidadeCtrl.dispose();
     _margemCtrl.dispose();
     _observacoesCtrl.dispose();
+    for (final s in _socios) {
+      s.motivo.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Sócios: cada linha adicionada precisa de usuário + motivo da sociedade.
+    final sociosBody = <Map<String, dynamic>>[];
+    for (final s in _socios) {
+      if (s.userId == null || s.motivo.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cada sócio precisa de um usuário e o motivo da sociedade.')),
+        );
+        return;
+      }
+      sociosBody.add({'id_user': s.userId, 'motivo': s.motivo.text.trim()});
+    }
+
     AppHaptics.medium();
 
     setState(() => _isLoading = true);
@@ -217,6 +242,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         if (_margemCtrl.text.trim().isNotEmpty)
           'margem_confianca': double.tryParse(_margemCtrl.text.trim().replaceAll(',', '.')),
         'observacoes': _observacoesCtrl.text.trim(),
+        if (sociosBody.isNotEmpty) 'socios': sociosBody,
         // ciclo_tipo + sub-parâmetros → backend calcula datas e gera milestones.
         ..._cicloParams,
         'autogerar_milestones': _autoMilestones ? 1 : 0,
@@ -243,6 +269,80 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
       }
     }
+  }
+
+  /// Seção "Sócios (até 3)" — usuário + motivo do convite por sócio.
+  Widget _buildSociosSection() {
+    final users = ref.watch(responsaveisProvider).maybeWhen(
+          data: (u) => u,
+          orElse: () => const <Map<String, dynamic>>[],
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          const Text('Sócios (até 3)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          const Spacer(),
+          if (_socios.length < 3)
+            TextButton.icon(
+              onPressed: () => setState(() => _socios.add(_SocioInput())),
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: const Text('Adicionar'),
+            ),
+        ]),
+        const Text('Cada sócio precisa aprovar o convite. Informe o motivo da sociedade.',
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        const SizedBox(height: 8),
+        ...List.generate(_socios.length, (i) {
+          final s = _socios[i];
+          final escolhidos = _socios.where((x) => x != s).map((x) => x.userId).whereType<int>().toSet();
+          final opcoes = users.where((u) {
+            final id = u['id_user'] as int?;
+            return id != null && id != _responsavelId && !escolhidos.contains(id);
+          }).toList();
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(children: [
+                Row(children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: s.userId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Sócio *'),
+                      items: opcoes
+                          .map((u) => DropdownMenuItem(
+                                value: u['id_user'] as int,
+                                child: Text(
+                                  u['nome_completo'] ?? '${u['primeiro_nome']} ${u['ultimo_nome']}',
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => s.userId = v),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppColors.red),
+                    onPressed: () => setState(() {
+                      s.motivo.dispose();
+                      _socios.removeAt(i);
+                    }),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: s.motivo,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Motivo da sociedade *'),
+                ),
+              ]),
+            ),
+          );
+        }),
+      ],
+    );
   }
 
   @override
@@ -434,6 +534,10 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     decoration: const InputDecoration(labelText: 'Observações', hintText: 'Opcional'),
                   ),
                   const SizedBox(height: 16),
+                  if (!isEditing) ...[
+                    _buildSociosSection(),
+                    const SizedBox(height: 16),
+                  ],
                   if (!isEditing)
                     SwitchListTile(
                       value: _autoMilestones,

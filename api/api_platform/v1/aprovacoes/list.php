@@ -108,6 +108,21 @@ $stMinhasKr = $pdo->prepare("
 $stMinhasKr->execute([$uid]);
 $minhas = array_merge($minhas, $stMinhasKr->fetchAll());
 
+// Convites de sociedade pendentes p/ o usuário (qualquer usuário decide o SEU convite)
+$stSoc = $pdo->prepare("
+  SELECT 'socio' AS modulo, s.id_convite AS id_ref,
+         CONCAT('KR: ', kr.descricao, ' · Motivo: ', s.motivo) AS descricao,
+         'pendente' AS status_aprovacao, s.dt_convite AS dt_criacao,
+         TRIM(CONCAT(conv.primeiro_nome, ' ', COALESCE(conv.ultimo_nome, ''))) AS criador_nome
+    FROM kr_socios s
+    JOIN key_results kr ON kr.id_kr = s.id_kr
+    LEFT JOIN usuarios conv ON conv.id_user = s.id_user_convidou
+   WHERE s.id_user = ? AND s.status = 'pendente'
+   ORDER BY s.dt_convite DESC
+");
+$stSoc->execute([$uid]);
+$paraAprovar = array_merge($paraAprovar, $stSoc->fetchAll());
+
 // Stats
 $pendentes  = count(array_filter($paraAprovar, fn($r) => $r['status_aprovacao'] === 'pendente'));
 $reprovados = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'reprovado'));

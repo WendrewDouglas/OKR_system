@@ -15,13 +15,34 @@ $pdo  = api_db();
 $in = api_input();
 api_require_fields($in, ['modulo', 'id_ref', 'decisao']);
 
-$modulo   = api_enum(api_str($in['modulo']), ['objetivo', 'kr', 'orcamento'], 'modulo');
+$modulo   = api_enum(api_str($in['modulo']), ['objetivo', 'kr', 'orcamento', 'socio'], 'modulo');
 $idRef    = api_str($in['id_ref']);
 $decisao  = api_enum(api_str($in['decisao']), ['aprovado', 'reprovado'], 'decisao');
 $comentarios = api_str($in['comentarios'] ?? '');
 
 if ($decisao === 'reprovado' && $comentarios === '') {
   api_error('E_INPUT', 'Comentário obrigatório para rejeição.', 422);
+}
+
+// Fluxo de SÓCIO: o decisor é o PRÓPRIO convidado (não um aprovador).
+// id_ref = id_convite (kr_socios). Rejeição exige justificativa (comentarios).
+if ($modulo === 'socio') {
+  api_load_helper('auth/helpers/kr_socios.php');
+  api_load_helper('auth/notify.php');
+  try {
+    $ctx = krSocioDecidir($pdo, (int)$idRef, $uid, $decisao, $comentarios);
+  } catch (\InvalidArgumentException $e) {
+    api_error('E_INPUT', $e->getMessage(), 422);
+  } catch (\RuntimeException $e) {
+    $m = $e->getMessage();
+    if ($m === 'NOT_FOUND') api_error('E_NOT_FOUND', 'Convite de sociedade não encontrado.', 404);
+    if ($m === 'FORBIDDEN') api_error('E_FORBIDDEN', 'Apenas o convidado pode decidir este convite.', 403);
+    if ($m === 'STATE')     api_error('E_STATE', 'Convite já decidido.', 409);
+    throw $e;
+  }
+  krSocioNotificarDecisao($pdo, $ctx);
+  api_json(['ok' => true, 'message' => $ctx['decisao'] === 'aprovado' ? 'Sociedade aceita.' : 'Sociedade recusada.']);
+  return;
 }
 
 // Verify approver

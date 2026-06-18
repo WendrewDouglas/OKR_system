@@ -14,6 +14,22 @@ final aprovacoesProvider = FutureProvider.autoDispose<AprovacoesData>(
   (ref) => ref.read(aprovacaoRepositoryProvider).list(),
 );
 
+/// Rótulo amigável do módulo de aprovação.
+String moduloLabel(String m) {
+  switch (m) {
+    case 'objetivo':
+      return 'Objetivo';
+    case 'kr':
+      return 'KR';
+    case 'orcamento':
+      return 'Orçamento';
+    case 'socio':
+      return 'Sócio';
+    default:
+      return m;
+  }
+}
+
 class AprovacaoListScreen extends ConsumerWidget {
   const AprovacaoListScreen({super.key});
 
@@ -131,7 +147,7 @@ class _AprovacaoCardState extends ConsumerState<_AprovacaoCard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: AppColors.blue.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                child: Text(item.modulo, style: const TextStyle(fontSize: 10, color: AppColors.blue, fontWeight: FontWeight.w600)),
+                child: Text(moduloLabel(item.modulo), style: const TextStyle(fontSize: 10, color: AppColors.blue, fontWeight: FontWeight.w600)),
               ),
               const Spacer(),
               Text(item.statusAprovacao, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),

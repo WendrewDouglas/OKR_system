@@ -318,6 +318,26 @@ if ($method==='GET') {
   $rows = array_merge($rows, q_minhas($pdo, $MEU_ID, $MEU_NOME));
   $rows = array_merge($rows, q_reprovados_do_meu_usuario($pdo, $MEU_ID, $MEU_NOME));
 
+  // Convites de sociedade pendentes p/ o usuário (decide o SEU próprio convite)
+  $stSoc = $pdo->prepare("
+    SELECT 'socio' AS module, s.id_convite AS id,
+           CONCAT('KR: ', kr.descricao, ' · Motivo: ', s.motivo) AS descricao,
+           'pendente' AS status_aprovacao,
+           TRIM(CONCAT(conv.primeiro_nome,' ',COALESCE(conv.ultimo_nome,''))) AS usuario_criador_nome,
+           s.id_user_convidou AS usuario_criador_id,
+           DATE_FORMAT(s.dt_convite,'%d/%m/%Y') AS dt_criacao,
+           NULL AS dt_aprovacao, NULL AS comentarios_aprovacao, NULL AS resumo,
+           NULL AS objetivo_id, NULL AS objetivo_desc, NULL AS id_iniciativa,
+           NULL AS valor, NULL AS justificativa,
+           NULL AS mov_tipo, NULL AS mov_just, NULL AS mov_campos_json
+      FROM kr_socios s
+      JOIN key_results kr ON kr.id_kr = s.id_kr
+      LEFT JOIN usuarios conv ON conv.id_user = s.id_user_convidou
+     WHERE s.id_user = :id AND s.status = 'pendente'
+  ");
+  $stSoc->execute([':id' => $MEU_ID]);
+  foreach (($stSoc->fetchAll() ?: []) as $rs) { $rs['scope'] = 'para_aprovar'; $rows[] = $rs; }
+
   // [MOV] normaliza payload de movimentos (decoda JSON)
   foreach ($rows as &$r) {
     $diff = [];
@@ -341,8 +361,30 @@ $id     = trim((string)($_POST['id'] ?? ''));
 $obs    = trim((string)($_POST['comentarios'] ?? ''));
 
 if (!in_array($action,['approve','reject','resubmit'],true)) jexit(400,['success'=>false,'error'=>'Ação inválida.']);
-if (!in_array($module,['objetivo','kr','orcamento'],true)) jexit(400,['success'=>false,'error'=>'Módulo inválido.']);
+if (!in_array($module,['objetivo','kr','orcamento','socio'],true)) jexit(400,['success'=>false,'error'=>'Módulo inválido.']);
 if (in_array($action,['reject','resubmit'],true) && $obs==='') jexit(422,['success'=>false,'error'=>'Justificativa/observações são obrigatórias.']);
+
+// Sócio: o decisor é o PRÓPRIO convidado (não precisa ser aprovador).
+if ($module === 'socio') {
+  if (!in_array($action,['approve','reject'],true)) jexit(400,['success'=>false,'error'=>'Ação inválida para sócio.']);
+  require_once __DIR__ . '/helpers/kr_socios.php';
+  $decisao = ($action === 'approve') ? 'aprovado' : 'reprovado';
+  try {
+    $pdo->beginTransaction();
+    $ctx = krSocioDecidir($pdo, (int)$id, (int)$MEU_ID, $decisao, $obs);
+    $pdo->commit();
+  } catch (InvalidArgumentException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    jexit(422,['success'=>false,'error'=>$e->getMessage()]);
+  } catch (RuntimeException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    $m = $e->getMessage();
+    jexit($m==='FORBIDDEN'?403:($m==='NOT_FOUND'?404:409), ['success'=>false,'error'=>'Convite não pôde ser decidido.']);
+  }
+  krSocioNotificarDecisao($pdo, $ctx);
+  jexit(200,['success'=>true]);
+}
+
 if (in_array($action,['approve','reject'],true) && !$IS_APROVADOR) jexit(403,['success'=>false,'error'=>'Sem permissão para aprovar/reprovar.']);
 
 $ip  = $_SERVER['REMOTE_ADDR'] ?? null;

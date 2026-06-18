@@ -525,7 +525,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
               <div class="note">Se não escolher, será aplicado “Não Iniciado”.</div>
             </div>
             <div>
-              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Envolvidos no KR</label>
+              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Responsável</label>
               <select id="responsavel_kr" name="responsavel">
                 <option value="">Selecione...</option>
                 <?php foreach($users as $u): ?>
@@ -535,6 +535,22 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
                 <?php endforeach; ?>
               </select>
             </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label><i class="fa-regular fa-handshake"></i> Sócios do KR (até 3)</label>
+            <div class="note">Cada sócio precisa aprovar o convite. Informe o motivo da sociedade (obrigatório se escolher um sócio).</div>
+            <?php for($si=0;$si<3;$si++): ?>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                <select name="socios[<?= $si ?>][id_user]" style="flex:1;">
+                  <option value="">Sócio <?= $si+1 ?> (opcional)…</option>
+                  <?php foreach($users as $u): ?>
+                    <option value="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars(trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? '')), ENT_QUOTES, 'UTF-8') ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <input type="text" name="socios[<?= $si ?>][motivo]" placeholder="Motivo da sociedade" style="flex:2;">
+              </div>
+            <?php endfor; ?>
           </div>
 
             </div><!-- /.pd-body -->

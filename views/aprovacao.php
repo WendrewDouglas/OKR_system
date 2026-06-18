@@ -324,6 +324,7 @@ function movLabel(row){
 function modChip(m){
   if (m==='objetivo') return `<span class="mod">OBJ</span>`;
   if (m==='kr')       return `<span class="mod">KR</span>`;
+  if (m==='socio')    return `<span class="mod">SÓCIO</span>`;
   return `<span class="mod">ORÇ</span>`;
 }
 function currencyBR(v){
@@ -359,7 +360,8 @@ function renderDiffs(row){
 function card(row){
   const title = row.module==='orcamento'
     ? `Orçamento #${row.id} — ${currencyBR(row.valor||0)}`
-    : (row.module==='kr' ? `KR ${row.id}` : `Objetivo #${row.id}`);
+    : (row.module==='kr' ? `KR ${row.id}`
+      : (row.module==='socio' ? `Convite de sócio` : `Objetivo #${row.id}`));
 
   const sub = row.module==='kr' && row.objetivo_id
     ? `<span class="badge gold-outline"><i class="fa-solid fa-bullseye"></i> Obj #${row.objetivo_id}</span>`

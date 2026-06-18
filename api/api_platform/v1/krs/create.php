@@ -27,6 +27,7 @@ $responsavel = api_int_or_null($in['responsavel'] ?? null);
 $margem  = api_float_or_null($in['margem_confianca'] ?? null);
 $observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
+$socios = is_array($in['socios'] ?? null) ? $in['socios'] : [];
 
 // RBAC
 if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_objetivo' => $idObj])) {
@@ -107,10 +108,28 @@ try {
     }
   }
 
+  // Sócios (convites pendentes) — atômico com o KR
+  $convitesCriados = [];
+  if (!empty($socios)) {
+    api_load_helper('auth/helpers/kr_socios.php');
+    $convitesCriados = krSociosValidarEInserir($pdo, $idKr, $socios, $uid);
+  }
+
   $pdo->commit();
+} catch (\InvalidArgumentException $e) {
+  $pdo->rollBack();
+  api_error('E_INPUT', $e->getMessage(), 422);
 } catch (\Throwable $e) {
   $pdo->rollBack();
   throw $e;
+}
+
+// Notifica cada sócio convidado (best-effort, fora da transação)
+if (!empty($convitesCriados)) {
+  api_load_helper('auth/notify.php');
+  foreach ($convitesCriados as $c) {
+    krSocioNotificarConvite($pdo, $idKr, (int)$c['id_user']);
+  }
 }
 
 api_json([
@@ -118,5 +137,6 @@ api_json([
   'id_kr'          => $idKr,
   'key_result_num' => $num,
   'milestones'     => $milestonesCount,
+  'socios'         => count($convitesCriados),
   'message'        => 'Key Result criado com sucesso.',
 ], 201);
