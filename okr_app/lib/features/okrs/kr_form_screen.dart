@@ -34,6 +34,8 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   final _baselineCtrl = TextEditingController(text: '0');
   final _metaCtrl = TextEditingController();
   final _unidadeCtrl = TextEditingController();
+  final _margemCtrl = TextEditingController();
+  final _observacoesCtrl = TextEditingController();
 
   String? _direcaoMetrica = 'MAIOR_MELHOR';
   String? _naturezaKr;
@@ -167,6 +169,8 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         _baselineCtrl.text = '${kr['baseline'] ?? 0}';
         _metaCtrl.text = '${kr['meta'] ?? ''}';
         _unidadeCtrl.text = kr['unidade_medida'] ?? '';
+        _margemCtrl.text = kr['margem_confianca'] != null ? '${kr['margem_confianca']}' : '';
+        _observacoesCtrl.text = kr['observacoes'] ?? '';
         _direcaoMetrica = kr['direcao_metrica'] as String?;
         _naturezaKr = kr['natureza_kr'] as String?;
         _tipoKr = kr['tipo_kr'] as String?;
@@ -189,6 +193,8 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     _baselineCtrl.dispose();
     _metaCtrl.dispose();
     _unidadeCtrl.dispose();
+    _margemCtrl.dispose();
+    _observacoesCtrl.dispose();
     super.dispose();
   }
 
@@ -208,6 +214,9 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         if (_tipoKr != null) 'tipo_kr': _tipoKr,
         if (_freqMilestone != null) 'tipo_frequencia_milestone': _freqMilestone,
         if (_responsavelId != null) 'responsavel': _responsavelId,
+        if (_margemCtrl.text.trim().isNotEmpty)
+          'margem_confianca': double.tryParse(_margemCtrl.text.trim().replaceAll(',', '.')),
+        'observacoes': _observacoesCtrl.text.trim(),
         // ciclo_tipo + sub-parâmetros → backend calcula datas e gera milestones.
         ..._cicloParams,
         'autogerar_milestones': _autoMilestones ? 1 : 0,
@@ -331,6 +340,12 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     ),
                   ]),
                   const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _margemCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Margem de confiança (%)', hintText: 'Opcional'),
+                  ),
+                  const SizedBox(height: 16),
                   naturezas.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -411,6 +426,12 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       )).toList(),
                       onChanged: (v) => setState(() => _responsavelId = v),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _observacoesCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'Observações', hintText: 'Opcional'),
                   ),
                   const SizedBox(height: 16),
                   if (!isEditing)

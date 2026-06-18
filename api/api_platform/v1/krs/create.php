@@ -25,6 +25,7 @@ $tipoKr  = api_str($in['tipo_kr'] ?? '');
 $freqMilestone = api_str($in['tipo_frequencia_milestone'] ?? '');
 $responsavel = api_int_or_null($in['responsavel'] ?? null);
 $margem  = api_float_or_null($in['margem_confianca'] ?? null);
+$observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
 
 // RBAC
@@ -80,15 +81,15 @@ try {
     INSERT INTO key_results
       (id_kr, id_objetivo, key_result_num, descricao, baseline, meta,
        unidade_medida, direcao_metrica, natureza_kr, tipo_kr,
-       tipo_frequencia_milestone, responsavel, margem_confianca,
+       tipo_frequencia_milestone, responsavel, margem_confianca, observacoes,
        data_inicio, data_fim, status, status_aprovacao,
        usuario_criador, id_user_criador, dt_criacao, dt_ultima_atualizacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, CURDATE(), NOW())
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, CURDATE(), NOW())
   ");
   $stIns->execute([
     $idKr, $idObj, $num, $desc, $base, $meta,
     $unidade ?: null, $direcao, $natureza ?: null, $tipoKr ?: null,
-    $freqMilestone ?: null, $responsavel, $margem,
+    $freqMilestone ?: null, $responsavel, $margem, $observacoes ?: null,
     $dtInicio ?: null, $dtFim ?: null,
     (string)$uid, $uid, // usuario_criador (como o web) + id_user_criador
   ]);
