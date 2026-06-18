@@ -39,7 +39,8 @@ $sets   = [];
 $params = [];
 
 $strFields = ['descricao', 'status', 'unidade_medida', 'direcao_metrica',
-              'natureza_kr', 'tipo_kr', 'tipo_frequencia_milestone', 'farol'];
+              'natureza_kr', 'tipo_kr', 'tipo_frequencia_milestone', 'farol',
+              'observacoes'];
 foreach ($strFields as $f) {
   if (array_key_exists($f, $in)) {
     $sets[]   = "$f = ?";
