@@ -148,4 +148,4 @@ $payload = [
     'dt_criacao'      => $r['dt_criacao'],
   ], $minhas),
 ];
-api_ok($payload, $payload);
+api_json($payload);

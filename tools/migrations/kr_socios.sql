@@ -8,7 +8,7 @@
 -- conflito de charset/collation; a limpeza em cascata é tratada na aplicação.
 CREATE TABLE IF NOT EXISTS `kr_socios` (
   `id_convite`             BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `id_kr`                  VARCHAR(50) NOT NULL,
+  `id_kr`                  VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- = key_results.id_kr (evita "illegal mix of collations" no JOIN)
   `id_user`                INT(11) NOT NULL,           -- sócio convidado
   `motivo`                 TEXT NOT NULL,              -- descrição/motivo do convite (obrigatória)
   `status`                 VARCHAR(15) NOT NULL DEFAULT 'pendente', -- pendente|aprovado|rejeitado
