@@ -1,0 +1,14 @@
+{
+  "name": "okr-avatar-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gera offline a galeria de avatares padrao (SVG) do OKR System usando DiceBear.",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "dependencies": {
+    "@dicebear/collection": "^9.2.2",
+    "@dicebear/core": "^9.2.2"
+  }
+}

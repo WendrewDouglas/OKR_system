@@ -20,6 +20,7 @@ $csrf = (string)$_SESSION['csrf_token'];
 // Config (carrega .env e defines DB_*)
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
+require_once __DIR__ . '/../auth/avatar_helpers.php';
 
 // Polyfill p/ PHP 7.x
 if (!function_exists('str_contains')) {
@@ -56,12 +57,6 @@ try {
   exit;
 }
 
-/* ==================== AVATARES: paths ==================== */
-$defaultsDir = realpath(__DIR__ . '/../assets/img/avatars/default_avatar') ?: (__DIR__ . '/../assets/img/avatars/default_avatar');
-$defaultsWeb = '/OKR_system/assets/img/avatars/default_avatar/';
-$defaultFile = 'default.png';
-if (!is_dir($defaultsDir)) @mkdir($defaultsDir, 0755, true);
-
 /* ==================== HELPERS ==================== */
 function mask_email_local(string $email): string {
   if (!str_contains($email, '@')) return $email;
@@ -70,10 +65,6 @@ function mask_email_local(string $email): string {
   $len = function_exists('mb_strlen') ? 'mb_strlen' : 'strlen';
   $uMasked = $sub($u, 0, 1) . str_repeat('*', max(0, $len($u)-1));
   return $uMasked . '@' . $d;
-}
-function gallery_file_exists(string $dir, string $file): bool {
-  if ($file === '') return false;
-  return is_file(rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $file);
 }
 function arr_pluck(array $rows, string $k, string $v): array {
   $out = [];
@@ -241,76 +232,7 @@ function update_user_profile(PDO $pdo, int $id_user, array $um, array $data): vo
   $st->execute($params);
 }
 
-/* ==================== AJAX: lista de avatares ==================== */
-if (($_GET['ajax'] ?? '') === 'avatar_list') {
-  if (!isset($_SESSION['user_id'])) { http_response_code(401); exit; }
-  header('Content-Type: application/json; charset=utf-8');
-
-  $filter = $_GET['filter'] ?? 'todos';
-  if (!in_array($filter, ['todos','masculino','feminino'], true)) $filter = 'todos';
-
-  $page     = max(1, (int)($_GET['page'] ?? 1));
-  $pageSize = min(60, max(5, (int)($_GET['page_size'] ?? 15)));
-  $offset   = ($page - 1) * $pageSize;
-
-  try {
-    if ($filter === 'todos') {
-      $total = (int)$pdo->query("SELECT COUNT(*) FROM avatars WHERE active = 1 AND filename <> 'default.png'")->fetchColumn();
-      $listStmt = $pdo->prepare("
-        SELECT id, filename, gender
-          FROM avatars
-         WHERE active = 1
-           AND filename <> 'default.png'
-         ORDER BY id
-         LIMIT :limit OFFSET :offset
-      ");
-    } else {
-      $countStmt = $pdo->prepare("SELECT COUNT(*) FROM avatars WHERE active = 1 AND gender = :g AND filename <> 'default.png'");
-      $countStmt->execute([':g' => $filter]);
-      $total = (int)$countStmt->fetchColumn();
-
-      $listStmt = $pdo->prepare("
-        SELECT id, filename, gender
-          FROM avatars
-         WHERE active = 1
-           AND gender = :g
-           AND filename <> 'default.png'
-         ORDER BY id
-         LIMIT :limit OFFSET :offset
-      ");
-      $listStmt->bindValue(':g', $filter);
-    }
-
-    $listStmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
-    $listStmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
-    $listStmt->execute();
-    $rows = $listStmt->fetchAll();
-
-    $items = [];
-    foreach ($rows as $r) {
-      $bn = (string)$r['filename'];
-      $thumbPath = $defaultsDir . '/_thumbs/' . $bn;
-      $url = is_file($thumbPath)
-        ? $defaultsWeb . '_thumbs/' . rawurlencode($bn)
-        : $defaultsWeb . rawurlencode($bn);
-
-      $items[] = [
-        'id'     => (int)$r['id'],
-        'file'   => $bn,
-        'url'    => $url,
-        'gender' => (string)$r['gender'],
-      ];
-    }
-
-    header('Cache-Control: private, max-age=300');
-    echo json_encode(['items' => $items, 'total' => $total], JSON_UNESCAPED_SLASHES);
-  } catch (Throwable $e) {
-    error_log("profile_user.php: avatar_list AJAX falhou: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['items' => [], 'total' => 0, 'error' => 'Falha ao consultar avatares']);
-  }
-  exit;
-}
+/* AJAX de galeria legada removido — o picker usa auth/avatars_gallery.php (catálogo único) */
 
 /* ==================== MODELO DO USUÁRIO ==================== */
 $um = detect_user_model($pdo);
@@ -470,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      $_SESSION['avatar_filename'] = 'default.png';
+      avatar_cache_flush();
       $_SESSION['success_message'] = 'Avatar redefinido para o padrão.';
     } catch (Throwable $e) {
       error_log("profile_user.php: remove_avatar falhou: " . $e->getMessage());
@@ -489,19 +411,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-      $av = $pdo->prepare("SELECT id, filename FROM avatars WHERE id = :id AND active = 1 LIMIT 1");
-      $av->execute([':id' => $chosenId]);
+      // Aceita qualquer avatar ativo do catálogo: padrão da galeria OU upload do próprio usuário.
+      $av = $pdo->prepare(
+        "SELECT id FROM avatars
+          WHERE id = :id AND active = 1 AND (kind = 'default' OR owner_user_id = :uid)
+          LIMIT 1"
+      );
+      $av->execute([':id' => $chosenId, ':uid' => $id_user]);
       $row = $av->fetch();
 
       if (!$row) {
         $_SESSION['error_messages'][] = 'Avatar inválido ou inativo.';
-        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
-        exit;
-      }
-
-      $filename = (string)$row['filename'];
-      if ($filename === '' || !gallery_file_exists($defaultsDir, $filename)) {
-        $_SESSION['error_messages'][] = 'Arquivo de avatar não encontrado no servidor.';
         header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#?'));
         exit;
       }
@@ -515,7 +435,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st->execute([':aid' => (int)$row['id'], ':id' => $id_user]);
       }
 
-      $_SESSION['avatar_filename'] = $filename;
+      avatar_cache_flush();
       $_SESSION['success_message'] = 'Avatar aplicado com sucesso.';
     } catch (Throwable $e) {
       error_log("profile_user.php: choose_avatar falhou: " . $e->getMessage());
@@ -589,19 +509,9 @@ $telFmt = (strlen($d) === 11)
   ? sprintf('(%s) %s-%s', substr($d,0,2), substr($d,2,5), substr($d,7,4))
   : $raw;
 
-/* ==================== AVATAR ATUAL ==================== */
-$avatarFilename = $defaultFile;
-if (!empty($_SESSION['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$_SESSION['avatar_filename'])) {
-  $avatarFilename = (string)$_SESSION['avatar_filename'];
-} elseif (!empty($user['avatar_filename']) && gallery_file_exists($defaultsDir, (string)$user['avatar_filename'])) {
-  $avatarFilename = (string)$user['avatar_filename'];
-  $_SESSION['avatar_filename'] = $avatarFilename;
-}
-if (!gallery_file_exists($defaultsDir, $avatarFilename)) {
-  $avatarFilename = $defaultFile;
-  $_SESSION['avatar_filename'] = $defaultFile;
-}
-$avatarUrl = $defaultsWeb . rawurlencode($avatarFilename);
+/* ==================== AVATAR ATUAL (catálogo único) ==================== */
+$avatarData = avatar_resolve($id_user, $pdo);
+$avatarUrl  = $avatarData['url'];
 $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
 ?>
 <!DOCTYPE html>
@@ -710,12 +620,16 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
           <div class="card-body">
             <div class="avatar-box">
               <div class="img-wrap">
-                <img id="currentAvatar" src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar do usuário">
+                <img id="currentAvatar" data-avatar-target src="<?= htmlspecialchars($avatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Avatar do usuário">
               </div>
 
               <div class="btn-right">
                 <button type="button" class="btn btn-outline" id="btnOpenAvatarModal">
-                  <i class="fa-solid fa-image"></i> Alterar avatar
+                  <i class="fa-solid fa-image"></i> Escolher da galeria
+                </button>
+
+                <button type="button" class="btn btn-outline" data-avatar-upload-open>
+                  <i class="fa-solid fa-upload"></i> Enviar foto
                 </button>
 
                 <form method="post" style="display:inline" onsubmit="return confirm('Redefinir seu avatar para o padrão?');">
@@ -834,27 +748,11 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
         <input type="hidden" name="action" value="choose_avatar">
         <input type="hidden" name="chosen_id" id="chosen_id" value="">
         <div class="modal-body">
-
-          <div class="icon-filters" role="tablist" aria-label="Filtro gênero">
-            <button type="button" class="chip-icon active" data-filter="todos" role="tab" aria-selected="true" title="Todos">
-              <i class="fa-solid fa-venus-mars"></i> Todos
-            </button>
-            <button type="button" class="chip-icon" data-filter="masculino" role="tab" aria-selected="false" title="Masculino">
-              <i class="fa-solid fa-mars"></i> Masculino
-            </button>
-            <button type="button" class="chip-icon" data-filter="feminino" role="tab" aria-selected="false" title="Feminino">
-              <i class="fa-solid fa-venus"></i> Feminino
-            </button>
-          </div>
-
-          <div class="grid-avatars" id="avatarGrid"></div>
-
-          <div class="paginator">
-            <button type="button" class="btn" id="pgPrev"><i class="fa-solid fa-angle-left"></i> Anterior</button>
-            <div class="info" id="pgInfo">Página 1</div>
-            <button type="button" class="btn" id="pgNext">Próxima <i class="fa-solid fa-angle-right"></i></button>
-          </div>
-
+          <?php
+            // Novo picker com filtros (gênero, tags, busca) — consome auth/avatars_gallery.php.
+            $avatarPickerInput = 'picker_sel';
+            include __DIR__ . '/partials/avatar_picker.php';
+          ?>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn" id="avatarCancel">Cancelar</button>
@@ -877,25 +775,17 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
       });
     })();
 
-    let TOTAL = 0;
-
+    // ----- Modal "Escolher da galeria" -----
     const backdrop  = document.getElementById('avatarModal');
     const openBtn   = document.getElementById('btnOpenAvatarModal');
     const closeBtn  = document.getElementById('avatarModalClose');
     const cancelBtn = document.getElementById('avatarCancel');
     const form      = document.getElementById('avatarModalForm');
     const chosenId  = document.getElementById('chosen_id');
+    const saveBtn   = document.getElementById('avatarSave');
 
-    function openAvatarModal(){
-      backdrop.classList.add('show');
-      backdrop.setAttribute('aria-hidden','false');
-      page = 1;
-      fetchAndRender();
-    }
-    function closeAvatarModal(){
-      backdrop.classList.remove('show');
-      backdrop.setAttribute('aria-hidden','true');
-    }
+    function openAvatarModal(){ backdrop.classList.add('show'); backdrop.setAttribute('aria-hidden','false'); }
+    function closeAvatarModal(){ backdrop.classList.remove('show'); backdrop.setAttribute('aria-hidden','true'); }
 
     openBtn  && openBtn.addEventListener('click', openAvatarModal);
     closeBtn && closeBtn.addEventListener('click', closeAvatarModal);
@@ -903,91 +793,20 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
     backdrop && backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) closeAvatarModal(); });
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && backdrop.classList.contains('show')) closeAvatarModal(); });
 
-    const grid   = document.getElementById('avatarGrid');
-    const pgPrev = document.getElementById('pgPrev');
-    const pgNext = document.getElementById('pgNext');
-    const pgInfo = document.getElementById('pgInfo');
-    const filterBtns = document.querySelectorAll('.chip-icon');
-
-    let filter = 'todos';
-    let page   = 1;
-    const PAGE_SIZE = 15;
-
-    function totalPages(){ return Math.max(1, Math.ceil(TOTAL / PAGE_SIZE)); }
-
-    function skeleton(n = PAGE_SIZE){
-      const frag = document.createDocumentFragment();
-      for (let i=0;i<n;i++){
-        const card = document.createElement('div');
-        card.className = 'avatar-card';
-        card.style.minHeight = '120px';
-        card.innerHTML = `<div style="width:60%;height:90px;border-radius:10px;background:#111826;opacity:.35;"></div>`;
-        frag.appendChild(card);
-      }
-      grid.innerHTML = '';
-      grid.appendChild(frag);
-    }
-
-    function render(items){
-      const frag = document.createDocumentFragment();
-      items.forEach(item=>{
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'avatar-card';
-        card.innerHTML = `
-          <span class="badge-g">${item.gender === 'feminino' ? '♀' : (item.gender === 'masculino' ? '♂' : '⚤')}</span>
-          <img loading="lazy" decoding="async" fetchpriority="low"
-               width="128" height="128"
-               src="${item.url}" alt="Avatar ${item.file}">
-        `;
-        card.addEventListener('click', ()=>{
-          chosenId.value = String(item.id);
-          document.querySelectorAll('.avatar-card.selected').forEach(el=>el.classList.remove('selected'));
-          card.classList.add('selected');
-        });
-        frag.appendChild(card);
-      });
-      grid.innerHTML = '';
-      grid.appendChild(frag);
-
-      const tp = totalPages();
-      pgInfo.textContent = 'Página ' + page + ' de ' + tp;
-      pgPrev.disabled = (page<=1);
-      pgNext.disabled = (page>=tp);
-    }
-
-    async function fetchAndRender(){
-      skeleton();
-      try{
-        const url = `?ajax=avatar_list&filter=${encodeURIComponent(filter)}&page=${page}&page_size=${PAGE_SIZE}`;
-        const res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
-        const data = await res.json();
-        TOTAL = data.total || 0;
-        render(data.items || []);
-      }catch(e){
-        grid.innerHTML = '<div style="color:#fca5a5">Falha ao carregar avatares.</div>';
-      }
-    }
-
-    filterBtns.forEach(b=>{
-      b.addEventListener('click', ()=>{
-        filterBtns.forEach(x=>{ x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
-        b.classList.add('active'); b.setAttribute('aria-selected','true');
-        filter = b.dataset.filter;
-        page = 1;
-        fetchAndRender();
-      });
+    // O picker (partials/avatar_picker.php) dispara 'avatar:selected'.
+    if (saveBtn) saveBtn.disabled = true;
+    document.addEventListener('avatar:selected', function(ev){
+      if (chosenId) chosenId.value = (ev.detail && ev.detail.id) ? String(ev.detail.id) : '';
+      if (saveBtn)  saveBtn.disabled = !(chosenId && chosenId.value);
     });
 
-    pgPrev.addEventListener('click', ()=>{ if (page>1){ page--; fetchAndRender(); } });
-    pgNext.addEventListener('click', ()=>{ if (page<totalPages()){ page++; fetchAndRender(); } });
-
-    form.addEventListener('submit', function(e){
-      if (!chosenId.value) {
-        e.preventDefault();
-        alert('Selecione um avatar da galeria.');
-      }
+    form && form.addEventListener('submit', function(e){
+      if (!chosenId || !chosenId.value){ e.preventDefault(); alert('Selecione um avatar da galeria.'); }
     });
+
+    // Upload de foto própria (partials/avatar_uploader.php) concluído -> recarrega.
+    document.addEventListener('avatar:updated', function(){ setTimeout(function(){ location.reload(); }, 300); });
   </script>
+  <?php include __DIR__ . '/partials/avatar_uploader.php'; ?>
 </body>
 </html>

@@ -293,6 +293,20 @@ $_SESSION['user_email']    = (string)$user['email'];
 $_SESSION['id_company']    = (int)($user['id_company'] ?? 0);
 $_SESSION['last_activity'] = time();
 
+/* ===== Nome da empresa (cache em sessão p/ sidebar) ===== */
+if ((int)($user['id_company'] ?? 0) > 0) {
+  try {
+    $stc = $pdo->prepare("SELECT organizacao FROM `company` WHERE id_company = :cid LIMIT 1");
+    $stc->execute([':cid' => (int)$user['id_company']]);
+    $orgName = $stc->fetchColumn();
+    if ($orgName !== false && $orgName !== null && $orgName !== '') {
+      $_SESSION['company_name'] = (string)$orgName;
+    }
+  } catch (Throwable $e) {
+    alog('WARN_COMPANY_NAME', $e->getMessage(), ['id_company'=>$user['id_company']]);
+  }
+}
+
 $pepper = envget('APP_TOKEN_PEPPER', '');
 if ($pepper !== '') {
   $_SESSION['session_sig'] = hash_hmac('sha256',

@@ -5,6 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $userId = $_SESSION['user_id'] ?? '';
 $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
+require_once __DIR__ . '/../../auth/avatar_helpers.php';
+$userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
 ?>
 
 <style>
@@ -222,6 +224,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
     const clearBtn = document.getElementById('chat_clear');
     const main = document.getElementById('main-content');
     const avatar = '<?php echo addslashes($avatarUrl); ?>';
+    const userAvatar = '<?php echo addslashes($userAvatarUrl); ?>';
     const messagesContainer = document.getElementById('chat_messages');
     const chatInput = document.getElementById('chat_message');
     const chatSendBtn = document.getElementById('chat_send');
@@ -256,7 +259,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
             const safe = escapeHTML(String(text ?? ''));
             msgEl.innerHTML = `
               <div class="user-message">${safe}</div>
-              <img src="${avatar}" class="user-avatar" alt="Você">`;
+              <img src="${userAvatar}" class="user-avatar" alt="Você">`;
         }
 
         messagesContainer.appendChild(msgEl);

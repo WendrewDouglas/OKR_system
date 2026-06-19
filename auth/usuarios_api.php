@@ -87,22 +87,7 @@ function company_name_expr(): string {
   return "COALESCE(c.organizacao, c.razao_social, CONCAT('Empresa #', c.id_company))";
 }
 
-function avatar_public_path(int $id): ?string {
-  $base = __DIR__ . '/../assets/img/avatars/';
-  foreach (['png','jpg','jpeg'] as $ext) {
-    $p = $base . $id . '.' . $ext;
-    if (file_exists($p)) return '/OKR_system/assets/img/avatars/'.$id.'.'.$ext;
-  }
-  return null;
-}
-
-/* Resolve a URL pública do avatar, priorizando avatars.filename (como no header) */
-function avatar_url_from_filename(?string $fn): ?string {
-  if (is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn)) {
-    return '/OKR_system/assets/img/avatars/default_avatar/'.$fn;
-  }
-  return null;
-}
+require_once __DIR__ . '/avatar_image.php'; // inclui avatar_helpers + pipeline de upload
 
 
 /* v_user_access_summary: retorna ['consulta_R'=>..., 'edicao_W'=>...] ou '—' */
@@ -382,7 +367,7 @@ if ($method==='GET' && $action==='list') {
           WHERE ur.user_id=u.id_user) AS roles_csv
         $selectExtra
         $selectAccess,
-        a.filename AS avatar_filename
+        a.path AS avatar_path
       FROM usuarios u
       $joinCompany
       $joinAccess
@@ -410,7 +395,7 @@ if ($method==='GET' && $action==='list') {
                  WHERE ur.user_id=u.id_user) AS roles_csv
                $selectExtra,
                NULL AS consulta_R, NULL AS edicao_W,
-               a.filename AS avatar_filename
+               a.path AS avatar_path
         FROM usuarios u
         $joinCompany
         $joinAv
@@ -423,11 +408,8 @@ if ($method==='GET' && $action==='list') {
     $users = array_map(function($r) use($IS_MASTER, $MEU_ID){
       $roles = array_values(array_filter(array_map('trim', explode(',', (string)($r['roles_csv'] ?? '')))));
 
-      // NOVO: montar URL do avatar pela nova ordem de precedência
-      $fn = $r['avatar_filename'] ?? null;
-      $avatar = avatar_url_from_filename($fn);
-      if (!$avatar) $avatar = avatar_public_path((int)$r['id_user']);
-      if (!$avatar) $avatar = '/OKR_system/assets/img/avatars/default_avatar/default.png';
+      // Catálogo único: resolve por avatars.path (gallery/custom/legado).
+      $avatar = avatar_url_from_row(['path' => $r['avatar_path'] ?? null]);
 
       $u = [
         'id_user'           => (int)$r['id_user'],
@@ -501,7 +483,7 @@ if ($method==='GET' && $action==='get') {
       SELECT u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
              u.email_corporativo, u.telefone, u.id_company
              $extra,
-             a.filename AS avatar_filename
+             a.path AS avatar_path
         FROM usuarios u
         LEFT JOIN avatars a ON a.id = u.avatar_id
        WHERE u.id_user=?
@@ -514,11 +496,8 @@ if ($method==='GET' && $action==='get') {
   $overrides  = fetch_user_overrides($pdo, $id);
   $summary    = fetch_access_summary($pdo, $id);
 
-  // NOVO: montar URL final do avatar (filename -> arquivo por id -> default)
-  $fn = $u['avatar_filename'] ?? null;
-  $avatarUrl = avatar_url_from_filename($fn);
-  if (!$avatarUrl) $avatarUrl = avatar_public_path($id);
-  if (!$avatarUrl) $avatarUrl = '/OKR_system/assets/img/avatars/default_avatar/default.png';
+  // Catálogo único: resolve por avatars.path (gallery/custom/legado).
+  $avatarUrl = avatar_url_from_row(['path' => $u['avatar_path'] ?? null]);
 
   // manter o avatar dentro do objeto user (mesmo padrão do list)
   $u['avatar'] = $avatarUrl;
@@ -966,24 +945,11 @@ if ($method==='POST' && $action==='upload_avatar') {
   if ($id<=0) jexit(400, ['success'=>false,'error'=>'ID inválido']);
   if (!isset($_FILES['avatar']) || $_FILES['avatar']['error']!==UPLOAD_ERR_OK) jexit(400, ['success'=>false,'error'=>'Falha no upload']);
 
-  $tmp  = $_FILES['avatar']['tmp_name'];
-  $info = @getimagesize($tmp);
-  if (!$info) jexit(415, ['success'=>false,'error'=>'Arquivo não é imagem']);
-  $ext = image_type_to_extension($info[2], false);
-  if (!in_array(strtolower($ext), ['png','jpg','jpeg'])) $ext='png';
-
-  $dir = __DIR__.'/../assets/img/avatars';
-  if (!is_dir($dir)) @mkdir($dir,0775,true);
-  $real = realpath($dir);
-  if (!$real) jexit(500, ['success'=>false,'error'=>'Diretório de avatars indisponível']);
-
-  foreach(['png','jpg','jpeg'] as $e){
-    $p=$real.DIRECTORY_SEPARATOR.$id.'.'.$e; if (file_exists($p)) @unlink($p);
-  }
-  $dest = $real.DIRECTORY_SEPARATOR.$id.'.'.$ext;
-
-  if (!move_uploaded_file($tmp,$dest)) jexit(500, ['success'=>false,'error'=>'Não foi possível salvar o avatar']);
-  jexit(200, ['success'=>true,'path'=>'/OKR_system/assets/img/avatars/'.$id.'.'.$ext]);
+  // Fluxo unificado: WebP 256/64 + linha custom + repontar avatar_id
+  $bin = (string)@file_get_contents($_FILES['avatar']['tmp_name']);
+  $res = avatar_store_custom($id, $bin);
+  if (empty($res['ok'])) jexit(415, ['success'=>false,'error'=>$res['error'] ?? 'Falha ao salvar avatar']);
+  jexit(200, ['success'=>true,'path'=>$res['url']]);
 }
 
 /* ======================================================
@@ -993,21 +959,13 @@ if ($method==='POST' && $action==='save_avatar_canvas') {
   $id = (int)($_POST['id_user'] ?? 0);
   $data = (string)($_POST['data_url'] ?? '');
   if ($id<=0 || strpos($data,'data:image/png;base64,')!==0) jexit(400, ['success'=>false,'error'=>'Dados inválidos']);
-  $bin = base64_decode(substr($data, strlen('data:image/png;base64,')));
+  $bin = base64_decode(substr($data, strlen('data:image/png;base64,')), true);
   if ($bin===false) jexit(400, ['success'=>false,'error'=>'Base64 inválido']);
 
-  $dir = __DIR__.'/../assets/img/avatars';
-  if (!is_dir($dir)) @mkdir($dir,0775,true);
-  $real = realpath($dir);
-  if (!$real) jexit(500, ['success'=>false,'error'=>'Diretório de avatars indisponível']);
-
-  foreach(['png','jpg','jpeg'] as $e){
-    $p=$real.DIRECTORY_SEPARATOR.$id.'.'.$e; if (file_exists($p)) @unlink($p);
-  }
-  $dest = $real.DIRECTORY_SEPARATOR.$id.'.png';
-  if (file_put_contents($dest,$bin)===false) jexit(500, ['success'=>false,'error'=>'Falha ao gravar PNG']);
-
-  jexit(200, ['success'=>true,'path'=>'/OKR_system/assets/img/avatars/'.$id.'.png']);
+  // Fluxo unificado: WebP 256/64 + linha custom + repontar avatar_id
+  $res = avatar_store_custom($id, $bin);
+  if (empty($res['ok'])) jexit(415, ['success'=>false,'error'=>$res['error'] ?? 'Falha ao salvar avatar']);
+  jexit(200, ['success'=>true,'path'=>$res['url']]);
 }
 
 /* ======================================================

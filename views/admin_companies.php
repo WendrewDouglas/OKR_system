@@ -62,6 +62,17 @@ $users = $pdo->query("
    ORDER BY u.primeiro_nome ASC
 ")->fetchAll();
 
+// Mapa id_user -> URL de avatar (catálogo único); só guarda fotos não-padrão
+require_once __DIR__ . '/../auth/avatar_helpers.php';
+$acAvatarUrls = [];
+try {
+  foreach ($pdo->query("SELECT u.id_user, a.path FROM usuarios u LEFT JOIN avatars a ON a.id = u.avatar_id") as $__r) {
+    if (!avatar_is_default(['path' => $__r['path']])) {
+      $acAvatarUrls[(int)$__r['id_user']] = avatar_url_from_row(['path' => $__r['path']]);
+    }
+  }
+} catch (Throwable $e) { /* fallback: iniciais */ }
+
 // Agrupa usuarios por company
 $usersByCompany = [];
 $orphanUsers = [];
@@ -435,7 +446,7 @@ function roleBadge(string $role): string {
               $roles = $u['roles'] ? explode(', ', $u['roles']) : [];
             ?>
             <div class="ac-user-row" data-search="<?= h(strtolower($u['primeiro_nome'].' '.$u['ultimo_nome'].' '.$u['email_corporativo'])) ?>">
-              <div class="ac-user-avatar"><?= h($initials) ?></div>
+              <div class="ac-user-avatar"><?php $__au = $acAvatarUrls[(int)$u['id_user']] ?? null; if ($__au): ?><img src="<?= h($__au) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('<?= h($initials) ?>'))"><?php else: ?><?= h($initials) ?><?php endif; ?></div>
               <div class="ac-user-info">
                 <div class="ac-user-name"><?= h($u['primeiro_nome'].' '.($u['ultimo_nome'] ?? '')) ?></div>
                 <div class="ac-user-email"><?= h($u['email_corporativo']) ?></div>
@@ -471,7 +482,7 @@ function roleBadge(string $role): string {
         $roles = $u['roles'] ? explode(', ', $u['roles']) : [];
       ?>
       <div class="ac-user-row" data-search="<?= h(strtolower($u['primeiro_nome'].' '.$u['ultimo_nome'].' '.$u['email_corporativo'])) ?>">
-        <div class="ac-user-avatar"><?= h($initials) ?></div>
+        <div class="ac-user-avatar"><?php $__au = $acAvatarUrls[(int)$u['id_user']] ?? null; if ($__au): ?><img src="<?= h($__au) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('<?= h($initials) ?>'))"><?php else: ?><?= h($initials) ?><?php endif; ?></div>
         <div class="ac-user-info">
           <div class="ac-user-name"><?= h($u['primeiro_nome'].' '.($u['ultimo_nome'] ?? '')) ?></div>
           <div class="ac-user-email"><?= h($u['email_corporativo']) ?></div>
