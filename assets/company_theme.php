@@ -160,31 +160,28 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
    base #171B21 / cards #1C2128 / borda #30363D / dourado #F1C40F.
    ============================================================ */
 
-/* Canvas (fixo): TWILL 2x2 realista (fibra de carbono estilo F1) + brilho diagonal.
-   Técnica clássica de gradientes sobrepostos formando o tramado over-under. */
-body{
-  background-color:#0f141b !important;
+/* TWILL 2x2 realista (F1) — em DIAGONAL, maior e mais escuro.
+   O tramado fica num pseudo FIXO rotacionado 45° (mantém o tiling perfeito);
+   .content/sidebar/header translúcidos deixam o tramado aparecer em toda a UI. */
+body{ background:#090c11 !important; color: var(--text, #EAEEF6) !important; }
+body::before{
+  content:""; position:fixed; top:-50%; left:-50%; width:200%; height:200%;
+  z-index:-2; pointer-events:none;
+  transform: rotate(45deg); transform-origin:center center;
+  background-color:#090c11;
   background-image:
-    /* brilho diagonal suave cobrindo a tela */
-    linear-gradient(118deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 58%),
-    /* tramado (twill 2x2) */
-    linear-gradient(27deg,  #11161d 5px, transparent 5px),
-    linear-gradient(207deg, #11161d 5px, transparent 5px),
-    linear-gradient(27deg,  #1b232e 5px, transparent 5px),
-    linear-gradient(207deg, #1b232e 5px, transparent 5px),
-    linear-gradient(90deg,  #161c24 10px, transparent 10px),
-    linear-gradient(#191f28 25%, #141a21 25%, #141a21 50%, transparent 50%, transparent 75%, #1c242f 75%) !important;
-  background-size:
-    220% 220%,
-    20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px !important;
-  background-position:
-    0 0,
-    0 5px, 10px 0, 0 10px, 10px 5px, 0 0, 0 0 !important;
-  background-repeat:
-    no-repeat,
-    repeat, repeat, repeat, repeat, repeat, repeat !important;
-  background-attachment: fixed !important;
-  color: var(--text, #EAEEF6) !important;
+    linear-gradient(27deg,  #0b0e13 6px, transparent 6px),
+    linear-gradient(207deg, #0b0e13 6px, transparent 6px),
+    linear-gradient(27deg,  #161d27 6px, transparent 6px),
+    linear-gradient(207deg, #161d27 6px, transparent 6px),
+    linear-gradient(90deg,  #0e131a 12px, transparent 12px),
+    linear-gradient(#11161e 25%, #0d1218 25%, #0d1218 50%, transparent 50%, transparent 75%, #161d27 75%);
+  background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px;
+  background-position: 0 6px, 12px 0, 0 12px, 12px 6px, 0 0, 0 0;
+}
+body::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background: linear-gradient(118deg, rgba(255,255,255,0) 43%, rgba(255,255,255,.045) 50%, rgba(255,255,255,0) 57%);
 }
 
 /* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
@@ -197,29 +194,11 @@ body{
 }
 .content > main, .content main{ background: transparent; }
 
-/* Sidebar e Header recebem A MESMA fibra (alinhada via fixed) + leve relevo de painel */
+/* Sidebar e Header translúcidos: deixam o tramado diagonal (body::before) aparecer,
+   com leve escurecimento para diferenciar os painéis do conteúdo. */
 .sidebar, .header{
-  background-color:#0f141b !important;
-  background-image:
-    /* leve relevo de painel */
-    linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.18)),
-    /* mesmo tramado twill 2x2 (alinhado via fixed) */
-    linear-gradient(27deg,  #11161d 5px, transparent 5px),
-    linear-gradient(207deg, #11161d 5px, transparent 5px),
-    linear-gradient(27deg,  #1b232e 5px, transparent 5px),
-    linear-gradient(207deg, #1b232e 5px, transparent 5px),
-    linear-gradient(90deg,  #161c24 10px, transparent 10px),
-    linear-gradient(#191f28 25%, #141a21 25%, #141a21 50%, transparent 50%, transparent 75%, #1c242f 75%) !important;
-  background-size:
-    100% 100%,
-    20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px !important;
-  background-position:
-    0 0,
-    0 5px, 10px 0, 0 10px, 10px 5px, 0 0, 0 0 !important;
-  background-repeat:
-    no-repeat,
-    repeat, repeat, repeat, repeat, repeat, repeat !important;
-  background-attachment: fixed !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(180deg, rgba(9,12,17,.42), rgba(9,12,17,.64)) !important;
 }
 .sidebar{ border-right: 1px solid rgba(255,255,255,.07); }
 .sidebar-footer{ background: transparent; border-top: 1px solid rgba(255,255,255,.08); }
