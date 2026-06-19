@@ -57,8 +57,12 @@ img{max-width:100%;display:block}
 @media (max-width:480px){.lp-logo__img{height:40px}}
 
 /* ---------- Hero ---------- */
-.lp-hero{background:radial-gradient(120% 120% at 0% 0%,#19222e 0%,var(--ink) 60%);color:#fff;
-  padding:48px 0 56px}
+.lp-hero{color:#fff;padding:48px 0 56px;
+  background:
+    linear-gradient(90deg, rgba(14,19,26,.96) 0%, rgba(14,19,26,.88) 42%, rgba(14,19,26,.55) 72%, rgba(14,19,26,.38) 100%),
+    linear-gradient(0deg, rgba(14,19,26,.55) 0%, rgba(14,19,26,0) 45%),
+    url('../assets/img/hero-bg.jpg');
+  background-size:cover;background-position:center right;background-repeat:no-repeat}
 .lp-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .lp-badge{background:rgba(255,193,7,.16);color:var(--amber);border:1px solid rgba(255,193,7,.35);
   font-size:.78rem;font-weight:600;padding:5px 11px;border-radius:999px}
