@@ -385,11 +385,11 @@ $entregaveis = [
   </div>
 </section>
 
-<!-- ====== TRANSPARÊNCIA ====== -->
-<section class="lp-section lp-transparency">
+<!-- ====== TRANSPARÊNCIA (letras miúdas) ====== -->
+<section class="lp-disclaimer">
   <div class="lp-container">
-    <h2 class="lp-h2">Aviso de transparência</h2>
-    <ul>
+    <p class="lp-disclaimer__title">Aviso de transparência</p>
+    <ul class="lp-disclaimer__list">
       <?php foreach (lp_transparency_points() as $tp): ?>
         <li><?= $e($tp) ?></li>
       <?php endforeach; ?>
