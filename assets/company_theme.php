@@ -160,22 +160,21 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
    base #171B21 / cards #1C2128 / borda #30363D / dourado #F1C40F.
    ============================================================ */
 
-/* Canvas único (fixo): trama de fibra de carbono + brilho diagonal suave */
+/* Canvas (fixo): trama de fibra de carbono MAIOR/moderna + brilho diagonal */
 body{
   background-color:#10141a !important;
   background-image:
-    /* brilho diagonal sutil cobrindo a tela */
-    linear-gradient(118deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.045) 50%, rgba(255,255,255,0) 62%),
-    /* fios da trama (duas diagonais) */
-    repeating-linear-gradient(45deg,  rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,.30) 0 1px, transparent 1px 3px),
+    /* brilho diagonal suave cobrindo a tela */
+    linear-gradient(118deg, rgba(255,255,255,0) 41%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 59%),
+    /* fios da trama (duas diagonais) — célula ~8px */
+    repeating-linear-gradient(45deg,  rgba(255,255,255,.05) 0 1.5px, transparent 1.5px 8px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.34)       0 1.5px, transparent 1.5px 8px),
     /* profundidade de base */
-    linear-gradient(135deg, #1b212b 0%, #12161d 60%, #0d1117 100%) !important;
-  background-size: 220% 220%, 4px 4px, 4px 4px, 100% 100% !important;
-  background-position: 0 0, 0 0, 0 0, 0 0 !important;
+    linear-gradient(135deg, #1c2330 0%, #141922 55%, #0d1117 100%) !important;
+  background-size: 220% 220%, auto, auto, 100% 100% !important;
   background-repeat: no-repeat, repeat, repeat, no-repeat !important;
   background-attachment: fixed !important;
-  color: var(--text, #EAEEF6);
+  color: var(--text, #EAEEF6) !important;
 }
 
 /* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
@@ -188,16 +187,23 @@ body{
 }
 .content > main, .content main{ background: transparent; }
 
-/* Sidebar: painel translúcido escuro sobre a fibra + divisor sutil */
-.sidebar{
-  background: linear-gradient(180deg, rgba(22,27,34,.78), rgba(13,17,23,.86)) !important;
-  border-right: 1px solid rgba(255,255,255,.06);
+/* Sidebar e Header recebem A MESMA fibra (alinhada via fixed) + leve relevo de painel */
+.sidebar, .header{
+  background-color:#0f141b !important;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(0,0,0,.14)),
+    repeating-linear-gradient(45deg,  rgba(255,255,255,.055) 0 1.5px, transparent 1.5px 8px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.36)        0 1.5px, transparent 1.5px 8px),
+    linear-gradient(135deg, #1c2330 0%, #141922 55%, #0d1117 100%) !important;
+  background-size: 100% 100%, auto, auto, 100% 100% !important;
+  background-repeat: no-repeat, repeat, repeat, no-repeat !important;
+  background-attachment: fixed !important;
 }
+.sidebar{ border-right: 1px solid rgba(255,255,255,.07); }
 .sidebar-footer{ background: transparent; border-top: 1px solid rgba(255,255,255,.08); }
 
-/* Header: escuro translúcido (fibra atrás) + linha dourada sutil embaixo */
+/* Header: sombra + linha dourada sutil; textos claros (logo branca, sem respaldo) */
 .header{
-  background: linear-gradient(180deg, rgba(22,27,34,.82), rgba(13,17,23,.72)) !important;
   box-shadow: 0 6px 18px rgba(0,0,0,.35) !important;
   border-bottom: none !important;
   position: relative;
@@ -207,18 +213,10 @@ body{
   background: linear-gradient(90deg, transparent, rgba(241,196,15,.45), transparent);
   pointer-events:none;
 }
-/* textos/ícones do header legíveis sobre o escuro */
 .header .menu-toggle,
 .header .profile span,
 .header .notif-link,
 .header .notif-link i{ color: var(--text, #EAEEF6) !important; }
-/* respaldo claro sutil p/ a logo (que pode ser escura) ficar legível no header escuro */
-.header .left .logo-link{
-  background: rgba(255,255,255,.94);
-  border-radius: 8px;
-  padding: 3px 8px;
-  line-height: 0;
-}
 
 /* Footer de página (quando houver) acompanha a fibra */
 .content footer, footer.app-footer, .app-footer{ background: transparent; }

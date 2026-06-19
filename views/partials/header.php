@@ -104,7 +104,7 @@ try {
 .header { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
 .menu-toggle { font-size: 1.5rem; cursor: pointer; margin-right: 1rem; color: #2C3E50; }
 .header .left { display: flex; align-items: center; }
-.header .left .logo-link img { height: auto; width: auto; max-height: 30px; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
+.header .left .logo-link img { height: 36px; width: auto; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
 .header .left .logo-link:hover img { transform: scale(1.1); }
 .header .right { display: flex; align-items: center; position: relative; gap: 16px; }
 .notif-link { position: relative; display: inline-block; line-height: 1; color: #2C3E50; }
@@ -127,7 +127,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
   <div class="left">
     <a href="https://planningbi.com.br/" class="logo-link"
        aria-label="Ir para página inicial" target="_blank" rel="noopener">
-      <img src="<?= htmlspecialchars($logoSrc, ENT_QUOTES, 'UTF-8') ?>" alt="Logo">
+      <img src="/OKR_system/assets/img/logo-horizontal-branca.png" alt="PlanningBI">
     </a>
   </div>
   <div class="right">
