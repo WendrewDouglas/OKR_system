@@ -173,18 +173,18 @@ body::before{
   transform: rotate(45deg); transform-origin:center center;
   background-color:#070a0e;
   background-image:
-    linear-gradient(27deg,  #080b0f 6px, transparent 6px),
-    linear-gradient(207deg, #080b0f 6px, transparent 6px),
-    linear-gradient(27deg,  #0d1118 6px, transparent 6px),
-    linear-gradient(207deg, #0d1118 6px, transparent 6px),
-    linear-gradient(90deg,  #0a0d12 12px, transparent 12px),
-    linear-gradient(#0b0f15 25%, #090c11 25%, #090c11 50%, transparent 50%, transparent 75%, #0d1118 75%);
+    linear-gradient(27deg,  #080a0e 6px, transparent 6px),
+    linear-gradient(207deg, #080a0e 6px, transparent 6px),
+    linear-gradient(27deg,  #0a0d12 6px, transparent 6px),
+    linear-gradient(207deg, #0a0d12 6px, transparent 6px),
+    linear-gradient(90deg,  #080b0f 12px, transparent 12px),
+    linear-gradient(#090c10 25%, #080a0e 25%, #080a0e 50%, transparent 50%, transparent 75%, #0a0d12 75%);
   background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px;
   background-position: 0 6px, 12px 0, 0 12px, 12px 6px, 0 0, 0 0;
 }
 body::after{
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background: linear-gradient(118deg, rgba(255,255,255,0) 44%, rgba(255,255,255,.028) 50%, rgba(255,255,255,0) 56%);
+  background: linear-gradient(118deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.018) 50%, rgba(255,255,255,0) 55%);
 }
 
 /* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
