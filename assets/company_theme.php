@@ -166,25 +166,25 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
 /* TWILL 2x2 realista (F1) — em DIAGONAL, maior e mais escuro.
    O tramado fica num pseudo FIXO rotacionado 45° (mantém o tiling perfeito);
    .content/sidebar/header translúcidos deixam o tramado aparecer em toda a UI. */
-body{ background:#090c11 !important; color: var(--text, #EAEEF6) !important; }
+body{ background:#070a0e !important; color: var(--text, #EAEEF6) !important; }
 body::before{
   content:""; position:fixed; top:-50%; left:-50%; width:200%; height:200%;
   z-index:-2; pointer-events:none;
   transform: rotate(45deg); transform-origin:center center;
-  background-color:#090c11;
+  background-color:#070a0e;
   background-image:
-    linear-gradient(27deg,  #0b0e13 6px, transparent 6px),
-    linear-gradient(207deg, #0b0e13 6px, transparent 6px),
-    linear-gradient(27deg,  #161d27 6px, transparent 6px),
-    linear-gradient(207deg, #161d27 6px, transparent 6px),
-    linear-gradient(90deg,  #0e131a 12px, transparent 12px),
-    linear-gradient(#11161e 25%, #0d1218 25%, #0d1218 50%, transparent 50%, transparent 75%, #161d27 75%);
+    linear-gradient(27deg,  #080b0f 6px, transparent 6px),
+    linear-gradient(207deg, #080b0f 6px, transparent 6px),
+    linear-gradient(27deg,  #0d1118 6px, transparent 6px),
+    linear-gradient(207deg, #0d1118 6px, transparent 6px),
+    linear-gradient(90deg,  #0a0d12 12px, transparent 12px),
+    linear-gradient(#0b0f15 25%, #090c11 25%, #090c11 50%, transparent 50%, transparent 75%, #0d1118 75%);
   background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px;
   background-position: 0 6px, 12px 0, 0 12px, 12px 6px, 0 0, 0 0;
 }
 body::after{
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background: linear-gradient(118deg, rgba(255,255,255,0) 43%, rgba(255,255,255,.045) 50%, rgba(255,255,255,0) 57%);
+  background: linear-gradient(118deg, rgba(255,255,255,0) 44%, rgba(255,255,255,.028) 50%, rgba(255,255,255,0) 56%);
 }
 
 /* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
@@ -201,7 +201,7 @@ body::after{
    com leve escurecimento para diferenciar os painéis do conteúdo. */
 .sidebar, .header{
   background-color: transparent !important;
-  background-image: linear-gradient(180deg, rgba(9,12,17,.42), rgba(9,12,17,.64)) !important;
+  background-image: linear-gradient(180deg, rgba(7,10,14,.46), rgba(7,10,14,.68)) !important;
 }
 .sidebar{ border-right: 1px solid rgba(255,255,255,.07); }
 .sidebar-footer{ background: transparent; border-top: 1px solid rgba(255,255,255,.08); }
