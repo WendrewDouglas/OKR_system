@@ -186,15 +186,15 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
     font-size: .7rem;
 }
 
-/* === Padrão de interação: deslocamento do conteúdo ao abrir o chat ===
-   O JS aplica margin-right no wrapper universal .content (presente em todas as
-   páginas). Mantém também a transição da retração da sidebar (margin-left). */
-.content {
-    transition: margin-left var(--transition-speed, .3s) ease, margin-right .25s ease;
+/* === Padrão de interação: desloca apenas o CONTEÚDO (<main>) ao abrir o chat ===
+   O header NÃO é deslocado (permanece intacto). O JS aplica margin-right só no
+   <main> de cada página, medindo a borda real do chat para garantir a folga. */
+.content > main, .content main {
+    transition: margin-right .25s ease;
 }
 @media (max-width: 768px) {
     /* Em telas pequenas o chat sobrepõe o conteúdo (sem deslocar) */
-    .content { margin-right: 0 !important; }
+    .content main { margin-right: 0 !important; }
 }
 </style>
 
@@ -369,14 +369,16 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
     }
     function updateChatWidth() {
         const open = container && !container.classList.contains('hidden');
-        const w = open ? (container.offsetWidth || 340) : 0;
-        // Neutraliza deslocamentos internos legados baseados em --chat-w (evita duplo shift
-        // nas páginas que ainda aplicam margin-right:var(--chat-w) em containers internos).
+        // Neutraliza deslocamentos internos legados baseados em --chat-w (evita duplo shift).
         document.documentElement.style.setProperty('--chat-w', '0px');
-        // Deslocamento ÚNICO e padronizado no wrapper universal .content.
-        // margin-right = largura do chat => folga consistente de ~20px (o chat fica a 20px da borda).
-        const mr = open ? (w + 'px') : '';
-        document.querySelectorAll('.content').forEach(c => { c.style.marginRight = mr; });
+        const mains = document.querySelectorAll('.content main');
+        if (!open) { mains.forEach(m => { m.style.marginRight = ''; }); return; }
+        // Folga REAL: empurra o conteúdo até a borda esquerda do chat + GAP.
+        const GAP = 24;
+        const rect = container.getBoundingClientRect();
+        const shift = Math.max(0, Math.round(window.innerWidth - rect.left) + GAP);
+        const isMobile = window.innerWidth <= 768;
+        mains.forEach(m => { m.style.marginRight = isMobile ? '' : (shift + 'px'); });
     }
     function setupChatObservers() {
         const chat = findChatEl();
