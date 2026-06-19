@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
+require_once __DIR__ . '/../auth/avatar_helpers.php';
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 
 if (!isset($_SESSION['user_id'])) {
@@ -207,6 +208,9 @@ $pctConclusao = $total > 0 ? round(($concluidos / $total) * 100) : 0;
 // Iniciais para avatar
 $initials = mb_strtoupper(mb_substr($target['primeiro_nome'] ?? 'U', 0, 1) . mb_substr($target['ultimo_nome'] ?? '', 0, 1));
 if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['primeiro_nome'] ?? 'U', 0, 2));
+
+// Avatar do usuário-alvo (catálogo único)
+$mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -224,6 +228,21 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
         href="/OKR_system/assets/company_theme.php?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>">
 
   <style>
+    /* Tokens --mt-* isolam a página do tema dark global (--card/--text vêm
+       acoplados a --bg1 em base.css). --mt-brand respeita /config_style. */
+    :root {
+      --mt-surface: #ffffff;
+      --mt-text: #1a1f2b;
+      --mt-text-muted: #6b7280;
+      --mt-border: rgba(0, 0, 0, .08);
+      --mt-brand: var(--bg2, #d4a017);
+      --mt-brand-contrast: var(--bg2-contrast, #111);
+      --mt-info: #3498db;
+      --mt-danger: #c0392b;
+      --mt-success: #1e8449;
+    }
+    body { background: #fff; color: var(--mt-text); }
+
     /* ========== PAGE-SPECIFIC STYLES ========== */
     .mt-page { padding: 1.5rem 2rem; max-width: 1200px; margin: 0 auto; }
 
@@ -234,29 +253,29 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
     }
     .mt-avatar {
       width: 64px; height: 64px; border-radius: 50%;
-      background: linear-gradient(135deg, #d4a017, #f7dc6f);
-      border: 3px solid #d4a017;
+      background: linear-gradient(135deg, var(--mt-brand), color-mix(in srgb, var(--mt-brand) 55%, #fff 45%));
+      border: 3px solid var(--mt-brand);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; font-weight: 700; color: #1a1a2e;
+      font-size: 1.4rem; font-weight: 700; color: var(--mt-brand-contrast);
       flex-shrink: 0;
     }
-    .mt-profile-info h1 { margin: 0; font-size: 1.3rem; color: var(--text, #eee); }
+    .mt-profile-info h1 { margin: 0; font-size: 1.3rem; color: var(--mt-text); }
     .mt-role-badge {
       display: inline-block; padding: 2px 10px; border-radius: 12px;
       font-size: .7rem; font-weight: 600; text-transform: uppercase;
       margin-top: 4px;
     }
-    .mt-role-badge.admin { background: #d4a017; color: #1a1a2e; }
-    .mt-role-badge.colab { background: #3498db; color: #fff; }
+    .mt-role-badge.admin { background: var(--mt-brand); color: var(--mt-brand-contrast); }
+    .mt-role-badge.colab { background: var(--mt-info); color: #fff; }
 
     /* --- User Selector (admin) --- */
     .mt-user-select {
       margin-left: auto; display: flex; align-items: center; gap: .5rem;
     }
-    .mt-user-select label { font-size: .8rem; color: var(--text-muted, #aaa); white-space: nowrap; }
+    .mt-user-select label { font-size: .8rem; color: var(--mt-text-muted); white-space: nowrap; }
     .mt-user-select select {
-      background: var(--card, #1e1e2f); color: var(--text, #eee);
-      border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+      background: var(--mt-surface); color: var(--mt-text);
+      border: 1px solid var(--mt-border); border-radius: 8px;
       padding: 6px 12px; font-size: .82rem; min-width: 200px;
     }
 
@@ -266,16 +285,17 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
       margin-bottom: 1.5rem;
     }
     .mt-stat {
-      background: var(--card, #1e1e2f); border-radius: 12px;
+      background: var(--mt-surface); border-radius: 12px;
       padding: 1rem 1.25rem; text-align: center;
-      border: 1px solid rgba(255,255,255,.06);
+      border: 1px solid var(--mt-border);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
     }
     .mt-stat .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
-    .mt-stat .stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted, #aaa); margin-top: 4px; }
-    .mt-stat.total .stat-value { color: var(--bg2, #f1c40f); }
-    .mt-stat.atrasado .stat-value { color: #e74c3c; }
-    .mt-stat.no-prazo .stat-value { color: #2ecc71; }
-    .mt-stat.conclusao .stat-value { color: #d4a017; }
+    .mt-stat .stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--mt-text-muted); margin-top: 4px; }
+    .mt-stat.total .stat-value { color: var(--mt-brand); }
+    .mt-stat.atrasado .stat-value { color: var(--mt-danger); }
+    .mt-stat.no-prazo .stat-value { color: var(--mt-success); }
+    .mt-stat.conclusao .stat-value { color: var(--mt-brand); }
 
     /* --- Filter Pills --- */
     .mt-filters {
@@ -283,17 +303,17 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
     }
     .mt-pill {
       padding: 6px 16px; border-radius: 20px; font-size: .78rem; font-weight: 600;
-      cursor: pointer; border: 1px solid rgba(255,255,255,.12);
-      background: var(--card, #1e1e2f); color: var(--text, #eee);
+      cursor: pointer; border: 1px solid var(--mt-border);
+      background: var(--mt-surface); color: var(--mt-text);
       transition: all .2s;
     }
-    .mt-pill:hover { border-color: var(--bg2, #f1c40f); }
-    .mt-pill.active { background: var(--bg2, #f1c40f); color: var(--bg2-contrast, #111); border-color: transparent; }
+    .mt-pill:hover { border-color: var(--mt-brand); }
+    .mt-pill.active { background: var(--mt-brand); color: var(--mt-brand-contrast); border-color: transparent; }
     .mt-pill .pill-count {
-      display: inline-block; background: rgba(255,255,255,.15); border-radius: 10px;
+      display: inline-block; background: rgba(0, 0, 0, .08); border-radius: 10px;
       padding: 1px 7px; font-size: .68rem; margin-left: 4px;
     }
-    .mt-pill.active .pill-count { background: rgba(0,0,0,.2); }
+    .mt-pill.active .pill-count { background: rgba(0, 0, 0, .18); }
 
     /* --- Task List --- */
     .mt-list { display: flex; flex-direction: column; gap: .6rem; }
@@ -301,16 +321,17 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
     .mt-row {
       display: grid; grid-template-columns: 110px 1fr 150px 130px;
       align-items: center; gap: 1rem;
-      background: var(--card, #1e1e2f); border-radius: 10px;
+      background: var(--mt-surface); border-radius: 10px;
       padding: .85rem 1rem; border-left: 4px solid transparent;
-      border: 1px solid rgba(255,255,255,.06);
+      border: 1px solid var(--mt-border);
       cursor: pointer; transition: all .2s;
       text-decoration: none; color: inherit;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
     }
-    .mt-row:hover { border-color: var(--bg2, #f1c40f); transform: translateY(-1px); }
-    .mt-row[data-category="atrasado"] { border-left: 4px solid #e74c3c; }
-    .mt-row[data-category="concluido"] { opacity: .55; }
-    .mt-row[data-category="concluido"]:hover { opacity: .8; }
+    .mt-row:hover { border-color: var(--mt-brand); transform: translateY(-1px); }
+    .mt-row[data-category="atrasado"] { border-left: 4px solid var(--mt-danger); }
+    .mt-row[data-category="concluido"] { opacity: .6; }
+    .mt-row[data-category="concluido"]:hover { opacity: .85; }
 
     /* Type badge */
     .mt-type {
@@ -318,30 +339,30 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
       padding: 4px 10px; border-radius: 6px; font-size: .7rem;
       font-weight: 700; text-transform: uppercase; white-space: nowrap;
     }
-    .mt-type.objetivo   { background: rgba(52,152,219,.18); color: #5dade2; }
-    .mt-type.kr         { background: rgba(212,160,23,.18); color: #f1c40f; }
-    .mt-type.iniciativa { background: rgba(46,204,113,.18); color: #2ecc71; }
+    .mt-type.objetivo   { background: rgba(52, 152, 219, .14); color: #1e6091; }
+    .mt-type.kr         { background: color-mix(in srgb, var(--mt-brand) 18%, transparent); color: var(--mt-brand); }
+    .mt-type.iniciativa { background: rgba(46, 204, 113, .16); color: var(--mt-success); }
 
     /* Description */
     .mt-desc h3 {
-      margin: 0; font-size: .85rem; font-weight: 600; color: var(--text, #eee);
+      margin: 0; font-size: .85rem; font-weight: 600; color: var(--mt-text);
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       overflow: hidden;
     }
     .mt-desc .mt-context {
-      font-size: .7rem; color: var(--text-muted, #888); margin-top: 2px;
+      font-size: .7rem; color: var(--mt-text-muted); margin-top: 2px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     /* Deadline */
     .mt-deadline { text-align: center; }
-    .mt-deadline .date { font-size: .78rem; color: var(--text-muted, #aaa); }
+    .mt-deadline .date { font-size: .78rem; color: var(--mt-text-muted); }
     .mt-deadline .days-pill {
       display: inline-block; padding: 2px 8px; border-radius: 10px;
       font-size: .66rem; font-weight: 600; margin-top: 3px;
     }
-    .mt-deadline .days-pill.late  { background: rgba(231,76,60,.18); color: #e74c3c; }
-    .mt-deadline .days-pill.ok    { background: rgba(46,204,113,.18); color: #2ecc71; }
+    .mt-deadline .days-pill.late  { background: rgba(231, 76, 60, .14); color: var(--mt-danger); }
+    .mt-deadline .days-pill.ok    { background: rgba(46, 204, 113, .16); color: var(--mt-success); }
 
     /* Status pill */
     .mt-status {
@@ -349,15 +370,15 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
       padding: 4px 12px; border-radius: 16px; font-size: .7rem;
       font-weight: 600; white-space: nowrap;
     }
-    .mt-status.andamento  { background: rgba(52,152,219,.18); color: #5dade2; }
-    .mt-status.nao-inic   { background: rgba(149,165,166,.18); color: #95a5a6; }
-    .mt-status.concluido  { background: rgba(46,204,113,.18); color: #2ecc71; }
-    .mt-status.cancelado  { background: rgba(231,76,60,.18); color: #e74c3c; }
-    .mt-status.sem-status { background: rgba(149,165,166,.12); color: #7f8c8d; }
+    .mt-status.andamento  { background: rgba(52, 152, 219, .14); color: #1e6091; }
+    .mt-status.nao-inic   { background: rgba(127, 140, 141, .14); color: #4a5556; }
+    .mt-status.concluido  { background: rgba(46, 204, 113, .16); color: var(--mt-success); }
+    .mt-status.cancelado  { background: rgba(231, 76, 60, .14); color: var(--mt-danger); }
+    .mt-status.sem-status { background: rgba(127, 140, 141, .10); color: #5f6770; }
 
     /* Empty state */
     .mt-empty {
-      text-align: center; padding: 3rem 1rem; color: var(--text-muted, #888);
+      text-align: center; padding: 3rem 1rem; color: var(--mt-text-muted);
     }
     .mt-empty i { font-size: 2.5rem; margin-bottom: .75rem; display: block; opacity: .4; }
     .mt-empty p { font-size: .9rem; }
@@ -389,7 +410,7 @@ if (mb_strlen($initials) < 2) $initials = mb_strtoupper(mb_substr($target['prime
 
       <!-- ========== PROFILE HEADER ========== -->
       <div class="mt-profile">
-        <div class="mt-avatar"><?= htmlspecialchars($initials) ?></div>
+        <div class="mt-avatar"><?php if (!$mtAvatar['is_default']): ?><img src="<?= htmlspecialchars($mtAvatar['url'], ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($targetName ?: 'Usuário', ENT_QUOTES, 'UTF-8') ?>" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('<?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?>'))"><?php else: ?><?= htmlspecialchars($initials) ?><?php endif; ?></div>
         <div class="mt-profile-info">
           <h1><?= htmlspecialchars($targetName ?: 'Usuário') ?></h1>
           <?php if (in_array($targetRole, ['admin_master','user_admin'])): ?>

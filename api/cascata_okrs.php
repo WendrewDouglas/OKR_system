@@ -85,7 +85,7 @@ $stObj = $pdo->prepare("
     SELECT o.id_objetivo, o.descricao, o.tipo, o.pilar_bsc, o.status, o.status_aprovacao,
            o.tipo_ciclo, o.ciclo, o.dt_prazo, o.dt_inicio, o.dono,
            u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome,
-           a.filename AS dono_avatar
+           a.path AS dono_avatar
     FROM objetivos o
     LEFT JOIN usuarios u ON u.id_user = o.dono
     LEFT JOIN avatars  a ON a.id = u.avatar_id
@@ -109,7 +109,7 @@ $stKr = $pdo->prepare("
            kr.baseline, kr.meta, kr.unidade_medida, kr.data_fim,
            kr.responsavel AS responsavel_id,
            u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
-           av.filename AS resp_avatar
+           av.path AS resp_avatar
     FROM key_results kr
     LEFT JOIN usuarios u  ON u.id_user = kr.responsavel
     LEFT JOIN avatars  av ON av.id = u.avatar_id
@@ -135,7 +135,7 @@ if ($krIds) {
         SELECT i.id_iniciativa, i.id_kr, i.num_iniciativa, i.descricao, i.status,
                i.dt_prazo, i.id_user_responsavel,
                u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
-               av.filename AS resp_avatar
+               av.path AS resp_avatar
         FROM iniciativas i
         LEFT JOIN usuarios u  ON u.id_user = i.id_user_responsavel
         LEFT JOIN avatars  av ON av.id = u.avatar_id
@@ -157,7 +157,7 @@ if ($allIniIds) {
         SELECT ie.id_iniciativa, ie.id_user,
                CONCAT(u.primeiro_nome, ' ', COALESCE(u.ultimo_nome,'')) AS nome,
                u.primeiro_nome, u.ultimo_nome,
-               av.filename AS avatar
+               av.path AS avatar
         FROM iniciativas_envolvidos ie
         INNER JOIN usuarios u  ON u.id_user = ie.id_user
         LEFT JOIN  avatars  av ON av.id = u.avatar_id
@@ -200,12 +200,14 @@ if ($allIniIds) {
 }
 
 // ──── 6) Montar árvore ────
-$avatarBase = '/OKR_system/assets/img/avatars/default_avatar/';
-$defaultAvatar = $avatarBase . 'default.png';
+// Catálogo único: $path é relativo a assets/img/avatars/ (gallery/*.svg, custom/*.webp, default_avatar/*.png)
+$avatarBase = '/OKR_system/assets/img/avatars/';
+$defaultAvatar = $avatarBase . 'default_avatar/default.png';
 
-$mkAvatar = function(?string $fn) use ($avatarBase, $defaultAvatar) {
-    if ($fn && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn)) {
-        return $avatarBase . $fn;
+$mkAvatar = function(?string $path) use ($avatarBase, $defaultAvatar) {
+    $path = trim((string)$path);
+    if ($path !== '') {
+        return $avatarBase . ltrim($path, '/');
     }
     return $defaultAvatar;
 };

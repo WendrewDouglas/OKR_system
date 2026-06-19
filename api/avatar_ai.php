@@ -18,6 +18,7 @@ try {
     }
 
     require_once __DIR__ . '/../auth/config.php';
+    require_once __DIR__ . '/../auth/avatar_image.php'; // fluxo unificado (WebP + catálogo)
 
     // Autoload + .env
     $autoloadPath = __DIR__ . '/../vendor/autoload.php';
@@ -96,43 +97,7 @@ try {
         "Criar avatar realista (foto estilo profissional), busto (peito para cima), enquadramento de perfil para LinkedIn, fundo branco/neutro, PNG. ".
         "Características: ".$prompt.". Iluminação suave, foco nítido, sem texto ou marca d'água.";
 
-    // -------- Helpers de arquivo --------
-    $savePng = function(int $uid, string $pngBytes, int $targetPx) : string {
-        $dir = realpath(__DIR__.'/../assets/img/avatars');
-        if (!$dir) { @mkdir(__DIR__.'/../assets/img/avatars', 0775, true); $dir = realpath(__DIR__.'/../assets/img/avatars'); }
-        if (!$dir) throw new Exception('Não foi possível preparar o diretório de avatares.');
-
-        // opcional: redimensiona/centraliza quadrado
-        if ($targetPx > 0 && function_exists('imagecreatefromstring')) {
-            $src = @imagecreatefromstring($pngBytes);
-            if ($src) {
-                $w = imagesx($src); $h = imagesy($src);
-                $side = min($w, $h);
-                $sx = (int)(($w - $side)/2);
-                $sy = (int)(($h - $side)/2);
-
-                $dst = imagecreatetruecolor($targetPx, $targetPx);
-                imagesavealpha($dst, true);
-                $trans = imagecolorallocatealpha($dst, 0, 0, 0, 127);
-                imagefill($dst, 0, 0, $trans);
-
-                imagecopyresampled($dst, $src, 0, 0, $sx, $sy, $targetPx, $targetPx, $side, $side);
-
-                ob_start(); imagepng($dst, null, 9); $pngBytes = ob_get_clean() ?: $pngBytes;
-                imagedestroy($src); imagedestroy($dst);
-            }
-        }
-
-        // remove variações antigas e salva
-        foreach (['png','jpg','jpeg'] as $e) {
-            $p = $dir.DIRECTORY_SEPARATOR.$uid.'.'.$e;
-            if (file_exists($p)) @unlink($p);
-        }
-        $dest = $dir.DIRECTORY_SEPARATOR.$uid.'.png';
-        if (file_put_contents($dest, $pngBytes) === false) throw new Exception('Falha ao gravar o arquivo PNG.');
-        return '/OKR_system/assets/img/avatars/'.$uid.'.png';
-    };
-
+    // -------- Helpers de arquivo (preview temporário) --------
     $savePngTmp = function(int $uid, string $pngBytes, int $targetPx) : array {
         $dir = realpath(__DIR__.'/../assets/img/avatars/tmp');
         if (!$dir) { @mkdir(__DIR__.'/../assets/img/avatars/tmp', 0775, true); $dir = realpath(__DIR__.'/../assets/img/avatars/tmp'); }
@@ -161,34 +126,15 @@ try {
         return ['path'=>$destWeb, 'token'=>$token];
     };
 
-    $commitPreview = function(int $uid, string $token) : string {
-        $dirTmp = realpath(__DIR__.'/../assets/img/avatars/tmp');
-        $dirFin = realpath(__DIR__.'/../assets/img/avatars');
-        if (!$dirTmp) { @mkdir(__DIR__.'/../assets/img/avatars/tmp', 0775, true); $dirTmp = realpath(__DIR__.'/../assets/img/avatars/tmp'); }
-        if (!$dirFin) { @mkdir(__DIR__.'/../assets/img/avatars', 0775, true); $dirFin = realpath(__DIR__.'/../assets/img/avatars'); }
-        if (!$dirTmp || !$dirFin) throw new Exception('Diretórios de avatar não encontrados.');
-
-        $src = $dirTmp.DIRECTORY_SEPARATOR.$uid.'_'.$token.'.png';
-        if (!file_exists($src)) throw new Exception('Preview não encontrado para commit.');
-
-        // apaga anteriores
-        foreach (['png','jpg','jpeg'] as $e) {
-            $p = $dirFin.DIRECTORY_SEPARATOR.$uid.'.'.$e;
-            if (file_exists($p)) @unlink($p);
-        }
-        $dst = $dirFin.DIRECTORY_SEPARATOR.$uid.'.png';
-        if (!@rename($src, $dst)) {
-            if (!@copy($src, $dst)) throw new Exception('Falha ao mover preview para definitivo.');
-            @unlink($src);
-        }
-        return '/OKR_system/assets/img/avatars/'.$uid.'.png';
-    };
-
     // -------- Commit direto do preview --------
     if ($mode === 'commit') {
         if ($previewToken === '') { http_response_code(422); echo json_encode(['success'=>false,'error'=>'preview_token obrigatório']); exit; }
-        $path = $commitPreview($idUser, $previewToken);
-        echo json_encode(['success'=>true,'path'=>$path,'source'=>'commit','mode'=>'commit']); exit;
+        $tmpFile = __DIR__.'/../assets/img/avatars/tmp/'.$idUser.'_'.$previewToken.'.png';
+        if (!is_file($tmpFile)) throw new Exception('Preview não encontrado para commit.');
+        $res = avatar_store_custom($idUser, (string)file_get_contents($tmpFile), $pdo);
+        if (empty($res['ok'])) throw new Exception($res['error'] ?? 'Falha ao salvar avatar.');
+        @unlink($tmpFile);
+        echo json_encode(['success'=>true,'path'=>$res['url'],'source'=>'commit','mode'=>'commit']); exit;
     }
 
     // -------- Geração (preview/save) --------
@@ -319,9 +265,10 @@ try {
         echo json_encode(['success'=>true,'path'=>$res['path'],'preview_token'=>$res['token'],'source'=>$source,'mode'=>'preview']); exit;
     }
 
-    // modo padrão: salva definitivo (sem preview)
-    $path = $savePng($idUser, $pngBytes, $target);
-    echo json_encode(['success'=>true,'path'=>$path,'source'=>$source,'mode'=>'save']); exit;
+    // modo padrão: salva definitivo (sem preview) via fluxo unificado
+    $res = avatar_store_custom($idUser, $pngBytes, $pdo);
+    if (empty($res['ok'])) throw new Exception($res['error'] ?? 'Falha ao salvar avatar.');
+    echo json_encode(['success'=>true,'path'=>$res['url'],'source'=>$source,'mode'=>'save']); exit;
 
 } catch (Exception $e) {
     error_log('Avatar AI Error: '.$e->getMessage());
