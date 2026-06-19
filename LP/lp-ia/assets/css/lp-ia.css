@@ -221,6 +221,31 @@ img{max-width:100%;display:block}
 /* ---------- Footer ---------- */
 .lp-footer{background:var(--ink-2);color:var(--soft);text-align:center;padding:24px 0;font-size:.85rem}
 
+/* ---------- Sobre o instrutor ---------- */
+.lp-instr__kicker{display:inline-block;background:#fff1ec;color:var(--brand);font-weight:800;font-size:.78rem;text-transform:uppercase;letter-spacing:1px;padding:7px 16px;border-radius:999px}
+.lp-instr__grid{margin-top:22px;display:grid;grid-template-columns:1fr;gap:28px}
+.lp-instr__photo img{width:100%;max-width:360px;border-radius:18px;box-shadow:var(--shadow);display:block}
+.lp-instr__id{margin-top:14px}
+.lp-instr__id strong{display:block;font-size:1.35rem;color:var(--ink)}
+.lp-instr__id span{color:var(--muted);font-size:.95rem}
+.lp-instr__lead{font-size:1.2rem;font-weight:600;color:var(--ink);margin:0 0 14px;line-height:1.45}
+.lp-instr__body p{margin:0 0 14px;color:#3a4654;line-height:1.6}
+.lp-instr__stats{list-style:none;padding:0;margin:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lp-instr__stats li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.lp-instr__stats b{display:block;font-size:1.5rem;color:var(--brand);font-weight:800;line-height:1.05}
+.lp-instr__stats span{font-size:.85rem;color:var(--muted)}
+.lp-instr__cred-label{font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:20px 0 12px}
+.lp-instr__logos{display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px}
+.lp-instr__logos img{height:46px;width:auto;max-width:130px;object-fit:contain}
+.lp-instr__usp{font-size:.82rem;font-weight:700;color:var(--ink);line-height:1.15;border-left:3px solid var(--brand);padding-left:10px}
+.lp-instr__usp small{color:var(--muted);font-weight:500}
+.lp-instr__cta{margin-top:26px}
+@media (min-width:860px){
+  .lp-instr__grid{grid-template-columns:340px 1fr;gap:42px;align-items:start}
+  .lp-instr__photo img{max-width:100%}
+  .lp-instr__stats{grid-template-columns:1fr 1fr 1fr 1fr}
+}
+
 /* ============ Breakpoints ============ */
 @media (min-width:600px){
   .lp-field-row{grid-template-columns:1fr 1fr;gap:14px}
