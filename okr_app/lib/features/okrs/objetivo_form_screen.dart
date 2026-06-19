@@ -366,13 +366,14 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) => DropdownButtonFormField<String>(
                       initialValue: _tipoObjetivo,
-                      decoration: const InputDecoration(labelText: 'Tipo de Objetivo'),
+                      decoration: const InputDecoration(labelText: 'Tipo de Objetivo *'),
                       items: items.map((t) {
                         final value = _domVal(t, ['id_tipo', 'tipo_objetivo', 'id']);
                         final label = _domVal(t, ['descricao_exibicao', 'descricao', 'id_tipo']);
                         return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _tipoObjetivo = v),
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -404,12 +405,13 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (users) => DropdownButtonFormField<int>(
                       initialValue: _donoId,
-                      decoration: const InputDecoration(labelText: 'Dono (responsável)'),
+                      decoration: const InputDecoration(labelText: 'Dono *'),
                       items: users.map((u) => DropdownMenuItem(
                         value: u['id_user'] as int,
                         child: Text(u['nome_completo'] ?? '${u['primeiro_nome']} ${u['ultimo_nome']}'),
                       )).toList(),
                       onChanged: (v) => setState(() => _donoId = v),
+                      validator: (v) => v == null ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(height: 16),

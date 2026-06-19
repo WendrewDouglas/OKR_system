@@ -243,7 +243,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
               </div>
 
               <div style="margin-top:12px;">
-                <label><i class="fa-regular fa-user"></i> Responsável(es) <span class="helper">(obrigatório)</span></label>
+                <label><i class="fa-regular fa-user"></i> Dono <span class="helper">(obrigatório)</span></label>
                 <div class="multi-select-container">
                   <div class="chips-input" id="responsavel_container">
                     <input type="text" id="responsavel_input" class="chips-input-field" placeholder="Clique para selecionar...">

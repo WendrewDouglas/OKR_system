@@ -17,14 +17,17 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:objetivo@ORG')) {
 }
 
 $in = api_input();
-api_require_fields($in, ['descricao', 'pilar_bsc', 'ciclo_tipo']);
+api_require_fields($in, ['descricao', 'pilar_bsc', 'ciclo_tipo', 'tipo_objetivo', 'dono']);
 
 $descricao  = api_str($in['descricao']);
 $pilar      = api_str($in['pilar_bsc']);
-$tipo       = api_str($in['tipo_objetivo'] ?? '');
+$tipo       = api_str($in['tipo_objetivo']);
 $cicloTipo  = api_str($in['ciclo_tipo']);
 $observacoes = api_str($in['observacoes'] ?? '');
-$dono       = api_int_or_null($in['dono'] ?? null) ?: $uid;
+$dono       = api_int_or_null($in['dono'] ?? null);
+if (!$dono) {
+  api_error('E_INPUT', 'Dono (responsável) é obrigatório.', 422);
+}
 
 // Calculate cycle dates
 api_load_helper('auth/helpers/cycle_calc.php');

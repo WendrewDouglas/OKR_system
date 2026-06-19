@@ -90,6 +90,12 @@ if ($descricao==='' || $tipo_id==='' || $pilar_id==='' || $tipo_ciclo==='' || $c
   echo json_encode(['error'=>'Campos obrigatórios não preenchidos']);
   exit;
 }
+// Dono (responsável pelo objetivo) é obrigatório
+if ($responsavel_raw==='' || (int)explode(',', $responsavel_raw)[0] <= 0) {
+  http_response_code(422);
+  echo json_encode(['error'=>'Dono (responsável) é obrigatório.']);
+  exit;
+}
 
 // 5) DB
 try {
