@@ -228,20 +228,20 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
         href="/OKR_system/assets/company_theme.php?cid=<?= (int)($_SESSION['company_id'] ?? 0) ?>">
 
   <style>
-    /* Tokens --mt-* isolam a página do tema dark global (--card/--text vêm
-       acoplados a --bg1 em base.css). --mt-brand respeita /config_style. */
+    /* Tokens --mt-* — tema ESCURO coeso com o restante do app.
+       --mt-brand respeita /config_style (cor da empresa via --bg2). */
     :root {
-      --mt-surface: #ffffff;
-      --mt-text: #1a1f2b;
-      --mt-text-muted: #6b7280;
-      --mt-border: rgba(0, 0, 0, .08);
+      --mt-surface: #161b22;
+      --mt-text: #e6eaf2;
+      --mt-text-muted: #9aa4b2;
+      --mt-border: rgba(255, 255, 255, .10);
       --mt-brand: var(--bg2, #d4a017);
       --mt-brand-contrast: var(--bg2-contrast, #111);
       --mt-info: #3498db;
-      --mt-danger: #c0392b;
-      --mt-success: #1e8449;
+      --mt-danger: #e74c3c;
+      --mt-success: #2ecc71;
     }
-    body { background: #fff; color: var(--mt-text); }
+    body { background: #0b0e13; color: var(--mt-text); }
 
     /* ========== PAGE-SPECIFIC STYLES ========== */
     .mt-page { padding: 1.5rem 2rem; max-width: 1200px; margin: 0 auto; }

@@ -153,6 +153,18 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
   --bs-dark: var(--bg1);
 }
 
+/* ===== Fundo padrão ESCURO e coeso do conteúdo =====
+   Quase todas as telas usam cards escuros (linear-gradient var(--card) -> #0e1319),
+   mas o body vinha branco em várias páginas, criando vazios brancos atrás dos cards.
+   Aqui padronizamos o fundo escuro do conteúdo. A sidebar já é escura (fica fora
+   de .content). Destaques continuam na cor da empresa (--bg2). */
+body{ background:#0b0e13 !important; }
+.content{
+  background:#0b0e13;
+  color: var(--text, #eaeef6);
+  min-height: 100vh;
+}
+
 /* Utilitários */
 .bg-bg1{ background-color: var(--bg1) !important; color: var(--bg1-contrast) !important; }
 .bg-bg2{ background-color: var(--bg2) !important; color: var(--bg2-contrast) !important; }
