@@ -23,6 +23,17 @@ $trainingLocalUrl = trim((string) lp_setting($landingId, 'training_location_url'
 $spotsText     = trim((string) lp_setting($landingId, 'spots_status_text', 'Turma limitada para garantir prática assistida.'));
 $btnOficial    = trim((string) lp_setting($landingId, 'btn_text_oficial', 'Garantir minha vaga'));
 
+// Mapa ilustrativo da sala (gatilho de escassez) — configurável via lp_settings
+$spotsTotal     = max(1, lp_setting_int($landingId, 'spots_total', 24));
+$spotsAvailable = max(0, min($spotsTotal, lp_setting_int($landingId, 'spots_available', 2)));
+$seatCols       = max(1, lp_setting_int($landingId, 'spots_cols', 4));
+// distribui as vagas livres de forma espalhada e determinística pelo mapa
+$vacantSeats = [];
+for ($k = 0; $k < $spotsAvailable; $k++) {
+    $idx = ((int) floor($spotsTotal * ($k + 0.5) / max(1, $spotsAvailable)) + $k) % $spotsTotal;
+    $vacantSeats[$idx] = true;
+}
+
 // UTM / origem
 $utmSource   = lp_clean_param($_GET['utm_source'] ?? null);
 $utmMedium   = lp_clean_param($_GET['utm_medium'] ?? null);
@@ -214,9 +225,43 @@ $entregaveis = [
   </div>
 </section>
 
-<!-- ====== VAGAS ====== -->
+<!-- ====== O QUE LEVAR ====== -->
+<section class="lp-section">
+  <div class="lp-container">
+    <h2 class="lp-h2">O que levar — importante</h2>
+    <p class="lp-prereq__intro">A prática é 100% hands-on: vamos integrar as IAs <strong>direto no seu navegador e no Office</strong>. Por isso, é essencial trazer:</p>
+    <ul class="lp-prereq">
+      <li><span class="lp-prereq__ic">💻</span><div><strong>Notebook</strong><br><small>com carregador</small></div></li>
+      <li><span class="lp-prereq__ic">🌐</span><div><strong>Google Chrome</strong><br><small>instalado</small></div></li>
+      <li><span class="lp-prereq__ic">📊</span><div><strong>Microsoft Office</strong><br><small>Excel e Word instalados</small></div></li>
+    </ul>
+    <p class="lp-prereq__note">⚠️ Sem o Google Chrome e o Microsoft Office instalados não será possível acompanhar a parte prática.</p>
+  </div>
+</section>
+
+<!-- ====== VAGAS (mapa ilustrativo da sala) ====== -->
 <section class="lp-section lp-spots">
   <div class="lp-container">
+    <h2 class="lp-h2 lp-spots__title">Vagas limitadas</h2>
+    <?php if ($spotsAvailable > 0): ?>
+      <p class="lp-spots__headline">Restam apenas <strong><?= (int) $spotsAvailable ?></strong> <?= $spotsAvailable === 1 ? 'vaga' : 'vagas' ?></p>
+    <?php else: ?>
+      <p class="lp-spots__headline">Vagas esgotadas</p>
+    <?php endif; ?>
+
+    <div class="lp-classroom">
+      <div class="lp-classroom__board">Frente · Lousa</div>
+      <div class="lp-seats" style="grid-template-columns:repeat(<?= (int) $seatCols ?>,1fr)">
+        <?php for ($i = 0; $i < $spotsTotal; $i++): $free = isset($vacantSeats[$i]); ?>
+          <span class="lp-seat<?= $free ? ' lp-seat--free' : '' ?>" aria-label="<?= $free ? 'Vaga disponível' : 'Ocupado' ?>"><?= $free ? 'livre' : '' ?></span>
+        <?php endfor; ?>
+      </div>
+      <div class="lp-classroom__legend">
+        <span><i class="lp-dot lp-dot--taken"></i> Ocupado</span>
+        <span><i class="lp-dot lp-dot--free"></i> Vaga disponível</span>
+      </div>
+    </div>
+
     <p class="lp-spots__text"><?= $e($spotsText) ?></p>
   </div>
 </section>
