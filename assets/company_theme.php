@@ -153,17 +153,75 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
   --bs-dark: var(--bg1);
 }
 
-/* ===== Fundo padrão ESCURO e coeso do conteúdo =====
-   Quase todas as telas usam cards escuros (linear-gradient var(--card) -> #0e1319),
-   mas o body vinha branco em várias páginas, criando vazios brancos atrás dos cards.
-   Aqui padronizamos o fundo escuro do conteúdo. A sidebar já é escura (fica fora
-   de .content). Destaques continuam na cor da empresa (--bg2). */
-body{ background:#0b0e13 !important; }
-.content{
-  background:#0b0e13;
-  color: var(--text, #eaeef6);
-  min-height: 100vh;
+/* ============================================================
+   VISUAL "CARA DO APP": fibra de carbono + brilho diagonal.
+   Textura contínua atrás de header, sidebar, conteúdo e footer.
+   Apenas estilos (não altera estrutura). Paleta do app Flutter:
+   base #171B21 / cards #1C2128 / borda #30363D / dourado #F1C40F.
+   ============================================================ */
+
+/* Canvas único (fixo): trama de fibra de carbono + brilho diagonal suave */
+body{
+  background-color:#10141a !important;
+  background-image:
+    /* brilho diagonal sutil cobrindo a tela */
+    linear-gradient(118deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.045) 50%, rgba(255,255,255,0) 62%),
+    /* fios da trama (duas diagonais) */
+    repeating-linear-gradient(45deg,  rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.30) 0 1px, transparent 1px 3px),
+    /* profundidade de base */
+    linear-gradient(135deg, #1b212b 0%, #12161d 60%, #0d1117 100%) !important;
+  background-size: 220% 220%, 4px 4px, 4px 4px, 100% 100% !important;
+  background-position: 0 0, 0 0, 0 0, 0 0 !important;
+  background-repeat: no-repeat, repeat, repeat, no-repeat !important;
+  background-attachment: fixed !important;
+  color: var(--text, #EAEEF6);
 }
+
+/* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
+.content{
+  background: transparent !important;
+  color: var(--text, #EAEEF6);
+  min-height: 100vh;
+  --card: #1C2128;
+  --border: #30363D;
+}
+.content > main, .content main{ background: transparent; }
+
+/* Sidebar: painel translúcido escuro sobre a fibra + divisor sutil */
+.sidebar{
+  background: linear-gradient(180deg, rgba(22,27,34,.78), rgba(13,17,23,.86)) !important;
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+.sidebar-footer{ background: transparent; border-top: 1px solid rgba(255,255,255,.08); }
+
+/* Header: escuro translúcido (fibra atrás) + linha dourada sutil embaixo */
+.header{
+  background: linear-gradient(180deg, rgba(22,27,34,.82), rgba(13,17,23,.72)) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35) !important;
+  border-bottom: none !important;
+  position: relative;
+}
+.header::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(241,196,15,.45), transparent);
+  pointer-events:none;
+}
+/* textos/ícones do header legíveis sobre o escuro */
+.header .menu-toggle,
+.header .profile span,
+.header .notif-link,
+.header .notif-link i{ color: var(--text, #EAEEF6) !important; }
+/* respaldo claro sutil p/ a logo (que pode ser escura) ficar legível no header escuro */
+.header .left .logo-link{
+  background: rgba(255,255,255,.94);
+  border-radius: 8px;
+  padding: 3px 8px;
+  line-height: 0;
+}
+
+/* Footer de página (quando houver) acompanha a fibra */
+.content footer, footer.app-footer, .app-footer{ background: transparent; }
 
 /* Utilitários */
 .bg-bg1{ background-color: var(--bg1) !important; color: var(--bg1-contrast) !important; }
