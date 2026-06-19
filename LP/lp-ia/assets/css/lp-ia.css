@@ -134,9 +134,11 @@ img{max-width:100%;display:block}
 .lp-spots__headline{font-size:1.6rem;font-weight:800;margin:0 0 22px}
 .lp-spots__headline strong{background:rgba(0,0,0,.18);padding:2px 12px;border-radius:8px}
 .lp-spots__text{margin:18px 0 0;font-size:1.05rem;font-weight:700}
-.lp-classroom{max-width:460px;margin:0 auto;background:rgba(0,0,0,.12);border-radius:14px;padding:14px}
-.lp-classroom__board{background:rgba(255,255,255,.9);color:#5a2a12;font-weight:700;letter-spacing:2px;font-size:.66rem;text-transform:uppercase;border-radius:6px;padding:6px;margin-bottom:12px}
-.lp-seats{display:grid;gap:7px;margin:0 auto}
+.lp-classroom{max-width:480px;margin:0 auto;background:rgba(0,0,0,.12);border-radius:14px;padding:14px}
+.lp-classroom__room{display:flex;align-items:stretch;gap:10px}
+.lp-classroom__board{flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);color:#5a2a12;border-radius:6px;padding:8px 5px}
+.lp-classroom__board span{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:700;letter-spacing:2px;font-size:.6rem;text-transform:uppercase;white-space:nowrap}
+.lp-seats{flex:1;display:grid;gap:7px}
 .lp-seat{aspect-ratio:1/1;border-radius:8px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.32);display:flex;align-items:center;justify-content:center;font-size:0}
 .lp-seat--free{background:#fff;border-color:#fff;color:#1e8e3e;font-size:.55rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 0 0 0 rgba(255,255,255,.7);animation:lp-pulse 1.6s infinite;cursor:pointer;text-decoration:none;transition:transform .12s ease}
 .lp-seat--free:hover{transform:scale(1.1)}

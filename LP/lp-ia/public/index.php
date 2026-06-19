@@ -329,7 +329,8 @@ $entregaveis = [
     <?php endif; ?>
 
     <div class="lp-classroom">
-      <div class="lp-classroom__board">Frente · Lousa</div>
+      <div class="lp-classroom__room">
+      <div class="lp-classroom__board"><span>Frente · Lousa</span></div>
       <div class="lp-seats" style="grid-template-columns:repeat(<?= (int) $seatCols ?>,1fr)">
         <?php for ($i = 0; $i < $spotsTotal; $i++): $free = isset($vacantSeats[$i]); ?>
           <?php if ($free): ?>
@@ -338,6 +339,7 @@ $entregaveis = [
             <span class="lp-seat" aria-label="Ocupado"></span>
           <?php endif; ?>
         <?php endfor; ?>
+      </div>
       </div>
       <div class="lp-classroom__legend">
         <span><i class="lp-dot lp-dot--taken"></i> Ocupado</span>
