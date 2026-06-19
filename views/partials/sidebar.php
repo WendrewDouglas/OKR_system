@@ -148,7 +148,10 @@ if ($pdo && $userId) {
   display: flex; flex-direction: column;
   z-index: 1000;
   overflow-x: hidden;
+  overflow-y: auto;
 }
+/* garante que o rodapé (usuário + empresa) nunca seja empurrado para fora da tela */
+.sidebar ul { flex: 1 0 auto; }
 body.collapsed .sidebar { width: var(--sidebar-collapsed); }
 
 .sidebar-header {
@@ -482,7 +485,7 @@ body.collapsed .sidebar-footer .org { display: none; }
     <span class="user" title="<?= htmlspecialchars($userShort) ?>">
       <?= htmlspecialchars($userShort) ?>
     </span>
-    <span class="org" title=<?= htmlspecialchars($orgText) ?>>
+    <span class="org" title="<?= htmlspecialchars($orgText) ?>">
     <?= htmlspecialchars($orgText) ?>
     </span>
   </div>
