@@ -257,14 +257,28 @@ $entregaveis = [
 <!-- ====== O QUE LEVAR ====== -->
 <section class="lp-section">
   <div class="lp-container">
-    <h2 class="lp-h2">O que levar — importante</h2>
-    <p class="lp-prereq__intro">A prática é 100% hands-on: vamos integrar as IAs <strong>direto no seu navegador e no Office</strong>. Por isso, é essencial trazer:</p>
+    <h2 class="lp-h2">O que levar</h2>
+    <p class="lp-prereq__intro">A prática é hands-on: vamos integrar as IAs <strong>direto no navegador e no Office</strong>. Para o <strong>máximo aproveitamento</strong>, recomendamos levar:</p>
     <ul class="lp-prereq">
       <li><span class="lp-prereq__ic">💻</span><div><strong>Notebook</strong><br><small>com carregador</small></div></li>
       <li><span class="lp-prereq__ic">🌐</span><div><strong>Google Chrome</strong><br><small>instalado</small></div></li>
       <li><span class="lp-prereq__ic">📊</span><div><strong>Microsoft Office</strong><br><small>Excel e Word instalados</small></div></li>
     </ul>
-    <p class="lp-prereq__note">⚠️ Sem o Google Chrome e o Microsoft Office instalados não será possível acompanhar a parte prática.</p>
+
+    <div class="lp-reassure">
+      <div class="lp-reassure__head">
+        <span class="lp-reassure__emoji">😌</span>
+        <div>
+          <strong>Não conseguiu levar tudo? Sem problema — você ainda aproveita!</strong>
+          <p>Os itens acima são <strong>recomendados</strong>, mas <strong>não são obrigatórios</strong>. Mesmo sem eles você participa:</p>
+        </div>
+      </div>
+      <div class="lp-reassure__grid">
+        <div class="lp-reassure__item"><span>📱</span><div>Faz várias atividades direto pelo <strong>smartphone</strong></div></div>
+        <div class="lp-reassure__item"><span>🤝</span><div>Acompanha o hands-on junto com um <strong>colega de turma</strong></div></div>
+        <div class="lp-reassure__item"><span>📘</span><div>Leva a <strong>apostila completa</strong>, com todo o conteúdo e o passo a passo para refazer em casa</div></div>
+      </div>
+    </div>
   </div>
 </section>
 

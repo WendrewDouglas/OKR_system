@@ -113,6 +113,17 @@ img{max-width:100%;display:block}
 .lp-prereq li small{color:var(--muted)}
 .lp-prereq__note{margin:16px 0 0;color:#b3540f;background:#fff5ef;border:1px solid #ffd9c2;border-radius:10px;padding:12px 14px;font-weight:600;font-size:.95rem}
 
+/* bloco "fique tranquilo" (itens recomendados, não obrigatórios) */
+.lp-reassure{margin-top:20px;background:linear-gradient(135deg,#f0f9f4,#eef6ff);border:1px solid #cfe9da;border-radius:16px;padding:22px}
+.lp-reassure__head{display:flex;align-items:flex-start;gap:14px}
+.lp-reassure__emoji{font-size:32px;line-height:1;flex:0 0 auto}
+.lp-reassure__head strong{display:block;font-size:1.05rem;color:var(--ink)}
+.lp-reassure__head p{margin:6px 0 0;color:var(--muted);font-size:.95rem}
+.lp-reassure__grid{margin-top:16px;display:grid;grid-template-columns:1fr;gap:10px}
+.lp-reassure__item{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e2efe8;border-radius:12px;padding:13px 15px;font-size:.92rem;font-weight:500;line-height:1.35}
+.lp-reassure__item span{font-size:24px;flex:0 0 auto;line-height:1}
+@media (min-width:760px){.lp-reassure__grid{grid-template-columns:1fr 1fr 1fr}}
+
 /* ---------- Vagas + mapa da sala ---------- */
 .lp-spots{background:linear-gradient(90deg,var(--brand),#ff8a50);color:#fff;text-align:center}
 .lp-spots__title{color:#fff}
