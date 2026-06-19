@@ -59,17 +59,17 @@ img{max-width:100%;display:block}
 /* ---------- Hero ---------- */
 .lp-hero{color:#fff;padding:48px 0 56px;
   background:
-    linear-gradient(90deg, rgba(14,19,26,.96) 0%, rgba(14,19,26,.88) 42%, rgba(14,19,26,.55) 72%, rgba(14,19,26,.38) 100%),
-    linear-gradient(0deg, rgba(14,19,26,.55) 0%, rgba(14,19,26,0) 45%),
+    linear-gradient(90deg, rgba(11,15,20,.93) 0%, rgba(11,15,20,.8) 28%, rgba(11,15,20,.45) 46%, rgba(11,15,20,.2) 62%, rgba(11,15,20,.1) 100%),
+    linear-gradient(0deg, rgba(11,15,20,.5) 0%, rgba(11,15,20,0) 42%),
     url('../img/hero-bg.jpg');
   background-size:cover;background-position:center right;background-repeat:no-repeat}
 .lp-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .lp-badge{background:rgba(255,193,7,.16);color:var(--amber);border:1px solid rgba(255,193,7,.35);
   font-size:.78rem;font-weight:600;padding:5px 11px;border-radius:999px}
-.lp-hero__title{font-size:2rem;line-height:1.15;font-weight:800;margin:0 0 14px;letter-spacing:-.5px}
-.lp-hero__subtitle{font-size:1.05rem;color:var(--soft);margin:0 0 22px;max-width:680px}
+.lp-hero__title{font-size:2rem;line-height:1.15;font-weight:800;margin:0 0 14px;letter-spacing:-.5px;text-shadow:0 2px 16px rgba(0,0,0,.75),0 1px 3px rgba(0,0,0,.6)}
+.lp-hero__subtitle{font-size:1.05rem;color:#eef2f7;margin:0 0 22px;max-width:620px;text-shadow:0 1px 10px rgba(0,0,0,.8)}
 .lp-hero__meta{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;padding:0;margin:0 0 26px;
-  color:#fff;font-weight:600}
+  color:#fff;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.85)}
 .lp-hero__meta--tbd{color:var(--soft);font-weight:500}
 
 /* ---------- Seções ---------- */
