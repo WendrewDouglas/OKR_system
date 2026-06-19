@@ -153,6 +153,33 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
   --bs-dark: var(--bg1);
 }
 
+/* ===== Padrão de CONTEÚDO CLARO (escopado a .content) =====
+   A sidebar fica FORA de .content (mantém o palette escuro do base.css).
+   Aqui redefinimos, só dentro da área de conteúdo, as variáveis herdadas do
+   base.css para um tema claro legível. Destaques continuam na cor da empresa
+   (--bg2). Status (green/blue/red/ok/no/warn) permanecem do base.css. */
+.content{
+  --bg-soft: #eef1f5;            /* fundo da área de conteúdo */
+  --card:    #ffffff;            /* superfícies/cards/tabelas */
+  --muted:   #6b7280;            /* texto secundário */
+  --text:    #1f2633;            /* texto principal */
+  --border:  #e5e7eb;            /* bordas/divisores */
+  --shadow:  0 6px 18px rgba(16,24,40,.08);
+  --btn:     #f3f4f6;
+  --chip:    #eef1f5;
+  background: var(--bg-soft);
+  color: var(--text);
+}
+.content main{ color: var(--text); }
+/* Tabelas legíveis e padronizadas dentro do conteúdo */
+.content table{ color: var(--text); }
+.content thead th{
+  background: color-mix(in srgb, var(--bg2) 16%, #ffffff);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.content tbody tr:nth-child(even) > *{ background: #f6f8fb; }
+
 /* Utilitários */
 .bg-bg1{ background-color: var(--bg1) !important; color: var(--bg1-contrast) !important; }
 .bg-bg2{ background-color: var(--bg2) !important; color: var(--bg2-contrast) !important; }
