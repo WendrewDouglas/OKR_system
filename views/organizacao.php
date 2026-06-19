@@ -368,7 +368,11 @@ function h($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
         const data = await resp.json();
         if (!resp.ok || !data.success) throw new Error(data.error || 'Falha ao salvar.');
         if (data.record) renderReadOnly(data.record);
-        showStatusOrg('Organização salva com sucesso.', 'success');
+        if (data.aviso) {
+          showStatusOrg('<strong>Salvo.</strong> ' + data.aviso, 'info');
+        } else {
+          showStatusOrg('Organização salva com sucesso.', 'success');
+        }
       } catch (err) {
         showStatusOrg('<strong>Erro:</strong> ' + (err.message || err), 'error');
       } finally {
