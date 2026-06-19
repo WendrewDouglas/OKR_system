@@ -53,8 +53,8 @@ img{max-width:100%;display:block}
 .lp-header__inner{display:flex;align-items:center;justify-content:space-between;height:62px}
 .lp-logo{font-weight:800;font-size:1.25rem;color:var(--ink);letter-spacing:-.5px}
 .lp-logo strong{color:var(--brand)}
-.lp-logo__img{height:40px;width:auto;display:block}
-@media (max-width:480px){.lp-logo__img{height:32px}}
+.lp-logo__img{height:48px;width:auto;display:block}
+@media (max-width:480px){.lp-logo__img{height:40px}}
 
 /* ---------- Hero ---------- */
 .lp-hero{background:radial-gradient(120% 120% at 0% 0%,#19222e 0%,var(--ink) 60%);color:#fff;
@@ -132,17 +132,20 @@ img{max-width:100%;display:block}
 @media (min-width:700px){.lp-prereq{grid-template-columns:1fr 1fr 1fr}}
 
 /* ---------- Bônus LinkedIn ---------- */
-.lp-bonus{background:#fff;border:1px solid var(--line);border-left:5px solid #0A66C2;border-radius:16px;padding:24px;box-shadow:var(--shadow)}
-.lp-bonus__badge{display:inline-block;background:#0A66C2;color:#fff;font-weight:700;font-size:.78rem;padding:6px 14px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
-.lp-bonus__head{display:flex;align-items:center;gap:14px;margin-top:14px}
-.lp-bonus__li{flex:0 0 auto}
-.lp-bonus__head .lp-h2{margin:0;font-size:1.3rem}
-.lp-bonus__desc{color:var(--muted);margin:14px 0 16px}
-.lp-bonus__list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr;gap:12px}
-.lp-bonus__list li{display:flex;align-items:center;gap:12px;font-weight:500}
-.lp-bonus__ic{font-size:22px;flex:0 0 auto;line-height:1}
-.lp-bonus__tag{margin:16px 0 0;color:#0A66C2;font-weight:700;font-size:.95rem}
-@media (min-width:700px){.lp-bonus__list{grid-template-columns:1fr 1fr}}
+.lp-bonus{border-radius:20px;overflow:hidden;box-shadow:0 14px 40px rgba(10,102,194,.18);border:1px solid #e4eef8}
+.lp-bonus__top{display:flex;align-items:center;gap:18px;padding:24px 26px;background:linear-gradient(135deg,#0A66C2 0%,#0a4f96 100%);color:#fff}
+.lp-bonus__logo{flex:0 0 auto;width:58px;height:58px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.lp-bonus__badge{display:inline-block;background:var(--amber);color:#3a2a00;font-weight:800;font-size:.72rem;padding:5px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
+.lp-bonus__title{margin:8px 0 0;font-size:1.25rem;font-weight:800;line-height:1.25;color:#fff}
+.lp-bonus__body{background:#fff;padding:24px 26px}
+.lp-bonus__desc{color:var(--muted);margin:0 0 18px}
+.lp-bonus__grid{display:grid;grid-template-columns:1fr;gap:12px}
+.lp-bonus__item{display:flex;align-items:center;gap:14px;background:#f4f8fd;border:1px solid #e4eef8;border-radius:12px;padding:14px 16px;font-weight:500;font-size:.95rem}
+.lp-bonus__ic{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:#e8f1fb;display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1}
+.lp-bonus__free{margin-top:18px;display:flex;align-items:center;gap:10px;background:#eafaf0;border:1px solid #bfead0;color:#1e8e3e;border-radius:12px;padding:14px 16px;font-weight:600}
+.lp-bonus__free span{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#1e8e3e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem}
+@media (min-width:700px){.lp-bonus__grid{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.lp-bonus__top{flex-direction:column;text-align:center}}
 
 /* ---------- Oferta / preço / form ---------- */
 .lp-offer{background:var(--bg-alt)}

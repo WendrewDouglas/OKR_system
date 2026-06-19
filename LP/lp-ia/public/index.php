@@ -229,21 +229,27 @@ $entregaveis = [
 <section class="lp-section">
   <div class="lp-container">
     <div class="lp-bonus">
-      <span class="lp-bonus__badge">🎁 Brinde exclusivo</span>
-      <div class="lp-bonus__head">
-        <svg class="lp-bonus__li" viewBox="0 0 24 24" width="46" height="46" role="img" aria-label="LinkedIn">
-          <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
-        </svg>
-        <h2 class="lp-h2">Treinamento-bônus: Mineração de dados + IA no LinkedIn</h2>
+      <div class="lp-bonus__top">
+        <span class="lp-bonus__logo">
+          <svg viewBox="0 0 24 24" width="30" height="30" role="img" aria-label="LinkedIn">
+            <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
+          </svg>
+        </span>
+        <div class="lp-bonus__heading">
+          <span class="lp-bonus__badge">🎁 Brinde exclusivo · grátis</span>
+          <h2 class="lp-bonus__title">Mineração de dados + IA para alavancar sua carreira no LinkedIn</h2>
+        </div>
       </div>
-      <p class="lp-bonus__desc">Um treinamento rápido e direto ao ponto para usar <strong>IA e mineração de dados</strong> e alavancar sua carreira direto no LinkedIn — se destacar, ser encontrado e gerar oportunidades.</p>
-      <ul class="lp-bonus__list">
-        <li><span class="lp-bonus__ic">🚀</span> Perfil otimizado para atrair recrutadores e clientes</li>
-        <li><span class="lp-bonus__ic">📈</span> Mineração de dados para achar vagas e oportunidades</li>
-        <li><span class="lp-bonus__ic">🎯</span> IA para mensagens e conexões que realmente convertem</li>
-        <li><span class="lp-bonus__ic">🏆</span> Posicionamento de autoridade no seu nicho</li>
-      </ul>
-      <p class="lp-bonus__tag">Incluso gratuitamente para os inscritos no treinamento.</p>
+      <div class="lp-bonus__body">
+        <p class="lp-bonus__desc">Um treinamento rápido e direto ao ponto para usar <strong>IA e mineração de dados</strong> e se destacar no LinkedIn — ser encontrado por recrutadores e clientes e gerar oportunidades reais.</p>
+        <div class="lp-bonus__grid">
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🚀</span><span>Perfil otimizado para atrair recrutadores e clientes</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">📈</span><span>Mineração de dados para achar vagas e oportunidades</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🎯</span><span>IA para mensagens e conexões que realmente convertem</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🏆</span><span>Posicionamento de autoridade no seu nicho</span></div>
+        </div>
+        <div class="lp-bonus__free"><span>✓</span> Incluso <strong>gratuitamente</strong> para todos os inscritos no treinamento</div>
+      </div>
     </div>
   </div>
 </section>
