@@ -296,7 +296,11 @@ $entregaveis = [
       <div class="lp-classroom__board">Frente · Lousa</div>
       <div class="lp-seats" style="grid-template-columns:repeat(<?= (int) $seatCols ?>,1fr)">
         <?php for ($i = 0; $i < $spotsTotal; $i++): $free = isset($vacantSeats[$i]); ?>
-          <span class="lp-seat<?= $free ? ' lp-seat--free' : '' ?>" aria-label="<?= $free ? 'Vaga disponível' : 'Ocupado' ?>"><?= $free ? 'livre' : '' ?></span>
+          <?php if ($free): ?>
+            <a class="lp-seat lp-seat--free lp-cta-scroll" href="#inscricao" aria-label="Vaga disponível — garanta a sua">livre</a>
+          <?php else: ?>
+            <span class="lp-seat" aria-label="Ocupado"></span>
+          <?php endif; ?>
         <?php endfor; ?>
       </div>
       <div class="lp-classroom__legend">
@@ -331,7 +335,7 @@ $entregaveis = [
     </div>
 
     <form id="lp-lead-form" class="lp-form" novalidate>
-      <h2 class="lp-h2">Garanta seu interesse</h2>
+      <h2 class="lp-h2">Garanta sua vaga</h2>
 
       <div class="lp-field">
         <label for="lp-nome">Nome completo *</label>
