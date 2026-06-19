@@ -185,6 +185,17 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
     color: #aaa;
     font-size: .7rem;
 }
+
+/* === Padrão de interação: deslocamento do conteúdo ao abrir o chat ===
+   O JS aplica margin-right no wrapper universal .content (presente em todas as
+   páginas). Mantém também a transição da retração da sidebar (margin-left). */
+.content {
+    transition: margin-left var(--transition-speed, .3s) ease, margin-right .25s ease;
+}
+@media (max-width: 768px) {
+    /* Em telas pequenas o chat sobrepõe o conteúdo (sem deslocar) */
+    .content { margin-right: 0 !important; }
+}
 </style>
 
 <button id="chat_open_btn">
@@ -357,9 +368,15 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
         return (vis && w > 0) || el.classList.contains('open') || el.classList.contains('show');
     }
     function updateChatWidth() {
-        const el = findChatEl();
-        const w = (el && isChatOpen(el)) ? el.offsetWidth : 0;
-        document.documentElement.style.setProperty('--chat-w', (w || 0) + 'px');
+        const open = container && !container.classList.contains('hidden');
+        const w = open ? (container.offsetWidth || 340) : 0;
+        // Neutraliza deslocamentos internos legados baseados em --chat-w (evita duplo shift
+        // nas páginas que ainda aplicam margin-right:var(--chat-w) em containers internos).
+        document.documentElement.style.setProperty('--chat-w', '0px');
+        // Deslocamento ÚNICO e padronizado no wrapper universal .content.
+        // margin-right = largura do chat => folga consistente de ~20px (o chat fica a 20px da borda).
+        const mr = open ? (w + 'px') : '';
+        document.querySelectorAll('.content').forEach(c => { c.style.marginRight = mr; });
     }
     function setupChatObservers() {
         const chat = findChatEl();
