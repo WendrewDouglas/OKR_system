@@ -123,8 +123,11 @@ $bg1Hover = $shade($bg1, 0.06);   // clareia 6%
 $bg2Hover = $shade($bg2, -0.06);  // escurece 6%
 
 // ======== 5) ETag / Last-Modified ========
-$ver = substr(sha1($bg1.$bg2.$updatedAt.$companyId), 0, 12);
-$lastMod = gmdate('D, d M Y H:i:s', strtotime($updatedAt)).' GMT';
+// inclui a data de modificação DESTE arquivo no ETag, para que mudanças no CSS
+// (template) invalidem o cache mesmo sem alterar o tema da empresa.
+$fileVer = (int) (@filemtime(__FILE__) ?: 0);
+$ver = substr(sha1($bg1.$bg2.$updatedAt.$companyId.$fileVer), 0, 12);
+$lastMod = gmdate('D, d M Y H:i:s', max(strtotime($updatedAt) ?: 0, $fileVer)).' GMT';
 header('ETag: "'.$ver.'"');
 header('Last-Modified: '.$lastMod);
 
