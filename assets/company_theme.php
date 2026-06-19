@@ -160,19 +160,29 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
    base #171B21 / cards #1C2128 / borda #30363D / dourado #F1C40F.
    ============================================================ */
 
-/* Canvas (fixo): trama de fibra de carbono MAIOR/moderna + brilho diagonal */
+/* Canvas (fixo): TWILL 2x2 realista (fibra de carbono estilo F1) + brilho diagonal.
+   Técnica clássica de gradientes sobrepostos formando o tramado over-under. */
 body{
-  background-color:#10141a !important;
+  background-color:#0f141b !important;
   background-image:
     /* brilho diagonal suave cobrindo a tela */
-    linear-gradient(118deg, rgba(255,255,255,0) 41%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 59%),
-    /* fios da trama (duas diagonais) — célula ~8px */
-    repeating-linear-gradient(45deg,  rgba(255,255,255,.05) 0 1.5px, transparent 1.5px 8px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,.34)       0 1.5px, transparent 1.5px 8px),
-    /* profundidade de base */
-    linear-gradient(135deg, #1c2330 0%, #141922 55%, #0d1117 100%) !important;
-  background-size: 220% 220%, auto, auto, 100% 100% !important;
-  background-repeat: no-repeat, repeat, repeat, no-repeat !important;
+    linear-gradient(118deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 58%),
+    /* tramado (twill 2x2) */
+    linear-gradient(27deg,  #11161d 5px, transparent 5px),
+    linear-gradient(207deg, #11161d 5px, transparent 5px),
+    linear-gradient(27deg,  #1b232e 5px, transparent 5px),
+    linear-gradient(207deg, #1b232e 5px, transparent 5px),
+    linear-gradient(90deg,  #161c24 10px, transparent 10px),
+    linear-gradient(#191f28 25%, #141a21 25%, #141a21 50%, transparent 50%, transparent 75%, #1c242f 75%) !important;
+  background-size:
+    220% 220%,
+    20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px !important;
+  background-position:
+    0 0,
+    0 5px, 10px 0, 0 10px, 10px 5px, 0 0, 0 0 !important;
+  background-repeat:
+    no-repeat,
+    repeat, repeat, repeat, repeat, repeat, repeat !important;
   background-attachment: fixed !important;
   color: var(--text, #EAEEF6) !important;
 }
@@ -191,12 +201,24 @@ body{
 .sidebar, .header{
   background-color:#0f141b !important;
   background-image:
-    linear-gradient(180deg, rgba(255,255,255,.045), rgba(0,0,0,.14)),
-    repeating-linear-gradient(45deg,  rgba(255,255,255,.055) 0 1.5px, transparent 1.5px 8px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,.36)        0 1.5px, transparent 1.5px 8px),
-    linear-gradient(135deg, #1c2330 0%, #141922 55%, #0d1117 100%) !important;
-  background-size: 100% 100%, auto, auto, 100% 100% !important;
-  background-repeat: no-repeat, repeat, repeat, no-repeat !important;
+    /* leve relevo de painel */
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.18)),
+    /* mesmo tramado twill 2x2 (alinhado via fixed) */
+    linear-gradient(27deg,  #11161d 5px, transparent 5px),
+    linear-gradient(207deg, #11161d 5px, transparent 5px),
+    linear-gradient(27deg,  #1b232e 5px, transparent 5px),
+    linear-gradient(207deg, #1b232e 5px, transparent 5px),
+    linear-gradient(90deg,  #161c24 10px, transparent 10px),
+    linear-gradient(#191f28 25%, #141a21 25%, #141a21 50%, transparent 50%, transparent 75%, #1c242f 75%) !important;
+  background-size:
+    100% 100%,
+    20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px !important;
+  background-position:
+    0 0,
+    0 5px, 10px 0, 0 10px, 10px 5px, 0 0, 0 0 !important;
+  background-repeat:
+    no-repeat,
+    repeat, repeat, repeat, repeat, repeat, repeat !important;
   background-attachment: fixed !important;
 }
 .sidebar{ border-right: 1px solid rgba(255,255,255,.07); }
