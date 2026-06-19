@@ -61,7 +61,7 @@ img{max-width:100%;display:block}
   background:
     linear-gradient(90deg, rgba(14,19,26,.96) 0%, rgba(14,19,26,.88) 42%, rgba(14,19,26,.55) 72%, rgba(14,19,26,.38) 100%),
     linear-gradient(0deg, rgba(14,19,26,.55) 0%, rgba(14,19,26,0) 45%),
-    url('../assets/img/hero-bg.jpg');
+    url('../img/hero-bg.jpg');
   background-size:cover;background-position:center right;background-repeat:no-repeat}
 .lp-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .lp-badge{background:rgba(255,193,7,.16);color:var(--amber);border:1px solid rgba(255,193,7,.35);
