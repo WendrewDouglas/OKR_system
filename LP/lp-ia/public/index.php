@@ -296,22 +296,21 @@ $entregaveis = [
       </div>
       <div class="lp-instr__body">
         <p class="lp-instr__lead">Há mais de 15 anos transformando <strong>tecnologia, dados e IA em resultado real</strong> — na indústria, em startups e na consultoria.</p>
-        <p>Gestor de TI na <strong>Colormaq</strong> e consultor pela <strong>PlanningBI</strong>, lidera projetos de BI, SAP, automação, IA e OKRs com impacto direto em receita, produtividade e governança. Já apresentou <strong>+40 painéis executivos à diretoria</strong> e criou um TI Innovation Lab com <strong>+50 iniciativas</strong> de inovação.</p>
-        <p>Como ex-COO, empresário e consultor, apoiou <strong>+15 startups</strong> e captações de <strong>+R$ 2 milhões</strong>, e liderou o projeto vencedor do <strong>InnovaTrade Challenge da Ambev</strong>. Agora ensina, na prática, como qualquer profissional pode usar IA para <strong>entregar mais rápido, decidir melhor e se destacar no mercado</strong>.</p>
+        <p>Gestor de TI na <strong>Colormaq</strong> e consultor pela <strong>PlanningBI</strong>, lidera projetos de BI, SAP, automação, IA e OKRs com impacto direto em receita, produtividade e governança. Já apresentou <strong>+260 painéis executivos à diretoria</strong> e criou um TI Innovation Lab com <strong>+50 iniciativas</strong> de inovação.</p>
+        <p>Como ex-COO, empresário e consultor, apoiou <strong>startups</strong> e captações de <strong>+R$ 2,85 milhões</strong>, e liderou o projeto vencedor do <strong>InnovaTrade Challenge da Ambev</strong>. Agora ensina, na prática, como qualquer profissional pode usar IA para <strong>entregar mais rápido, decidir melhor e se destacar no mercado</strong>.</p>
         <ul class="lp-instr__stats">
           <li><b>+100%</b><span>faturamento B2C com iniciativas digitais</span></li>
-          <li><b>+40</b><span>painéis executivos à diretoria</span></li>
-          <li><b>+15</b><span>startups apoiadas · +R$ 2M captados</span></li>
+          <li><b>+260</b><span>painéis executivos à diretoria</span></li>
+          <li><b>+R$ 2,85 Mi</b><span>captados em startups apoiadas</span></li>
           <li><b>15+ anos</b><span>de tecnologia, dados e gestão</span></li>
         </ul>
         <p class="lp-instr__cred-label">Formação e certificações</p>
         <div class="lp-instr__logos">
           <img src="../assets/img/logos/unesp.png" alt="UNESP" title="Graduação — UNESP">
-          <img src="../assets/img/logos/faisa.jpg" alt="FAISA" title="Bacharelado em Administração — FAISA">
+          <img src="../assets/img/logos/mba-usp-esalq.jpg" alt="MBA USP/Esalq" title="MBA Data Science &amp; Analytics — USP/Esalq">
           <img src="../assets/img/logos/pmp.webp" alt="PMI / PMP" title="PMP/CAPM — Fundamentos (PMI)">
-          <img src="../assets/img/logos/okr-master.webp" alt="OKR Master Professional" title="OKR Master Professional (Certiprof)">
-          <img src="../assets/img/logos/okr-champion.webp" alt="OKR Champion" title="OKR Champion">
-          <span class="lp-instr__usp">MBA Data Science &amp; Analytics<br><small>USP/Esalq</small></span>
+          <img class="lp-instr__badge" src="../assets/img/logos/okr-master.webp" alt="OKR Master Professional" title="OKR Master Professional (Certiprof)">
+          <img class="lp-instr__badge" src="../assets/img/logos/okr-champion.webp" alt="OKR Champion" title="OKR Champion (Certiprof)">
         </div>
         <a href="#inscricao" class="lp-btn lp-btn--lg lp-cta-scroll lp-instr__cta">Quero aprender com o Wendrew</a>
       </div>

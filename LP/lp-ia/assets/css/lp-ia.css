@@ -237,6 +237,7 @@ img{max-width:100%;display:block}
 .lp-instr__cred-label{font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:20px 0 12px}
 .lp-instr__logos{display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px}
 .lp-instr__logos img{height:46px;width:auto;max-width:130px;object-fit:contain}
+.lp-instr__logos img.lp-instr__badge{height:76px;max-width:none}
 .lp-instr__usp{font-size:.82rem;font-weight:700;color:var(--ink);line-height:1.15;border-left:3px solid var(--brand);padding-left:10px}
 .lp-instr__usp small{color:var(--muted);font-weight:500}
 .lp-instr__cta{margin-top:26px}
