@@ -122,7 +122,7 @@ $entregaveis = [
 <!-- ====== HEADER ====== -->
 <header class="lp-header">
   <div class="lp-container lp-header__inner">
-    <span class="lp-logo">Planning<strong>BI</strong></span>
+    <img class="lp-logo__img" src="../assets/img/logo-planning.jpg" alt="PlanningBI — Strategic Solutions">
     <a href="#inscricao" class="lp-btn lp-btn--sm lp-cta-scroll">Quero participar</a>
   </div>
 </header>
@@ -222,6 +222,29 @@ $entregaveis = [
         <li><span class="lp-check">✓</span> <?= $e($d) ?></li>
       <?php endforeach; ?>
     </ul>
+  </div>
+</section>
+
+<!-- ====== BÔNUS LINKEDIN ====== -->
+<section class="lp-section">
+  <div class="lp-container">
+    <div class="lp-bonus">
+      <span class="lp-bonus__badge">🎁 Brinde exclusivo</span>
+      <div class="lp-bonus__head">
+        <svg class="lp-bonus__li" viewBox="0 0 24 24" width="46" height="46" role="img" aria-label="LinkedIn">
+          <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
+        </svg>
+        <h2 class="lp-h2">Treinamento-bônus: Mineração de dados + IA no LinkedIn</h2>
+      </div>
+      <p class="lp-bonus__desc">Um treinamento rápido e direto ao ponto para usar <strong>IA e mineração de dados</strong> e alavancar sua carreira direto no LinkedIn — se destacar, ser encontrado e gerar oportunidades.</p>
+      <ul class="lp-bonus__list">
+        <li><span class="lp-bonus__ic">🚀</span> Perfil otimizado para atrair recrutadores e clientes</li>
+        <li><span class="lp-bonus__ic">📈</span> Mineração de dados para achar vagas e oportunidades</li>
+        <li><span class="lp-bonus__ic">🎯</span> IA para mensagens e conexões que realmente convertem</li>
+        <li><span class="lp-bonus__ic">🏆</span> Posicionamento de autoridade no seu nicho</li>
+      </ul>
+      <p class="lp-bonus__tag">Incluso gratuitamente para os inscritos no treinamento.</p>
+    </div>
   </div>
 </section>
 
