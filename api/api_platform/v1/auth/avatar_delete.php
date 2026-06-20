@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * DELETE /auth/avatar
- * Remove o avatar do usuário autenticado.
+ * Remove o avatar do usuário → repointa para o padrão (avatar_id = 1) e
+ * desativa a linha custom (arquivos ficam para limpeza posterior).
  */
 
 $auth = api_require_auth();
@@ -11,22 +12,18 @@ $uid  = (int)($auth['sub'] ?? 0);
 
 $pdo = api_db();
 
-// Get current avatar path
-$st = $pdo->prepare("SELECT imagem_url FROM usuarios WHERE id_user = ?");
-$st->execute([$uid]);
-$currentUrl = $st->fetchColumn();
+// Repointar para o avatar padrão (id 1 = default_avatar/default.png).
+$pdo->prepare("UPDATE usuarios SET avatar_id = 1 WHERE id_user = ?")->execute([$uid]);
 
-// Delete file from disk
-if ($currentUrl && str_starts_with($currentUrl, '/uploads/avatars/')) {
-  $ROOT = dirname(__DIR__, 4);
-  $filePath = $ROOT . $currentUrl;
-  if (is_file($filePath)) {
-    @unlink($filePath);
-  }
-}
+// Desativa a linha custom do usuário (re-upload reativa a mesma linha).
+$pdo->prepare("UPDATE avatars SET active = 0 WHERE kind = 'custom' AND owner_user_id = ?")->execute([$uid]);
 
-// Clear in database
-$pdo->prepare("UPDATE usuarios SET imagem_url = NULL, dt_alteracao = NOW() WHERE id_user = ?")
-    ->execute([$uid]);
+// Invalida cache de sessão (no-op fora do contexto web).
+if (function_exists('avatar_cache_flush')) { @avatar_cache_flush(); }
 
-api_json(['ok' => true, 'message' => 'Avatar removido.']);
+api_json([
+  'ok'               => true,
+  'avatar_url'       => api_avatar_url_for($uid),
+  'avatar_url_thumb' => api_avatar_thumb_for($uid),
+  'message'          => 'Avatar removido.',
+]);

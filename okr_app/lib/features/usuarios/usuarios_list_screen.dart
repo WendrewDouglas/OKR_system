@@ -12,6 +12,7 @@ import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/confirm_dialog.dart';
 import '../shared/widgets/app_scaffold.dart';
+import '../shared/widgets/user_avatar.dart';
 
 /// Rótulos amigáveis dos papéis RBAC.
 const Map<String, String> kRoleLabels = {
@@ -90,12 +91,11 @@ class _UsuarioCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.gold.withValues(alpha: 0.2),
-          child: Text(
-            usuario.iniciais.isNotEmpty ? usuario.iniciais : '?',
-            style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 13),
-          ),
+        leading: UserAvatar(
+          avatarUrl: usuario.avatarUrl,
+          firstName: usuario.primeiroNome,
+          lastName: usuario.ultimoNome,
+          radius: 20,
         ),
         title: Text(usuario.nomeCompleto, maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),

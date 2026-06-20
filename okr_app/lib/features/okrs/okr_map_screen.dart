@@ -6,9 +6,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
-import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/app_header.dart';
+import '../shared/widgets/user_avatar.dart';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -91,24 +91,20 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
           onRetry: () => ref.invalidate(okrCascataProvider),
         ),
         data: (objetivos) {
-          if (objetivos.isEmpty) {
-            return const EmptyState(
-              icon: Icons.account_tree_outlined,
-              title: 'Nenhum OKR encontrado',
-              subtitle:
-                  'O mapa ficara disponivel quando houver objetivos cadastrados.',
-            );
-          }
-
-          // Group objetivos by pilar_bsc
-          final pillarMap = <String, List<Map<String, dynamic>>>{};
+          // Os 4 pilares BSC sempre aparecem, na ordem canônica, mesmo sem
+          // objetivos (os vazios ficam "apagados"/inativos).
+          final pillarMap = <String, List<Map<String, dynamic>>>{
+            for (final p in _bscPillars) p: <Map<String, dynamic>>[],
+          };
           for (final obj in objetivos) {
-            final pilar = (obj['pilar_bsc'] as String?) ?? 'Sem pilar';
-            pillarMap.putIfAbsent(pilar, () => []).add(obj);
+            final canon = _canonicalPillar((obj['pilar_bsc'] as String?) ?? '');
+            pillarMap.putIfAbsent(canon, () => []).add(obj);
           }
-
-          // Sort pillar names consistently
-          final sortedPillars = pillarMap.keys.toList()..sort();
+          // 4 pilares canônicos primeiro; qualquer pilar extra/desconhecido vem depois.
+          final pillars = <String>[
+            ..._bscPillars,
+            ...pillarMap.keys.where((k) => !_bscPillars.contains(k)),
+          ];
 
           return RefreshIndicator(
             color: AppColors.gold,
@@ -119,7 +115,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
             },
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              itemCount: sortedPillars.length + 1,
+              itemCount: pillars.length + 1,
               itemBuilder: (ctx, i) {
                 if (i == 0) {
                   return Padding(
@@ -136,7 +132,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Mapa OKR',
+                          'Mapa BSC|OKR',
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
@@ -146,7 +142,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                     ),
                   );
                 }
-                final pillarName = sortedPillars[i - 1];
+                final pillarName = pillars[i - 1];
                 final pillarObjs = pillarMap[pillarName]!;
                 return StaggeredFadeSlide(
                   index: i - 1,
@@ -211,6 +207,27 @@ class _SpeedDialAction extends StatelessWidget {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/// Os 4 pilares BSC na ordem canônica de exibição.
+const List<String> _bscPillars = [
+  'Financeiro',
+  'Clientes',
+  'Processos Internos',
+  'Aprendizado e Crescimento',
+];
+
+/// Normaliza o nome do pilar de um objetivo para um dos 4 pilares canônicos.
+/// Mantém o nome original caso não case com nenhum (pilar extra/desconhecido).
+String _canonicalPillar(String nome) {
+  final n = nome.toLowerCase();
+  if (n.contains('financ')) return 'Financeiro';
+  if (n.contains('client')) return 'Clientes';
+  if (n.contains('process')) return 'Processos Internos';
+  if (n.contains('aprend') || n.contains('conhec')) {
+    return 'Aprendizado e Crescimento';
+  }
+  return nome.isEmpty ? 'Sem pilar' : nome;
+}
+
 Color _pillarColor(String nome) {
   final n = nome.toLowerCase();
   if (n.contains('financ')) return AppColors.pilarFinanceiro;
@@ -252,6 +269,21 @@ Widget _deadlineDot(String? deadline) {
 }
 
 String _statusLabel(String? status) => status ?? '';
+
+/// Avatar pequeno (com fallback para iniciais) lido de um map de pessoa
+/// (dono/responsavel) do endpoint /dashboard/cascata.
+Widget _personAvatar(Map<String, dynamic>? person, {double radius = 8}) {
+  final nome = (person?['nome'] as String?) ?? '';
+  final parts = nome.trim().split(RegExp(r'\s+'));
+  final firstName = parts.isNotEmpty ? parts.first : '';
+  final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+  return UserAvatar(
+    avatarUrl: person?['avatar_url'] as String?,
+    firstName: firstName,
+    lastName: lastName,
+    radius: radius,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Tile expansível reutilizável (chevron animado + expand/collapse).
@@ -328,6 +360,53 @@ class _PillarTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _pillarColor(pillarName);
     final icon = _pillarIcon(pillarName);
+
+    // Pilar sem objetivos: card "apagado"/inativo (não expansível).
+    if (objetivos.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Opacity(
+          opacity: 0.42,
+          child: Card(
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(width: 4, decoration: BoxDecoration(color: color)),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: color, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pillarName,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Sem objetivos',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     // Aggregate counts
     int totalKrs = 0;
@@ -434,7 +513,8 @@ class _ObjetivoTile extends StatelessWidget {
     final desc = obj['descricao'] ?? '';
     final status = _statusLabel(obj['status'] as String?);
     final deadline = obj['dt_prazo'] as String?;
-    final dono = (obj['dono'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final donoMap = obj['dono'] as Map<String, dynamic>?;
+    final dono = (donoMap?['nome'] as String?) ?? '';
     final krs = (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
@@ -472,8 +552,8 @@ class _ObjetivoTile extends StatelessWidget {
                           Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                           if (dono.isNotEmpty) ...[
                             const SizedBox(width: 8),
-                            const Icon(Icons.person_outline, size: 12, color: AppColors.textMuted),
-                            const SizedBox(width: 2),
+                            _personAvatar(donoMap, radius: 9),
+                            const SizedBox(width: 4),
                             Flexible(
                               child: Text(dono,
                                   style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
@@ -551,7 +631,8 @@ class _KrTile extends StatelessWidget {
     final status = _statusLabel(kr['status'] as String?);
     final farol = kr['farol'] as String?;
     final deadline = kr['data_fim'] as String?;
-    final responsavel = (kr['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final responsavelMap = kr['responsavel'] as Map<String, dynamic>?;
+    final responsavel = (responsavelMap?['nome'] as String?) ?? '';
     final iniciativas = (kr['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
@@ -589,8 +670,8 @@ class _KrTile extends StatelessWidget {
                           Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                           if (responsavel.isNotEmpty) ...[
                             const SizedBox(width: 6),
-                            const Icon(Icons.person_outline, size: 10, color: AppColors.textMuted),
-                            const SizedBox(width: 2),
+                            _personAvatar(responsavelMap, radius: 8),
+                            const SizedBox(width: 3),
                             Flexible(
                               child: Text(responsavel,
                                   style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
@@ -656,8 +737,8 @@ class _IniciativaTile extends StatelessWidget {
     final desc = iniciativa['descricao'] ?? '';
     final status = _statusLabel(iniciativa['status'] as String?);
     final deadline = iniciativa['dt_prazo'] as String?;
-    final responsavel =
-        (iniciativa['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final responsavelMap = iniciativa['responsavel'] as Map<String, dynamic>?;
+    final responsavel = (responsavelMap?['nome'] as String?) ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -697,9 +778,8 @@ class _IniciativaTile extends StatelessWidget {
                       ),
                       if (responsavel.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        const Icon(Icons.person_outline,
-                            size: 10, color: AppColors.textMuted),
-                        const SizedBox(width: 2),
+                        _personAvatar(responsavelMap, radius: 8),
+                        const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             responsavel,

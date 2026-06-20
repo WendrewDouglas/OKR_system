@@ -25,32 +25,16 @@ $st = $pdo->prepare("
          kr.farol, kr.natureza_kr, kr.tipo_frequencia_milestone,
          kr.data_inicio, kr.data_fim, kr.dt_novo_prazo, kr.responsavel,
          kr.dt_ultima_atualizacao,
-         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
     FROM key_results kr
     LEFT JOIN usuarios u ON u.id_user = kr.responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE kr.id_objetivo = ?
    ORDER BY kr.key_result_num
 ");
 $st->execute([$idObj]);
 $krs = $st->fetchAll();
-
-// Batch (evita N+1): último milestone consolidado (<= hoje) de TODOS os KRs em 1 query.
-$krIds = array_column($krs, 'id_kr');
-$latestByKr = [];
-if (!empty($krIds)) {
-  $ph = implode(',', array_fill(0, count($krIds), '?'));
-  $stM = $pdo->prepare("
-    SELECT id_kr, valor_real_consolidado, valor_esperado, data_ref
-      FROM milestones_kr
-     WHERE id_kr IN ($ph) AND data_ref <= CURDATE() AND valor_real_consolidado IS NOT NULL
-     ORDER BY id_kr, data_ref DESC
-  ");
-  $stM->execute($krIds);
-  foreach ($stM->fetchAll() as $m) {
-    // 1ª ocorrência por id_kr = mais recente (ordenado data_ref DESC)
-    $latestByKr[$m['id_kr']] ??= $m;
-  }
-}
 
 // Calculate progress for each KR
 $result = [];
@@ -59,7 +43,15 @@ foreach ($krs as $kr) {
   $base = (float)($kr['baseline'] ?? 0);
   $meta = (float)($kr['meta'] ?? 0);
 
-  $ms = $latestByKr[$idKr] ?? null;
+  // Get latest milestone with real value
+  $stM = $pdo->prepare("
+    SELECT valor_real_consolidado, valor_esperado, data_ref
+      FROM milestones_kr
+     WHERE id_kr = ? AND data_ref <= CURDATE() AND valor_real_consolidado IS NOT NULL
+     ORDER BY data_ref DESC LIMIT 1
+  ");
+  $stM->execute([$idKr]);
+  $ms = $stM->fetch();
 
   $valorAtual = $ms ? (float)$ms['valor_real_consolidado'] : null;
   $valorEsperado = $ms ? (float)$ms['valor_esperado'] : null;
@@ -85,8 +77,9 @@ foreach ($krs as $kr) {
     'data_fim'                 => $kr['data_fim'],
     'dt_ultimo_atualizacao'    => $kr['dt_ultima_atualizacao'],
     'responsavel' => $kr['responsavel'] ? [
-      'id_user' => (int)$kr['responsavel'],
-      'nome'    => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'id_user'    => (int)$kr['responsavel'],
+      'nome'       => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $kr['resp_avatar_path'] ?? null, 'filename' => $kr['resp_avatar_filename'] ?? null]),
     ] : null,
     'progress' => [
       'valor_atual'    => $valorAtual,
@@ -96,4 +89,4 @@ foreach ($krs as $kr) {
   ];
 }
 
-api_ok($result, ['krs' => $result]);
+api_json(['ok' => true, 'krs' => $result]);

@@ -10,6 +10,7 @@ import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
 import '../shared/widgets/app_scaffold.dart';
+import '../shared/widgets/user_avatar.dart';
 
 final iniciativaDetailProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, id) async {
@@ -103,16 +104,21 @@ class IniciativaDetailScreen extends ConsumerWidget {
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
-                    children: envolvidos.map((e) => Chip(
-                      avatar: CircleAvatar(
-                        backgroundColor: AppColors.gold.withValues(alpha: 0.2),
-                        child: Text(
-                          ((e['nome'] ?? '?') as String).isNotEmpty ? (e['nome'] as String)[0].toUpperCase() : '?',
-                          style: const TextStyle(fontSize: 11, color: AppColors.gold),
+                    children: envolvidos.map((e) {
+                      final nome = (e['nome'] as String?) ?? '';
+                      final parts = nome.trim().split(RegExp(r'\s+'));
+                      final firstName = parts.isNotEmpty ? parts.first : '';
+                      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+                      return Chip(
+                        avatar: UserAvatar(
+                          avatarUrl: e['avatar_url'] as String?,
+                          firstName: firstName,
+                          lastName: lastName,
+                          radius: 11,
                         ),
-                      ),
-                      label: Text(e['nome'] ?? '', style: const TextStyle(fontSize: 12)),
-                    )).toList(),
+                        label: Text(nome, style: const TextStyle(fontSize: 12)),
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 20),
                 ],

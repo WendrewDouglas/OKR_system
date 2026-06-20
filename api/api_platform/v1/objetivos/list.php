@@ -56,9 +56,11 @@ $dataSql = "
          o.pilar_bsc, o.tipo, o.qualidade, o.dono,
          o.dt_criacao, o.dt_prazo, o.dt_conclusao,
          u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome,
+         ad.path AS dono_avatar_path, ad.filename AS dono_avatar_filename,
          (SELECT COUNT(*) FROM key_results kr WHERE kr.id_objetivo = o.id_objetivo) AS qtd_krs
     FROM objetivos o
     LEFT JOIN usuarios u ON u.id_user = o.dono
+    LEFT JOIN avatars ad ON ad.id = u.avatar_id
    WHERE $wSQL
    ORDER BY o.dt_criacao DESC
 ";
@@ -80,9 +82,10 @@ $result['items'] = array_map(fn($r) => [
   'dt_conclusao'     => $r['dt_conclusao'],
   'qtd_krs'          => (int)$r['qtd_krs'],
   'dono' => [
-    'id_user' => (int)$r['dono'],
-    'nome'    => trim(($r['dono_nome'] ?? '') . ' ' . ($r['dono_sobrenome'] ?? '')),
+    'id_user'    => (int)$r['dono'],
+    'nome'       => trim(($r['dono_nome'] ?? '') . ' ' . ($r['dono_sobrenome'] ?? '')),
+    'avatar_url' => api_avatar_url_from_row(['path' => $r['dono_avatar_path'] ?? null, 'filename' => $r['dono_avatar_filename'] ?? null]),
   ],
 ], $result['items']);
 
-api_ok_paginated($result);
+api_json(array_merge(['ok' => true], $result));

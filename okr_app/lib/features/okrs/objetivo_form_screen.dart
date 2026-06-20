@@ -21,6 +21,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descricaoCtrl = TextEditingController();
   final _observacoesCtrl = TextEditingController();
+  final _justificativaCtrl = TextEditingController();
   final _persInicioCtrl = TextEditingController();
   final _persFimCtrl = TextEditingController();
 
@@ -73,6 +74,20 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         _tipoObjetivo = obj['tipo'] as String?;
         _cicloTipo = obj['tipo_ciclo'] as String?;
         _donoId = obj['dono'] is Map ? (obj['dono'] as Map)['id_user'] as int? : obj['dono'] as int?;
+        // Pré-preenche o detalhe do ciclo personalizado a partir das datas salvas
+        // (dt_inicio/dt_prazo em ISO YYYY-MM-DD), para o usuário ver o período atual.
+        if (_cicloTipo == 'personalizado') {
+          final di = (obj['dt_inicio'] as String?)?.trim();
+          final df = (obj['dt_prazo'] as String?)?.trim();
+          if (di != null && di.length >= 10) {
+            _cicloPersInicio = di.substring(0, 10);
+            _persInicioCtrl.text = _isoToBr(di.substring(0, 10));
+          }
+          if (df != null && df.length >= 10) {
+            _cicloPersFim = df.substring(0, 10);
+            _persFimCtrl.text = _isoToBr(df.substring(0, 10));
+          }
+        }
         _isLoadingEdit = false;
       });
     } catch (e) {
@@ -87,6 +102,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
   void dispose() {
     _descricaoCtrl.dispose();
     _observacoesCtrl.dispose();
+    _justificativaCtrl.dispose();
     _persInicioCtrl.dispose();
     _persFimCtrl.dispose();
     super.dispose();
@@ -119,6 +135,7 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         'ciclo_tipo': _cicloTipo,
         'observacoes': _observacoesCtrl.text.trim(),
         if (_donoId != null) 'dono': _donoId,
+        if (isEditing) 'justificativa': _justificativaCtrl.text.trim(),
         ..._cicloParams(),
       };
 
@@ -214,19 +231,26 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
     _persFimCtrl.clear();
   }
 
-  Future<void> _pickMonth(TextEditingController ctrl, ValueChanged<String> onPicked) async {
+  /// Converte ISO (YYYY-MM-DD) para exibição dd/MM/aaaa.
+  String _isoToBr(String iso) {
+    final p = iso.split('-');
+    return p.length == 3 ? '${p[2]}/${p[1]}/${p[0]}' : iso;
+  }
+
+  /// Seletor de data precisa (dia/mês/ano) — usado no ciclo Personalizado.
+  /// Reporta no formato ISO (YYYY-MM-DD) esperado pelo backend e exibe dd/MM/aaaa.
+  Future<void> _pickDate(TextEditingController ctrl, ValueChanged<String> onPicked) async {
     final now = DateTime.now();
     final dt = await showDatePicker(
       context: context,
       initialDate: now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3, 12),
-      initialDatePickerMode: DatePickerMode.year,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 6, 12, 31),
     );
     if (dt != null) {
-      final ym = '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
-      onPicked(ym);
-      ctrl.text = '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      final iso = '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      onPicked(iso);
+      ctrl.text = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     }
   }
 
@@ -301,19 +325,19 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
         return Row(children: [
           Expanded(
             child: TextFormField(
-              decoration: const InputDecoration(labelText: 'Mês início'),
+              decoration: const InputDecoration(labelText: 'Data início'),
               readOnly: true,
               controller: _persInicioCtrl,
-              onTap: () => _pickMonth(_persInicioCtrl, (ym) => setState(() => _cicloPersInicio = ym)),
+              onTap: () => _pickDate(_persInicioCtrl, (d) => setState(() => _cicloPersInicio = d)),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: TextFormField(
-              decoration: const InputDecoration(labelText: 'Mês fim'),
+              decoration: const InputDecoration(labelText: 'Data fim'),
               readOnly: true,
               controller: _persFimCtrl,
-              onTap: () => _pickMonth(_persFimCtrl, (ym) => setState(() => _cicloPersFim = ym)),
+              onTap: () => _pickDate(_persFimCtrl, (d) => setState(() => _cicloPersFim = d)),
             ),
           ),
         ]);
@@ -420,6 +444,18 @@ class _ObjetivoFormScreenState extends ConsumerState<ObjetivoFormScreen> {
                     maxLines: 3,
                     decoration: const InputDecoration(labelText: 'Observações'),
                   ),
+                  if (isEditing) ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _justificativaCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Justificativa da edição *',
+                        helperText: 'Editar reenvia o objetivo para aprovação.',
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,

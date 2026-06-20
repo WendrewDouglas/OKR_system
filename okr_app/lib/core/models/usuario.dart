@@ -12,6 +12,7 @@ class Usuario {
   final String roleKey;
   final String roleName;
   final DateTime? dtCadastro;
+  final String? avatarUrl;
 
   const Usuario({
     required this.idUser,
@@ -24,6 +25,7 @@ class Usuario {
     this.roleKey = '',
     this.roleName = '',
     this.dtCadastro,
+    this.avatarUrl,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) => Usuario(
@@ -37,6 +39,7 @@ class Usuario {
         roleKey: asString(json['role_key']),
         roleName: asString(json['role_name']),
         dtCadastro: asDateOrNull(json['dt_cadastro']),
+        avatarUrl: json['avatar_url'] as String?,
       );
 
   String get nomeCompleto => '$primeiroNome $ultimoNome'.trim();

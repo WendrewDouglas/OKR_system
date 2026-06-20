@@ -66,6 +66,11 @@ if (in_array(strtolower($natureza), ['binario', 'binaria'], true)) {
   $meta = 1;
 }
 
+// Nome do criador (coluna usuario_criador); espelha o web (grava o nome, não o id).
+$stNome = $pdo->prepare("SELECT TRIM(CONCAT(COALESCE(primeiro_nome,''),' ',COALESCE(ultimo_nome,''))) FROM usuarios WHERE id_user = ? LIMIT 1");
+$stNome->execute([$uid]);
+$creatorName = (string)($stNome->fetchColumn() ?: $uid);
+
 $pdo->beginTransaction();
 try {
   // Sequential number
@@ -92,7 +97,7 @@ try {
     $unidade ?: null, $direcao, $natureza ?: null, $tipoKr ?: null,
     $freqMilestone ?: null, $responsavel, $margem, $observacoes ?: null,
     $dtInicio ?: null, $dtFim ?: null,
-    (string)$uid, $uid, // usuario_criador (como o web) + id_user_criador
+    $creatorName, $uid, // usuario_criador (nome, como o web) + id_user_criador
   ]);
 
   // Auto-generate milestones

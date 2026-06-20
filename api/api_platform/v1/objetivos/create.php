@@ -43,19 +43,26 @@ $cycleData = [
 ];
 [$dtInicio, $dtPrazo] = calcularDatasCiclo($cicloTipo, $cycleData);
 
+// Nome do criador (coluna usuario_criador é NOT NULL); espelha o web.
+$stNome = $pdo->prepare("SELECT TRIM(CONCAT(COALESCE(primeiro_nome,''),' ',COALESCE(ultimo_nome,''))) FROM usuarios WHERE id_user = ? LIMIT 1");
+$stNome->execute([$uid]);
+$creatorName = (string)($stNome->fetchColumn() ?: $uid);
+
 $pdo->beginTransaction();
 try {
+  // status = 'nao iniciado' (valor válido em dom_status_kr; FK fk_objetivos_status).
+  // status_aprovacao = 'pendente' (lido com LOWER nas telas de aprovação).
   $st = $pdo->prepare("
     INSERT INTO objetivos
       (descricao, tipo, pilar_bsc, tipo_ciclo, dono, observacoes,
        dt_inicio, dt_prazo, status, status_aprovacao,
-       id_company, id_user_criador, dt_criacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', 'pendente', ?, ?, NOW())
+       usuario_criador, id_company, id_user_criador, dt_criacao)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, ?, CURDATE())
   ");
   $st->execute([
     $descricao, $tipo ?: null, $pilar, $cicloTipo, $dono, $observacoes ?: null,
     $dtInicio ?: null, $dtPrazo ?: null,
-    $cid, $uid,
+    $creatorName, $cid, $uid,
   ]);
   $idObjetivo = (int)$pdo->lastInsertId();
 

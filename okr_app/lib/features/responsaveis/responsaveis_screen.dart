@@ -7,6 +7,7 @@ import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/empty_state.dart';
 import '../shared/widgets/app_header.dart';
+import '../shared/widgets/user_avatar.dart';
 
 // ── Data model ──────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ class _PersonItem {
 class _PersonSummary {
   final int idUser;
   final String nome;
+  final String? avatarUrl;
   final int objetivosCount;
   final int krsCount;
   final int iniciativasCount;
@@ -36,6 +38,7 @@ class _PersonSummary {
   const _PersonSummary({
     required this.idUser,
     required this.nome,
+    this.avatarUrl,
     required this.objetivosCount,
     required this.krsCount,
     required this.iniciativasCount,
@@ -61,7 +64,9 @@ final responsaveisProvider = FutureProvider.autoDispose<List<_PersonSummary>>((r
     if (dono != null) {
       final id = dono['id_user'] as int;
       final nome = (dono['nome'] as String?) ?? '';
-      people.putIfAbsent(id, () => _PersonAccumulator(id: id, nome: nome));
+      people.putIfAbsent(
+          id, () => _PersonAccumulator(id: id, nome: nome, avatarUrl: dono['avatar_url'] as String?));
+      people[id]!.avatarUrl ??= dono['avatar_url'] as String?;
       people[id]!.objetivos.add(_PersonItem(
         type: 'objetivo',
         descricao: obj['descricao'] ?? '',
@@ -76,7 +81,9 @@ final responsaveisProvider = FutureProvider.autoDispose<List<_PersonSummary>>((r
       if (resp != null) {
         final id = resp['id_user'] as int;
         final nome = (resp['nome'] as String?) ?? '';
-        people.putIfAbsent(id, () => _PersonAccumulator(id: id, nome: nome));
+        people.putIfAbsent(
+            id, () => _PersonAccumulator(id: id, nome: nome, avatarUrl: resp['avatar_url'] as String?));
+        people[id]!.avatarUrl ??= resp['avatar_url'] as String?;
         people[id]!.krs.add(_PersonItem(
           type: 'kr',
           descricao: kr['descricao'] ?? '',
@@ -90,7 +97,9 @@ final responsaveisProvider = FutureProvider.autoDispose<List<_PersonSummary>>((r
         if (resp != null) {
           final id = resp['id_user'] as int;
           final nome = (resp['nome'] as String?) ?? '';
-          people.putIfAbsent(id, () => _PersonAccumulator(id: id, nome: nome));
+          people.putIfAbsent(
+              id, () => _PersonAccumulator(id: id, nome: nome, avatarUrl: resp['avatar_url'] as String?));
+          people[id]!.avatarUrl ??= resp['avatar_url'] as String?;
           people[id]!.iniciativas.add(_PersonItem(
             type: 'iniciativa',
             descricao: ini['descricao'] ?? '',
@@ -110,6 +119,7 @@ final responsaveisProvider = FutureProvider.autoDispose<List<_PersonSummary>>((r
     return _PersonSummary(
       idUser: p.id,
       nome: p.nome,
+      avatarUrl: p.avatarUrl,
       objetivosCount: p.objetivos.length,
       krsCount: p.krs.length,
       iniciativasCount: p.iniciativas.length,
@@ -125,11 +135,12 @@ final responsaveisProvider = FutureProvider.autoDispose<List<_PersonSummary>>((r
 class _PersonAccumulator {
   final int id;
   final String nome;
+  String? avatarUrl;
   final List<_PersonItem> objetivos = [];
   final List<_PersonItem> krs = [];
   final List<_PersonItem> iniciativas = [];
 
-  _PersonAccumulator({required this.id, required this.nome});
+  _PersonAccumulator({required this.id, required this.nome, this.avatarUrl});
 }
 
 bool _isDone(String status) {
@@ -298,32 +309,13 @@ class _PersonCardState extends State<_PersonCard>
     return AppColors.red;
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  Color _avatarColor(int id) {
-    const palette = [
-      Color(0xFF60A5FA), // blue
-      Color(0xFFA78BFA), // purple
-      Color(0xFF22C55E), // green
-      Color(0xFFF59E0B), // amber
-      Color(0xFFEF4444), // red
-      Color(0xFF06B6D4), // cyan
-      Color(0xFFF472B6), // pink
-      Color(0xFFFBBF24), // yellow
-    ];
-    return palette[id % palette.length];
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = widget.person;
     final pct = p.progressPercent;
-    final color = _avatarColor(p.idUser);
+    final nameParts = p.nome.trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -339,24 +331,12 @@ class _PersonCardState extends State<_PersonCard>
                 children: [
                   Row(
                     children: [
-                      // Avatar circle
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: color.withValues(alpha: 0.15),
-                          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _initials(p.nome),
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
+                      // Avatar
+                      UserAvatar(
+                        avatarUrl: p.avatarUrl,
+                        firstName: firstName,
+                        lastName: lastName,
+                        radius: 22,
                       ),
                       const SizedBox(width: 12),
                       // Name and counts

@@ -97,18 +97,19 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
     _persFimCtrl.clear();
   }
 
-  Future<void> _pickMonth(TextEditingController ctrl, ValueChanged<String> onPicked) async {
+  /// Seletor de data precisa (dia/mês/ano) — usado no ciclo Personalizado.
+  /// Reporta no formato ISO (YYYY-MM-DD) esperado pelo backend e exibe dd/MM/aaaa.
+  Future<void> _pickDate(TextEditingController ctrl, ValueChanged<String> onPicked) async {
     final now = DateTime.now();
     final dt = await showDatePicker(
       context: context,
       initialDate: now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3, 12),
-      initialDatePickerMode: DatePickerMode.year,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 6, 12, 31),
     );
     if (dt != null) {
-      onPicked('${dt.year}-${dt.month.toString().padLeft(2, '0')}');
-      ctrl.text = '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      onPicked('${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}');
+      ctrl.text = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     }
   }
 
@@ -205,12 +206,12 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
         return Row(children: [
           Expanded(
             child: TextFormField(
-              decoration: const InputDecoration(labelText: 'Mês início'),
+              decoration: const InputDecoration(labelText: 'Data início'),
               readOnly: true,
               controller: _persInicioCtrl,
               validator: (_) => _persInicio == null ? 'Obrigatório' : null,
-              onTap: () => _pickMonth(_persInicioCtrl, (ym) => setState(() {
-                    _persInicio = ym;
+              onTap: () => _pickDate(_persInicioCtrl, (d) => setState(() {
+                    _persInicio = d;
                     _emit();
                   })),
             ),
@@ -218,12 +219,12 @@ class _CicloSelectorState extends ConsumerState<CicloSelector> {
           const SizedBox(width: 12),
           Expanded(
             child: TextFormField(
-              decoration: const InputDecoration(labelText: 'Mês fim'),
+              decoration: const InputDecoration(labelText: 'Data fim'),
               readOnly: true,
               controller: _persFimCtrl,
               validator: (_) => _persFim == null ? 'Obrigatório' : null,
-              onTap: () => _pickMonth(_persFimCtrl, (ym) => setState(() {
-                    _persFim = ym;
+              onTap: () => _pickDate(_persFimCtrl, (d) => setState(() {
+                    _persFim = d;
                     _emit();
                   })),
             ),

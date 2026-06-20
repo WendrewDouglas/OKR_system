@@ -14,6 +14,35 @@ $ROOT = dirname(__DIR__, 3); // .../OKR_system
 // Carrega config do sistema (DB_HOST, DB_NAME, etc.)
 require_once $ROOT . '/auth/config.php';
 
+// Resolvedor único de avatar (catálogo do web — fonte única da verdade).
+require_once $ROOT . '/auth/avatar_helpers.php';
+
+// Base pública absoluta para montar URLs de avatar do app (catálogo do web).
+if (!defined('APP_PUBLIC_BASE_URL')) {
+  define('APP_PUBLIC_BASE_URL', 'https://planningbi.com.br');
+}
+
+/** Prefixa a base pública numa URL relativa do catálogo (deixa absolutas/data intactas). */
+function api_avatar_abs(?string $rel): ?string {
+  if ($rel === null || $rel === '') return null;
+  return preg_match('#^(https?://|data:image/)#i', $rel) ? $rel : APP_PUBLIC_BASE_URL . $rel;
+}
+
+/** URL absoluta do avatar a partir de uma linha já com avatar_path/avatar_filename (LEFT JOIN avatars). */
+function api_avatar_url_from_row(?array $row): ?string {
+  return api_avatar_abs(avatar_url_from_row($row));
+}
+
+/** URL absoluta do avatar resolvida pelo id do usuário (single user). */
+function api_avatar_url_for(int $userId): ?string {
+  return api_avatar_abs(avatar_resolve($userId, api_db())['url'] ?? null);
+}
+
+/** Thumb (64px) absoluta resolvida pelo id do usuário. */
+function api_avatar_thumb_for(int $userId): ?string {
+  return api_avatar_abs(avatar_resolve($userId, api_db())['url_thumb'] ?? null);
+}
+
 // Log dedicado da API
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/error_log');

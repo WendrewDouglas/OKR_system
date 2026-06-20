@@ -13,10 +13,12 @@ $id   = api_param('id');
 $pdo = api_db();
 $st = $pdo->prepare("
   SELECT o.*, u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome,
+         ad.path AS dono_avatar_path, ad.filename AS dono_avatar_filename,
          p.descricao_exibicao AS pilar_nome,
          (SELECT COUNT(*) FROM key_results kr WHERE kr.id_objetivo = o.id_objetivo) AS qtd_krs
     FROM objetivos o
     LEFT JOIN usuarios u ON u.id_user = o.dono
+    LEFT JOIN avatars ad ON ad.id = u.avatar_id
     LEFT JOIN dom_pilar_bsc p ON p.id_pilar = o.pilar_bsc
    WHERE o.id_objetivo = ? AND o.id_company = ?
 ");
@@ -46,8 +48,9 @@ api_json([
     'dt_conclusao'     => $obj['dt_conclusao'],
     'qtd_krs'          => (int)$obj['qtd_krs'],
     'dono' => [
-      'id_user' => (int)$obj['dono'],
-      'nome'    => trim(($obj['dono_nome'] ?? '') . ' ' . ($obj['dono_sobrenome'] ?? '')),
+      'id_user'    => (int)$obj['dono'],
+      'nome'       => trim(($obj['dono_nome'] ?? '') . ' ' . ($obj['dono_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $obj['dono_avatar_path'] ?? null, 'filename' => $obj['dono_avatar_filename'] ?? null]),
     ],
   ],
 ]);

@@ -164,16 +164,34 @@ class MilestoneCalc {
         }
         break;
       case 'personalizado':
-        final mi = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(s('ciclo_pers_inicio'));
-        final mf = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(s('ciclo_pers_fim'));
-        if (mi != null && mf != null) {
-          ini = DateTime(int.parse(mi.group(1)!), int.parse(mi.group(2)!), 1);
-          fim = _endOfMonth(DateTime(int.parse(mf.group(1)!), int.parse(mf.group(2)!), 1));
-        }
+        // Aceita data precisa (YYYY-MM-DD) ou mês (YYYY-MM, legado web).
+        ini = _parsePersDate(s('ciclo_pers_inicio'), isStart: true);
+        fim = _parsePersDate(s('ciclo_pers_fim'), isStart: false);
         break;
     }
     if (ini == null || fim == null) return null;
     return (inicio: ini, fim: fim);
+  }
+
+  /// Parse do período do ciclo personalizado.
+  /// - `YYYY-MM-DD` → data exata.
+  /// - `YYYY-MM` (legado) → 1º dia do mês (início) ou último dia (fim).
+  static DateTime? _parsePersDate(String v, {required bool isStart}) {
+    final full = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(v);
+    if (full != null) {
+      return DateTime(
+        int.parse(full.group(1)!),
+        int.parse(full.group(2)!),
+        int.parse(full.group(3)!),
+      );
+    }
+    final ym = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(v);
+    if (ym != null) {
+      final y = int.parse(ym.group(1)!);
+      final m = int.parse(ym.group(2)!);
+      return isStart ? DateTime(y, m, 1) : _endOfMonth(DateTime(y, m, 1));
+    }
+    return null;
   }
 
   static double _expoR(int n) {

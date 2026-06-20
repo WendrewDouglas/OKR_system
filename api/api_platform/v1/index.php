@@ -45,6 +45,8 @@ $routes = [
   ['POST',   'auth/refresh-token',     'auth/refresh_token.php'],
   ['GET',    'auth/me',                'auth/me.php'],
   ['PUT',    'auth/me',                'auth/me_update.php'],
+  ['POST',   'auth/avatar/select',     'auth/avatar_select.php'],
+  ['GET',    'auth/avatars',           'auth/avatars.php'],
   ['POST',   'auth/avatar',            'auth/avatar_upload.php'],
   ['DELETE', 'auth/avatar',            'auth/avatar_delete.php'],
 

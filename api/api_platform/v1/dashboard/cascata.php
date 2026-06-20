@@ -34,9 +34,11 @@ $objs = $pdo->prepare("
   SELECT o.id_objetivo, o.descricao, o.status, o.status_aprovacao,
          o.pilar_bsc, o.tipo, o.qualidade, o.dono,
          o.dt_criacao, o.dt_prazo,
-         u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome
+         u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome,
+         ad.path AS dono_avatar_path, ad.filename AS dono_avatar_filename
     FROM objetivos o
     LEFT JOIN usuarios u ON u.id_user = o.dono
+    LEFT JOIN avatars ad ON ad.id = u.avatar_id
    WHERE $wSQL
    ORDER BY o.dt_criacao DESC
 ");
@@ -55,9 +57,11 @@ $krs = $pdo->prepare("
   SELECT kr.id_kr, kr.id_objetivo, kr.key_result_num, kr.descricao, kr.status,
          kr.baseline, kr.meta, kr.unidade_medida, kr.direcao_metrica,
          kr.farol, kr.data_inicio, kr.data_fim, kr.responsavel,
-         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
     FROM key_results kr
     LEFT JOIN usuarios u ON u.id_user = kr.responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE kr.id_objetivo IN ($inPh)
    ORDER BY kr.key_result_num
 ");
@@ -78,9 +82,11 @@ if (!empty($krIds)) {
   $inis = $pdo->prepare("
     SELECT i.id_iniciativa, i.id_kr, i.num_iniciativa, i.descricao,
            i.status, i.dt_prazo, i.id_user_responsavel,
-           u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+           u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+           ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
       FROM iniciativas i
       LEFT JOIN usuarios u ON u.id_user = i.id_user_responsavel
+      LEFT JOIN avatars ar ON ar.id = u.avatar_id
      WHERE i.id_kr IN ($inKr)
      ORDER BY i.num_iniciativa
   ");
@@ -110,8 +116,9 @@ foreach ($objetivos as $obj) {
       'data_inicio'      => $kr['data_inicio'],
       'data_fim'         => $kr['data_fim'],
       'responsavel'      => $kr['responsavel'] ? [
-        'id_user' => (int)$kr['responsavel'],
-        'nome'    => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+        'id_user'    => (int)$kr['responsavel'],
+        'nome'       => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+        'avatar_url' => api_avatar_url_from_row(['path' => $kr['resp_avatar_path'] ?? null, 'filename' => $kr['resp_avatar_filename'] ?? null]),
       ] : null,
       'iniciativas' => array_map(fn($i) => [
         'id_iniciativa'   => $i['id_iniciativa'],
@@ -120,8 +127,9 @@ foreach ($objetivos as $obj) {
         'status'          => $i['status'],
         'dt_prazo'        => $i['dt_prazo'],
         'responsavel'     => $i['id_user_responsavel'] ? [
-          'id_user' => (int)$i['id_user_responsavel'],
-          'nome'    => trim(($i['resp_nome'] ?? '') . ' ' . ($i['resp_sobrenome'] ?? '')),
+          'id_user'    => (int)$i['id_user_responsavel'],
+          'nome'       => trim(($i['resp_nome'] ?? '') . ' ' . ($i['resp_sobrenome'] ?? '')),
+          'avatar_url' => api_avatar_url_from_row(['path' => $i['resp_avatar_path'] ?? null, 'filename' => $i['resp_avatar_filename'] ?? null]),
         ] : null,
       ], $krInis),
     ];
@@ -138,8 +146,9 @@ foreach ($objetivos as $obj) {
     'dt_criacao'       => $obj['dt_criacao'],
     'dt_prazo'         => $obj['dt_prazo'],
     'dono' => [
-      'id_user' => (int)$obj['dono'],
-      'nome'    => trim(($obj['dono_nome'] ?? '') . ' ' . ($obj['dono_sobrenome'] ?? '')),
+      'id_user'    => (int)$obj['dono'],
+      'nome'       => trim(($obj['dono_nome'] ?? '') . ' ' . ($obj['dono_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $obj['dono_avatar_path'] ?? null, 'filename' => $obj['dono_avatar_filename'] ?? null]),
     ],
     'key_results' => $krsFormatted,
   ];

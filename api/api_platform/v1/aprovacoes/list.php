@@ -94,47 +94,29 @@ if (!empty($allowedModules)) {
 // My pending items
 $stMinhasObj = $pdo->prepare("
   SELECT 'objetivo' AS modulo, id_objetivo AS id_ref, descricao,
-         LOWER(COALESCE(status_aprovacao,'')) AS status_aprovacao, dt_criacao
-    FROM objetivos
-   WHERE id_user_criador = ? AND LOWER(COALESCE(status_aprovacao,'')) IN ('pendente','reprovado','aprovado')
+         status_aprovacao, dt_criacao
+    FROM objetivos WHERE id_user_criador = ? AND status_aprovacao IN ('pendente','reprovado')
 ");
 $stMinhasObj->execute([$uid]);
 $minhas = array_merge($minhas, $stMinhasObj->fetchAll());
 
 $stMinhasKr = $pdo->prepare("
   SELECT 'kr' AS modulo, id_kr AS id_ref, descricao,
-         LOWER(COALESCE(status_aprovacao,'')) AS status_aprovacao, dt_ultima_atualizacao AS dt_criacao
-    FROM key_results
-   WHERE id_user_criador = ? AND LOWER(COALESCE(status_aprovacao,'')) IN ('pendente','reprovado','aprovado')
+         status_aprovacao, dt_ultima_atualizacao AS dt_criacao
+    FROM key_results WHERE id_user_criador = ? AND status_aprovacao IN ('pendente','reprovado')
 ");
 $stMinhasKr->execute([$uid]);
 $minhas = array_merge($minhas, $stMinhasKr->fetchAll());
 
-// Convites de sociedade pendentes p/ o usuário (qualquer usuário decide o SEU convite)
-$stSoc = $pdo->prepare("
-  SELECT 'socio' AS modulo, s.id_convite AS id_ref,
-         CONCAT('KR: ', kr.descricao, ' · Motivo: ', s.motivo) AS descricao,
-         'pendente' AS status_aprovacao, s.dt_convite AS dt_criacao,
-         TRIM(CONCAT(conv.primeiro_nome, ' ', COALESCE(conv.ultimo_nome, ''))) AS criador_nome
-    FROM kr_socios s
-    JOIN key_results kr ON kr.id_kr = s.id_kr
-    LEFT JOIN usuarios conv ON conv.id_user = s.id_user_convidou
-   WHERE s.id_user = ? AND s.status = 'pendente'
-   ORDER BY s.dt_convite DESC
-");
-$stSoc->execute([$uid]);
-$paraAprovar = array_merge($paraAprovar, $stSoc->fetchAll());
-
 // Stats
 $pendentes  = count(array_filter($paraAprovar, fn($r) => $r['status_aprovacao'] === 'pendente'));
 $reprovados = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'reprovado'));
-$aprovados  = count(array_filter($minhas, fn($r) => $r['status_aprovacao'] === 'aprovado'));
 
-$payload = [
+api_json([
+  'ok'    => true,
   'stats' => [
     'pendentes'  => $pendentes,
     'reprovados' => $reprovados,
-    'aprovados'  => $aprovados,
   ],
   'para_aprovar'  => array_map(fn($r) => [
     'modulo'          => $r['modulo'],
@@ -151,5 +133,4 @@ $payload = [
     'status_aprovacao' => $r['status_aprovacao'],
     'dt_criacao'      => $r['dt_criacao'],
   ], $minhas),
-];
-api_json($payload);
+]);

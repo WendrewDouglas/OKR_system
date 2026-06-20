@@ -23,11 +23,13 @@ $st = $pdo->prepare("
   SELECT i.id_iniciativa, i.descricao, i.status, i.dt_prazo,
          i.id_user_responsavel,
          u.primeiro_nome, u.ultimo_nome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename,
          k.id_kr, k.descricao AS kr_descricao, COALESCE(k.peso, 0) AS kr_peso
     FROM iniciativas i
     JOIN key_results k ON k.id_kr = i.id_kr
     JOIN objetivos   o ON o.id_objetivo = k.id_objetivo
     LEFT JOIN usuarios u ON u.id_user = i.id_user_responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE o.id_company = ?
      AND (i.status IS NULL OR i.status NOT IN ('Concluído', 'Concluido', 'Cancelado'))
    ORDER BY i.dt_prazo IS NULL, i.dt_prazo ASC
@@ -72,8 +74,9 @@ foreach ($rows as $r) {
       'peso'      => $peso,
     ],
     'responsavel'    => $r['id_user_responsavel'] ? [
-      'id_user' => (int)$r['id_user_responsavel'],
-      'nome'    => trim(($r['primeiro_nome'] ?? '') . ' ' . ($r['ultimo_nome'] ?? '')),
+      'id_user'    => (int)$r['id_user_responsavel'],
+      'nome'       => trim(($r['primeiro_nome'] ?? '') . ' ' . ($r['ultimo_nome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $r['resp_avatar_path'] ?? null, 'filename' => $r['resp_avatar_filename'] ?? null]),
     ] : null,
   ];
 

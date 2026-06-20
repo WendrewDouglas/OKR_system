@@ -11,11 +11,6 @@ $uid  = (int)($auth['sub'] ?? 0);
 $cid  = (int)($auth['cid'] ?? 0);
 $pdo  = api_db();
 
-// RBAC: listar usuários exige leitura no recurso administrativo "user"
-if (!api_has_cap($pdo, $uid, $cid, 'R:user@ORG')) {
-  api_error('E_FORBIDDEN', 'Sem permissão para listar usuários.', 403);
-}
-
 $isMaster = api_is_admin_master($pdo, $uid);
 [$page, $perPage] = api_pagination_params();
 
@@ -41,11 +36,13 @@ $dataSql = "
   SELECT u.id_user, u.primeiro_nome, u.ultimo_nome, u.email_corporativo,
          u.id_company, u.telefone, u.dt_cadastro,
          c.organizacao AS empresa,
-         r.role_key, r.role_name
+         r.role_key, r.role_name,
+         a.path AS avatar_path, a.filename AS avatar_filename
     FROM usuarios u
     LEFT JOIN company c ON c.id_company = u.id_company
     LEFT JOIN rbac_user_role ur ON ur.user_id = u.id_user
     LEFT JOIN rbac_roles r ON r.role_id = ur.role_id
+    LEFT JOIN avatars a ON a.id = u.avatar_id
    WHERE $wSQL
    ORDER BY u.primeiro_nome, u.ultimo_nome
 ";
@@ -64,7 +61,8 @@ $result['items'] = array_map(fn($r) => [
   'empresa'       => $r['empresa'] ?? '',
   'role_key'      => $r['role_key'] ?? '',
   'role_name'     => $r['role_name'] ?? '',
+  'avatar_url'    => api_avatar_url_from_row(['path' => $r['avatar_path'] ?? null, 'filename' => $r['avatar_filename'] ?? null]),
   'dt_cadastro'   => $r['dt_cadastro'],
 ], $result['items']);
 
-api_ok_paginated($result);
+api_json(array_merge(['ok' => true], $result));
