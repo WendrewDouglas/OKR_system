@@ -166,7 +166,10 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
 /* TWILL 2x2 realista (F1) — em DIAGONAL, maior e mais escuro.
    O tramado fica num pseudo FIXO rotacionado 45° (mantém o tiling perfeito);
    .content/sidebar/header translúcidos deixam o tramado aparecer em toda a UI. */
-body{ background:#070a0e !important; color: var(--text, #EAEEF6) !important; }
+/* `html body` (especificidade maior) garante o fundo escuro mesmo em páginas que
+   emitem este CSS no <head> e depois forçam `body{background:#fff!important}`
+   (ex.: mapa_estrategico) — evita "chanfros" brancos nas quinas atrás do tramado. */
+html body{ background:#070a0e !important; color: var(--text, #EAEEF6) !important; }
 body::before{
   content:""; position:fixed; top:-50%; left:-50%; width:200%; height:200%;
   z-index:-2; pointer-events:none;
