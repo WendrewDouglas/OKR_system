@@ -41,6 +41,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   final _metaCtrl = TextEditingController();
   final _margemCtrl = TextEditingController();
   final _observacoesCtrl = TextEditingController();
+  final _unidadeOutroCtrl = TextEditingController();
 
   String? _direcaoMetrica = 'MAIOR_MELHOR';
   String? _naturezaKr;
@@ -48,7 +49,11 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   String? _freqMilestone;
   String? _statusKr;
   String? _unidade;
+  bool _unidadeOutro = false;
   bool _statusDefaulted = false;
+
+  /// Sentinela do item "Outro…" no dropdown de unidade (libera texto livre).
+  static const String _kUnidadeOutro = '__outro__';
   int? _responsavelId;
   String? _selectedObjetivoId;
   bool _autoMilestones = true;
@@ -218,6 +223,11 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         _metaCtrl.text = '${kr['meta'] ?? ''}';
         final u = (kr['unidade_medida'] as String?)?.trim();
         _unidade = (u == null || u.isEmpty) ? null : u;
+        // Valor fora da lista curada → roteia para "Outro" com texto livre.
+        if (_unidade != null && !_unidades.any((x) => x.key == _unidade)) {
+          _unidadeOutro = true;
+          _unidadeOutroCtrl.text = _unidade!;
+        }
         _margemCtrl.text = kr['margem_confianca'] != null ? '${kr['margem_confianca']}' : '';
         _observacoesCtrl.text = kr['observacoes'] ?? '';
         _direcaoMetrica = kr['direcao_metrica'] as String?;
@@ -244,6 +254,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     _metaCtrl.dispose();
     _margemCtrl.dispose();
     _observacoesCtrl.dispose();
+    _unidadeOutroCtrl.dispose();
     for (final s in _socios) {
       s.motivo.dispose();
     }
@@ -458,18 +469,24 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                   Row(children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _unidade,
+                        initialValue: _unidadeOutro ? _kUnidadeOutro : _unidade,
                         isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Unidade'),
                         items: [
-                          // Preserva valor legado/custom que não esteja na lista curada (edição).
-                          if (_unidade != null &&
-                              _unidade!.isNotEmpty &&
-                              !_unidades.any((u) => u.key == _unidade))
-                            DropdownMenuItem(value: _unidade, child: Text(_unidade!)),
                           ..._unidades.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))),
+                          const DropdownMenuItem(value: _kUnidadeOutro, child: Text('Outro…')),
                         ],
-                        onChanged: (v) => setState(() => _unidade = v),
+                        onChanged: (v) => setState(() {
+                          if (v == _kUnidadeOutro) {
+                            _unidadeOutro = true;
+                            _unidade = _unidadeOutroCtrl.text.trim().isEmpty
+                                ? null
+                                : _unidadeOutroCtrl.text.trim();
+                          } else {
+                            _unidadeOutro = false;
+                            _unidade = v;
+                          }
+                        }),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -490,6 +507,17 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       ),
                     ),
                   ]),
+                  if (_unidadeOutro) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _unidadeOutroCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Unidade (outro)',
+                        hintText: 'Ex.: Índice, Clientes, Trilhas, Sim/Não…',
+                      ),
+                      onChanged: (v) => setState(() => _unidade = v.trim().isEmpty ? null : v.trim()),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _margemCtrl,
