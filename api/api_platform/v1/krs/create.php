@@ -29,6 +29,15 @@ $observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
 $socios = is_array($in['socios'] ?? null) ? $in['socios'] : [];
 
+// Status do KR (opcional, paridade com o web): valida contra dom_status_kr
+// quando enviado; default 'nao iniciado'. status_aprovacao continua 'pendente'.
+$status = api_str($in['status'] ?? '');
+if ($status !== '') {
+  api_assert_domain($pdo, 'dom_status_kr', 'id_status', $status, 'status');
+} else {
+  $status = 'nao iniciado';
+}
+
 // RBAC
 if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_objetivo' => $idObj])) {
   api_error('E_FORBIDDEN', 'Sem permissão para criar KRs neste objetivo.', 403);
@@ -90,13 +99,13 @@ try {
        tipo_frequencia_milestone, responsavel, margem_confianca, observacoes,
        data_inicio, data_fim, status, status_aprovacao,
        usuario_criador, id_user_criador, dt_criacao, dt_ultima_atualizacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, CURDATE(), NOW())
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, CURDATE(), NOW())
   ");
   $stIns->execute([
     $idKr, $idObj, $num, $desc, $base, $meta,
     $unidade ?: null, $direcao, $natureza ?: null, $tipoKr ?: null,
     $freqMilestone ?: null, $responsavel, $margem, $observacoes ?: null,
-    $dtInicio ?: null, $dtFim ?: null,
+    $dtInicio ?: null, $dtFim ?: null, $status,
     $creatorName, $uid, // usuario_criador (nome, como o web) + id_user_criador
   ]);
 

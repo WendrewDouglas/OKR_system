@@ -39,7 +39,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   final _descricaoCtrl = TextEditingController();
   final _baselineCtrl = TextEditingController(text: '0');
   final _metaCtrl = TextEditingController();
-  final _unidadeCtrl = TextEditingController();
   final _margemCtrl = TextEditingController();
   final _observacoesCtrl = TextEditingController();
 
@@ -47,11 +46,51 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
   String? _naturezaKr;
   String? _tipoKr;
   String? _freqMilestone;
+  String? _statusKr;
+  String? _unidade;
+  bool _statusDefaulted = false;
   int? _responsavelId;
   String? _selectedObjetivoId;
   bool _autoMilestones = true;
   bool _isLoading = false;
   bool _isLoadingEdit = true;
+
+  /// Unidades curadas — paridade com o dropdown do web (views/novo_key_result.php).
+  static const List<MapEntry<String, String>> _unidades = [
+    MapEntry('R\$', 'Real (R\$)'),
+    MapEntry('US\$', 'Dólar (US\$)'),
+    MapEntry('€', 'Euro (€)'),
+    MapEntry('£', 'Libra (£)'),
+    MapEntry('R\$/unid', 'Custo por unidade (R\$/unid)'),
+    MapEntry('%', 'Percentual (%)'),
+    MapEntry('pp', 'Ponto percentual (pp)'),
+    MapEntry('taxa_conversao', '% Conversão'),
+    MapEntry('taxa_churn', '% Churn'),
+    MapEntry('unid', 'Unidade (unid)'),
+    MapEntry('itens', 'Itens'),
+    MapEntry('pcs', 'Peças'),
+    MapEntry('ord', 'Ordens'),
+    MapEntry('proc', 'Processos'),
+    MapEntry('contratos', 'Contratos'),
+    MapEntry('pessoas', 'Pessoas'),
+    MapEntry('tickets', 'Tickets'),
+    MapEntry('visitas', 'Visitas'),
+    MapEntry('h', 'Hora (h)'),
+    MapEntry('d', 'Dia (d)'),
+    MapEntry('sem', 'Semana (sem)'),
+    MapEntry('mês', 'Mês'),
+    MapEntry('tri', 'Trimestre (tri)'),
+    MapEntry('a', 'Ano (a)'),
+    MapEntry('pts', 'Pontos (pts)'),
+    MapEntry('nps', 'NPS'),
+    MapEntry('rating', 'Rating'),
+    MapEntry('km', 'Quilômetro (km)'),
+    MapEntry('m', 'Metro (m)'),
+    MapEntry('L', 'Litro (L)'),
+    MapEntry('m3', 'Metro cúbico (m³)'),
+    MapEntry('kg', 'Quilograma (kg)'),
+    MapEntry('g', 'Grama (g)'),
+  ];
 
   // Ciclo + período derivado (para a prévia de milestones, idêntica ao web).
   Map<String, dynamic> _cicloParams = {};
@@ -89,7 +128,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     if (freq == null || freq.isEmpty || ini == null || fim == null || base == null || meta == null) {
       return const SizedBox.shrink();
     }
-    final unidade = _unidadeCtrl.text.trim();
+    final unidade = _unidade?.trim() ?? '';
     final ms = MilestoneCalc.gerar(
       inicio: ini,
       fim: fim,
@@ -177,12 +216,14 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         _descricaoCtrl.text = kr['descricao'] ?? '';
         _baselineCtrl.text = '${kr['baseline'] ?? 0}';
         _metaCtrl.text = '${kr['meta'] ?? ''}';
-        _unidadeCtrl.text = kr['unidade_medida'] ?? '';
+        final u = (kr['unidade_medida'] as String?)?.trim();
+        _unidade = (u == null || u.isEmpty) ? null : u;
         _margemCtrl.text = kr['margem_confianca'] != null ? '${kr['margem_confianca']}' : '';
         _observacoesCtrl.text = kr['observacoes'] ?? '';
         _direcaoMetrica = kr['direcao_metrica'] as String?;
         _naturezaKr = kr['natureza_kr'] as String?;
         _tipoKr = kr['tipo_kr'] as String?;
+        _statusKr = kr['status'] as String?;
         _freqMilestone = kr['tipo_frequencia_milestone'] as String?;
         final resp = kr['responsavel'] as Map<String, dynamic>?;
         _responsavelId = resp?['id_user'] as int?;
@@ -201,7 +242,6 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     _descricaoCtrl.dispose();
     _baselineCtrl.dispose();
     _metaCtrl.dispose();
-    _unidadeCtrl.dispose();
     _margemCtrl.dispose();
     _observacoesCtrl.dispose();
     for (final s in _socios) {
@@ -233,10 +273,11 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
         'descricao': _descricaoCtrl.text.trim(),
         'baseline': double.tryParse(_baselineCtrl.text) ?? 0,
         'meta': double.tryParse(_metaCtrl.text) ?? 0,
-        'unidade_medida': _unidadeCtrl.text.trim(),
+        'unidade_medida': _unidade?.trim() ?? '',
         'direcao_metrica': _direcaoMetrica ?? 'MAIOR_MELHOR',
         if (_naturezaKr != null) 'natureza_kr': _naturezaKr,
         if (_tipoKr != null) 'tipo_kr': _tipoKr,
+        if (_statusKr != null) 'status': _statusKr,
         if (_freqMilestone != null) 'tipo_frequencia_milestone': _freqMilestone,
         if (_responsavelId != null) 'responsavel': _responsavelId,
         if (_margemCtrl.text.trim().isNotEmpty)
@@ -350,6 +391,7 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
     final naturezas = ref.watch(domainProvider('dom_natureza_kr'));
     final tiposKr = ref.watch(domainProvider('dom_tipo_kr'));
     final freqs = ref.watch(domainProvider('dom_tipo_frequencia_milestone'));
+    final statusKrDom = ref.watch(domainProvider('dom_status_kr'));
     final responsaveis = ref.watch(responsaveisProvider);
 
     return AppScaffold(
@@ -415,10 +457,19 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                   const SizedBox(height: 16),
                   Row(children: [
                     Expanded(
-                      child: TextFormField(
-                        controller: _unidadeCtrl,
-                        decoration: const InputDecoration(labelText: 'Unidade', hintText: '%, R\$, un...'),
-                        onChanged: (_) => setState(() {}),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _unidade,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Unidade'),
+                        items: [
+                          // Preserva valor legado/custom que não esteja na lista curada (edição).
+                          if (_unidade != null &&
+                              _unidade!.isNotEmpty &&
+                              !_unidades.any((u) => u.key == _unidade))
+                            DropdownMenuItem(value: _unidade, child: Text(_unidade!)),
+                          ..._unidades.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))),
+                        ],
+                        onChanged: (v) => setState(() => _unidade = v),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -475,14 +526,13 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) => DropdownButtonFormField<String>(
                       initialValue: _tipoKr,
-                      decoration: const InputDecoration(labelText: 'Tipo do KR *'),
+                      decoration: const InputDecoration(labelText: 'Tipo do KR'),
                       items: items.map((t) {
                         final value = _domVal(t, ['id_tipo', 'tipo_kr', 'slug']);
                         final label = _domVal(t, ['descricao_exibicao', 'descricao', 'id_tipo']);
                         return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _tipoKr = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -526,6 +576,39 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                       )).toList(),
                       onChanged: (v) => setState(() => _responsavelId = v),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  statusKrDom.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (items) {
+                      // Default "Não Iniciado" na criação (espelha ensureDefaultStatus do web).
+                      if (!isEditing && _statusKr == null && !_statusDefaulted && items.isNotEmpty) {
+                        _statusDefaulted = true;
+                        final ni = items.firstWhere(
+                          (s) {
+                            final v = _domVal(s, ['id_status', 'status', 'slug']).toLowerCase();
+                            final l = _domVal(s, ['descricao_exibicao', 'descricao']).toLowerCase();
+                            return v.contains('inicia') || l.contains('inicia');
+                          },
+                          orElse: () => items.first,
+                        );
+                        final niVal = _domVal(ni, ['id_status', 'status', 'slug']);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && niVal.isNotEmpty) setState(() => _statusKr = niVal);
+                        });
+                      }
+                      return DropdownButtonFormField<String>(
+                        initialValue: _statusKr,
+                        decoration: const InputDecoration(labelText: 'Status do KR'),
+                        items: items.map((s) {
+                          final value = _domVal(s, ['id_status', 'status', 'slug']);
+                          final label = _domVal(s, ['descricao_exibicao', 'descricao', 'id_status']);
+                          return DropdownMenuItem(value: value, child: Text(label));
+                        }).toList(),
+                        onChanged: (v) => setState(() => _statusKr = v),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
