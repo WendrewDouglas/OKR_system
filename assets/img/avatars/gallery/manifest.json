@@ -1,0 +1,1003 @@
+[
+  {
+    "file": "av_m_001.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_002.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_003.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_004.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_005.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_006.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara",
+      "masculino",
+      "chapeu"
+    ]
+  },
+  {
+    "file": "av_f_001.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_002.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_003.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_004.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_005.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_006.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_001.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_002.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_003.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_004.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_007.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_008.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_009.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_010.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_011.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_012.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_clara_media",
+      "masculino",
+      "turbante"
+    ]
+  },
+  {
+    "file": "av_f_007.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_008.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_009.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_010.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_011.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_012.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_clara_media",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_005.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_006.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_007.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara_media",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_008.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_clara_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_013.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_014.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_015.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_016.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_017.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_018.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_media",
+      "masculino",
+      "chapeu"
+    ]
+  },
+  {
+    "file": "av_f_013.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_014.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_015.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_016.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_017.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_018.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_media",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_009.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_010.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_011.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_media",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_012.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_media",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_019.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_020.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_021.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_022.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_023.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_024.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_morena",
+      "masculino",
+      "turbante"
+    ]
+  },
+  {
+    "file": "av_f_019.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_020.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_021.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_022.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_023.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_024.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_morena",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_013.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_morena",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_014.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_morena",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_015.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_morena",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_016.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_morena",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_025.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_026.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_027.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_028.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_029.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_030.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_castanha",
+      "masculino",
+      "chapeu"
+    ]
+  },
+  {
+    "file": "av_f_025.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_026.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_027.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_028.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_029.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_030.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_castanha",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_017.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_castanha",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_018.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_castanha",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_019.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_castanha",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_020.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_castanha",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_031.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_032.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_033.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_034.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_035.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_036.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_escura",
+      "masculino",
+      "turbante"
+    ]
+  },
+  {
+    "file": "av_f_031.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_032.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_033.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_034.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_035.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_036.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_escura",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_021.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_escura",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_022.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_escura",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_023.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_escura",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_024.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_escura",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_m_037.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "cabelo_curto"
+    ]
+  },
+  {
+    "file": "av_m_038.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "cabelo_curto",
+      "barba"
+    ]
+  },
+  {
+    "file": "av_m_039.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "bigode"
+    ]
+  },
+  {
+    "file": "av_m_040.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_041.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "barba",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_m_042.svg",
+    "gender": "masculino",
+    "tags": [
+      "pele_negra",
+      "masculino",
+      "chapeu"
+    ]
+  },
+  {
+    "file": "av_f_037.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_038.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_039.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_f_040.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_041.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "cabelo_longo"
+    ]
+  },
+  {
+    "file": "av_f_042.svg",
+    "gender": "feminino",
+    "tags": [
+      "pele_negra",
+      "feminino",
+      "hijab"
+    ]
+  },
+  {
+    "file": "av_n_025.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_negra",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_026.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_negra",
+      "neutro"
+    ]
+  },
+  {
+    "file": "av_n_027.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_negra",
+      "neutro",
+      "oculos"
+    ]
+  },
+  {
+    "file": "av_n_028.svg",
+    "gender": "todos",
+    "tags": [
+      "pele_negra",
+      "neutro"
+    ]
+  }
+]

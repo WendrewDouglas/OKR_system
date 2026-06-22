@@ -129,6 +129,63 @@ function crm_import_normalize_name(?string $value): ?string
     return mb_strtolower($value, 'UTF-8');
 }
 
+function crm_import_ascii_key(string $value): string
+{
+    $value = mb_strtolower(trim($value), 'UTF-8');
+    $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+    if (is_string($ascii) && $ascii !== '') {
+        $value = $ascii;
+    }
+    $value = str_replace('&', ' e ', $value);
+    $value = preg_replace('/[^a-z0-9\/. -]+/', ' ', $value) ?? $value;
+    $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+    return trim($value);
+}
+
+function crm_import_company_root_key(?string $company): ?string
+{
+    $company = trim((string)$company);
+    if ($company === '') {
+        return null;
+    }
+
+    $key = crm_import_ascii_key($company);
+    if ($key === '') {
+        return null;
+    }
+
+    $parts = preg_split('/\s+[-|]\s+/', $key);
+    if (is_array($parts) && trim((string)($parts[0] ?? '')) !== '') {
+        $key = trim((string)$parts[0]);
+    }
+
+    $key = str_replace(['s/a', 's.a.'], ' sa ', $key);
+    $key = preg_replace('/[^a-z0-9 ]+/', ' ', $key) ?? $key;
+    $key = preg_replace('/\s+/', ' ', $key) ?? $key;
+
+    $stopwords = [
+        'a', 'e', 'the', 'of', 'and',
+        'de', 'da', 'do', 'das', 'dos',
+        'grupo', 'group', 'holding',
+        'ltda', 'ltd', 'sa', 'me', 'epp', 'eireli',
+        'inc', 'corp', 'corporation', 'company', 'co',
+        'brasil', 'brazil',
+    ];
+
+    foreach (explode(' ', trim($key)) as $token) {
+        $token = trim($token);
+        if ($token === '' || in_array($token, $stopwords, true)) {
+            continue;
+        }
+        if (strlen($token) < 2) {
+            continue;
+        }
+        return substr($token, 0, 120);
+    }
+
+    return null;
+}
+
 function crm_import_plain_text(?string $html): string
 {
     $text = html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -231,20 +288,25 @@ function crm_import_get_or_create_account(PDO $pdo, string $company): ?int
         return null;
     }
     $normalized = crm_import_normalize_name($company);
+    $rootKey = crm_import_company_root_key($company);
     $st = $pdo->prepare('SELECT id_account FROM crm_accounts WHERE normalized_name = ? ORDER BY id_account LIMIT 1');
     $st->execute([$normalized]);
     $id = $st->fetchColumn();
     if ($id) {
+        if ($rootKey !== null) {
+            $upd = $pdo->prepare('UPDATE crm_accounts SET company_root_key = COALESCE(company_root_key, ?) WHERE id_account = ?');
+            $upd->execute([$rootKey, (int)$id]);
+        }
         return (int)$id;
     }
 
     $ins = $pdo->prepare("
         INSERT INTO crm_accounts
-          (account_name, normalized_name, source_type, source_confidence, account_status, priority)
+          (account_name, normalized_name, company_root_key, source_type, source_confidence, account_status, priority)
         VALUES
-          (?, ?, 'linkedin', 60, 'new', 'medium')
+          (?, ?, ?, 'linkedin', 60, 'new', 'medium')
     ");
-    $ins->execute([$company, $normalized]);
+    $ins->execute([$company, $normalized, $rootKey]);
     return (int)$pdo->lastInsertId();
 }
 

@@ -5,6 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $userId = $_SESSION['user_id'] ?? '';
 $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
+require_once __DIR__ . '/../../auth/avatar_helpers.php';
+$userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
 ?>
 
 <style>
@@ -183,6 +185,17 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
     color: #aaa;
     font-size: .7rem;
 }
+
+/* === Padrão de interação: desloca apenas o CONTEÚDO (<main>) ao abrir o chat ===
+   O header NÃO é deslocado (permanece intacto). O JS aplica margin-right só no
+   <main> de cada página, medindo a borda real do chat para garantir a folga. */
+.content > main, .content main {
+    transition: margin-right .25s ease;
+}
+@media (max-width: 768px) {
+    /* Em telas pequenas o chat sobrepõe o conteúdo (sem deslocar) */
+    .content main { margin-right: 0 !important; }
+}
 </style>
 
 <button id="chat_open_btn">
@@ -222,6 +235,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
     const clearBtn = document.getElementById('chat_clear');
     const main = document.getElementById('main-content');
     const avatar = '<?php echo addslashes($avatarUrl); ?>';
+    const userAvatar = '<?php echo addslashes($userAvatarUrl); ?>';
     const messagesContainer = document.getElementById('chat_messages');
     const chatInput = document.getElementById('chat_message');
     const chatSendBtn = document.getElementById('chat_send');
@@ -256,7 +270,7 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
             const safe = escapeHTML(String(text ?? ''));
             msgEl.innerHTML = `
               <div class="user-message">${safe}</div>
-              <img src="${avatar}" class="user-avatar" alt="Você">`;
+              <img src="${userAvatar}" class="user-avatar" alt="Você">`;
         }
 
         messagesContainer.appendChild(msgEl);
@@ -354,9 +368,17 @@ $avatarUrl = '/OKR_system/assets/img/avatars/avatar_IA.png';
         return (vis && w > 0) || el.classList.contains('open') || el.classList.contains('show');
     }
     function updateChatWidth() {
-        const el = findChatEl();
-        const w = (el && isChatOpen(el)) ? el.offsetWidth : 0;
-        document.documentElement.style.setProperty('--chat-w', (w || 0) + 'px');
+        const open = container && !container.classList.contains('hidden');
+        // Neutraliza deslocamentos internos legados baseados em --chat-w (evita duplo shift).
+        document.documentElement.style.setProperty('--chat-w', '0px');
+        const mains = document.querySelectorAll('.content main');
+        if (!open) { mains.forEach(m => { m.style.marginRight = ''; }); return; }
+        // Folga REAL: empurra o conteúdo até a borda esquerda do chat + GAP.
+        const GAP = 24;
+        const rect = container.getBoundingClientRect();
+        const shift = Math.max(0, Math.round(window.innerWidth - rect.left) + GAP);
+        const isMobile = window.innerWidth <= 768;
+        mains.forEach(m => { m.style.marginRight = isMobile ? '' : (shift + 'px'); });
     }
     function setupChatObservers() {
         const chat = findChatEl();

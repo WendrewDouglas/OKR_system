@@ -18,9 +18,21 @@ $officialCents = lp_setting_int($landingId, 'official_price_cents', 29700);
 $discountCents = lp_setting_int($landingId, 'discount_price_cents', 14700);
 $trainingDate  = trim((string) lp_setting($landingId, 'training_date', ''));
 $trainingTime  = trim((string) lp_setting($landingId, 'training_time', ''));
-$trainingLocal = trim((string) lp_setting($landingId, 'training_location', ''));
+$trainingLocal    = trim((string) lp_setting($landingId, 'training_location', ''));
+$trainingLocalUrl = trim((string) lp_setting($landingId, 'training_location_url', ''));
 $spotsText     = trim((string) lp_setting($landingId, 'spots_status_text', 'Turma limitada para garantir prática assistida.'));
 $btnOficial    = trim((string) lp_setting($landingId, 'btn_text_oficial', 'Garantir minha vaga'));
+
+// Mapa ilustrativo da sala (gatilho de escassez) — configurável via lp_settings
+$spotsTotal     = max(1, lp_setting_int($landingId, 'spots_total', 24));
+$spotsAvailable = max(0, min($spotsTotal, lp_setting_int($landingId, 'spots_available', 2)));
+$seatCols       = max(1, lp_setting_int($landingId, 'spots_cols', 4));
+// distribui as vagas livres de forma espalhada e determinística pelo mapa
+$vacantSeats = [];
+for ($k = 0; $k < $spotsAvailable; $k++) {
+    $idx = ((int) floor($spotsTotal * ($k + 0.5) / max(1, $spotsAvailable)) + $k) % $spotsTotal;
+    $vacantSeats[$idx] = true;
+}
 
 // UTM / origem
 $utmSource   = lp_clean_param($_GET['utm_source'] ?? null);
@@ -63,11 +75,10 @@ $agenda = [
 ];
 $entregaveis = [
     'Certificado de participação',
-    'Kit de prompts para financeiro',
-    'Modelo de checklist de contas a pagar',
-    'Modelo de régua de cobrança',
-    'Modelo simples de fluxo de caixa',
-    'Modelo de prompt para currículo e entrevista',
+    'Apostila com material didático',
+    'Kit de prompts para o financeiro',
+    'Coffee break',
+    'Acesso à comunidade de IA e Ciência de Dados',
 ];
 ?>
 <!doctype html>
@@ -78,6 +89,24 @@ $entregaveis = [
 <title>IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial</title>
 <meta name="description" content="Treinamento presencial e prático de IA para profissionais financeiros e administrativos. 4 horas, hands-on, certificado e turma limitada.">
 <meta name="robots" content="index,follow">
+
+<!-- Open Graph / prévia ao compartilhar (WhatsApp, Facebook, LinkedIn) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PlanningBI">
+<meta property="og:title" content="IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial">
+<meta property="og:description" content="Treinamento presencial e prático (4h) com certificado, apostila e kit de prompts. Valor especial com cupom. Vagas limitadas.">
+<meta property="og:url" content="https://planningbi.com.br/OKR_system/LP/lp-ia/public/">
+<meta property="og:image" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+<meta property="og:image:secure_url" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="Treinamento IA Aplicada ao Dia a Dia Financeiro — 04/07/2026, Araçatuba/SP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IA Aplicada ao Dia a Dia Financeiro — Treinamento Presencial">
+<meta name="twitter:description" content="Presencial, 4h, certificado, apostila e kit de prompts. Valor especial com cupom. Vagas limitadas.">
+<meta name="twitter:image" content="https://planningbi.com.br/OKR_system/LP/lp-ia/assets/img/og-treinamento.jpg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -93,7 +122,7 @@ $entregaveis = [
 <!-- ====== HEADER ====== -->
 <header class="lp-header">
   <div class="lp-container lp-header__inner">
-    <span class="lp-logo">Planning<strong>BI</strong></span>
+    <img class="lp-logo__img" src="../assets/img/logo-planning.jpg" alt="PlanningBI — Strategic Solutions">
     <a href="#inscricao" class="lp-btn lp-btn--sm lp-cta-scroll">Quero participar</a>
   </div>
 </header>
@@ -118,7 +147,7 @@ $entregaveis = [
     <ul class="lp-hero__meta">
       <?php if ($trainingDate !== ''): ?><li>📅 <?= $e($trainingDate) ?></li><?php endif; ?>
       <?php if ($trainingTime !== ''): ?><li>⏰ <?= $e($trainingTime) ?></li><?php endif; ?>
-      <?php if ($trainingLocal !== ''): ?><li>📍 <?= $e($trainingLocal) ?></li><?php endif; ?>
+      <?php if ($trainingLocal !== ''): ?><li>📍 <?php if ($trainingLocalUrl !== ''): ?><a href="<?= $e($trainingLocalUrl) ?>" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline"><?= $e($trainingLocal) ?></a><?php else: ?><?= $e($trainingLocal) ?><?php endif; ?></li><?php endif; ?>
     </ul>
     <?php else: ?>
     <p class="lp-hero__meta lp-hero__meta--tbd">Data, horário e local serão divulgados em breve.</p>
@@ -196,9 +225,128 @@ $entregaveis = [
   </div>
 </section>
 
-<!-- ====== VAGAS ====== -->
+<!-- ====== BÔNUS LINKEDIN ====== -->
+<section class="lp-section">
+  <div class="lp-container">
+    <div class="lp-bonus">
+      <div class="lp-bonus__top">
+        <span class="lp-bonus__logo">
+          <svg viewBox="0 0 24 24" width="30" height="30" role="img" aria-label="LinkedIn">
+            <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
+          </svg>
+        </span>
+        <div class="lp-bonus__heading">
+          <span class="lp-bonus__badge">🎁 Brinde exclusivo · grátis</span>
+          <h2 class="lp-bonus__title">Mineração de dados + IA para alavancar sua carreira no LinkedIn</h2>
+        </div>
+      </div>
+      <div class="lp-bonus__body">
+        <p class="lp-bonus__desc">Um treinamento rápido e direto ao ponto para usar <strong>IA e mineração de dados</strong> e se destacar no LinkedIn — ser encontrado por recrutadores e clientes e gerar oportunidades reais.</p>
+        <div class="lp-bonus__grid">
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🚀</span><span>Perfil otimizado para atrair recrutadores e clientes</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">📈</span><span>Mineração de dados para achar vagas e oportunidades</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🎯</span><span>IA para mensagens e conexões que realmente convertem</span></div>
+          <div class="lp-bonus__item"><span class="lp-bonus__ic">🏆</span><span>Posicionamento de autoridade no seu nicho</span></div>
+        </div>
+        <div class="lp-bonus__free"><span>✓</span> Incluso <strong>gratuitamente</strong> para todos os inscritos no treinamento</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== O QUE LEVAR ====== -->
+<section class="lp-section">
+  <div class="lp-container">
+    <h2 class="lp-h2">O que levar</h2>
+    <p class="lp-prereq__intro">A prática é hands-on: vamos integrar as IAs <strong>direto no navegador e no Office</strong>. Para o <strong>máximo aproveitamento</strong>, recomendamos levar:</p>
+    <ul class="lp-prereq">
+      <li><span class="lp-prereq__ic">💻</span><div><strong>Notebook</strong><br><small>com carregador</small></div></li>
+      <li><span class="lp-prereq__ic">🌐</span><div><strong>Google Chrome</strong><br><small>instalado</small></div></li>
+      <li><span class="lp-prereq__ic">📊</span><div><strong>Microsoft Office</strong><br><small>Excel e Word instalados</small></div></li>
+    </ul>
+
+    <div class="lp-reassure">
+      <div class="lp-reassure__head">
+        <span class="lp-reassure__emoji">😌</span>
+        <div>
+          <strong>Não conseguiu levar tudo? Sem problema — você ainda aproveita!</strong>
+          <p>Os itens acima são <strong>recomendados</strong>, mas <strong>não são obrigatórios</strong>. Mesmo sem eles você participa:</p>
+        </div>
+      </div>
+      <div class="lp-reassure__grid">
+        <div class="lp-reassure__item"><span>📱</span><div>Faz várias atividades direto pelo <strong>smartphone</strong></div></div>
+        <div class="lp-reassure__item"><span>🤝</span><div>Acompanha o hands-on junto com um <strong>colega de turma</strong></div></div>
+        <div class="lp-reassure__item"><span>📘</span><div>Leva a <strong>apostila completa</strong>, com todo o conteúdo e o passo a passo para refazer em casa</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== SOBRE O INSTRUTOR ====== -->
+<section class="lp-section lp-section--alt lp-instr">
+  <div class="lp-container">
+    <span class="lp-instr__kicker">Quem vai te ensinar</span>
+    <div class="lp-instr__grid">
+      <div class="lp-instr__photo">
+        <img src="../assets/img/instrutor.jpg" alt="Wendrew Gomes, instrutor do treinamento">
+        <div class="lp-instr__id">
+          <strong>Wendrew Gomes</strong>
+          <span>Líder de TI, Dados &amp; IA · Consultor — PlanningBI</span>
+        </div>
+      </div>
+      <div class="lp-instr__body">
+        <p class="lp-instr__lead">Há mais de 15 anos transformando <strong>tecnologia, dados e IA em resultado real</strong> — na indústria, em startups e na consultoria.</p>
+        <p>Gestor de TI na <strong>Colormaq</strong> e consultor pela <strong>PlanningBI</strong>, lidera projetos de BI, SAP, automação, IA e OKRs com impacto direto em receita, produtividade e governança. Já apresentou <strong>+260 painéis executivos à diretoria</strong> e criou um TI Innovation Lab com <strong>+50 iniciativas</strong> de inovação.</p>
+        <p>Como ex-COO, empresário e consultor, apoiou <strong>startups</strong> e captações de <strong>+R$ 2,85 milhões</strong>, e liderou o projeto vencedor do <strong>InnovaTrade Challenge da Ambev</strong>. Agora ensina, na prática, como qualquer profissional pode usar IA para <strong>entregar mais rápido, decidir melhor e se destacar no mercado</strong>.</p>
+        <ul class="lp-instr__stats">
+          <li><b>+100%</b><span>faturamento B2C com iniciativas digitais</span></li>
+          <li><b>+260</b><span>painéis executivos à diretoria</span></li>
+          <li><b>+R$ 2,85 Mi</b><span>captados em startups apoiadas</span></li>
+          <li><b>15+ anos</b><span>de tecnologia, dados e gestão</span></li>
+        </ul>
+        <p class="lp-instr__cred-label">Formação e certificações</p>
+        <div class="lp-instr__logos">
+          <img src="../assets/img/logos/unesp.png" alt="UNESP" title="Graduação — UNESP">
+          <img src="../assets/img/logos/mba-usp-esalq.jpg" alt="MBA USP/Esalq" title="MBA Data Science &amp; Analytics — USP/Esalq">
+          <img src="../assets/img/logos/pmp.webp" alt="PMI / PMP" title="PMP/CAPM — Fundamentos (PMI)">
+          <img class="lp-instr__badge" src="../assets/img/logos/okr-master.webp" alt="OKR Master Professional" title="OKR Master Professional (Certiprof)">
+          <img class="lp-instr__badge" src="../assets/img/logos/okr-champion.webp" alt="OKR Champion" title="OKR Champion (Certiprof)">
+        </div>
+        <a href="#inscricao" class="lp-btn lp-btn--lg lp-cta-scroll lp-instr__cta">Quero aprender com o Wendrew</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== VAGAS (mapa ilustrativo da sala) ====== -->
 <section class="lp-section lp-spots">
   <div class="lp-container">
+    <h2 class="lp-h2 lp-spots__title">Vagas limitadas</h2>
+    <?php if ($spotsAvailable > 0): ?>
+      <p class="lp-spots__headline">Restam apenas <strong><?= (int) $spotsAvailable ?></strong> <?= $spotsAvailable === 1 ? 'vaga' : 'vagas' ?></p>
+    <?php else: ?>
+      <p class="lp-spots__headline">Vagas esgotadas</p>
+    <?php endif; ?>
+
+    <div class="lp-classroom">
+      <div class="lp-classroom__room">
+      <div class="lp-classroom__board"><span>Frente · Lousa</span></div>
+      <div class="lp-seats" style="grid-template-columns:repeat(<?= (int) $seatCols ?>,1fr)">
+        <?php for ($i = 0; $i < $spotsTotal; $i++): $free = isset($vacantSeats[$i]); ?>
+          <?php if ($free): ?>
+            <a class="lp-seat lp-seat--free lp-cta-scroll" href="#inscricao" aria-label="Vaga disponível — garanta a sua">livre</a>
+          <?php else: ?>
+            <span class="lp-seat" aria-label="Ocupado"></span>
+          <?php endif; ?>
+        <?php endfor; ?>
+      </div>
+      </div>
+      <div class="lp-classroom__legend">
+        <span><i class="lp-dot lp-dot--taken"></i> Ocupado</span>
+        <span><i class="lp-dot lp-dot--free"></i> Vaga disponível</span>
+      </div>
+    </div>
+
     <p class="lp-spots__text"><?= $e($spotsText) ?></p>
   </div>
 </section>
@@ -225,7 +373,7 @@ $entregaveis = [
     </div>
 
     <form id="lp-lead-form" class="lp-form" novalidate>
-      <h2 class="lp-h2">Garanta seu interesse</h2>
+      <h2 class="lp-h2">Garanta sua vaga</h2>
 
       <div class="lp-field">
         <label for="lp-nome">Nome completo *</label>
@@ -275,11 +423,11 @@ $entregaveis = [
   </div>
 </section>
 
-<!-- ====== TRANSPARÊNCIA ====== -->
-<section class="lp-section lp-transparency">
+<!-- ====== TRANSPARÊNCIA (letras miúdas) ====== -->
+<section class="lp-disclaimer">
   <div class="lp-container">
-    <h2 class="lp-h2">Aviso de transparência</h2>
-    <ul>
+    <p class="lp-disclaimer__title">Aviso de transparência</p>
+    <ul class="lp-disclaimer__list">
       <?php foreach (lp_transparency_points() as $tp): ?>
         <li><?= $e($tp) ?></li>
       <?php endforeach; ?>

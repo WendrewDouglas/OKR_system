@@ -123,8 +123,11 @@ $bg1Hover = $shade($bg1, 0.06);   // clareia 6%
 $bg2Hover = $shade($bg2, -0.06);  // escurece 6%
 
 // ======== 5) ETag / Last-Modified ========
-$ver = substr(sha1($bg1.$bg2.$updatedAt.$companyId), 0, 12);
-$lastMod = gmdate('D, d M Y H:i:s', strtotime($updatedAt)).' GMT';
+// inclui a data de modificação DESTE arquivo no ETag, para que mudanças no CSS
+// (template) invalidem o cache mesmo sem alterar o tema da empresa.
+$fileVer = (int) (@filemtime(__FILE__) ?: 0);
+$ver = substr(sha1($bg1.$bg2.$updatedAt.$companyId.$fileVer), 0, 12);
+$lastMod = gmdate('D, d M Y H:i:s', max(strtotime($updatedAt) ?: 0, $fileVer)).' GMT';
 header('ETag: "'.$ver.'"');
 header('Last-Modified: '.$lastMod);
 
@@ -152,6 +155,78 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
   --bs-link-hover-color: var(--bg2-hover);
   --bs-dark: var(--bg1);
 }
+
+/* ============================================================
+   VISUAL "CARA DO APP": fibra de carbono + brilho diagonal.
+   Textura contínua atrás de header, sidebar, conteúdo e footer.
+   Apenas estilos (não altera estrutura). Paleta do app Flutter:
+   base #171B21 / cards #1C2128 / borda #30363D / dourado #F1C40F.
+   ============================================================ */
+
+/* TWILL 2x2 realista (F1) — em DIAGONAL, maior e mais escuro.
+   O tramado fica num pseudo FIXO rotacionado 45° (mantém o tiling perfeito);
+   .content/sidebar/header translúcidos deixam o tramado aparecer em toda a UI. */
+/* `html body` (especificidade maior) garante o fundo escuro mesmo em páginas que
+   emitem este CSS no <head> e depois forçam `body{background:#fff!important}`
+   (ex.: mapa_estrategico) — evita "chanfros" brancos nas quinas atrás do tramado. */
+html body{ background:#070a0e !important; color: var(--text, #EAEEF6) !important; }
+body::before{
+  content:""; position:fixed; top:-50%; left:-50%; width:200%; height:200%;
+  z-index:-2; pointer-events:none;
+  transform: rotate(45deg); transform-origin:center center;
+  background-color:#070a0e;
+  background-image:
+    linear-gradient(27deg,  #080a0e 6px, transparent 6px),
+    linear-gradient(207deg, #080a0e 6px, transparent 6px),
+    linear-gradient(27deg,  #0a0d12 6px, transparent 6px),
+    linear-gradient(207deg, #0a0d12 6px, transparent 6px),
+    linear-gradient(90deg,  #080b0f 12px, transparent 12px),
+    linear-gradient(#090c10 25%, #080a0e 25%, #080a0e 50%, transparent 50%, transparent 75%, #0a0d12 75%);
+  background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px;
+  background-position: 0 6px, 12px 0, 0 12px, 12px 6px, 0 0, 0 0;
+}
+body::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background: linear-gradient(118deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.018) 50%, rgba(255,255,255,0) 55%);
+}
+
+/* Conteúdo transparente: a fibra aparece continuamente; cards no tom do app */
+.content{
+  background: transparent !important;
+  color: var(--text, #EAEEF6);
+  min-height: 100vh;
+  --card: #1C2128;
+  --border: #30363D;
+}
+.content > main, .content main{ background: transparent; }
+
+/* Sidebar e Header translúcidos: deixam o tramado diagonal (body::before) aparecer,
+   com leve escurecimento para diferenciar os painéis do conteúdo. */
+.sidebar, .header{
+  background-color: transparent !important;
+  background-image: linear-gradient(180deg, rgba(7,10,14,.46), rgba(7,10,14,.68)) !important;
+}
+.sidebar{ border-right: 1px solid rgba(255,255,255,.07); }
+.sidebar-footer{ background: transparent; border-top: 1px solid rgba(255,255,255,.08); }
+
+/* Header: sombra + linha dourada sutil; textos claros (logo branca, sem respaldo) */
+.header{
+  box-shadow: 0 6px 18px rgba(0,0,0,.35) !important;
+  border-bottom: none !important;
+  position: relative;
+}
+.header::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(241,196,15,.45), transparent);
+  pointer-events:none;
+}
+.header .menu-toggle,
+.header .profile span,
+.header .notif-link,
+.header .notif-link i{ color: var(--text, #EAEEF6) !important; }
+
+/* Footer de página (quando houver) acompanha a fibra */
+.content footer, footer.app-footer, .app-footer{ background: transparent; }
 
 /* Utilitários */
 .bg-bg1{ background-color: var(--bg1) !important; color: var(--bg1-contrast) !important; }

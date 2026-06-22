@@ -101,6 +101,7 @@ $dbError = null;
 $metrics = [];
 $topLeads = $recentImports = $statusRows = $seniorityRows = $departmentRows = [];
 $leadRows = $companyRows = $contactRows = $pipelineRows = $activityRows = [];
+$taskRows = [];
 $segmentRows = $campaignRows = $importRows = $settingsRows = [];
 
 try {
@@ -241,6 +242,23 @@ try {
         LEFT JOIN crm_contacts c ON c.id_contact = a.id_contact
         LEFT JOIN crm_accounts ac ON ac.id_account = a.id_account
        ORDER BY COALESCE(a.due_at, a.activity_at) DESC
+       LIMIT 120
+    ");
+    $taskRows = crm_rows($crm, "
+      SELECT t.title, t.status, t.priority, t.due_at, t.completed_at,
+             c.full_name, ac.account_name, ca.campaign_name
+        FROM crm_tasks t
+        LEFT JOIN crm_contacts c ON c.id_contact = t.id_contact
+        LEFT JOIN crm_accounts ac ON ac.id_account = t.id_account
+        LEFT JOIN crm_campaigns ca ON ca.id_campaign = t.id_campaign
+       ORDER BY
+             CASE t.status
+               WHEN 'open' THEN 1
+               WHEN 'in_progress' THEN 2
+               WHEN 'done' THEN 3
+               ELSE 4
+             END,
+             COALESCE(t.due_at, t.created_at) ASC
        LIMIT 120
     ");
   }
@@ -885,8 +903,33 @@ body {
       <?php endif; ?>
 
       <?php if ($view === 'activities'): ?>
+        <section class="crm-panel" style="margin-bottom:.9rem">
+          <div class="crm-panel-head"><div class="crm-panel-title"><i class="fa-solid fa-list-check"></i> Tarefas do Funil</div></div>
+          <?php if (!$taskRows): ?>
+            <div class="crm-panel-body"><div class="crm-empty">Ainda não há tarefas abertas para campanhas ou oportunidades.</div></div>
+          <?php else: ?>
+            <div class="crm-table-wrap">
+              <table class="crm-table">
+                <thead><tr><th>Tarefa</th><th>Contato</th><th>Empresa</th><th>Campanha</th><th>Status</th><th>Prazo</th></tr></thead>
+                <tbody>
+                <?php foreach ($taskRows as $row): ?>
+                  <tr>
+                    <td><strong><?= crm_h($row['title']) ?></strong><div class="crm-muted"><?= crm_h(crm_label('priority', $row['priority'])) ?></div></td>
+                    <td><?= crm_h($row['full_name'] ?: '-') ?></td>
+                    <td><?= crm_h($row['account_name'] ?: '-') ?></td>
+                    <td><?= crm_h($row['campaign_name'] ?: '-') ?></td>
+                    <td><span class="crm-pill teal"><?= crm_h($row['status']) ?></span></td>
+                    <td><?= crm_h($row['due_at'] ?: '-') ?></td>
+                  </tr>
+                <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          <?php endif; ?>
+        </section>
+
         <section class="crm-panel">
-          <div class="crm-panel-head"><div class="crm-panel-title"><i class="fa-solid fa-list-check"></i> Atividades</div></div>
+          <div class="crm-panel-head"><div class="crm-panel-title"><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Atividades</div></div>
           <?php if (!$activityRows): ?>
             <div class="crm-panel-body"><div class="crm-empty">Ainda não há atividades comerciais registradas. A próxima etapa será criar ações de abordagem e follow-up.</div></div>
           <?php else: ?>

@@ -11,69 +11,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $userName    = $_SESSION['user_name']    ?? 'Usuário';
 $newMessages = (int)($_SESSION['new_messages'] ?? 0);
 
-// ===== Avatar (usuarios.avatar_id -> avatars.filename) =====
-$id_user       = $_SESSION['user_id'] ?? null;
-$avatarBaseWeb = '/OKR_system/assets/img/avatars/default_avatar/'; // onde estão seus PNGs
-$avatarUrl     = $avatarBaseWeb . 'default.png';
-
-// Validador simples para nomes (seu acervo é todo .png)
-$validPng = function($fn) {
-  return is_string($fn) && preg_match('/^[a-z0-9_.-]+\.png$/i', $fn);
-};
-
-/* >>>>>>> Correção ESSENCIAL do cache <<<<<<<
-   - Se houver avatar_filename na sessão, mas:
-     a) não houver avatar_user_id, OU
-     b) avatar_user_id != user_id atual,
-     então invalida o cache para forçar leitura correta.
-*/
-if (isset($_SESSION['avatar_filename'])) {
-  if (!isset($_SESSION['avatar_user_id']) || $_SESSION['avatar_user_id'] !== $id_user) {
-    unset($_SESSION['avatar_filename'], $_SESSION['avatar_user_id']);
-  }
-}
-
-// Se já tiver em sessão (cache do MESMO user), usa direto
-if (!empty($_SESSION['avatar_filename']) && $validPng($_SESSION['avatar_filename'])) {
-  $avatarUrl = $avatarBaseWeb . $_SESSION['avatar_filename'];
-}
-// Senão, consulta no banco e faz cache em sessão
-elseif ($id_user) {
-  try {
-    // Caminho correto: subir 2 níveis a partir de views/partials -> /OKR_system
-    $root = dirname(__DIR__, 2);
-    $cfg  = $root . '/auth/config.php';
-
-    if (is_file($cfg)) {
-      require_once $cfg;
-
-      $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-      $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-      ]);
-
-      $st = $pdo->prepare("
-        SELECT a.filename
-          FROM usuarios u
-          JOIN avatars  a ON a.id = u.avatar_id
-         WHERE u.id_user = :id
-         LIMIT 1
-      ");
-      $st->execute([':id' => $id_user]);
-      $fn = $st->fetchColumn();
-
-      if ($validPng($fn)) {
-        $_SESSION['avatar_filename'] = $fn;        // cache
-        $_SESSION['avatar_user_id']  = $id_user;   // vínculo com o usuário atual
-        $avatarUrl = $avatarBaseWeb . $fn;
-      }
-    }
-  } catch (Throwable $e) {
-    // Mantém default.png em caso de erro
-  }
-}
+// ===== Avatar (catálogo único, via auth/avatar_helpers.php) =====
+$id_user = $_SESSION['user_id'] ?? null;
+require_once dirname(__DIR__, 2) . '/auth/avatar_helpers.php';
+$avatarData = avatar_resolve((int) ($id_user ?? 0));
+$avatarUrl  = $avatarData['url'];
 
 /* ====== LOGO DA COMPANY_STYLE (ATUALIZADO) ======
    - Descobre id_company
@@ -156,12 +98,13 @@ try {
 }
 ?>
 <!-- ====== HEADER ====== -->
+<link rel="stylesheet" href="/OKR_system/assets/css/avatar.css">
 <style>
 /* (estilos inalterados) */
 .header { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
 .menu-toggle { font-size: 1.5rem; cursor: pointer; margin-right: 1rem; color: #2C3E50; }
 .header .left { display: flex; align-items: center; }
-.header .left .logo-link img { height: auto; width: auto; max-height: 30px; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
+.header .left .logo-link img { height: 36px; width: auto; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
 .header .left .logo-link:hover img { transform: scale(1.1); }
 .header .right { display: flex; align-items: center; position: relative; gap: 16px; }
 .notif-link { position: relative; display: inline-block; line-height: 1; color: #2C3E50; }
@@ -184,7 +127,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
   <div class="left">
     <a href="https://planningbi.com.br/" class="logo-link"
        aria-label="Ir para página inicial" target="_blank" rel="noopener">
-      <img src="<?= htmlspecialchars($logoSrc, ENT_QUOTES, 'UTF-8') ?>" alt="Logo">
+      <img src="/OKR_system/assets/img/logo-horizontal-branca.png" alt="PlanningBI">
     </a>
   </div>
   <div class="right">

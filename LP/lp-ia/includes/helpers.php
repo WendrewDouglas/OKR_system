@@ -269,21 +269,33 @@ function lp_send_mail(string $to, string $subject, string $html, string $textAlt
         return false;
     }
 
+    // SMTP isolado da LP: usa LP_SMTP_* se definido (.env), senão herda o SMTP_* do OKR.
+    $cfg = static function (string $lpKey, string $okrConst, string $default = '') {
+        $v = getenv($lpKey);
+        if (is_string($v) && $v !== '') { return $v; }
+        return defined($okrConst) ? constant($okrConst) : $default;
+    };
+    $host = (string) $cfg('LP_SMTP_HOST', 'SMTP_HOST', 'localhost');
+    $user = (string) $cfg('LP_SMTP_USER', 'SMTP_USER', '');
+    $pass = (string) $cfg('LP_SMTP_PASS', 'SMTP_PASS', '');
+    $port = (int) $cfg('LP_SMTP_PORT', 'SMTP_PORT', '587');
+    $fromAddr = (string) $cfg('LP_SMTP_FROM', 'SMTP_FROM', $user);
+    if ($fromAddr === '') { $fromAddr = $user; }
+    $fromName = (string) $cfg('LP_SMTP_FROM_NAME', 'SMTP_FROM_NAME', 'PlanningBI');
+
     try {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
         $mail->isSMTP();
         $mail->CharSet    = 'UTF-8';
-        $mail->Host       = defined('SMTP_HOST') ? SMTP_HOST : 'localhost';
+        $mail->Host       = $host;
         $mail->SMTPAuth   = true;
-        $mail->Username   = defined('SMTP_USER') ? SMTP_USER : '';
-        $mail->Password   = defined('SMTP_PASS') ? SMTP_PASS : '';
-        $mail->Port       = defined('SMTP_PORT') ? (int) SMTP_PORT : 587;
-        $mail->SMTPSecure = ((int) $mail->Port === 465)
+        $mail->Username   = $user;
+        $mail->Password   = $pass;
+        $mail->Port       = $port;
+        $mail->SMTPSecure = ($port === 465)
             ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
             : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
 
-        $fromAddr = defined('SMTP_FROM') && SMTP_FROM !== '' ? SMTP_FROM : (defined('SMTP_USER') ? SMTP_USER : '');
-        $fromName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'PlanningBI';
         $mail->setFrom($fromAddr, $fromName);
 
         $mail->addAddress($to);

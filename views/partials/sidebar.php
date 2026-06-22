@@ -148,7 +148,10 @@ if ($pdo && $userId) {
   display: flex; flex-direction: column;
   z-index: 1000;
   overflow-x: hidden;
+  overflow-y: auto;
 }
+/* garante que o rodapé (usuário + empresa) nunca seja empurrado para fora da tela */
+.sidebar ul { flex: 1 0 auto; }
 body.collapsed .sidebar { width: var(--sidebar-collapsed); }
 
 .sidebar-header {
@@ -356,6 +359,62 @@ body.collapsed .sidebar-footer .org { display: none; }
       </div>
       <?php endif; ?>
     </li>
+    <li class="<?= $isSettings ? 'open' : '' ?>">
+      <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
+        <i class="fas fa-cog icon-main"></i><span>Configurações</span>
+        <i class="fas fa-chevron-down icon-chevron"></i>
+      </div>
+      <ul class="submenu">
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
+        <li class="<?= $isConfigStyle ? 'active' : '' ?>"
+            data-href="/OKR_system/views/config_style.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-palette"></i><span>Personalizar Estilo</span>
+        </li>
+        <?php endif; ?>
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
+        <li class="<?= $isOrgConfig ? 'active' : '' ?>"
+            data-href="/OKR_system/views/organizacao.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-building"></i><span>Editar Organização</span>
+        </li>
+        <?php endif; ?>
+        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
+        <li class="<?= $isUsersMgmt ? 'active' : '' ?>"
+            data-href="/OKR_system/views/usuarios.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-users-gear"></i><span>Gerenciar Usuários</span>
+        </li>
+        <?php endif; ?>
+      </ul>
+    </li>
+    <?php if ($isAdminMaster): ?>
+    <li class="<?= $isAdminGroup ? 'open' : '' ?>">
+      <div class="menu-item <?= $isAdminGroup ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
+        <i class="fas fa-shield-halved icon-main"></i><span>Administrador</span>
+        <i class="fas fa-chevron-down icon-chevron"
+           title="Abrir/Fechar"
+           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
+      </div>
+      <ul class="submenu">
+        <li class="<?= $isSystemHealth ? 'active' : '' ?>"
+            data-href="/OKR_system/views/system_health.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-heartbeat"></i><span>System Health</span>
+        </li>
+        <li class="<?= $isAdminCompanies ? 'active' : '' ?>"
+            data-href="/OKR_system/views/admin_companies.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-building-circle-check"></i><span>Empresas & Usuários</span>
+        </li>
+        <li class="<?= $isAdminPush ? 'active' : '' ?>"
+            data-href="/OKR_system/views/admin_push.php"
+            onclick="onSubmenuClick(this)">
+          <i class="fas fa-paper-plane"></i><span>Envios Push</span>
+        </li>
+      </ul>
+    </li>
+    <?php endif; ?>
     <li class="sidebar-section-label">CRM Comercial</li>
     <li class="<?= $isCrmGroup ? 'open' : '' ?>">
       <div class="menu-item crm-menu <?= $isCrmGroup ? 'active' : '' ?>"
@@ -419,62 +478,6 @@ body.collapsed .sidebar-footer .org { display: none; }
         </li>
       </ul>
     </li>
-    <li class="<?= $isSettings ? 'open' : '' ?>">
-      <div class="menu-item <?= $isSettings ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
-        <i class="fas fa-cog icon-main"></i><span>Configurações</span>
-        <i class="fas fa-chevron-down icon-chevron"></i>
-      </div>
-      <ul class="submenu">
-        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
-        <li class="<?= $isConfigStyle ? 'active' : '' ?>"
-            data-href="/OKR_system/views/config_style.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-palette"></i><span>Personalizar Estilo</span>
-        </li>
-        <?php endif; ?>
-        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
-        <li class="<?= $isOrgConfig ? 'active' : '' ?>"
-            data-href="/OKR_system/views/organizacao.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-building"></i><span>Editar Organização</span>
-        </li>
-        <?php endif; ?>
-        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
-        <li class="<?= $isUsersMgmt ? 'active' : '' ?>"
-            data-href="/OKR_system/views/usuarios.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-users-gear"></i><span>Gerenciar Usuários</span>
-        </li>
-        <?php endif; ?>
-      </ul>
-    </li>
-    <?php if ($isAdminMaster): ?>
-    <li class="<?= $isAdminGroup ? 'open' : '' ?>">
-      <div class="menu-item <?= $isAdminGroup ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
-        <i class="fas fa-shield-halved icon-main"></i><span>Administrador</span>
-        <i class="fas fa-chevron-down icon-chevron"
-           title="Abrir/Fechar"
-           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
-      </div>
-      <ul class="submenu">
-        <li class="<?= $isSystemHealth ? 'active' : '' ?>"
-            data-href="/OKR_system/views/system_health.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-heartbeat"></i><span>System Health</span>
-        </li>
-        <li class="<?= $isAdminCompanies ? 'active' : '' ?>"
-            data-href="/OKR_system/views/admin_companies.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-building-circle-check"></i><span>Empresas & Usuários</span>
-        </li>
-        <li class="<?= $isAdminPush ? 'active' : '' ?>"
-            data-href="/OKR_system/views/admin_push.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-paper-plane"></i><span>Envios Push</span>
-        </li>
-      </ul>
-    </li>
-    <?php endif; ?>
   </ul>
 
   <!-- Rodapé -->
@@ -482,7 +485,7 @@ body.collapsed .sidebar-footer .org { display: none; }
     <span class="user" title="<?= htmlspecialchars($userShort) ?>">
       <?= htmlspecialchars($userShort) ?>
     </span>
-    <span class="org" title=<?= htmlspecialchars($orgText) ?>>
+    <span class="org" title="<?= htmlspecialchars($orgText) ?>">
     <?= htmlspecialchars($orgText) ?>
     </span>
   </div>

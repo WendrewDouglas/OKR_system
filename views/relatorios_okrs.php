@@ -645,6 +645,19 @@ if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.ph
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf_token'];
 
+/* Mapa id_user -> URL de avatar (catálogo único) para o render do relatório */
+require_once __DIR__ . '/../auth/avatar_helpers.php';
+$__avatarUrls = [];
+try {
+  $__pdoAv = avatar_pdo();
+  if ($__pdoAv) {
+    $__q = $__pdoAv->query("SELECT u.id_user, a.path FROM usuarios u LEFT JOIN avatars a ON a.id = u.avatar_id");
+    foreach ($__q as $__r) {
+      $__avatarUrls[(int)$__r['id_user']] = avatar_url_from_row(['path' => $__r['path']]);
+    }
+  }
+} catch (Throwable $e) { /* mantém vazio -> fallback no JS */ }
+
 /* Usuário corrente para rodapé de impressão */
 $exportUserName = 'Usuário';
 try{
@@ -956,10 +969,10 @@ function esc(s){ if(s===null||s===undefined) return ''; return String(s).replace
 function labelPillar(k){ switch(String(k).toLowerCase()){ case 'aprendizado': return 'Aprendizado'; case 'processos': return 'Processos'; case 'clientes': return 'Clientes'; case 'financeiro': return 'Financeiro'; default: return k||'—'; } }
 function contrastText(hex){ if(!hex) return '#fff'; const c=hex.replace('#',''); const r=parseInt(c.substring(0,2),16); const g=parseInt(c.substring(2,4),16); const b=parseInt(c.substring(4,6),16); const yiq=((r*299)+(g*587)+(b*114))/1000; return yiq >= 200 ? '#0b0f14' : '#ffffff'; }
 function avatarHTML(userId){
-  const PNG=`/OKR_system/assets/img/avatars/${userId}.png`;
-  const JPG=`/OKR_system/assets/img/avatars/${userId}.jpg`;
-  const JPEG=`/OKR_system/assets/img/avatars/${userId}.jpeg`;
-  return `<img src="${PNG}" onerror="this.onerror=null; this.src='${JPG}'; this.onerror=function(){this.src='${JPEG}';};" alt="">`;
+  const M = <?= json_encode($__avatarUrls, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
+  const url = M[userId] || '/OKR_system/assets/img/avatars/default_avatar/default.png';
+  const FB = '/OKR_system/assets/img/avatars/'+userId+'.png'; // foto IA legada (até migração da Fase 5)
+  return `<img src="${url}" onerror="this.onerror=null; this.src='${FB}';" alt="">`;
 }
 
 // ==== helpers para detalhe (mantidos) ====
@@ -1440,10 +1453,10 @@ function contrastText(hex){
   return yiq >= 200 ? '#0b0f14' : '#ffffff';
 }
 function avatarHTML(userId){
-  const PNG=`/OKR_system/assets/img/avatars/${userId}.png`;
-  const JPG=`/OKR_system/assets/img/avatars/${userId}.jpg`;
-  const JPEG=`/OKR_system/assets/img/avatars/${userId}.jpeg`;
-  return `<img src="${PNG}" onerror="this.onerror=null; this.src='${JPG}'; this.onerror=function(){this.src='${JPEG}';};" alt="">`;
+  const M = <?= json_encode($__avatarUrls, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
+  const url = M[userId] || '/OKR_system/assets/img/avatars/default_avatar/default.png';
+  const FB = '/OKR_system/assets/img/avatars/'+userId+'.png'; // foto IA legada (até migração da Fase 5)
+  return `<img src="${url}" onerror="this.onerror=null; this.src='${FB}';" alt="">`;
 }
 
 /* ==== helpers para detalhe (mantidos) ==== */

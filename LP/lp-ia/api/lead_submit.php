@@ -135,7 +135,8 @@ lp_dispatch_lead_emails($landingId, [
     'utm_campaign' => $utmCampaign,
 ]);
 
-$checkoutUrl = 'checkout_redirect.php?t=' . urlencode($token);
+// O botão de pagamento fica em /public/; o endpoint está em /api/.
+$checkoutUrl = '../api/checkout_redirect.php?t=' . urlencode($token);
 
 lp_ok([
     'lead_token'   => $token,
