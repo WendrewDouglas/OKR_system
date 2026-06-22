@@ -1,0 +1,388 @@
+/* ============================================================
+   LOGIN — estética "cara do sistema": fibra de carbono + dourado.
+   Tudo escopado em body.login-page para NÃO afetar register,
+   password_reset, cadastro_site ou as views internas que
+   compartilham base/layout/components/theme.css.
+   Paleta do app/sistema: base #070a0e / cards #1C2128 /
+   borda #30363D / dourado #F1C40F / texto #EAEEF6.
+   ============================================================ */
+
+:root {
+  --login-gold: #F1C40F;
+  --login-base: #070a0e;
+  --login-card: #1C2128;
+  --login-border: #30363D;
+  --login-text: #EAEEF6;
+  --login-muted: #98a2b3;
+}
+
+/* ---------- Fundo: tramado twill 2x2 em diagonal + brilho ---------- */
+body.login-page {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--login-base) !important;
+  color: var(--login-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body.login-page::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: -2;
+  pointer-events: none;
+  transform: rotate(45deg);
+  transform-origin: center center;
+  background-color: var(--login-base);
+  background-image:
+    linear-gradient(27deg,  #080a0e 6px, transparent 6px),
+    linear-gradient(207deg, #080a0e 6px, transparent 6px),
+    linear-gradient(27deg,  #0a0d12 6px, transparent 6px),
+    linear-gradient(207deg, #0a0d12 6px, transparent 6px),
+    linear-gradient(90deg,  #080b0f 12px, transparent 12px),
+    linear-gradient(#090c10 25%, #080a0e 25%, #080a0e 50%, transparent 50%, transparent 75%, #0a0d12 75%);
+  background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px, 24px 24px;
+  background-position: 0 6px, 12px 0, 0 12px, 12px 6px, 0 0, 0 0;
+}
+
+body.login-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 18% 12%, rgba(241,196,15,.06), transparent 60%),
+    linear-gradient(118deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.02) 50%, rgba(255,255,255,0) 55%);
+}
+
+/* ---------- Card ---------- */
+body.login-page .login-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 940px;
+  height: auto;
+  max-height: none;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(28,33,40,.94), rgba(13,17,23,.96));
+  border: 1px solid var(--login-border);
+  box-shadow:
+    0 24px 60px rgba(0,0,0,.55),
+    0 0 0 1px rgba(255,255,255,.02) inset;
+  position: relative;
+}
+
+/* Fio dourado no topo do card */
+body.login-page .login-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(241,196,15,.8), transparent);
+  z-index: 3;
+}
+
+@media (min-width: 900px) {
+  body.login-page .login-card {
+    flex-direction: row;
+    min-height: 560px;
+  }
+}
+
+/* ---------- Painel de marca (lado esquerdo) ---------- */
+body.login-page .login-brand {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  body.login-page .login-brand {
+    flex: 1.05;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 3rem 2.5rem;
+    border-right: 1px solid rgba(255,255,255,.06);
+    background:
+      radial-gradient(700px 360px at 25% 18%, rgba(241,196,15,.10), transparent 62%),
+      linear-gradient(160deg, rgba(255,255,255,.03), rgba(0,0,0,.18));
+    overflow: hidden;
+  }
+  /* Emblema gigante como marca d'água atrás do texto */
+  body.login-page .login-brand::after {
+    content: "";
+    position: absolute;
+    right: -70px;
+    bottom: -70px;
+    width: 360px;
+    height: 360px;
+    background: url('https://planningbi.com.br/wp-content/uploads/2025/07/logo-emblema.png') no-repeat center / contain;
+    opacity: .05;
+    pointer-events: none;
+  }
+}
+
+body.login-page .login-brand-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 360px;
+}
+
+body.login-page .brand-emblem {
+  width: 64px;
+  height: auto;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 6px 16px rgba(241,196,15,.25));
+}
+
+body.login-page .brand-title {
+  font-size: 1.9rem;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  margin: 0 0 .9rem;
+  color: #fff;
+}
+body.login-page .brand-title .accent {
+  color: var(--login-gold);
+}
+
+body.login-page .brand-subtitle {
+  font-size: .98rem;
+  line-height: 1.55;
+  color: var(--login-muted);
+  margin: 0 0 1.8rem;
+}
+
+body.login-page .brand-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+}
+body.login-page .brand-features li {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  font-size: .92rem;
+  font-weight: 500;
+  color: #cdd5e1;
+}
+body.login-page .bf-ico {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(241,196,15,.14);
+  border: 1px solid rgba(241,196,15,.4);
+  color: var(--login-gold);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+/* ---------- Formulário (lado direito) ---------- */
+body.login-page .login-form-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.75rem 2rem;
+  max-height: none;
+  overflow: visible;
+}
+
+body.login-page .login-form-wrapper .logo {
+  max-width: 190px;
+  margin: 0 auto 1.75rem;
+}
+body.login-page .login-form-wrapper .logo:hover {
+  transform: scale(1.04);
+}
+
+body.login-page #login-form {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Labels */
+body.login-page .form-label {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--login-muted);
+  margin-bottom: .45rem;
+}
+
+/* Inputs */
+body.login-page .login-form-wrapper .form-control,
+body.login-page #login-form .form-control {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  display: block;
+  background: #0e131a;
+  border: 1px solid var(--login-border);
+  border-radius: 10px;
+  padding: .8rem .9rem;
+  color: var(--login-text);
+  font-size: .95rem;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+body.login-page .form-control::placeholder {
+  color: #5b6573;
+}
+body.login-page .form-control:focus {
+  outline: none;
+  background: #11171f;
+  border-color: var(--login-gold);
+  box-shadow: 0 0 0 3px rgba(241,196,15,.18);
+}
+body.login-page .form-control:-webkit-autofill {
+  -webkit-text-fill-color: var(--login-text);
+  -webkit-box-shadow: 0 0 0 1000px #0e131a inset;
+  caret-color: var(--login-text);
+}
+
+body.login-page .mb-3 {
+  margin-bottom: 1.1rem !important;
+  width: 100%;
+}
+
+/* Botão Entrar (dourado) */
+body.login-page .login-form-wrapper .btn-primary,
+body.login-page #btn-entrar {
+  width: 100%;
+  max-width: 100%;
+  margin-top: .4rem;
+  background: var(--login-gold);
+  border: none;
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  font-size: .98rem;
+  font-weight: 700;
+  color: #111 !important;
+  cursor: pointer;
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  box-shadow: 0 8px 22px rgba(241,196,15,.22);
+}
+body.login-page .login-form-wrapper .btn-primary:hover,
+body.login-page #btn-entrar:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(241,196,15,.32);
+  background: var(--login-gold);
+  color: #111 !important;
+}
+body.login-page .btn-primary:active,
+body.login-page #btn-entrar:active {
+  transform: translateY(0);
+}
+
+/* Link "Esqueci minha senha" */
+body.login-page .password-reset-link {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: .9rem;
+  font-size: .88rem;
+  color: var(--login-muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+body.login-page .password-reset-link:hover {
+  color: var(--login-gold);
+  text-decoration: none;
+}
+
+/* Mensagem de erro (tema escuro) */
+body.login-page .error-message {
+  width: 100%;
+  max-width: 320px;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.45);
+  color: #ffb4b0;
+  padding: .8rem 1rem;
+  border-radius: 10px;
+  text-align: center;
+  font-size: .9rem;
+  margin: 0 auto 1rem;
+}
+
+/* CTA "Primeira vez aqui?" */
+body.login-page .cta-section {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 1.6rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(255,255,255,.08);
+  text-align: center;
+}
+body.login-page .cta-section h5 {
+  font-size: .95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 .35rem;
+}
+body.login-page .cta-section p {
+  font-size: .85rem;
+  color: var(--login-muted);
+  margin: 0 0 1rem;
+}
+/* Botão secundário (ghost dourado) para diferenciar do primário */
+body.login-page .cta-section .btn-primary {
+  background: transparent;
+  border: 1px solid rgba(241,196,15,.5);
+  color: var(--login-gold) !important;
+  box-shadow: none;
+  text-decoration: none;
+  display: inline-block;
+}
+body.login-page .cta-section .btn-primary:hover {
+  background: rgba(241,196,15,.12);
+  border-color: var(--login-gold);
+  color: var(--login-gold) !important;
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+/* Garante leitura do badge invisível do reCAPTCHA sobre fundo escuro */
+body.login-page .grecaptcha-badge {
+  box-shadow: 0 0 12px rgba(0,0,0,.5) !important;
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 899px) {
+  body.login-page {
+    padding: 1.25rem 1rem;
+  }
+  body.login-page .login-form-wrapper {
+    padding: 2.25rem 1.5rem;
+  }
+}
