@@ -81,6 +81,9 @@ body.login-page .login-card {
     0 24px 60px rgba(0,0,0,.55),
     0 0 0 1px rgba(255,255,255,.02) inset;
   position: relative;
+  /* Reduz todo o conjunto (card + conteúdo) uniformemente para 85% */
+  transform: scale(.85);
+  transform-origin: center center;
 }
 
 /* Fio dourado no topo do card */
