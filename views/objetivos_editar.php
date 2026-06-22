@@ -183,10 +183,13 @@ if (isset($_GET['ajax'])) {
             if ($mm && $yy) { $dt_inicio=sprintf('%04d-%02d-01',$yy,$mm); $dt_prazo=date('Y-m-t', strtotime("$yy-$mm-01")); }
             break;
           case 'personalizado':
-            // em "personalizado" recebemos YYYY-MM, transformamos para 1º dia e último dia do mês
+            // aceita data precisa (YYYY-MM-DD) ou mês (YYYY-MM, legado → 1º/último dia)
             $ini=(string)($dados['ciclo_pers_inicio'] ?? '');
             $fim=(string)($dados['ciclo_pers_fim'] ?? '');
-            if ($ini && $fim) { $dt_inicio="$ini-01"; $dt_prazo=date('Y-m-t', strtotime("$fim-01")); }
+            if ($ini && $fim) {
+              $dt_inicio = preg_match('/^\d{4}-\d{2}-\d{2}$/', $ini) ? $ini : "$ini-01";
+              $dt_prazo  = preg_match('/^\d{4}-\d{2}-\d{2}$/', $fim) ? $fim : date('Y-m-t', strtotime("$fim-01"));
+            }
             break;
         }
         return [$dt_inicio, $dt_prazo];
@@ -532,18 +535,18 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
             <div>
               <label for="ciclo_pers_inicio">
                 <i class="fa-regular fa-calendar-plus"></i> Início do Período
-                <span class="helper">(mês/ano)</span>
+                <span class="helper">(dia/mês/ano)</span>
               </label>
-              <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio"
-                     value="<?= $periodo_ini ? h(substr($periodo_ini,0,7)) : '' ?>">
+              <input type="date" id="ciclo_pers_inicio" name="ciclo_pers_inicio"
+                     value="<?= $periodo_ini ? h(substr($periodo_ini,0,10)) : '' ?>">
             </div>
             <div>
               <label for="ciclo_pers_fim">
                 <i class="fa-regular fa-calendar-check"></i> Fim do Período
-                <span class="helper">(mês/ano)</span>
+                <span class="helper">(dia/mês/ano)</span>
               </label>
-              <input type="month" id="ciclo_pers_fim" name="ciclo_pers_fim"
-                     value="<?= $periodo_fim ? h(substr($periodo_fim,0,7)) : '' ?>">
+              <input type="date" id="ciclo_pers_fim" name="ciclo_pers_fim"
+                     value="<?= $periodo_fim ? h(substr($periodo_fim,0,10)) : '' ?>">
             </div>
           </div>
 
@@ -717,15 +720,23 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
       } else if (tipo === 'personalizado') {
         const ini = $('#ciclo_pers_inicio')?.value || '';
         const fim = $('#ciclo_pers_fim')?.value || '';
-        if (/^\d{4}-\d{2}$/.test(ini)) {
+        // aceita data precisa (YYYY-MM-DD) ou mês (YYYY-MM, legado)
+        let mi;
+        if ((mi = ini.match(/^(\d{4})-(\d{2})-(\d{2})$/))) {
+          start = new Date(+mi[1], +mi[2]-1, +mi[3]);
+        } else if (/^\d{4}-\d{2}$/.test(ini)) {
           const [y1,m1] = ini.split('-').map(Number);
           start = new Date(y1, m1-1, 1);
         }
-        if (/^\d{4}-\d{2}$/.test(fim)) {
+        let mf;
+        if ((mf = fim.match(/^(\d{4})-(\d{2})-(\d{2})$/))) {
+          end = new Date(+mf[1], +mf[2]-1, +mf[3]);
+        } else if (/^\d{4}-\d{2}$/.test(fim)) {
           const [y2,m2] = fim.split('-').map(Number);
           end = new Date(y2, m2-1, lastDayOfMonth(y2, m2-1));
         }
       }
+
 
       if (!start || !end) {
         const d=new Date(), m=d.getMonth()+1, y=d.getFullYear();

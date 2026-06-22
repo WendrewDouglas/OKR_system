@@ -8,12 +8,16 @@ declare(strict_types=1);
 
 $auth = api_require_auth();
 $uid  = (int)($auth['sub'] ?? 0);
+$cid  = (int)($auth['cid'] ?? 0);
 $pdo  = api_db();
 $id   = api_int(api_param('id'), 'id');
 
 if (!api_is_admin($pdo, $uid)) {
   api_error('E_FORBIDDEN', 'Sem permissão.', 403);
 }
+
+// Isolamento multi-tenant: alvo deve ser da mesma empresa (salvo admin_master)
+api_require_same_company_user($pdo, $id, $cid, $uid);
 
 // Role capabilities
 $stRole = $pdo->prepare("

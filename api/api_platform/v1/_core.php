@@ -14,6 +14,35 @@ $ROOT = dirname(__DIR__, 3); // .../OKR_system
 // Carrega config do sistema (DB_HOST, DB_NAME, etc.)
 require_once $ROOT . '/auth/config.php';
 
+// Resolvedor único de avatar (catálogo do web — fonte única da verdade).
+require_once $ROOT . '/auth/avatar_helpers.php';
+
+// Base pública absoluta para montar URLs de avatar do app (catálogo do web).
+if (!defined('APP_PUBLIC_BASE_URL')) {
+  define('APP_PUBLIC_BASE_URL', 'https://planningbi.com.br');
+}
+
+/** Prefixa a base pública numa URL relativa do catálogo (deixa absolutas/data intactas). */
+function api_avatar_abs(?string $rel): ?string {
+  if ($rel === null || $rel === '') return null;
+  return preg_match('#^(https?://|data:image/)#i', $rel) ? $rel : APP_PUBLIC_BASE_URL . $rel;
+}
+
+/** URL absoluta do avatar a partir de uma linha já com avatar_path/avatar_filename (LEFT JOIN avatars). */
+function api_avatar_url_from_row(?array $row): ?string {
+  return api_avatar_abs(avatar_url_from_row($row));
+}
+
+/** URL absoluta do avatar resolvida pelo id do usuário (single user). */
+function api_avatar_url_for(int $userId): ?string {
+  return api_avatar_abs(avatar_resolve($userId, api_db())['url'] ?? null);
+}
+
+/** Thumb (64px) absoluta resolvida pelo id do usuário. */
+function api_avatar_thumb_for(int $userId): ?string {
+  return api_avatar_abs(avatar_resolve($userId, api_db())['url_thumb'] ?? null);
+}
+
 // Log dedicado da API
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/error_log');
@@ -51,6 +80,37 @@ function api_error(string $code, string $message, int $status = 400, array $extr
     'error' => $code,
     'message' => $message,
   ], $extra), $status);
+}
+
+/**
+ * Resposta de sucesso com ENVELOPE PADRÃO (aditivo).
+ * Sempre inclui `data`; mantém chaves legadas (em $legacy) para não quebrar
+ * consumidores atuais (app Flutter e views/admin_push.php). $pagination opcional.
+ * Novos consumidores devem ler `data` / `pagination`.
+ */
+function api_ok($data, array $legacy = [], ?array $pagination = null): void {
+  $resp = ['ok' => true, 'data' => $data];
+  if ($pagination !== null) $resp['pagination'] = $pagination;
+  foreach ($legacy as $k => $v) $resp[$k] = $v; // compat
+  api_json($resp);
+}
+
+/**
+ * Envelope para listas paginadas (resultado de api_paginated()).
+ * `data` = items; `pagination` = {page,per_page,total,pages}; chaves legadas mantidas.
+ */
+function api_ok_paginated(array $result, array $extraLegacy = []): void {
+  $items = $result['items'] ?? [];
+  $pagination = [
+    'page'     => (int)($result['page'] ?? 1),
+    'per_page' => (int)($result['per_page'] ?? count($items)),
+    'total'    => (int)($result['total'] ?? count($items)),
+    'pages'    => (int)($result['pages'] ?? 1),
+  ];
+  $resp = ['ok' => true, 'data' => $items, 'pagination' => $pagination];
+  foreach ($result as $k => $v) $resp[$k] = $v;      // legado: items/page/per_page/total/pages
+  foreach ($extraLegacy as $k => $v) $resp[$k] = $v;
+  api_json($resp);
 }
 
 function api_log(string $msg): void {
@@ -353,6 +413,21 @@ function api_enum(string $val, array $allowed, string $name = 'value'): string {
     api_error('E_INPUT', "Campo '$name' deve ser um de: " . implode(', ', $allowed) . '.', 422);
   }
   return $val;
+}
+
+/**
+ * Valida um valor contra uma tabela de domínio (lookup), devolvendo 422 limpo
+ * em vez de deixar o FK do banco lançar 500.
+ *
+ * IMPORTANTE: $table e $idCol são literais internos (nunca input do usuário);
+ * apenas $value é parametrizado.
+ */
+function api_assert_domain(PDO $pdo, string $table, string $idCol, string $value, string $field): void {
+  $st = $pdo->prepare("SELECT 1 FROM `$table` WHERE `$idCol` = ? LIMIT 1");
+  $st->execute([$value]);
+  if (!$st->fetchColumn()) {
+    api_error('E_INPUT', "Valor inválido para '$field': '$value'.", 422);
+  }
 }
 
 

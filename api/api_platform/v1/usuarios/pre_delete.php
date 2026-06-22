@@ -16,7 +16,13 @@ if (!api_is_admin($pdo, $uid)) {
   api_error('E_FORBIDDEN', 'Sem permissão.', 403);
 }
 
-$st = $pdo->prepare("SELECT id_user, id_company, primeiro_nome, ultimo_nome FROM usuarios WHERE id_user = ?");
+$st = $pdo->prepare("
+  SELECT u.id_user, u.id_company, u.primeiro_nome, u.ultimo_nome,
+         a.path AS avatar_path, a.filename AS avatar_filename
+    FROM usuarios u
+    LEFT JOIN avatars a ON a.id = u.avatar_id
+   WHERE u.id_user = ?
+");
 $st->execute([$id]);
 $user = $st->fetch();
 if (!$user) {
@@ -50,9 +56,12 @@ $scenario = $totalUsers <= 1 ? 'solo' : 'reassign';
 $adminReassign = null;
 if ($scenario === 'reassign') {
   $stAdmin = $pdo->prepare("
-    SELECT u.id_user, u.primeiro_nome, u.ultimo_nome FROM usuarios u
+    SELECT u.id_user, u.primeiro_nome, u.ultimo_nome,
+           a.path AS avatar_path, a.filename AS avatar_filename
+      FROM usuarios u
       JOIN rbac_user_role ur ON ur.user_id = u.id_user
       JOIN rbac_roles r ON r.role_id = ur.role_id
+      LEFT JOIN avatars a ON a.id = u.avatar_id
      WHERE u.id_company = ? AND r.role_key IN ('admin_master','user_admin') AND u.id_user != ?
      LIMIT 1
   ");
@@ -60,8 +69,9 @@ if ($scenario === 'reassign') {
   $admin = $stAdmin->fetch();
   if ($admin) {
     $adminReassign = [
-      'id_user' => (int)$admin['id_user'],
-      'nome'    => trim($admin['primeiro_nome'] . ' ' . ($admin['ultimo_nome'] ?? '')),
+      'id_user'    => (int)$admin['id_user'],
+      'nome'       => trim($admin['primeiro_nome'] . ' ' . ($admin['ultimo_nome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $admin['avatar_path'] ?? null, 'filename' => $admin['avatar_filename'] ?? null]),
     ];
   }
 }
@@ -69,8 +79,9 @@ if ($scenario === 'reassign') {
 api_json([
   'ok'             => true,
   'user'           => [
-    'id_user' => (int)$user['id_user'],
-    'nome'    => trim($user['primeiro_nome'] . ' ' . ($user['ultimo_nome'] ?? '')),
+    'id_user'    => (int)$user['id_user'],
+    'nome'       => trim($user['primeiro_nome'] . ' ' . ($user['ultimo_nome'] ?? '')),
+    'avatar_url' => api_avatar_url_from_row(['path' => $user['avatar_path'] ?? null, 'filename' => $user['avatar_filename'] ?? null]),
   ],
   'scenario'       => $scenario,
   'items'          => $items,

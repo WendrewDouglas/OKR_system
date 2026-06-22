@@ -31,6 +31,15 @@ if (strlen($pass) < 8) {
   api_error('E_INPUT', 'Senha deve ter no mínimo 8 caracteres.', 422);
 }
 
+// Whitelist de papéis (anti-escalonamento): admin_master só pode ser atribuído por outro admin_master
+$papeisPermitidos = ['user_colab', 'user_admin', 'gestor_master'];
+if (api_is_admin_master($pdo, $uid)) {
+  $papeisPermitidos[] = 'admin_master';
+}
+if (!in_array($roleKey, $papeisPermitidos, true)) {
+  api_error('E_FORBIDDEN', 'Papel não permitido para sua conta.', 403);
+}
+
 // Check duplicate
 $st = $pdo->prepare("SELECT id_user FROM usuarios WHERE email_corporativo = ?");
 $st->execute([$email]);

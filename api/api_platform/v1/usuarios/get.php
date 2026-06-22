@@ -19,7 +19,7 @@ $st = $pdo->prepare("
          u.id_departamento, u.id_nivel_cargo,
          c.organizacao AS empresa,
          r.role_key, r.role_name,
-         a.filename AS avatar_filename
+         a.path AS avatar_path, a.filename AS avatar_filename
     FROM usuarios u
     LEFT JOIN company c ON c.id_company = u.id_company
     LEFT JOIN rbac_user_role ur ON ur.user_id = u.id_user
@@ -54,6 +54,7 @@ api_json([
     'role_key'        => $user['role_key'] ?? '',
     'role_name'       => $user['role_name'] ?? '',
     'avatar'          => $user['avatar_filename'] ?? null,
+    'avatar_url'      => api_avatar_url_from_row(['path' => $user['avatar_path'] ?? null, 'filename' => $user['avatar_filename'] ?? null]),
     'dt_cadastro'     => $user['dt_cadastro'],
   ],
 ]);

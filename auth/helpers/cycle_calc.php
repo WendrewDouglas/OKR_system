@@ -53,8 +53,15 @@ if (!function_exists('calcularDatasCiclo')) {
                 break;
             case 'personalizado':
                 if (!empty($d['ciclo_pers_inicio']) && !empty($d['ciclo_pers_fim'])) {
-                    $ini = $d['ciclo_pers_inicio'].'-01';
-                    $fim = date('Y-m-t', strtotime($d['ciclo_pers_fim'].'-01'));
+                    $pi = (string)$d['ciclo_pers_inicio'];
+                    $pf = (string)$d['ciclo_pers_fim'];
+                    // Aceita data precisa (YYYY-MM-DD, app) ou mês (YYYY-MM, web legado).
+                    $ini = preg_match('/^\d{4}-\d{2}-\d{2}$/', $pi)
+                        ? $pi
+                        : $pi.'-01';
+                    $fim = preg_match('/^\d{4}-\d{2}-\d{2}$/', $pf)
+                        ? $pf
+                        : date('Y-m-t', strtotime($pf.'-01'));
                 }
                 break;
         }

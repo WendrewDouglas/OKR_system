@@ -17,14 +17,17 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:objetivo@ORG')) {
 }
 
 $in = api_input();
-api_require_fields($in, ['descricao', 'pilar_bsc', 'ciclo_tipo']);
+api_require_fields($in, ['descricao', 'pilar_bsc', 'ciclo_tipo', 'tipo_objetivo', 'dono']);
 
 $descricao  = api_str($in['descricao']);
 $pilar      = api_str($in['pilar_bsc']);
-$tipo       = api_str($in['tipo_objetivo'] ?? '');
+$tipo       = api_str($in['tipo_objetivo']);
 $cicloTipo  = api_str($in['ciclo_tipo']);
 $observacoes = api_str($in['observacoes'] ?? '');
-$dono       = api_int_or_null($in['dono'] ?? null) ?: $uid;
+$dono       = api_int_or_null($in['dono'] ?? null);
+if (!$dono) {
+  api_error('E_INPUT', 'Dono (responsável) é obrigatório.', 422);
+}
 
 // Calculate cycle dates
 api_load_helper('auth/helpers/cycle_calc.php');
@@ -40,19 +43,26 @@ $cycleData = [
 ];
 [$dtInicio, $dtPrazo] = calcularDatasCiclo($cicloTipo, $cycleData);
 
+// Nome do criador (coluna usuario_criador é NOT NULL); espelha o web.
+$stNome = $pdo->prepare("SELECT TRIM(CONCAT(COALESCE(primeiro_nome,''),' ',COALESCE(ultimo_nome,''))) FROM usuarios WHERE id_user = ? LIMIT 1");
+$stNome->execute([$uid]);
+$creatorName = (string)($stNome->fetchColumn() ?: $uid);
+
 $pdo->beginTransaction();
 try {
+  // status = 'nao iniciado' (valor válido em dom_status_kr; FK fk_objetivos_status).
+  // status_aprovacao = 'pendente' (lido com LOWER nas telas de aprovação).
   $st = $pdo->prepare("
     INSERT INTO objetivos
       (descricao, tipo, pilar_bsc, tipo_ciclo, dono, observacoes,
        dt_inicio, dt_prazo, status, status_aprovacao,
-       id_company, id_user_criador, dt_criacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', 'pendente', ?, ?, NOW())
+       usuario_criador, id_company, id_user_criador, dt_criacao)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, ?, CURDATE())
   ");
   $st->execute([
     $descricao, $tipo ?: null, $pilar, $cicloTipo, $dono, $observacoes ?: null,
     $dtInicio ?: null, $dtPrazo ?: null,
-    $cid, $uid,
+    $creatorName, $cid, $uid,
   ]);
   $idObjetivo = (int)$pdo->lastInsertId();
 

@@ -27,12 +27,12 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_kr' => $idKr])) {
   api_error('E_FORBIDDEN', 'Sem permissão.', 403);
 }
 
-// Find "Em Andamento" or "Não Iniciado" status
-$stS = $pdo->prepare("SELECT id FROM dom_status_kr WHERE LOWER(descricao) LIKE '%andamento%' LIMIT 1");
+// Find "Em Andamento" or "Não Iniciado" status (colunas corretas: id_status / descricao_exibicao)
+$stS = $pdo->prepare("SELECT id_status FROM dom_status_kr WHERE LOWER(descricao_exibicao) LIKE '%andamento%' LIMIT 1");
 $stS->execute();
 $statusId = $stS->fetchColumn();
 if (!$statusId) {
-  $stS2 = $pdo->prepare("SELECT id FROM dom_status_kr WHERE LOWER(descricao) LIKE '%não inic%' LIMIT 1");
+  $stS2 = $pdo->prepare("SELECT id_status FROM dom_status_kr WHERE LOWER(descricao_exibicao) LIKE '%não inic%' LIMIT 1");
   $stS2->execute();
   $statusId = $stS2->fetchColumn() ?: 'Em Andamento';
 }

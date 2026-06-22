@@ -14,6 +14,7 @@ $pdo  = api_db();
 
 $in = api_input();
 api_require_fields($in, ['justificativa']);
+$justificativa = api_str($in['justificativa']);
 
 $st = $pdo->prepare("
   SELECT kr.id_kr, o.id_company FROM key_results kr
@@ -30,11 +31,18 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_kr' => $idKr])) {
   api_error('E_FORBIDDEN', 'Sem permissão.', 403);
 }
 
-// Find "Cancelado" status
-$stS = $pdo->prepare("SELECT id FROM dom_status_kr WHERE LOWER(descricao) LIKE '%cancel%' LIMIT 1");
+// Find "Cancelado" status (colunas corretas: id_status / descricao_exibicao)
+$stS = $pdo->prepare("SELECT id_status FROM dom_status_kr WHERE LOWER(descricao_exibicao) LIKE '%cancel%' LIMIT 1");
 $stS->execute();
 $statusId = $stS->fetchColumn() ?: 'Cancelado';
 
-$pdo->prepare("UPDATE key_results SET status = ?, dt_ultima_atualizacao = NOW() WHERE id_kr = ?")->execute([$statusId, $idKr]);
+// Persiste a justificativa em observacoes (não há coluna dedicada de cancelamento)
+$pdo->prepare("
+  UPDATE key_results
+     SET status = ?,
+         observacoes = CONCAT(COALESCE(observacoes,''), '\n[', NOW(), '] Cancelamento: ', ?),
+         dt_ultima_atualizacao = NOW()
+   WHERE id_kr = ?
+")->execute([$statusId, $justificativa, $idKr]);
 
 api_json(['ok' => true, 'message' => 'KR cancelado.']);

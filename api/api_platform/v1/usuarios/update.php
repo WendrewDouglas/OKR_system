@@ -17,6 +17,9 @@ if (!$isSelf && !api_is_admin($pdo, $uid)) {
   api_error('E_FORBIDDEN', 'Sem permissão.', 403);
 }
 
+// Isolamento multi-tenant: alvo deve ser da mesma empresa (salvo admin_master / self)
+api_require_same_company_user($pdo, $id, $cid, $uid);
+
 $in = api_input();
 $sets   = [];
 $params = [];

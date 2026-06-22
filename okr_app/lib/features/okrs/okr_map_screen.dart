@@ -6,8 +6,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
-import '../shared/widgets/empty_state.dart';
+import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/app_header.dart';
+import '../shared/widgets/user_avatar.dart';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -33,6 +34,16 @@ class OkrMapScreen extends ConsumerStatefulWidget {
 }
 
 class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
+  bool _fabOpen = false;
+
+  Future<void> _abrir(String rota) async {
+    setState(() => _fabOpen = false);
+    AppHaptics.light();
+    // A API exige W:objetivo@ORG / W:kr@ORG; quem não tiver recebe 403 no submit.
+    final created = await context.push(rota);
+    if (created == true) ref.invalidate(okrCascataProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cascata = ref.watch(okrCascataProvider);
@@ -40,49 +51,60 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const AppHeader(),
-      body: cascata.when(
-        loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text(
-                'Erro ao carregar mapa OKR',
-                style: TextStyle(color: AppColors.red, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(okrCascataProvider);
-                },
-              ),
-            ],
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_fabOpen) ...[
+            _SpeedDialAction(
+              label: 'Novo Objetivo',
+              icon: Icons.flag_outlined,
+              onTap: () => _abrir('/okrs/novo'),
+            ),
+            const SizedBox(height: 12),
+            _SpeedDialAction(
+              label: 'Novo KR',
+              icon: Icons.trending_up,
+              onTap: () => _abrir('/krs/novo'),
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton(
+            onPressed: () {
+              AppHaptics.medium();
+              setState(() => _fabOpen = !_fabOpen);
+            },
+            child: AnimatedRotation(
+              turns: _fabOpen ? 0.125 : 0, // "+" gira para "x" quando aberto
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.add),
+            ),
           ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          cascata.when(
+        loading: () => const LoadingShimmer(),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar mapa OKR',
+          onRetry: () => ref.invalidate(okrCascataProvider),
         ),
         data: (objetivos) {
-          if (objetivos.isEmpty) {
-            return const EmptyState(
-              icon: Icons.account_tree_outlined,
-              title: 'Nenhum OKR encontrado',
-              subtitle:
-                  'O mapa ficara disponivel quando houver objetivos cadastrados.',
-            );
-          }
-
-          // Group objetivos by pilar_bsc
-          final pillarMap = <String, List<Map<String, dynamic>>>{};
+          // Os 4 pilares BSC sempre aparecem, na ordem canônica, mesmo sem
+          // objetivos (os vazios ficam "apagados"/inativos).
+          final pillarMap = <String, List<Map<String, dynamic>>>{
+            for (final p in _bscPillars) p: <Map<String, dynamic>>[],
+          };
           for (final obj in objetivos) {
-            final pilar = (obj['pilar_bsc'] as String?) ?? 'Sem pilar';
-            pillarMap.putIfAbsent(pilar, () => []).add(obj);
+            final canon = _canonicalPillar((obj['pilar_bsc'] as String?) ?? '');
+            pillarMap.putIfAbsent(canon, () => []).add(obj);
           }
-
-          // Sort pillar names consistently
-          final sortedPillars = pillarMap.keys.toList()..sort();
+          // 4 pilares canônicos primeiro; qualquer pilar extra/desconhecido vem depois.
+          final pillars = <String>[
+            ..._bscPillars,
+            ...pillarMap.keys.where((k) => !_bscPillars.contains(k)),
+          ];
 
           return RefreshIndicator(
             color: AppColors.gold,
@@ -93,7 +115,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
             },
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              itemCount: sortedPillars.length + 1,
+              itemCount: pillars.length + 1,
               itemBuilder: (ctx, i) {
                 if (i == 0) {
                   return Padding(
@@ -110,7 +132,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Mapa OKR',
+                          'Mapa BSC|OKR',
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
@@ -120,7 +142,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                     ),
                   );
                 }
-                final pillarName = sortedPillars[i - 1];
+                final pillarName = pillars[i - 1];
                 final pillarObjs = pillarMap[pillarName]!;
                 return StaggeredFadeSlide(
                   index: i - 1,
@@ -133,7 +155,50 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
             ),
           );
         },
+          ),
+          // Scrim: fecha o menu ao tocar fora.
+          if (_fabOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _fabOpen = false),
+                child: const ColoredBox(color: Colors.black54),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+}
+
+/// Ação do speed-dial: rótulo + mini-FAB (usado no menu do botão "+").
+class _SpeedDialAction extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _SpeedDialAction({required this.label, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.borderDefault, width: 0.5),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 6)],
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(width: 12),
+        FloatingActionButton.small(
+          heroTag: 'speeddial_$label',
+          onPressed: onTap,
+          child: Icon(icon),
+        ),
+      ],
     );
   }
 }
@@ -141,6 +206,27 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Os 4 pilares BSC na ordem canônica de exibição.
+const List<String> _bscPillars = [
+  'Financeiro',
+  'Clientes',
+  'Processos Internos',
+  'Aprendizado e Crescimento',
+];
+
+/// Normaliza o nome do pilar de um objetivo para um dos 4 pilares canônicos.
+/// Mantém o nome original caso não case com nenhum (pilar extra/desconhecido).
+String _canonicalPillar(String nome) {
+  final n = nome.toLowerCase();
+  if (n.contains('financ')) return 'Financeiro';
+  if (n.contains('client')) return 'Clientes';
+  if (n.contains('process')) return 'Processos Internos';
+  if (n.contains('aprend') || n.contains('conhec')) {
+    return 'Aprendizado e Crescimento';
+  }
+  return nome.isEmpty ? 'Sem pilar' : nome;
+}
 
 Color _pillarColor(String nome) {
   final n = nome.toLowerCase();
@@ -184,21 +270,39 @@ Widget _deadlineDot(String? deadline) {
 
 String _statusLabel(String? status) => status ?? '';
 
-// ---------------------------------------------------------------------------
-// Pillar tile (Level 0)
-// ---------------------------------------------------------------------------
-
-class _PillarTile extends StatefulWidget {
-  final String pillarName;
-  final List<Map<String, dynamic>> objetivos;
-
-  const _PillarTile({required this.pillarName, required this.objetivos});
-
-  @override
-  State<_PillarTile> createState() => _PillarTileState();
+/// Avatar pequeno (com fallback para iniciais) lido de um map de pessoa
+/// (dono/responsavel) do endpoint /dashboard/cascata.
+Widget _personAvatar(Map<String, dynamic>? person, {double radius = 8}) {
+  final nome = (person?['nome'] as String?) ?? '';
+  final parts = nome.trim().split(RegExp(r'\s+'));
+  final firstName = parts.isNotEmpty ? parts.first : '';
+  final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+  return UserAvatar(
+    avatarUrl: person?['avatar_url'] as String?,
+    firstName: firstName,
+    lastName: lastName,
+    radius: radius,
+  );
 }
 
-class _PillarTileState extends State<_PillarTile>
+// ---------------------------------------------------------------------------
+// Tile expansível reutilizável (chevron animado + expand/collapse).
+// Centraliza a lógica que era triplicada em pilar/objetivo/KR.
+// ---------------------------------------------------------------------------
+
+class _ExpandableTile extends StatefulWidget {
+  /// Constrói o cabeçalho; recebe o callback de toggle e a animação do chevron.
+  final Widget Function(BuildContext context, VoidCallback toggle, Animation<double> chevronTurns) header;
+  /// Conteúdo expansível (só é construído quando aberto).
+  final WidgetBuilder children;
+
+  const _ExpandableTile({required this.header, required this.children});
+
+  @override
+  State<_ExpandableTile> createState() => _ExpandableTileState();
+}
+
+class _ExpandableTileState extends State<_ExpandableTile>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
   late final AnimationController _chevronCtrl;
@@ -207,15 +311,10 @@ class _PillarTileState extends State<_PillarTile>
   @override
   void initState() {
     super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
+    _chevronCtrl = AnimationController(vsync: this, duration: AppDurations.normal);
+    _chevronTurns = Tween<double>(begin: 0.0, end: 0.25).animate(
+      CurvedAnimation(parent: _chevronCtrl, curve: AppCurves.defaultCurve),
     );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
   }
 
   @override
@@ -232,14 +331,88 @@ class _PillarTileState extends State<_PillarTile>
 
   @override
   Widget build(BuildContext context) {
-    final color = _pillarColor(widget.pillarName);
-    final icon = _pillarIcon(widget.pillarName);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        widget.header(context, _toggle, _chevronTurns),
+        AnimatedSize(
+          duration: AppDurations.normal,
+          curve: AppCurves.defaultCurve,
+          alignment: Alignment.topCenter,
+          child: _expanded ? widget.children(context) : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pillar tile (Level 0)
+// ---------------------------------------------------------------------------
+
+class _PillarTile extends StatelessWidget {
+  final String pillarName;
+  final List<Map<String, dynamic>> objetivos;
+
+  const _PillarTile({required this.pillarName, required this.objetivos});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _pillarColor(pillarName);
+    final icon = _pillarIcon(pillarName);
+
+    // Pilar sem objetivos: card "apagado"/inativo (não expansível).
+    if (objetivos.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Opacity(
+          opacity: 0.42,
+          child: Card(
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(width: 4, decoration: BoxDecoration(color: color)),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: color, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pillarName,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Sem objetivos',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     // Aggregate counts
     int totalKrs = 0;
     int totalIniciativas = 0;
     String? earliestDeadline;
-    for (final obj in widget.objetivos) {
+    for (final obj in objetivos) {
       final krs =
           (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       totalKrs += krs.length;
@@ -264,98 +437,65 @@ class _PillarTileState extends State<_PillarTile>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Colored left border — stretches with content
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: color,
-              ),
-            ),
+            Container(width: 4, decoration: BoxDecoration(color: color)),
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header (tappable)
-                    InkWell(
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
-                      onTap: _toggle,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 14),
-                        child: Row(
-                          children: [
-                            Icon(icon, color: color, size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.pillarName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${widget.objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
-                                    style: const TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+              child: _ExpandableTile(
+                header: (context, toggle, turns) => InkWell(
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  onTap: toggle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: color, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pillarName,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                               ),
-                            ),
-                            _deadlineDot(earliestDeadline),
-                            const SizedBox(width: 8),
-                            RotationTransition(
-                              turns: _chevronTurns,
-                              child: const Icon(
-                                Icons.chevron_right,
-                                color: AppColors.textMuted,
-                                size: 22,
+                              const SizedBox(height: 4),
+                              Text(
+                                '${objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        _deadlineDot(earliestDeadline),
+                        const SizedBox(width: 8),
+                        RotationTransition(
+                          turns: turns,
+                          child: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 22),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                children: (context) => Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                  child: Column(
+                    children: [
+                      Container(height: 0.5, color: AppColors.borderDefault),
+                      const SizedBox(height: 8),
+                      ...List.generate(
+                        objetivos.length,
+                        (i) => _ObjetivoTile(obj: objetivos[i]),
                       ),
-                    ),
-                    // Expandable children
-                    AnimatedSize(
-                      duration: AppDurations.normal,
-                      curve: AppCurves.defaultCurve,
-                      alignment: Alignment.topCenter,
-                      child: _expanded
-                          ? Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 12, right: 12, bottom: 12),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    height: 0.5,
-                                    color: AppColors.borderDefault,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ...List.generate(
-                                    widget.objetivos.length,
-                                    (i) => _ObjetivoTile(
-                                        obj: widget.objetivos[i]),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -364,56 +504,18 @@ class _PillarTileState extends State<_PillarTile>
 // Objetivo tile (Level 1)
 // ---------------------------------------------------------------------------
 
-class _ObjetivoTile extends StatefulWidget {
+class _ObjetivoTile extends StatelessWidget {
   final Map<String, dynamic> obj;
   const _ObjetivoTile({required this.obj});
 
   @override
-  State<_ObjetivoTile> createState() => _ObjetivoTileState();
-}
-
-class _ObjetivoTileState extends State<_ObjetivoTile>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
-  late final AnimationController _chevronCtrl;
-  late final Animation<double> _chevronTurns;
-
-  @override
-  void initState() {
-    super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
-    );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
-  }
-
-  @override
-  void dispose() {
-    _chevronCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    AppHaptics.selection();
-    setState(() => _expanded = !_expanded);
-    _expanded ? _chevronCtrl.forward() : _chevronCtrl.reverse();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final desc = widget.obj['descricao'] ?? '';
-    final status = _statusLabel(widget.obj['status'] as String?);
-    final deadline = widget.obj['dt_prazo'] as String?;
-    final dono =
-        (widget.obj['dono'] as Map<String, dynamic>?)?['nome'] ?? '';
-    final krs = (widget.obj['key_results'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final desc = obj['descricao'] ?? '';
+    final status = _statusLabel(obj['status'] as String?);
+    final deadline = obj['dt_prazo'] as String?;
+    final donoMap = obj['dono'] as Map<String, dynamic>?;
+    final dono = (donoMap?['nome'] as String?) ?? '';
+    final krs = (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -422,112 +524,81 @@ class _ObjetivoTileState extends State<_ObjetivoTile>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderDefault, width: 0.5),
       ),
-      child: Column(
-        children: [
-          // Header row
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _toggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.flag_outlined,
-                      size: 16, color: AppColors.gold),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          desc,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            _deadlineDot(deadline),
+      child: _ExpandableTile(
+        header: (context, toggle, turns) => InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.flag_outlined, size: 16, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        desc,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          _deadlineDot(deadline),
+                          const SizedBox(width: 4),
+                          Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                          if (dono.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            _personAvatar(donoMap, radius: 9),
                             const SizedBox(width: 4),
-                            Text(
-                              status,
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 11,
-                              ),
+                            Flexible(
+                              child: Text(dono,
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis),
                             ),
-                            if (dono.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              const Icon(Icons.person_outline,
-                                  size: 12, color: AppColors.textMuted),
-                              const SizedBox(width: 2),
-                              Flexible(
-                                child: Text(
-                                  dono,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  // Tap to navigate
-                  GestureDetector(
-                    onTap: () {
-                      AppHaptics.light();
-                      context.push('/okrs/${widget.obj['id_objetivo']}');
-                    },
-                    child: const Icon(Icons.open_in_new,
-                        size: 16, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                // Tap to navigate
+                GestureDetector(
+                  onTap: () {
+                    AppHaptics.light();
+                    context.push('/okrs/${obj['id_objetivo']}');
+                  },
+                  child: const Icon(Icons.open_in_new, size: 16, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 6),
+                if (krs.isNotEmpty)
+                  RotationTransition(
+                    turns: turns,
+                    child: const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
                   ),
-                  const SizedBox(width: 6),
-                  if (krs.isNotEmpty)
-                    RotationTransition(
-                      turns: _chevronTurns,
-                      child: const Icon(Icons.chevron_right,
-                          size: 18, color: AppColors.textMuted),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
-          // KR children
-          AnimatedSize(
-            duration: AppDurations.normal,
-            curve: AppCurves.defaultCurve,
-            alignment: Alignment.topCenter,
-            child: _expanded && krs.isNotEmpty
-                ? Padding(
-                    padding:
-                        const EdgeInsets.only(left: 16, right: 8, bottom: 8),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          color: AppColors.borderDefault,
-                        ),
-                        ...List.generate(
-                          krs.length,
-                          (i) => _KrTile(kr: krs[i]),
-                        ),
-                      ],
+        ),
+        children: (context) => krs.isEmpty
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.only(left: 16, right: 8, bottom: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 0.5,
+                      margin: const EdgeInsets.only(bottom: 6),
+                      color: AppColors.borderDefault,
                     ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+                    ...List.generate(krs.length, (i) => _KrTile(kr: krs[i])),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -537,45 +608,9 @@ class _ObjetivoTileState extends State<_ObjetivoTile>
 // KR tile (Level 2)
 // ---------------------------------------------------------------------------
 
-class _KrTile extends StatefulWidget {
+class _KrTile extends StatelessWidget {
   final Map<String, dynamic> kr;
   const _KrTile({required this.kr});
-
-  @override
-  State<_KrTile> createState() => _KrTileState();
-}
-
-class _KrTileState extends State<_KrTile>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
-  late final AnimationController _chevronCtrl;
-  late final Animation<double> _chevronTurns;
-
-  @override
-  void initState() {
-    super.initState();
-    _chevronCtrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.normal,
-    );
-    _chevronTurns =
-        Tween<double>(begin: 0.0, end: 0.25).animate(CurvedAnimation(
-      parent: _chevronCtrl,
-      curve: AppCurves.defaultCurve,
-    ));
-  }
-
-  @override
-  void dispose() {
-    _chevronCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    AppHaptics.selection();
-    setState(() => _expanded = !_expanded);
-    _expanded ? _chevronCtrl.forward() : _chevronCtrl.reverse();
-  }
 
   Color _farolColor(String? farol) {
     switch (farol?.toLowerCase()) {
@@ -592,131 +627,98 @@ class _KrTileState extends State<_KrTile>
 
   @override
   Widget build(BuildContext context) {
-    final desc = widget.kr['descricao'] ?? '';
-    final status = _statusLabel(widget.kr['status'] as String?);
-    final farol = widget.kr['farol'] as String?;
-    final deadline = widget.kr['data_fim'] as String?;
-    final responsavel =
-        (widget.kr['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
-    final iniciativas = (widget.kr['iniciativas'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final desc = kr['descricao'] ?? '';
+    final status = _statusLabel(kr['status'] as String?);
+    final farol = kr['farol'] as String?;
+    final deadline = kr['data_fim'] as String?;
+    final responsavelMap = kr['responsavel'] as Map<String, dynamic>?;
+    final responsavel = (responsavelMap?['nome'] as String?) ?? '';
+    final iniciativas = (kr['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border(
-          left: BorderSide(color: _farolColor(farol), width: 3),
-        ),
+        border: Border(left: BorderSide(color: _farolColor(farol), width: 3)),
       ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: _toggle,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.track_changes,
-                      size: 14, color: _farolColor(farol)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          desc,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            _deadlineDot(deadline),
-                            const SizedBox(width: 4),
-                            Text(
-                              status,
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 10,
-                              ),
+      child: _ExpandableTile(
+        header: (context, toggle, turns) => InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.track_changes, size: 14, color: _farolColor(farol)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        desc,
+                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          _deadlineDot(deadline),
+                          const SizedBox(width: 4),
+                          Text(status, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                          if (responsavel.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            _personAvatar(responsavelMap, radius: 8),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(responsavel,
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                                  overflow: TextOverflow.ellipsis),
                             ),
-                            if (responsavel.isNotEmpty) ...[
-                              const SizedBox(width: 6),
-                              const Icon(Icons.person_outline,
-                                  size: 10, color: AppColors.textMuted),
-                              const SizedBox(width: 2),
-                              Flexible(
-                                child: Text(
-                                  responsavel,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 10,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () {
-                      AppHaptics.light();
-                      context.push('/krs/${widget.kr['id_kr']}');
-                    },
-                    child: const Icon(Icons.open_in_new,
-                        size: 14, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    AppHaptics.light();
+                    context.push('/krs/${kr['id_kr']}');
+                  },
+                  child: const Icon(Icons.open_in_new, size: 14, color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 4),
+                if (iniciativas.isNotEmpty)
+                  RotationTransition(
+                    turns: turns,
+                    child: const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
                   ),
-                  const SizedBox(width: 4),
-                  if (iniciativas.isNotEmpty)
-                    RotationTransition(
-                      turns: _chevronTurns,
-                      child: const Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.textMuted),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
-          // Iniciativa children
-          AnimatedSize(
-            duration: AppDurations.normal,
-            curve: AppCurves.defaultCurve,
-            alignment: Alignment.topCenter,
-            child: _expanded && iniciativas.isNotEmpty
-                ? Padding(
-                    padding: const EdgeInsets.only(
-                        left: 14, right: 6, bottom: 6),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.only(bottom: 4),
-                          color: AppColors.borderDefault,
-                        ),
-                        ...List.generate(
-                          iniciativas.length,
-                          (i) =>
-                              _IniciativaTile(iniciativa: iniciativas[i]),
-                        ),
-                      ],
+        ),
+        children: (context) => iniciativas.isEmpty
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.only(left: 14, right: 6, bottom: 6),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 0.5,
+                      margin: const EdgeInsets.only(bottom: 4),
+                      color: AppColors.borderDefault,
                     ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+                    ...List.generate(
+                      iniciativas.length,
+                      (i) => _IniciativaTile(iniciativa: iniciativas[i]),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -735,8 +737,8 @@ class _IniciativaTile extends StatelessWidget {
     final desc = iniciativa['descricao'] ?? '';
     final status = _statusLabel(iniciativa['status'] as String?);
     final deadline = iniciativa['dt_prazo'] as String?;
-    final responsavel =
-        (iniciativa['responsavel'] as Map<String, dynamic>?)?['nome'] ?? '';
+    final responsavelMap = iniciativa['responsavel'] as Map<String, dynamic>?;
+    final responsavel = (responsavelMap?['nome'] as String?) ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -776,9 +778,8 @@ class _IniciativaTile extends StatelessWidget {
                       ),
                       if (responsavel.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        const Icon(Icons.person_outline,
-                            size: 10, color: AppColors.textMuted),
-                        const SizedBox(width: 2),
+                        _personAvatar(responsavelMap, radius: 8),
+                        const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             responsavel,

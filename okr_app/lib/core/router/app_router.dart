@@ -25,6 +25,8 @@ import '../../features/notificacoes/notificacoes_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/profile/edit_profile_screen.dart';
 import '../../features/profile/change_password_screen.dart';
+import '../../features/usuarios/usuarios_list_screen.dart';
+import '../../features/usuarios/usuario_form_screen.dart';
 
 /// Notifies GoRouter to re-evaluate redirects when auth changes
 class AuthChangeNotifier extends ChangeNotifier {
@@ -103,105 +105,88 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // Shell routes (bottom nav)
-      ShellRoute(
-        builder: (_, __, child) => AppShell(child: child),
-        routes: [
-          // === Bottom nav tabs — instant (no transition) ===
-          GoRoute(path: '/okrs', pageBuilder: (_, __) => const NoTransitionPage(child: OkrMapScreen())),
-          GoRoute(path: '/responsaveis', pageBuilder: (_, __) => const NoTransitionPage(child: ResponsaveisScreen())),
-          GoRoute(path: '/tarefas', pageBuilder: (_, __) => const NoTransitionPage(child: MinhasTarefasScreen())),
-          GoRoute(path: '/orcamento', pageBuilder: (_, __) => const NoTransitionPage(child: OrcamentoScreen())),
-          GoRoute(path: '/menu', pageBuilder: (_, __) => const NoTransitionPage(child: MenuScreen())),
-
-          // === Menu sub-pages — slide up ===
-          GoRoute(
-            path: '/aprovacoes',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const AprovacaoListScreen()),
-          ),
-          GoRoute(
-            path: '/notificacoes',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const NotificacoesScreen()),
-          ),
-          GoRoute(
-            path: '/perfil',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const ProfileScreen()),
-          ),
-
-          // === OKR routes — slide up for detail/forms ===
-          GoRoute(
-            path: '/okrs/novo',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const ObjetivoFormScreen()),
-          ),
-          GoRoute(
-            path: '/okrs/:id',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: OkrDetailScreen(idObjetivo: state.pathParameters['id']!),
-            ),
-          ),
-          GoRoute(
-            path: '/okrs/:id/editar',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: ObjetivoFormScreen(idObjetivo: state.pathParameters['id']!),
-            ),
-          ),
-          GoRoute(
-            path: '/okrs/:idObj/krs/novo',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: KrFormScreen(idObjetivo: state.pathParameters['idObj']!),
-            ),
-          ),
-
-          // KR routes
-          GoRoute(
-            path: '/krs/:id',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: KrDetailScreen(idKr: state.pathParameters['id']!),
-            ),
-          ),
-          GoRoute(
-            path: '/krs/:id/editar',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: KrFormScreen(idKr: state.pathParameters['id']!),
-            ),
-          ),
-
-          // Iniciativas routes
-          GoRoute(
-            path: '/krs/:idKr/iniciativas',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: IniciativaListScreen(idKr: state.pathParameters['idKr']!),
-            ),
-          ),
-          GoRoute(
-            path: '/krs/:idKr/iniciativas/nova',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: IniciativaFormScreen(idKr: state.pathParameters['idKr']!),
-            ),
-          ),
-          GoRoute(
-            path: '/iniciativas/:id',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: IniciativaDetailScreen(idIniciativa: state.pathParameters['id']!),
-            ),
-          ),
-          GoRoute(
-            path: '/iniciativas/:id/editar',
-            pageBuilder: (_, state) => slideUpTransitionPage(
-              child: IniciativaFormScreen(idIniciativa: state.pathParameters['id']!),
-            ),
-          ),
-
-          // Profile routes
-          GoRoute(
-            path: '/perfil/editar',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const EditProfileScreen()),
-          ),
-          GoRoute(
-            path: '/perfil/senha',
-            pageBuilder: (_, __) => slideUpTransitionPage(child: const ChangePasswordScreen()),
-          ),
+      // === Abas (bottom nav) com estado preservado por aba ===
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/okrs', pageBuilder: (_, __) => const NoTransitionPage(child: OkrMapScreen())),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/responsaveis', pageBuilder: (_, __) => const NoTransitionPage(child: ResponsaveisScreen())),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/tarefas', pageBuilder: (_, __) => const NoTransitionPage(child: MinhasTarefasScreen())),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/orcamento', pageBuilder: (_, __) => const NoTransitionPage(child: OrcamentoScreen())),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/menu', pageBuilder: (_, __) => const NoTransitionPage(child: MenuScreen())),
+          ]),
         ],
+      ),
+
+      // === Páginas full-screen (root navigator) — abrem sobre as abas (slide up) ===
+      // Menu sub-pages
+      GoRoute(path: '/aprovacoes', pageBuilder: (_, __) => slideUpTransitionPage(child: const AprovacaoListScreen())),
+      GoRoute(path: '/notificacoes', pageBuilder: (_, __) => slideUpTransitionPage(child: const NotificacoesScreen())),
+      GoRoute(path: '/perfil', pageBuilder: (_, __) => slideUpTransitionPage(child: const ProfileScreen())),
+      GoRoute(path: '/perfil/editar', pageBuilder: (_, __) => slideUpTransitionPage(child: const EditProfileScreen())),
+      GoRoute(path: '/perfil/senha', pageBuilder: (_, __) => slideUpTransitionPage(child: const ChangePasswordScreen())),
+
+      // OKR — detalhe/forms (ordem importa: 'novo' antes de ':id')
+      GoRoute(path: '/okrs/novo', pageBuilder: (_, __) => slideUpTransitionPage(child: const ObjetivoFormScreen())),
+      GoRoute(
+        path: '/okrs/:id',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: OkrDetailScreen(idObjetivo: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/okrs/:id/editar',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: ObjetivoFormScreen(idObjetivo: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/okrs/:idObj/krs/novo',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: KrFormScreen(idObjetivo: state.pathParameters['idObj']!)),
+      ),
+
+      // KR — detalhe/forms ('novo' antes de ':id' para não ser capturado como id)
+      GoRoute(path: '/krs/novo', pageBuilder: (_, __) => slideUpTransitionPage(child: const KrFormScreen())),
+      GoRoute(
+        path: '/krs/:id',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: KrDetailScreen(idKr: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/krs/:id/editar',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: KrFormScreen(idKr: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/krs/:idKr/iniciativas',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: IniciativaListScreen(idKr: state.pathParameters['idKr']!)),
+      ),
+      GoRoute(
+        path: '/krs/:idKr/iniciativas/nova',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: IniciativaFormScreen(idKr: state.pathParameters['idKr']!)),
+      ),
+
+      // Iniciativas — detalhe/forms
+      GoRoute(
+        path: '/iniciativas/:id',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: IniciativaDetailScreen(idIniciativa: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/iniciativas/:id/editar',
+        pageBuilder: (_, state) => slideUpTransitionPage(child: IniciativaFormScreen(idIniciativa: state.pathParameters['id']!)),
+      ),
+
+      // Usuários (gestão — admin)
+      GoRoute(path: '/usuarios', pageBuilder: (_, __) => slideUpTransitionPage(child: const UsuariosListScreen())),
+      GoRoute(path: '/usuarios/novo', pageBuilder: (_, __) => slideUpTransitionPage(child: const UsuarioFormScreen())),
+      GoRoute(
+        path: '/usuarios/:id/editar',
+        pageBuilder: (_, state) => slideUpTransitionPage(
+          child: UsuarioFormScreen(idUser: int.tryParse(state.pathParameters['id'] ?? '')),
+        ),
       ),
     ],
   );

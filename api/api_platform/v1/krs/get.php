@@ -13,10 +13,12 @@ $pdo  = api_db();
 
 $st = $pdo->prepare("
   SELECT kr.*, o.id_company, o.descricao AS obj_descricao,
-         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
     FROM key_results kr
     JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
     LEFT JOIN usuarios u ON u.id_user = kr.responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE kr.id_kr = ?
 ");
 $st->execute([$idKr]);
@@ -89,8 +91,9 @@ api_json([
     'data_fim'                 => $kr['data_fim'],
     'dt_ultima_atualizacao'    => $kr['dt_ultima_atualizacao'],
     'responsavel' => $kr['responsavel'] ? [
-      'id_user' => (int)$kr['responsavel'],
-      'nome'    => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'id_user'    => (int)$kr['responsavel'],
+      'nome'       => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $kr['resp_avatar_path'] ?? null, 'filename' => $kr['resp_avatar_filename'] ?? null]),
     ] : null,
   ],
   'milestones' => array_map(fn($m) => [

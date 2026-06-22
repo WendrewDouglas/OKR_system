@@ -241,6 +241,11 @@ function ensureFrequenciaDominio(PDO $pdo, string $slug): void {
 }
 
 
+// inferirNaturezaSlug / gerarMilestonesParaKR foram movidas para
+// helpers/kr_helpers.php (compartilhadas com a API). Este bloco vira fallback
+// caso o helper não esteja carregado, evitando redeclaração.
+if (!function_exists('gerarMilestonesParaKR')) {
+
 /** Preserva o slug do front: 'acumulativo_constante' | 'acumulativo_exponencial' | 'pontual' | 'binario' */
 function inferirNaturezaSlug(PDO $pdo, $naturezaRaw): string {
     $val  = (string)$naturezaRaw;
@@ -372,6 +377,8 @@ function gerarMilestonesParaKR(
 
     return $N;
 }
+
+} // fim do fallback (inferirNaturezaSlug / gerarMilestonesParaKR vêm de kr_helpers.php)
 
 /** Normaliza STATUS para um id válido em dom_status_kr */
 function normalizarStatus(PDO $pdo, $raw): ?string {
@@ -613,8 +620,21 @@ try {
         app_log('info', 'Milestones gerados', ['id_kr'=>$id_kr, 'qtde'=>$qtdeMilestones]);
     }
 
+    // Sócios (convites pendentes) — atômico com o KR
+    $sociosIn = (isset($_POST['socios']) && is_array($_POST['socios'])) ? $_POST['socios'] : [];
+    $convitesSocios = [];
+    if (!empty($sociosIn)) {
+        require_once __DIR__ . '/helpers/kr_socios.php';
+        $convitesSocios = krSociosValidarEInserir($pdo, $id_kr, $sociosIn, (int)$usuario_criador);
+    }
+
     $pdo->commit();
     app_log('info', 'Transação concluída com sucesso', ['id_kr'=>$id_kr]);
+
+    // Notifica cada sócio convidado (best-effort)
+    foreach ($convitesSocios as $c) {
+        krSocioNotificarConvite($pdo, $id_kr, (int)$c['id_user']);
+    }
 
     // Notifica aprovadores sobre novo KR pendente
     try {
@@ -642,6 +662,10 @@ try {
     }
 
     echo json_encode(['success' => true, 'id_kr' => $id_kr, 'key_result_num' => $key_result_num, 'milestones'=>$qtdeMilestones]);
+} catch (InvalidArgumentException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    http_response_code(422);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     $logger->error("Erro ao salvar KR", ['error' => $e->getMessage()]);

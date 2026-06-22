@@ -176,10 +176,10 @@ function has_cap(string $capKey, array $ctx = []): bool {
   // 2) Bypass total para admin_master
   if (in_array('admin_master', $roleKeys, true)) return true;
 
-  // 3) Capabilities por papel (assumimos ALLOW para todos os vínculos)
+  // 3) Capabilities por papel (honra effect ALLOW/DENY do vínculo — PARITY-03)
   $in = implode(',', array_fill(0, count($roleIds), '?'));
   $st = $pdo->prepare("
-    SELECT c.cap_key, c.resource, c.action, c.scope
+    SELECT c.cap_key, c.resource, c.action, c.scope, rc.effect
       FROM rbac_role_capability rc
       JOIN rbac_capabilities c ON c.capability_id = rc.capability_id
      WHERE rc.role_id IN ($in)
@@ -197,12 +197,16 @@ function has_cap(string $capKey, array $ctx = []): bool {
   $st2->execute([$userId]);
   $capsUser = $st2->fetchAll();
 
-  // 5) Mescla (DENY > ALLOW)
+  // 5) Mescla (DENY > ALLOW), inclusive DENY no nível de role (PARITY-03)
   $allow = [];
-  foreach ($capsRole as $c) {
-    $allow[$c['cap_key']] = $c; // base allow
-  }
   $deny = [];
+  foreach ($capsRole as $c) {
+    if (strtoupper($c['effect'] ?? 'ALLOW') === 'DENY') {
+      $deny[$c['cap_key']] = true;
+    } else {
+      $allow[$c['cap_key']] = $c; // base allow
+    }
+  }
   foreach ($capsUser as $row) {
     $eff = strtoupper($row['effect'] ?? 'ALLOW');
     if ($eff === 'DENY') $deny[$row['cap_key']] = true;
@@ -290,10 +294,8 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
   switch ($resource) {
     case 'objetivo': {
       $id = $ctx['id_objetivo'] ?? null; if ($id === null) return null;
-      $sql = "SELECT u.id_company
-                FROM objetivos o
-                JOIN usuarios u ON u.id_user = o.dono
-               WHERE o.id_objetivo = ?";
+      // PARITY-01: tenant pelo objetivos.id_company (não pelo dono)
+      $sql = "SELECT id_company FROM objetivos WHERE id_objetivo = ?";
       $st = $pdo->prepare($sql);
       $st->execute([$id]);
       $val = $st->fetchColumn();
@@ -302,10 +304,9 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
     case 'kr': {
       $id = $ctx['id_kr'] ?? null;
       if ($id !== null) {
-        $sql = "SELECT u.id_company
+        $sql = "SELECT o.id_company
                   FROM key_results k
                   JOIN objetivos o ON o.id_objetivo = k.id_objetivo
-                  JOIN usuarios  u ON u.id_user = o.dono
                  WHERE k.id_kr = ?";
         $st = $pdo->prepare($sql);
         $st->execute([$id]);
@@ -320,13 +321,13 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
       return null;
     }
     case 'milestone': {
-      $id = $ctx['id_ms'] ?? null; if ($id === null) return null;
-      $sql = "SELECT u.id_company
+      $id = $ctx['id_milestone'] ?? ($ctx['id_ms'] ?? null); if ($id === null) return null;
+      // PARITY-01/02: tenant por objetivos.id_company; coluna correta id_milestone
+      $sql = "SELECT o.id_company
                 FROM milestones_kr m
                 JOIN key_results k ON k.id_kr = m.id_kr
                 JOIN objetivos  o ON o.id_objetivo = k.id_objetivo
-                JOIN usuarios   u ON u.id_user = o.dono
-               WHERE m.id_ms = ?";
+               WHERE m.id_milestone = ?";
       $st = $pdo->prepare($sql);
       $st->execute([$id]);
       $val = $st->fetchColumn();
@@ -334,11 +335,10 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
     }
     case 'iniciativa': {
       $id = $ctx['id_iniciativa'] ?? null; if ($id === null) return null;
-      $sql = "SELECT u.id_company
+      $sql = "SELECT o.id_company
                 FROM iniciativas i
                 JOIN key_results k ON k.id_kr = i.id_kr
                 JOIN objetivos  o ON o.id_objetivo = k.id_objetivo
-                JOIN usuarios   u ON u.id_user = o.dono
                WHERE i.id_iniciativa = ?";
       $st = $pdo->prepare($sql);
       $st->execute([$id]);
@@ -347,12 +347,11 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
     }
     case 'orcamento': {
       $id = $ctx['id_orcamento'] ?? null; if ($id === null) return null;
-      $sql = "SELECT u.id_company
+      $sql = "SELECT o.id_company
                 FROM orcamentos b
                 JOIN iniciativas i ON i.id_iniciativa = b.id_iniciativa
                 JOIN key_results k ON k.id_kr        = i.id_kr
                 JOIN objetivos  o  ON o.id_objetivo  = k.id_objetivo
-                JOIN usuarios   u  ON u.id_user      = o.dono
                WHERE b.id_orcamento = ?";
       $st = $pdo->prepare($sql);
       $st->execute([$id]);
@@ -362,10 +361,9 @@ function resolve_resource_company(PDO $pdo, string $resource, array $ctx): ?int 
     case 'apontamento': {
       // precisa do id_kr no contexto
       $idKr = $ctx['id_kr'] ?? null; if ($idKr === null) return null;
-      $sql = "SELECT u.id_company
+      $sql = "SELECT o.id_company
                 FROM key_results k
                 JOIN objetivos o ON o.id_objetivo = k.id_objetivo
-                JOIN usuarios u ON u.id_user     = o.dono
                WHERE k.id_kr = ?";
       $st = $pdo->prepare($sql);
       $st->execute([$idKr]);

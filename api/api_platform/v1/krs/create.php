@@ -25,7 +25,9 @@ $tipoKr  = api_str($in['tipo_kr'] ?? '');
 $freqMilestone = api_str($in['tipo_frequencia_milestone'] ?? '');
 $responsavel = api_int_or_null($in['responsavel'] ?? null);
 $margem  = api_float_or_null($in['margem_confianca'] ?? null);
+$observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
+$socios = is_array($in['socios'] ?? null) ? $in['socios'] : [];
 
 // RBAC
 if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_objetivo' => $idObj])) {
@@ -50,19 +52,24 @@ if ($cicloTipo !== '' && ($dtInicio === '' || $dtFim === '')) {
   [$dtInicio, $dtFim] = calcularDatasCiclo($cicloTipo, $in);
 }
 
-// Infer nature if not provided
-if ($natureza === '') {
-  api_load_helper('auth/helpers/kr_helpers.php');
-  if (function_exists('inferirNaturezaSlug')) {
-    $natureza = inferirNaturezaSlug($base, $meta, $unidade);
-  }
-}
+// natureza_kr precisa ser um id_natureza válido (FK dom_natureza_kr). Guardamos
+// o valor cru enviado (ex.: 'acumulativo', 'binario'); a normalização para o
+// slug canônico ('acumulativo_constante'...) ocorre DENTRO de
+// gerarMilestonesParaKR (via _slugify_nat), só para o cálculo — sem afetar o
+// que é gravado nem violar a FK.
+api_load_helper('auth/helpers/kr_helpers.php');
+if ($natureza === '') $natureza = 'acumulativo'; // default = acumulativo (constante)
 
-// For binary: coerce baseline/meta
-if ($natureza === 'binario') {
+// Binário: fixa baseline/meta
+if (in_array(strtolower($natureza), ['binario', 'binaria'], true)) {
   $base = 0;
   $meta = 1;
 }
+
+// Nome do criador (coluna usuario_criador); espelha o web (grava o nome, não o id).
+$stNome = $pdo->prepare("SELECT TRIM(CONCAT(COALESCE(primeiro_nome,''),' ',COALESCE(ultimo_nome,''))) FROM usuarios WHERE id_user = ? LIMIT 1");
+$stNome->execute([$uid]);
+$creatorName = (string)($stNome->fetchColumn() ?: $uid);
 
 $pdo->beginTransaction();
 try {
@@ -71,22 +78,26 @@ try {
   $stN->execute([$idObj]);
   $num = (int)$stN->fetchColumn();
 
-  $idKr = $num . '-' . $idObj;
+  // id_kr no MESMO formato do web (salvar_kr.php): NNN-OO — num com 3 dígitos,
+  // objetivo com 2 dígitos quando < 100. Ex.: '006-35'.
+  $objFmt = ((int)$idObj < 100) ? str_pad((string)$idObj, 2, '0', STR_PAD_LEFT) : (string)$idObj;
+  $idKr = sprintf('%03d-%s', $num, $objFmt);
 
   $stIns = $pdo->prepare("
     INSERT INTO key_results
       (id_kr, id_objetivo, key_result_num, descricao, baseline, meta,
        unidade_medida, direcao_metrica, natureza_kr, tipo_kr,
-       tipo_frequencia_milestone, responsavel, margem_confianca,
+       tipo_frequencia_milestone, responsavel, margem_confianca, observacoes,
        data_inicio, data_fim, status, status_aprovacao,
-       id_user_criador, dt_ultima_atualizacao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Não Iniciado', 'pendente', ?, NOW())
+       usuario_criador, id_user_criador, dt_criacao, dt_ultima_atualizacao)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nao iniciado', 'pendente', ?, ?, CURDATE(), NOW())
   ");
   $stIns->execute([
     $idKr, $idObj, $num, $desc, $base, $meta,
     $unidade ?: null, $direcao, $natureza ?: null, $tipoKr ?: null,
-    $freqMilestone ?: null, $responsavel, $margem,
-    $dtInicio ?: null, $dtFim ?: null, $uid,
+    $freqMilestone ?: null, $responsavel, $margem, $observacoes ?: null,
+    $dtInicio ?: null, $dtFim ?: null,
+    $creatorName, $uid, // usuario_criador (nome, como o web) + id_user_criador
   ]);
 
   // Auto-generate milestones
@@ -102,10 +113,28 @@ try {
     }
   }
 
+  // Sócios (convites pendentes) — atômico com o KR
+  $convitesCriados = [];
+  if (!empty($socios)) {
+    api_load_helper('auth/helpers/kr_socios.php');
+    $convitesCriados = krSociosValidarEInserir($pdo, $idKr, $socios, $uid);
+  }
+
   $pdo->commit();
+} catch (\InvalidArgumentException $e) {
+  $pdo->rollBack();
+  api_error('E_INPUT', $e->getMessage(), 422);
 } catch (\Throwable $e) {
   $pdo->rollBack();
   throw $e;
+}
+
+// Notifica cada sócio convidado (best-effort, fora da transação)
+if (!empty($convitesCriados)) {
+  api_load_helper('auth/notify.php');
+  foreach ($convitesCriados as $c) {
+    krSocioNotificarConvite($pdo, $idKr, (int)$c['id_user']);
+  }
 }
 
 api_json([
@@ -113,5 +142,6 @@ api_json([
   'id_kr'          => $idKr,
   'key_result_num' => $num,
   'milestones'     => $milestonesCount,
+  'socios'         => count($convitesCriados),
   'message'        => 'Key Result criado com sucesso.',
 ], 201);

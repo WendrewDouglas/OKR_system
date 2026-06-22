@@ -26,9 +26,11 @@ if ($co === false || (int)$co !== $cid) {
 $stI = $pdo->prepare("
   SELECT i.id_iniciativa, i.num_iniciativa, i.descricao, i.status,
          i.dt_prazo, i.dt_criacao, i.id_user_responsavel,
-         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
     FROM iniciativas i
     LEFT JOIN usuarios u ON u.id_user = i.id_user_responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE i.id_kr = ?
    ORDER BY i.num_iniciativa
 ");
@@ -45,17 +47,20 @@ $inPh   = implode(',', array_fill(0, count($iniIds), '?'));
 
 $stE = $pdo->prepare("
   SELECT ie.id_iniciativa, ie.id_user,
-         u.primeiro_nome, u.ultimo_nome
+         u.primeiro_nome, u.ultimo_nome,
+         a.path AS avatar_path, a.filename AS avatar_filename
     FROM iniciativas_envolvidos ie
     JOIN usuarios u ON u.id_user = ie.id_user
+    LEFT JOIN avatars a ON a.id = u.avatar_id
    WHERE ie.id_iniciativa IN ($inPh)
 ");
 $stE->execute($iniIds);
 $envolvidos = [];
 foreach ($stE->fetchAll() as $e) {
   $envolvidos[$e['id_iniciativa']][] = [
-    'id_user' => (int)$e['id_user'],
-    'nome'    => trim($e['primeiro_nome'] . ' ' . ($e['ultimo_nome'] ?? '')),
+    'id_user'    => (int)$e['id_user'],
+    'nome'       => trim($e['primeiro_nome'] . ' ' . ($e['ultimo_nome'] ?? '')),
+    'avatar_url' => api_avatar_url_from_row(['path' => $e['avatar_path'] ?? null, 'filename' => $e['avatar_filename'] ?? null]),
   ];
 }
 
@@ -87,8 +92,9 @@ $result = array_map(function ($i) use ($envolvidos, $orcs) {
     'dt_prazo'        => $i['dt_prazo'],
     'dt_criacao'      => $i['dt_criacao'],
     'responsavel'     => $i['id_user_responsavel'] ? [
-      'id_user' => (int)$i['id_user_responsavel'],
-      'nome'    => trim(($i['resp_nome'] ?? '') . ' ' . ($i['resp_sobrenome'] ?? '')),
+      'id_user'    => (int)$i['id_user_responsavel'],
+      'nome'       => trim(($i['resp_nome'] ?? '') . ' ' . ($i['resp_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $i['resp_avatar_path'] ?? null, 'filename' => $i['resp_avatar_filename'] ?? null]),
     ] : null,
     'envolvidos'      => $envolvidos[$id] ?? [],
     'orcamento'       => $orc ? [

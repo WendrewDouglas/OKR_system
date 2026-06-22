@@ -21,7 +21,6 @@ $sql = "
     u.ultimo_nome,
     u.email_corporativo AS email,
     u.id_company,
-    u.imagem_url AS avatar_url,
     c.organizacao AS empresa
   FROM usuarios u
   LEFT JOIN company c ON c.id_company = u.id_company
@@ -42,6 +41,10 @@ $idCompanyUser = (int)($user['id_company'] ?? 0);
 if ($idCompanyToken > 0 && $idCompanyUser > 0 && $idCompanyToken !== $idCompanyUser) {
   api_error('E_AUTH', 'Token não pertence a esta organização.', 401);
 }
+
+// Avatar do catálogo (fonte única) — URL absoluta + thumb (64px).
+$user['avatar_url']       = api_avatar_url_for($idUser);
+$user['avatar_url_thumb'] = api_avatar_thumb_for($idUser);
 
 api_json([
   'ok' => true,

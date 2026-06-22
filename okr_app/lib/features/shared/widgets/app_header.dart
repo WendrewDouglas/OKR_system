@@ -6,11 +6,24 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/haptics.dart';
 import 'user_avatar.dart';
 
+/// Cabeçalho de marca padrão do app (presente em todas as páginas).
+///
+/// - Nas abas: usado sem [showBack]/[title]/[actions] (apenas a faixa de marca).
+/// - Nas páginas full-screen: [showBack] exibe o botão voltar e [title]/[actions]
+///   adicionam uma sub-linha com o nome da página e ações específicas.
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
-  const AppHeader({super.key});
+  final bool showBack;
+  final String? title;
+  final List<Widget>? actions;
+
+  const AppHeader({super.key, this.showBack = false, this.title, this.actions});
+
+  bool get _hasSubBar => (title != null && title!.isNotEmpty) || (actions != null && actions!.isNotEmpty);
+
+  static const double _subBarHeight = 44;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(kToolbarHeight + (_hasSubBar ? _subBarHeight : 0));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,12 +36,26 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.only(top: topPadding, left: 16, right: 8),
+            padding: EdgeInsets.only(top: topPadding, left: showBack ? 4 : 16, right: 8),
             child: SizedBox(
               height: kToolbarHeight - 1,
               child: Row(
                 children: [
-                  // Avatar + Name → tap to profile
+                  if (showBack)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.text, size: 20),
+                      onPressed: () {
+                        AppHaptics.light();
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/okrs');
+                        }
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    ),
+                  // Avatar + Nome → toca para o perfil
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -73,7 +100,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                     ),
                   ),
-                  // Notification bell
+                  // Sino de notificações
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined, color: AppColors.text, size: 24),
                     onPressed: () {
@@ -83,7 +110,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),
-                  // PlanningBI logo
+                  // Logo PlanningBI
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Image.asset(
@@ -97,7 +124,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               ),
             ),
           ),
-          // Subtle gradient divider at base
+          // Divisor gradiente sutil na base
           Container(
             height: 1,
             decoration: BoxDecoration(
@@ -110,6 +137,30 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               ),
             ),
           ),
+          // Sub-linha de página: título + ações específicas da tela
+          if (_hasSubBar)
+            SizedBox(
+              height: _subBarHeight,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16, right: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title ?? '',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (actions != null) ...actions!,
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

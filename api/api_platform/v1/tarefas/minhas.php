@@ -75,12 +75,12 @@ $stIni = $pdo->prepare("
 $stIni->execute([$uid, $uid, $cid]);
 $iniciativas = $stIni->fetchAll(PDO::FETCH_ASSOC);
 
-api_json([
-    'ok'           => true,
+$payload = [
     'krs'          => $krs,
     'iniciativas'  => $iniciativas,
     'totals'       => [
         'krs'          => count($krs),
         'iniciativas'  => count($iniciativas),
     ],
-]);
+];
+api_ok($payload, $payload);

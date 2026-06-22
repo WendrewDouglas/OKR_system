@@ -13,11 +13,13 @@ $pdo  = api_db();
 $st = $pdo->prepare("
   SELECT i.*, o.id_company,
          u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename,
          uc.primeiro_nome AS criador_nome
     FROM iniciativas i
     JOIN key_results kr ON kr.id_kr = i.id_kr
     JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
     LEFT JOIN usuarios u ON u.id_user = i.id_user_responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
     LEFT JOIN usuarios uc ON uc.id_user = i.id_user_criador
    WHERE i.id_iniciativa = ?
 ");
@@ -30,15 +32,18 @@ if (!$ini || (int)$ini['id_company'] !== $cid) {
 
 // Envolvidos
 $stE = $pdo->prepare("
-  SELECT ie.id_user, u.primeiro_nome, u.ultimo_nome
+  SELECT ie.id_user, u.primeiro_nome, u.ultimo_nome,
+         a.path AS avatar_path, a.filename AS avatar_filename
     FROM iniciativas_envolvidos ie
     JOIN usuarios u ON u.id_user = ie.id_user
+    LEFT JOIN avatars a ON a.id = u.avatar_id
    WHERE ie.id_iniciativa = ?
 ");
 $stE->execute([$id]);
 $envolvidos = array_map(fn($e) => [
-  'id_user' => (int)$e['id_user'],
-  'nome'    => trim($e['primeiro_nome'] . ' ' . ($e['ultimo_nome'] ?? '')),
+  'id_user'    => (int)$e['id_user'],
+  'nome'       => trim($e['primeiro_nome'] . ' ' . ($e['ultimo_nome'] ?? '')),
+  'avatar_url' => api_avatar_url_from_row(['path' => $e['avatar_path'] ?? null, 'filename' => $e['avatar_filename'] ?? null]),
 ], $stE->fetchAll());
 
 // Budget
@@ -61,8 +66,9 @@ api_json([
     'dt_criacao'         => $ini['dt_criacao'],
     'observacoes'        => $ini['observacoes'] ?? '',
     'responsavel'        => $ini['id_user_responsavel'] ? [
-      'id_user' => (int)$ini['id_user_responsavel'],
-      'nome'    => trim(($ini['resp_nome'] ?? '') . ' ' . ($ini['resp_sobrenome'] ?? '')),
+      'id_user'    => (int)$ini['id_user_responsavel'],
+      'nome'       => trim(($ini['resp_nome'] ?? '') . ' ' . ($ini['resp_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $ini['resp_avatar_path'] ?? null, 'filename' => $ini['resp_avatar_filename'] ?? null]),
     ] : null,
     'criador'            => $ini['criador_nome'] ?? '',
     'envolvidos'         => $envolvidos,

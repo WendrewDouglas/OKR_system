@@ -53,12 +53,16 @@ if (!empty($sets)) {
 // Return updated user
 $st = $pdo->prepare("
   SELECT u.id_user, u.primeiro_nome, u.ultimo_nome, u.email_corporativo AS email,
-         u.telefone, u.id_company, u.imagem_url AS avatar_url, c.organizacao AS empresa
+         u.telefone, u.id_company, c.organizacao AS empresa
     FROM usuarios u
     LEFT JOIN company c ON c.id_company = u.id_company
    WHERE u.id_user = ?
 ");
 $st->execute([$uid]);
 $user = $st->fetch();
+
+// Avatar do catálogo (fonte única) — URL absoluta + thumb.
+$user['avatar_url']       = api_avatar_url_for((int)$uid);
+$user['avatar_url_thumb'] = api_avatar_thumb_for((int)$uid);
 
 api_json(['ok' => true, 'user' => $user]);

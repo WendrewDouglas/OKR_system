@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/models/models.dart';
 import '../../core/network/api_client.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/farol_indicator.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/progress_chart.dart';
+import '../shared/widgets/error_retry.dart';
+import '../shared/widgets/confirm_dialog.dart';
+import '../shared/widgets/app_scaffold.dart';
 import 'apontamento_sheet.dart';
 
+// Detalhe do KR (GET single rico: kr/milestones/chart/agregados) — não enveloppado, mantido como Map.
 final krDetailProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, idKr) async {
   final api = ref.read(apiClientProvider);
@@ -17,11 +23,10 @@ final krDetailProvider = FutureProvider.autoDispose
   return res.data as Map<String, dynamic>;
 });
 
+// Iniciativas do KR: camada tipada (IniciativaRepository → DTO Iniciativa).
 final iniciativasForKrProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, idKr) async {
-  final api = ref.read(apiClientProvider);
-  final res = await api.dio.get('/krs/$idKr/iniciativas');
-  return ((res.data['iniciativas'] as List?) ?? []).cast<Map<String, dynamic>>();
+    .family<List<Iniciativa>, String>((ref, idKr) {
+  return ref.read(iniciativaRepositoryProvider).listByKr(idKr);
 });
 
 class KrDetailScreen extends ConsumerWidget {
@@ -32,39 +37,22 @@ class KrDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(krDetailProvider(idKr));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Key Result'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              AppHaptics.light();
-              context.push('/krs/$idKr/editar');
-            },
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Key Result',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: () {
+            AppHaptics.light();
+            context.push('/krs/$idKr/editar');
+          },
+        ),
+      ],
       body: detail.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text('Erro ao carregar KR', style: TextStyle(color: AppColors.red)),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(krDetailProvider(idKr));
-                },
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar KR',
+          onRetry: () => ref.invalidate(krDetailProvider(idKr)),
         ),
         data: (data) {
           final kr = data['kr'] as Map<String, dynamic>? ?? {};
@@ -116,7 +104,7 @@ class KrDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                _MilestonesSection(milestones: milestones, idKr: idKr, kr: kr, ref: ref),
+                _MilestonesSection(milestones: milestones, kr: kr),
                 const SizedBox(height: 16),
 
                 // Aggregates row
@@ -145,10 +133,10 @@ class KrDetailScreen extends ConsumerWidget {
                 ]),
                 const SizedBox(height: 16),
 
-                _IniciativasPreview(idKr: idKr, ref: ref),
+                _IniciativasPreview(idKr: idKr),
                 const SizedBox(height: 24),
 
-                _ActionButtons(idKr: idKr, kr: kr, ref: ref),
+                _ActionButtons(idKr: idKr, kr: kr),
               ],
             ),
           );
@@ -279,10 +267,8 @@ class _LegendDot extends StatelessWidget {
 
 class _MilestonesSection extends StatelessWidget {
   final List<Map<String, dynamic>> milestones;
-  final String idKr;
   final Map<String, dynamic> kr;
-  final WidgetRef ref;
-  const _MilestonesSection({required this.milestones, required this.idKr, required this.kr, required this.ref});
+  const _MilestonesSection({required this.milestones, required this.kr});
 
   @override
   Widget build(BuildContext context) {
@@ -394,13 +380,12 @@ class _AggCard extends StatelessWidget {
   }
 }
 
-class _IniciativasPreview extends StatelessWidget {
+class _IniciativasPreview extends ConsumerWidget {
   final String idKr;
-  final WidgetRef ref;
-  const _IniciativasPreview({required this.idKr, required this.ref});
+  const _IniciativasPreview({required this.idKr});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final inis = ref.watch(iniciativasForKrProvider(idKr));
     return inis.when(
       loading: () => const SizedBox.shrink(),
@@ -428,12 +413,12 @@ class _IniciativasPreview extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 dense: true,
-                title: Text(ini['descricao'] ?? '', style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(ini['status'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                title: Text(ini.descricao, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(ini.status, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 trailing: const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
                 onTap: () {
                   AppHaptics.light();
-                  context.push('/iniciativas/${ini['id_iniciativa']}');
+                  context.push('/iniciativas/${ini.idIniciativa}');
                 },
               ),
             )),
@@ -444,15 +429,29 @@ class _IniciativasPreview extends StatelessWidget {
   }
 }
 
-class _ActionButtons extends StatelessWidget {
+class _ActionButtons extends ConsumerStatefulWidget {
   final String idKr;
   final Map<String, dynamic> kr;
-  final WidgetRef ref;
-  const _ActionButtons({required this.idKr, required this.kr, required this.ref});
+  const _ActionButtons({required this.idKr, required this.kr});
+
+  @override
+  ConsumerState<_ActionButtons> createState() => _ActionButtonsState();
+}
+
+class _ActionButtonsState extends ConsumerState<_ActionButtons> {
+  bool _busy = false;
 
   @override
   Widget build(BuildContext context) {
-    final status = kr['status'] as String? ?? '';
+    if (_busy) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
+        ),
+      );
+    }
+    final status = widget.kr['status'] as String? ?? '';
     final isCancelado = status.toLowerCase() == 'cancelado';
 
     return Row(children: [
@@ -462,10 +461,7 @@ class _ActionButtons extends StatelessWidget {
             icon: const Icon(Icons.cancel_outlined, size: 18),
             label: const Text('Cancelar KR'),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.red, side: const BorderSide(color: AppColors.red)),
-            onPressed: () {
-              AppHaptics.medium();
-              _cancelKr(context);
-            },
+            onPressed: _cancelKr,
           ),
         ),
       if (isCancelado)
@@ -473,42 +469,81 @@ class _ActionButtons extends StatelessWidget {
           child: ElevatedButton.icon(
             icon: const Icon(Icons.play_arrow, size: 18),
             label: const Text('Reativar KR'),
-            onPressed: () {
-              AppHaptics.medium();
-              _reactivateKr(context);
-            },
+            onPressed: _reactivateKr,
           ),
         ),
     ]);
   }
 
-  Future<void> _cancelKr(BuildContext context) async {
-    final api = ref.read(apiClientProvider);
+  Future<void> _cancelKr() async {
+    AppHaptics.medium();
+    // Backend exige justificativa (SEC-08) — solicita ao usuário.
+    final reason = await _promptJustificativa();
+    if (reason == null) return;
+    await _run(() => ref.read(krRepositoryProvider).cancel(widget.idKr, reason), 'KR cancelado.');
+  }
+
+  Future<void> _reactivateKr() async {
+    AppHaptics.medium();
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Reativar KR',
+      message: 'Deseja reativar este Key Result?',
+      confirmLabel: 'Reativar',
+    );
+    if (!ok) return;
+    await _run(() => ref.read(krRepositoryProvider).reactivate(widget.idKr), 'KR reativado.');
+  }
+
+  Future<void> _run(Future<void> Function() action, String okMsg) async {
+    if (_busy) return;
+    setState(() => _busy = true);
     try {
-      await api.dio.post('/krs/$idKr/cancelar');
-      ref.invalidate(krDetailProvider(idKr));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('KR cancelado.')));
+      await action();
+      ref.invalidate(krDetailProvider(widget.idKr));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(okMsg)));
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+        setState(() => _busy = false);
       }
     }
   }
 
-  Future<void> _reactivateKr(BuildContext context) async {
-    final api = ref.read(apiClientProvider);
-    try {
-      await api.dio.post('/krs/$idKr/reativar');
-      ref.invalidate(krDetailProvider(idKr));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('KR reativado.')));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
-      }
-    }
+  Future<String?> _promptJustificativa() async {
+    final ctrl = TextEditingController();
+    final r = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        title: const Text('Cancelar KR'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(hintText: 'Justificativa (obrigatória)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Voltar', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: Colors.white),
+            onPressed: () {
+              final t = ctrl.text.trim();
+              if (t.isEmpty) return;
+              Navigator.pop(ctx, t);
+            },
+            child: const Text('Cancelar KR'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    return r;
   }
 }

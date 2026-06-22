@@ -45,6 +45,8 @@ $routes = [
   ['POST',   'auth/refresh-token',     'auth/refresh_token.php'],
   ['GET',    'auth/me',                'auth/me.php'],
   ['PUT',    'auth/me',                'auth/me_update.php'],
+  ['POST',   'auth/avatar/select',     'auth/avatar_select.php'],
+  ['GET',    'auth/avatars',           'auth/avatars.php'],
   ['POST',   'auth/avatar',            'auth/avatar_upload.php'],
   ['DELETE', 'auth/avatar',            'auth/avatar_delete.php'],
 
@@ -53,6 +55,7 @@ $routes = [
   ['PUT',    'company/me',             'company/me_update.php'],
   ['GET',    'company/style',          'company/style.php'],
   ['PUT',    'company/style',          'company/style_update.php'],
+  ['DELETE', 'company/style',          'company/style_reset.php'],
 
   // Minhas Tarefas
   ['GET',    'minhas-tarefas',         'tarefas/minhas.php'],
@@ -68,6 +71,7 @@ $routes = [
   ['GET',    'objetivos/:id',          'objetivos/get.php'],
   ['PUT',    'objetivos/:id',          'objetivos/update.php'],
   ['DELETE', 'objetivos/:id',          'objetivos/delete.php'],
+  ['GET',    'objetivos/:id/relatorio', 'relatorios/objetivo_pdf.php'],
 
   // Key Results (nested under objetivo for listing)
   ['GET',    'objetivos/:id_objetivo/krs', 'krs/list.php'],
@@ -127,9 +131,24 @@ $routes = [
   ['GET',    'dominios/:tabela',               'dominios/get.php'],
   ['GET',    'responsaveis',                   'dominios/responsaveis.php'],
 
+  // Companies (gestão multi-empresa — admin_master)
+  ['GET',    'companies',                      'companies/list.php'],
+  ['POST',   'companies',                      'companies/create.php'],
+  ['GET',    'companies/:id',                  'companies/get.php'],
+  ['PUT',    'companies/:id',                  'companies/update.php'],
+
+  // System (admin_master)
+  ['GET',    'system/health',                  'system/health.php'],
+
+  // Matriz de prioridade (Eisenhower de iniciativas — escopo da empresa)
+  ['GET',    'matriz-prioridade',              'matriz/prioridade.php'],
+
   // Push Notifications
   ['GET',    'push/campaigns',                     'push/campaigns_list.php'],
+  ['POST',   'push/campaigns',                     'push/campaigns_create.php'],
   ['GET',    'push/campaigns/:id',                 'push/campaigns_get.php'],
+  ['PUT',    'push/campaigns/:id',                 'push/campaigns_update.php'],
+  ['POST',   'push/campaigns/:id/send',            'push/campaigns_send.php'],
   ['POST',   'push/campaigns/:id/send-test',       'push/campaigns_send_test.php'],
   ['POST',   'push/campaigns/:id/cancel',          'push/campaigns_cancel.php'],
   ['POST',   'push/campaigns/:id/duplicate',       'push/campaigns_duplicate.php'],

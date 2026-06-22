@@ -490,8 +490,8 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
               <div id="ciclo_detalhe_personalizado" class="detalhe" style="display:none; margin-top:6px%;">
                 <label for="ciclo_pers_inicio"><i class="fa-regular fa-calendar-days"></i> Detalhes do Ciclo:</label>
                 <div class="split">
-                  <input type="month" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
-                  <input type="month" id="ciclo_pers_fim" name="ciclo_pers_fim">
+                  <input type="date" id="ciclo_pers_inicio" name="ciclo_pers_inicio">
+                  <input type="date" id="ciclo_pers_fim" name="ciclo_pers_fim">
                 </div>
               </div>
             </div>
@@ -525,7 +525,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
               <div class="note">Se não escolher, será aplicado “Não Iniciado”.</div>
             </div>
             <div>
-              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Envolvidos no KR</label>
+              <label for="responsavel_kr"><i class="fa-regular fa-user"></i> Responsável</label>
               <select id="responsavel_kr" name="responsavel">
                 <option value="">Selecione...</option>
                 <?php foreach($users as $u): ?>
@@ -535,6 +535,22 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
                 <?php endforeach; ?>
               </select>
             </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label><i class="fa-regular fa-handshake"></i> Sócios do KR (até 3)</label>
+            <div class="note">Cada sócio precisa aprovar o convite. Informe o motivo da sociedade (obrigatório se escolher um sócio).</div>
+            <?php for($si=0;$si<3;$si++): ?>
+              <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+                <select name="socios[<?= $si ?>][id_user]" style="flex:1;">
+                  <option value="">Sócio <?= $si+1 ?> (opcional)…</option>
+                  <?php foreach($users as $u): ?>
+                    <option value="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars(trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? '')), ENT_QUOTES, 'UTF-8') ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <input type="text" name="socios[<?= $si ?>][motivo]" placeholder="Motivo da sociedade" style="flex:2;">
+              </div>
+            <?php endfor; ?>
           </div>
 
             </div><!-- /.pd-body -->
@@ -753,11 +769,18 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     else if (tipo === 'personalizado') {
       const ini = $('#ciclo_pers_inicio')?.value || '';
       const fim = $('#ciclo_pers_fim')?.value || '';
-      if (/^\d{4}-\d{2}$/.test(ini)) {
+      // aceita data precisa (YYYY-MM-DD) ou mês (YYYY-MM, legado)
+      let mi;
+      if ((mi = ini.match(/^(\d{4})-(\d{2})-(\d{2})$/))) {
+        start = new Date(+mi[1], +mi[2]-1, +mi[3]);
+      } else if (/^\d{4}-\d{2}$/.test(ini)) {
         const [y1,m1] = ini.split('-').map(n=>parseInt(n,10));
         start = new Date(y1, m1-1, 1);
       }
-      if (/^\d{4}-\d{2}$/.test(fim)) {
+      let mf;
+      if ((mf = fim.match(/^(\d{4})-(\d{2})-(\d{2})$/))) {
+        end = new Date(+mf[1], +mf[2]-1, +mf[3]);
+      } else if (/^\d{4}-\d{2}$/.test(fim)) {
         const [y2,m2] = fim.split('-').map(n=>parseInt(n,10));
         end = new Date(y2, m2-1, lastDayOfMonth(y2, m2-1));
       }

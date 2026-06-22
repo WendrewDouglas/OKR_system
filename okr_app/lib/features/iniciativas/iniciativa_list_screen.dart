@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/network/api_client.dart';
+import '../../core/models/models.dart';
+import '../../core/repositories/repositories.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/animations.dart';
 import '../shared/widgets/loading_shimmer.dart';
 import '../shared/widgets/status_badge.dart';
 import '../shared/widgets/empty_state.dart';
+import '../shared/widgets/error_retry.dart';
+import '../shared/widgets/app_scaffold.dart';
 
 final iniciativasProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, idKr) async {
-  final api = ref.read(apiClientProvider);
-  final res = await api.dio.get('/krs/$idKr/iniciativas');
-  return ((res.data['iniciativas'] as List?) ?? []).cast<Map<String, dynamic>>();
+    .family<List<Iniciativa>, String>((ref, idKr) {
+  return ref.read(iniciativaRepositoryProvider).listByKr(idKr);
 });
+
+String _fmtDate(DateTime? d) =>
+    d == null ? '' : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
 class IniciativaListScreen extends ConsumerWidget {
   final String idKr;
@@ -24,28 +28,13 @@ class IniciativaListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inis = ref.watch(iniciativasProvider(idKr));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Iniciativas')),
+    return AppScaffold(
+      title: 'Iniciativas',
       body: inis.when(
         loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.red, size: 48),
-              const SizedBox(height: 12),
-              const Text('Erro ao carregar iniciativas', style: TextStyle(color: AppColors.red)),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Tentar novamente'),
-                onPressed: () {
-                  AppHaptics.light();
-                  ref.invalidate(iniciativasProvider(idKr));
-                },
-              ),
-            ],
-          ),
+        error: (e, _) => ErrorRetry(
+          message: 'Erro ao carregar iniciativas',
+          onRetry: () => ref.invalidate(iniciativasProvider(idKr)),
         ),
         data: (items) => items.isEmpty
             ? EmptyState(
@@ -74,7 +63,7 @@ class IniciativaListScreen extends ConsumerWidget {
                   itemCount: items.length,
                   itemBuilder: (ctx, i) => StaggeredFadeSlide(
                     index: i,
-                    child: _IniciativaCard(ini: items[i], idKr: idKr),
+                    child: _IniciativaCard(ini: items[i]),
                   ),
                 ),
               ),
@@ -92,15 +81,15 @@ class IniciativaListScreen extends ConsumerWidget {
 }
 
 class _IniciativaCard extends StatelessWidget {
-  final Map<String, dynamic> ini;
-  final String idKr;
-  const _IniciativaCard({required this.ini, required this.idKr});
+  final Iniciativa ini;
+  const _IniciativaCard({required this.ini});
 
   @override
   Widget build(BuildContext context) {
-    final resp = ini['responsavel'] as Map<String, dynamic>?;
-    final envolvidos = (ini['envolvidos'] as List?) ?? [];
-    final orc = ini['orcamento'] as Map<String, dynamic>?;
+    final resp = ini.responsavel;
+    final envolvidos = ini.envolvidos;
+    final orc = ini.orcamento;
+    final prazo = _fmtDate(ini.dtPrazo);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -108,7 +97,7 @@ class _IniciativaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           AppHaptics.light();
-          context.push('/iniciativas/${ini['id_iniciativa']}');
+          context.push('/iniciativas/${ini.idIniciativa}');
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -122,22 +111,22 @@ class _IniciativaCard extends StatelessWidget {
                     color: AppColors.gold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('#${ini['num_iniciativa']}', style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                  child: Text('#${ini.numIniciativa}', style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 8),
-                StatusBadge(label: ini['status'] ?? ''),
+                StatusBadge(label: ini.status),
                 const Spacer(),
-                if (ini['dt_prazo'] != null)
-                  Text(ini['dt_prazo'], style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                if (prazo.isNotEmpty)
+                  Text(prazo, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
               ]),
               const SizedBox(height: 10),
-              Text(ini['descricao'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(ini.descricao, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 10),
               Row(children: [
                 if (resp != null) ...[
                   const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
                   const SizedBox(width: 4),
-                  Text(resp['nome'] ?? '', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(resp.nome, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
                 if (envolvidos.length > 1) ...[
                   const SizedBox(width: 6),
@@ -147,7 +136,7 @@ class _IniciativaCard extends StatelessWidget {
                 if (orc != null) ...[
                   const Icon(Icons.account_balance_wallet_outlined, size: 14, color: AppColors.textMuted),
                   const SizedBox(width: 4),
-                  Text('R\$ ${_fmt(orc['aprovado'])}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text('R\$ ${_fmt(orc.aprovado)}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
               ]),
             ],
@@ -157,9 +146,5 @@ class _IniciativaCard extends StatelessWidget {
     );
   }
 
-  String _fmt(dynamic v) {
-    if (v == null) return '0';
-    final d = (v as num).toDouble();
-    return d.toStringAsFixed(d == d.roundToDouble() ? 0 : 2);
-  }
+  String _fmt(double d) => d.toStringAsFixed(d == d.roundToDouble() ? 0 : 2);
 }

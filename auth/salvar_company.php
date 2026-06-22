@@ -43,25 +43,38 @@ function validaCNPJ($cnpj) {
 
 function consultaCNPJ($cnpj) {
   $url = "https://brasilapi.com.br/api/cnpj/v1/" . $cnpj;
-  $ch = curl_init($url);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT => 12,
-    CURLOPT_CONNECTTIMEOUT => 8,
-    CURLOPT_SSL_VERIFYPEER => true,
-    CURLOPT_SSL_VERIFYHOST => 2,
-    CURLOPT_HTTPHEADER => ['Accept: application/json'],
-  ]);
-  $resp = curl_exec($ch);
-  $err  = curl_error($ch);
-  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-  if ($resp === false || $code < 200 || $code >= 300) {
-    return [null, $err ?: "HTTP $code"];
+  $attempts = 3;
+  $err = ''; $code = 0;
+  for ($i = 0; $i < $attempts; $i++) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_TIMEOUT => 12,
+      CURLOPT_CONNECTTIMEOUT => 8,
+      CURLOPT_SSL_VERIFYPEER => true,
+      CURLOPT_SSL_VERIFYHOST => 2,
+      CURLOPT_HTTPHEADER => ['Accept: application/json'],
+      CURLOPT_USERAGENT => 'OKR-System/1.0',
+    ]);
+    $resp = curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($resp !== false && $code >= 200 && $code < 300) {
+      $json = json_decode($resp, true);
+      if (is_array($json)) return [$json, null, $code];
+      return [null, 'Resposta inválida da API', $code];
+    }
+
+    // Só repete em erros transitórios (429 rate-limit, 5xx, falha de rede).
+    $transitorio = ($code === 429 || $code >= 500 || $code === 0);
+    if (!$transitorio) {
+      return [null, ($err ?: "HTTP $code"), $code]; // ex.: 404 = CNPJ inexistente
+    }
+    if ($i < $attempts - 1) sleep($i + 1); // backoff: 1s, 2s
   }
-  $json = json_decode($resp, true);
-  if (!is_array($json)) return [null, 'Resposta inválida da API'];
-  return [$json, null];
+  return [null, ($err ?: "HTTP $code"), $code];
 }
 
 function mapearCNPJ(array $j): array {
@@ -162,7 +175,9 @@ try {
 try {
   $pdo->beginTransaction();
 
-  $fezConsulta = false;
+  $fezConsulta  = false;
+  $consultaOk   = true;  // a consulta à Receita teve sucesso? (degrada se a API falhar)
+  $avisoReceita = null;
   $dadosOficiais = [
     'cnpj' => null, 'razao_social'=>null,
     'natureza_juridica_code'=>null, 'natureza_juridica_desc'=>null,
@@ -194,15 +209,24 @@ try {
       echo json_encode(['success'=>false,'error'=>'CNPJ já cadastrado em outra organização.']); exit;
     }
 
-    // Consulta BrasilAPI
-    [$json, $err] = consultaCNPJ($cnpj_digits);
-    if ($err) {
+    // Consulta BrasilAPI (com retry em erros transitórios: 429/5xx/rede)
+    [$json, $err, $httpCode] = consultaCNPJ($cnpj_digits);
+    if ($err === null) {
+      $dadosOficiais = array_merge($dadosOficiais, mapearCNPJ($json));
+      $dadosOficiais['cnpj'] = $cnpj_digits;
+    } elseif ($httpCode === 404) {
+      // CNPJ não existe na Receita → erro real
       $pdo->rollBack();
-      http_response_code(502);
-      echo json_encode(['success'=>false,'error'=>"Falha ao consultar CNPJ na Receita: $err"]); exit;
+      http_response_code(422);
+      echo json_encode(['success'=>false,'error'=>'CNPJ não encontrado na base da Receita.']); exit;
+    } else {
+      // Receita indisponível (ex.: 429 rate-limit). NÃO bloqueia: o CNPJ já foi
+      // validado localmente (checksum). Salva o CNPJ sem atualizar os dados
+      // oficiais e avisa o usuário para sincronizar depois.
+      $consultaOk = false;
+      $dadosOficiais['cnpj'] = $cnpj_digits;
+      $avisoReceita = "Não foi possível consultar a Receita agora ($err). O CNPJ foi salvo, mas os dados oficiais (razão social, endereço…) não foram atualizados — salve novamente mais tarde para sincronizar.";
     }
-    $dadosOficiais = array_merge($dadosOficiais, mapearCNPJ($json));
-    $dadosOficiais['cnpj'] = $cnpj_digits;
     $fezConsulta = true;
   }
 
@@ -235,8 +259,8 @@ try {
     $set = ['organizacao = :organizacao'];
     $params = [':organizacao'=>$organizacao, ':id'=>$id_company];
 
-    if ($cnpj_digits !== '') {
-      // Substitui CNPJ e todos os dados oficiais
+    if ($cnpj_digits !== '' && $consultaOk) {
+      // Substitui CNPJ e todos os dados oficiais (consulta à Receita OK)
       $set = array_merge($set, [
         'cnpj = :cnpj',
         'razao_social = :razao_social',
@@ -271,6 +295,10 @@ try {
         ':situacao'    => $dadosOficiais['situacao_cadastral'],
         ':data_situacao'=> $dadosOficiais['data_situacao_cadastral'],
       ];
+    } elseif ($cnpj_digits !== '') {
+      // Receita indisponível: atualiza só o CNPJ e preserva os dados oficiais atuais.
+      $set[] = 'cnpj = :cnpj';
+      $params[':cnpj'] = $cnpj_digits;
     }
     // Se não veio CNPJ, mantém o atual e só atualiza o nome fantasia.
 
@@ -290,7 +318,7 @@ try {
     $vals = [':organizacao',':created_by'];
     $params = [':organizacao'=>$organizacao, ':created_by'=>$userId];
 
-    if ($cnpj_digits !== '') {
+    if ($cnpj_digits !== '' && $consultaOk) {
       $cols = array_merge($cols, [
         'cnpj','razao_social','natureza_juridica_code','natureza_juridica_desc',
         'logradouro','numero','complemento','cep','bairro','municipio','uf',
@@ -318,6 +346,11 @@ try {
         ':situacao'    => $dadosOficiais['situacao_cadastral'],
         ':data_situacao'=> $dadosOficiais['data_situacao_cadastral'],
       ];
+    } elseif ($cnpj_digits !== '') {
+      // Receita indisponível: grava apenas o CNPJ (dados oficiais ficam vazios).
+      $cols[] = 'cnpj';
+      $vals[] = ':cnpj';
+      $params[':cnpj'] = $cnpj_digits;
     }
 
     $sql = "INSERT INTO company (".implode(', ',$cols).") VALUES (".implode(', ',$vals).")";
@@ -335,6 +368,7 @@ try {
   echo json_encode([
     'success'      => true,
     'fez_consulta' => $fezConsulta,
+    'aviso'        => $avisoReceita,
     'record'       => $record
   ]);
 } catch (PDOException $e) {

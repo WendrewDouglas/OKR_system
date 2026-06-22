@@ -23,7 +23,6 @@ $sql = "
     u.email_corporativo,
     u.id_company,
     u.empresa,
-    u.imagem_url,
     c.senha_hash
   FROM usuarios u
   INNER JOIN usuarios_credenciais c ON c.id_user = u.id_user
@@ -53,6 +52,7 @@ api_json([
     'email' => (string)$user['email_corporativo'],
     'id_company' => $user['id_company'],
     'empresa' => $user['empresa'],
-    'avatar_url' => $user['imagem_url'] ?: null,
+    'avatar_url' => api_avatar_url_for((int)$user['id_user']),
+    'avatar_url_thumb' => api_avatar_thumb_for((int)$user['id_user']),
   ],
 ]);

@@ -17,6 +17,10 @@ api_require_fields($in, ['id_kr', 'descricao']);
 $idKr    = api_str($in['id_kr']);
 $desc    = api_str($in['descricao']);
 $status  = api_str($in['status'] ?? 'Não Iniciado');
+// Valida status informado contra o domínio (iniciativas.status → dom_status_kr)
+if (array_key_exists('status', $in)) {
+  api_assert_domain($pdo, 'dom_status_kr', 'id_status', $status, 'status');
+}
 $dtPrazo = api_date_or_null($in['dt_prazo'] ?? null);
 $respId  = api_int_or_null($in['id_user_responsavel'] ?? null);
 
@@ -44,6 +48,11 @@ $st->execute([$idKr]);
 $co = $st->fetchColumn();
 if ($co === false || (int)$co !== $cid) {
   api_error('E_NOT_FOUND', 'Key Result não encontrado.', 404);
+}
+
+// RBAC: exige permissão de escrita em iniciativa (isolamento já garantido pelo tenant check do KR acima)
+if (!api_has_cap($pdo, $uid, $cid, 'W:iniciativa@ORG')) {
+  api_error('E_FORBIDDEN', 'Sem permissão para criar iniciativas.', 403);
 }
 
 // Anti-duplicate (same KR+desc within 30s)

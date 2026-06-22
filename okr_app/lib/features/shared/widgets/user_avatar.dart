@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -51,12 +52,30 @@ class UserAvatar extends StatelessWidget {
   Widget _buildAvatar() {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       final fullUrl = _resolveUrl(avatarUrl!);
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: _avatarBlue,
-        backgroundImage: NetworkImage(fullUrl),
-        onBackgroundImageError: (_, __) {},
-        child: null,
+      final d = radius * 2;
+      // Galeria do catálogo é SVG; uploads custom são WebP; padrão é PNG.
+      if (fullUrl.toLowerCase().contains('.svg')) {
+        return ClipOval(
+          child: SvgPicture.network(
+            fullUrl,
+            width: d,
+            height: d,
+            fit: BoxFit.cover,
+            placeholderBuilder: (_) => SizedBox(width: d, height: d, child: _initialsAvatar()),
+          ),
+        );
+      }
+      // Raster (WebP/PNG/JPG) com fallback REAL para iniciais em erro/carregamento.
+      return ClipOval(
+        child: Image.network(
+          fullUrl,
+          width: d,
+          height: d,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _initialsAvatar(),
+          loadingBuilder: (ctx, child, prog) =>
+              prog == null ? child : SizedBox(width: d, height: d, child: _initialsAvatar()),
+        ),
       );
     }
     return _initialsAvatar();

@@ -25,9 +25,11 @@ $st = $pdo->prepare("
          kr.farol, kr.natureza_kr, kr.tipo_frequencia_milestone,
          kr.data_inicio, kr.data_fim, kr.dt_novo_prazo, kr.responsavel,
          kr.dt_ultima_atualizacao,
-         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome
+         u.primeiro_nome AS resp_nome, u.ultimo_nome AS resp_sobrenome,
+         ar.path AS resp_avatar_path, ar.filename AS resp_avatar_filename
     FROM key_results kr
     LEFT JOIN usuarios u ON u.id_user = kr.responsavel
+    LEFT JOIN avatars ar ON ar.id = u.avatar_id
    WHERE kr.id_objetivo = ?
    ORDER BY kr.key_result_num
 ");
@@ -75,8 +77,9 @@ foreach ($krs as $kr) {
     'data_fim'                 => $kr['data_fim'],
     'dt_ultimo_atualizacao'    => $kr['dt_ultima_atualizacao'],
     'responsavel' => $kr['responsavel'] ? [
-      'id_user' => (int)$kr['responsavel'],
-      'nome'    => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'id_user'    => (int)$kr['responsavel'],
+      'nome'       => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $kr['resp_avatar_path'] ?? null, 'filename' => $kr['resp_avatar_filename'] ?? null]),
     ] : null,
     'progress' => [
       'valor_atual'    => $valorAtual,

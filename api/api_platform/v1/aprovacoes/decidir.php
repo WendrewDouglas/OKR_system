@@ -15,13 +15,34 @@ $pdo  = api_db();
 $in = api_input();
 api_require_fields($in, ['modulo', 'id_ref', 'decisao']);
 
-$modulo   = api_enum(api_str($in['modulo']), ['objetivo', 'kr', 'orcamento'], 'modulo');
+$modulo   = api_enum(api_str($in['modulo']), ['objetivo', 'kr', 'orcamento', 'socio'], 'modulo');
 $idRef    = api_str($in['id_ref']);
 $decisao  = api_enum(api_str($in['decisao']), ['aprovado', 'reprovado'], 'decisao');
 $comentarios = api_str($in['comentarios'] ?? '');
 
 if ($decisao === 'reprovado' && $comentarios === '') {
   api_error('E_INPUT', 'Comentário obrigatório para rejeição.', 422);
+}
+
+// Fluxo de SÓCIO: o decisor é o PRÓPRIO convidado (não um aprovador).
+// id_ref = id_convite (kr_socios). Rejeição exige justificativa (comentarios).
+if ($modulo === 'socio') {
+  api_load_helper('auth/helpers/kr_socios.php');
+  api_load_helper('auth/notify.php');
+  try {
+    $ctx = krSocioDecidir($pdo, (int)$idRef, $uid, $decisao, $comentarios);
+  } catch (\InvalidArgumentException $e) {
+    api_error('E_INPUT', $e->getMessage(), 422);
+  } catch (\RuntimeException $e) {
+    $m = $e->getMessage();
+    if ($m === 'NOT_FOUND') api_error('E_NOT_FOUND', 'Convite de sociedade não encontrado.', 404);
+    if ($m === 'FORBIDDEN') api_error('E_FORBIDDEN', 'Apenas o convidado pode decidir este convite.', 403);
+    if ($m === 'STATE')     api_error('E_STATE', 'Convite já decidido.', 409);
+    throw $e;
+  }
+  krSocioNotificarDecisao($pdo, $ctx);
+  api_json(['ok' => true, 'message' => $ctx['decisao'] === 'aprovado' ? 'Sociedade aceita.' : 'Sociedade recusada.']);
+  return;
 }
 
 // Verify approver
@@ -34,25 +55,45 @@ if (!$ap || (int)$ap['habilitado'] !== 1) {
   }
 }
 
+// Nome do aprovador (gravado em objetivos/key_results.aprovador, igual ao fluxo web).
+$stNome = $pdo->prepare("SELECT TRIM(CONCAT(primeiro_nome, ' ', COALESCE(ultimo_nome, ''))) FROM usuarios WHERE id_user = ?");
+$stNome->execute([$uid]);
+$nomeAprovador = (string)($stNome->fetchColumn() ?: '');
+
+// Isolamento multi-tenant: o item decidido deve pertencer à empresa do aprovador
+// (admin_master decide cross-empresa por design, consistente com aprovacoes/list).
+$ctxMap = [
+  'objetivo'  => ['id_objetivo'  => $idRef],
+  'kr'        => ['id_kr'        => $idRef],
+  'orcamento' => ['id_orcamento' => $idRef],
+];
+$itemCompany = api_resolve_resource_company($pdo, $modulo, $ctxMap[$modulo]);
+if ($itemCompany === null) {
+  api_error('E_NOT_FOUND', 'Item de aprovação não encontrado.', 404);
+}
+if (!api_is_admin_master($pdo, $uid) && $itemCompany !== $cid) {
+  api_error('E_FORBIDDEN', 'Item pertence a outra empresa.', 403);
+}
+
 $pdo->beginTransaction();
 try {
   switch ($modulo) {
     case 'objetivo':
       $pdo->prepare("
         UPDATE objetivos
-           SET status_aprovacao = ?, id_user_aprovador = ?,
+           SET status_aprovacao = ?, id_user_aprovador = ?, aprovador = ?,
                dt_aprovacao = NOW(), comentarios_aprovacao = ?
          WHERE id_objetivo = ?
-      ")->execute([$decisao, $uid, $comentarios ?: null, $idRef]);
+      ")->execute([$decisao, $uid, $nomeAprovador, $comentarios ?: null, $idRef]);
       break;
 
     case 'kr':
       $pdo->prepare("
         UPDATE key_results
-           SET status_aprovacao = ?, id_user_aprovador = ?,
+           SET status_aprovacao = ?, id_user_aprovador = ?, aprovador = ?,
                dt_aprovacao = NOW(), comentarios_aprovacao = ?
          WHERE id_kr = ?
-      ")->execute([$decisao, $uid, $comentarios ?: null, $idRef]);
+      ")->execute([$decisao, $uid, $nomeAprovador, $comentarios ?: null, $idRef]);
       break;
 
     case 'orcamento':
@@ -65,16 +106,25 @@ try {
       break;
   }
 
-  // Audit trail
+  // Trilha de auditoria. Espelha o INSERT do fluxo web (auth/aprovacao_api.php):
+  // dados_solicitados e id_user_solicitante são NOT NULL no schema — omiti-los
+  // causava erro 500. tipo_operacao usa o verbo (approve/reject) como na web.
   $pdo->prepare("
     INSERT INTO fluxo_aprovacoes
-      (tipo_estrutura, id_referencia, tipo_operacao, status,
-       id_user_solicitante, id_user_aprovador, justificativa,
-       data_solicitacao, data_aprovacao, ip, user_agent)
-    VALUES (?, ?, 'alteracao', ?, NULL, ?, ?, NOW(), NOW(), ?, ?)
+      (tipo_estrutura, id_referencia, id_entidade, tipo_operacao, motivo_solicitacao,
+       dados_solicitados, id_user_solicitante, status, id_user_aprovador, justificativa,
+       contexto_origem, data_solicitacao, data_aprovacao, ip, user_agent)
+    VALUES (?, ?, NULL, ?, NULL, '', ?, ?, ?, ?, 'aprovacao_api', NOW(), NOW(), ?, ?)
   ")->execute([
-    $modulo, $idRef, $decisao, $uid, $comentarios ?: null,
-    $_SERVER['REMOTE_ADDR'] ?? '', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
+    $modulo,
+    $idRef,
+    $decisao === 'aprovado' ? 'approve' : 'reject',
+    (string)$uid,                 // id_user_solicitante (NOT NULL)
+    $decisao,                     // status
+    (string)$uid,                 // id_user_aprovador
+    $comentarios ?: null,         // justificativa
+    $_SERVER['REMOTE_ADDR'] ?? '',
+    substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
   ]);
 
   $pdo->commit();

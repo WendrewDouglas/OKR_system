@@ -29,11 +29,18 @@ if (!api_has_cap($pdo, $uid, $cid, 'W:kr@ORG', ['id_kr' => $idKr])) {
 }
 
 $in = api_input();
+
+// Valida status contra o domínio (evita 500 do FK; devolve 422 limpo)
+if (array_key_exists('status', $in)) {
+  api_assert_domain($pdo, 'dom_status_kr', 'id_status', api_str($in['status']), 'status');
+}
+
 $sets   = [];
 $params = [];
 
 $strFields = ['descricao', 'status', 'unidade_medida', 'direcao_metrica',
-              'natureza_kr', 'tipo_kr', 'tipo_frequencia_milestone', 'farol'];
+              'natureza_kr', 'tipo_kr', 'tipo_frequencia_milestone', 'farol',
+              'observacoes'];
 foreach ($strFields as $f) {
   if (array_key_exists($f, $in)) {
     $sets[]   = "$f = ?";

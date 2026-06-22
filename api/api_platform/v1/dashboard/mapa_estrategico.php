@@ -17,10 +17,12 @@ $st = $pdo->prepare("
   SELECT p.id_pilar, p.descricao_exibicao AS pilar_nome, p.ordem_pilar,
          o.id_objetivo, o.descricao AS obj_descricao, o.dono,
          o.status AS obj_status, o.qualidade,
-         u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome
+         u.primeiro_nome AS dono_nome, u.ultimo_nome AS dono_sobrenome,
+         ad.path AS dono_avatar_path, ad.filename AS dono_avatar_filename
     FROM dom_pilar_bsc p
     LEFT JOIN objetivos o ON o.pilar_bsc = p.id_pilar AND o.id_company = ?
     LEFT JOIN usuarios u ON u.id_user = o.dono
+    LEFT JOIN avatars ad ON ad.id = u.avatar_id
    ORDER BY p.ordem_pilar, o.id_objetivo
 ");
 $st->execute([$cid]);
@@ -98,8 +100,9 @@ foreach ($rows as $r) {
     'status'      => $r['obj_status'],
     'qualidade'   => $r['qualidade'],
     'dono' => [
-      'id_user' => (int)$r['dono'],
-      'nome'    => trim(($r['dono_nome'] ?? '') . ' ' . ($r['dono_sobrenome'] ?? '')),
+      'id_user'    => (int)$r['dono'],
+      'nome'       => trim(($r['dono_nome'] ?? '') . ' ' . ($r['dono_sobrenome'] ?? '')),
+      'avatar_url' => api_avatar_url_from_row(['path' => $r['dono_avatar_path'] ?? null, 'filename' => $r['dono_avatar_filename'] ?? null]),
     ],
     'qtd_krs'  => count($krs),
     'progress' => $avgProgress,
