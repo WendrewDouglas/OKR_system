@@ -170,10 +170,14 @@ unset($_SESSION['reset_error']);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Redefinir Senha – OKR System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/components.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
+  <link rel="stylesheet" href="/OKR_system/assets/css/pages/login.css">
   <style>
     .input-icon{ position:relative; }
     .input-icon .addon{
@@ -192,15 +196,30 @@ unset($_SESSION['reset_error']);
     .help{ font-size:.8rem; color:var(--okr-muted, #9ca3af); margin-top:.25rem; }
   </style>
 </head>
-<body class="fullscreen-center">
+<body class="fullscreen-center login-page">
 
   <div class="login-card">
-    <div class="login-illustration"><!-- ilustração --></div>
+    <aside class="login-brand">
+      <div class="login-brand-inner">
+        <img class="brand-emblem"
+             src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-emblema.png"
+             alt="PlanningBI">
+        <h1 class="brand-title">Estratégia que vira <span class="accent">execução</span></h1>
+        <p class="brand-subtitle">
+          Planeje, acompanhe e bata suas metas com OKRs e BSC — tudo em um só lugar.
+        </p>
+        <ul class="brand-features">
+          <li><span class="bf-ico">&#10003;</span> Objetivos e Key Results</li>
+          <li><span class="bf-ico">&#10003;</span> Mapa estratégico (BSC)</li>
+          <li><span class="bf-ico">&#10003;</span> Acompanhamento em tempo real</li>
+        </ul>
+      </div>
+    </aside>
 
     <div class="login-form-wrapper">
       <a href="https://planningbi.com.br/" aria-label="Ir para página inicial">
-        <img src="https://planningbi.com.br/wp-content/uploads/2025/07/logo-horizontal.jpg"
-             alt="Logo" class="logo">
+        <img src="/OKR_system/assets/img/logo-horizontal-branca.png"
+             alt="PlanningBI" class="logo">
       </a>
 
       <?php if ($invalid): ?>

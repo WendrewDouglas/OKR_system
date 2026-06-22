@@ -81,9 +81,10 @@ body.login-page .login-card {
     0 24px 60px rgba(0,0,0,.55),
     0 0 0 1px rgba(255,255,255,.02) inset;
   position: relative;
-  /* Reduz todo o conjunto (card + conteúdo) uniformemente para 85% */
-  transform: scale(.85);
-  transform-origin: center center;
+  /* Reduz todo o conjunto para 85% reduzindo a caixa real (zoom reflui o
+     layout), então o flex do body centraliza com margens automáticas
+     equilibradas em cima e embaixo. */
+  zoom: 0.85;
 }
 
 /* Fio dourado no topo do card */
@@ -378,6 +379,117 @@ body.login-page .cta-section .btn-primary:hover {
 /* Garante leitura do badge invisível do reCAPTCHA sobre fundo escuro */
 body.login-page .grecaptcha-badge {
   box-shadow: 0 0 12px rgba(0,0,0,.5) !important;
+}
+
+/* ============================================================
+   Páginas de senha (password_reset_request / password_reset)
+   — mesmos componentes do login, peças extras no tema escuro.
+   ============================================================ */
+
+/* Título e textos auxiliares dentro do formulário */
+body.login-page .login-form-wrapper h2,
+body.login-page .login-form-wrapper h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 .35rem;
+  text-align: center;
+}
+body.login-page .login-form-wrapper p {
+  color: var(--login-muted);
+  font-size: .9rem;
+}
+
+/* Links simples (ex.: "Voltar ao login") — exclui botões e o link da logo */
+body.login-page .login-form-wrapper a:not(.btn) {
+  color: var(--login-muted);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+body.login-page .login-form-wrapper a:not(.btn):hover {
+  color: var(--login-gold);
+}
+
+/* Botão secundário (ghost) no tema escuro */
+body.login-page .btn-secondary {
+  display: inline-block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--login-border);
+  border-radius: 10px;
+  padding: .8rem 1rem;
+  color: var(--login-text) !important;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+body.login-page .btn-secondary:hover {
+  border-color: var(--login-gold);
+  background: rgba(241,196,15,.1);
+  color: var(--login-gold) !important;
+}
+
+/* Campo com ícone (mostrar/ocultar senha) */
+body.login-page .input-icon .addon {
+  color: var(--login-muted);
+}
+
+/* Medidor de força da senha */
+body.login-page .ps-meter {
+  background: #0e131a;
+  border: 1px solid var(--login-border);
+}
+body.login-page .ps-checks .no {
+  color: #5b6573;
+}
+body.login-page .ps-checks .ok {
+  color: #22c55e;
+}
+body.login-page .help {
+  color: var(--login-muted);
+}
+body.login-page .caps {
+  color: #f59e0b;
+}
+
+/* Modal de feedback neutro (recuperar senha) */
+body.login-page .modal-overlay {
+  background: rgba(0,0,0,.65);
+}
+body.login-page .modal-box {
+  background: linear-gradient(180deg, #1C2128, #0d1117);
+  border: 1px solid var(--login-border);
+  border-radius: 14px;
+  color: var(--login-text);
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+body.login-page .modal-box h3 {
+  color: #fff;
+  text-align: center;
+}
+body.login-page .modal-box p {
+  color: var(--login-muted);
+}
+/* Botão do modal: dourado, largura automática centralizada */
+body.login-page .modal-box .btn-primary {
+  display: inline-block;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: .7rem 1.8rem;
+  background: var(--login-gold);
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #111 !important;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(241,196,15,.22);
+  transition: transform .15s ease, filter .15s ease;
+}
+body.login-page .modal-box .btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 /* ---------- Mobile ---------- */
