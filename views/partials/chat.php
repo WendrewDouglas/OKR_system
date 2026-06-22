@@ -114,6 +114,9 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
     max-width: 80%;
     word-wrap: break-word;
     font-size: 0.75rem;
+    /* Balões têm fundo claro (#fff / #dcf8c6); fixa texto escuro para não
+       herdar a cor clara do tema escuro do sistema (company_theme.php). */
+    color: #1f2937;
 }
 .bot-message {
     background: #fff;
@@ -137,6 +140,7 @@ $userAvatarUrl = avatar_resolve((int)($userId ?: 0))['url'];
     font-size: 0.75rem;
     border: 1px solid #808080ff;
     background: #dcf8c6;
+    color: #1f2937;
     border-radius: 20px;
     outline: none;
     margin-right: 0.5rem;
