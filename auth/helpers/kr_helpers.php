@@ -14,6 +14,7 @@ if (!function_exists('validarObrigatorios')) {
         $errors = [];
         if (empty($post['id_objetivo']))              $errors[] = ['field' => 'id_objetivo', 'message' => 'Objetivo associado é obrigatório'];
         if (empty(trim($post['descricao'] ?? '')))    $errors[] = ['field' => 'descricao', 'message' => 'Descrição do KR é obrigatória'];
+        if (empty(trim($post['tipo_kr'] ?? '')))      $errors[] = ['field' => 'tipo_kr', 'message' => 'Tipo de KR é obrigatório'];
 
         $tipo_ciclo = trim($post['ciclo_tipo'] ?? '');
         if ($tipo_ciclo === '') {

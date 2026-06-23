@@ -189,6 +189,7 @@ if (isset($_GET['ajax'])) {
     // Validação básica
     $errs=[];
     if ($descricao==='') $errs[]='Descrição é obrigatória.';
+    if ($tipo_kr===null || $tipo_kr==='') $errs[]='Tipo de KR é obrigatório.';
     if ($justEdit==='')  $errs[]='A justificativa de edição é obrigatória.';
     if (!is_numeric($_POST['baseline'] ?? null)) $errs[]='Baseline é obrigatória.';
     if (!is_numeric($_POST['meta'] ?? null))     $errs[]='Meta é obrigatória.';
@@ -563,8 +564,8 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
               </select>
             </div>
             <div>
-              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR</label>
-              <select id="tipo_kr" name="tipo_kr">
+              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR <span class="helper">(obrigatório)</span></label>
+              <select id="tipo_kr" name="tipo_kr" required>
                 <option value="">Selecione...</option>
                 <?php foreach($tiposKr as $t): ?>
                   <option value="<?= h($t['id_tipo']) ?>" <?= (string)$t['id_tipo']===$tipoSel?'selected':'' ?>>

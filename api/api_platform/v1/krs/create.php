@@ -12,7 +12,7 @@ $cid  = (int)($auth['cid'] ?? 0);
 $pdo  = api_db();
 
 $in = api_input();
-api_require_fields($in, ['id_objetivo', 'descricao', 'baseline', 'meta']);
+api_require_fields($in, ['id_objetivo', 'descricao', 'baseline', 'meta', 'tipo_kr']);
 
 $idObj   = $in['id_objetivo'];
 $desc    = api_str($in['descricao']);
@@ -28,6 +28,10 @@ $margem  = api_float_or_null($in['margem_confianca'] ?? null);
 $observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
 $socios = is_array($in['socios'] ?? null) ? $in['socios'] : [];
+
+// Tipo de KR (obrigatório): valida contra dom_tipo_kr (422 limpo em vez de FK).
+if ($tipoKr === '') api_error('E_INPUT', 'Tipo de KR é obrigatório.', 422);
+api_assert_domain($pdo, 'dom_tipo_kr', 'id_tipo', $tipoKr, 'tipo_kr');
 
 // Status do KR (opcional, paridade com o web): valida contra dom_status_kr
 // quando enviado; default 'nao iniciado'. status_aprovacao continua 'pendente'.

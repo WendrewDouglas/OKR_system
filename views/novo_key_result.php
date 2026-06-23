@@ -353,8 +353,8 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
               <div id="natureza_help" class="note"></div>
             </div>
             <div>
-              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR</label>
-              <select id="tipo_kr" name="tipo_kr">
+              <label for="tipo_kr"><i class="fa-regular fa-square-check"></i> Tipo de KR <span class="helper">(obrigatório)</span></label>
+              <select id="tipo_kr" name="tipo_kr" required>
                 <option value="">Selecione...</option>
                 <?php foreach($tiposKr as $t): ?>
                   <option value="<?= htmlspecialchars($t['id_tipo'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($t['descricao_exibicao'], ENT_QUOTES, 'UTF-8') ?></option>
