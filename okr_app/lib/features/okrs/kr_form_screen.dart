@@ -554,13 +554,14 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) => DropdownButtonFormField<String>(
                       initialValue: _tipoKr,
-                      decoration: const InputDecoration(labelText: 'Tipo do KR'),
+                      decoration: const InputDecoration(labelText: 'Tipo do KR *'),
                       items: items.map((t) {
                         final value = _domVal(t, ['id_tipo', 'tipo_kr', 'slug']);
                         final label = _domVal(t, ['descricao_exibicao', 'descricao', 'id_tipo']);
                         return DropdownMenuItem(value: value, child: Text(label));
                       }).toList(),
                       onChanged: (v) => setState(() => _tipoKr = v),
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
                     ),
                   ),
                   const SizedBox(height: 16),
