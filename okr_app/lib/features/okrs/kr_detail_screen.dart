@@ -14,6 +14,7 @@ import '../shared/widgets/error_retry.dart';
 import '../shared/widgets/confirm_dialog.dart';
 import '../shared/widgets/app_scaffold.dart';
 import 'apontamento_sheet.dart';
+import 'okr_map_screen.dart' show okrCascataProvider, mapaEstrategicoProvider;
 
 // Detalhe do KR (GET single rico: kr/milestones/chart/agregados) — não enveloppado, mantido como Map.
 final krDetailProvider = FutureProvider.autoDispose
@@ -57,6 +58,14 @@ class KrDetailScreen extends ConsumerWidget {
         data: (data) {
           final kr = data['kr'] as Map<String, dynamic>? ?? {};
           final milestones = ((data['milestones'] as List?) ?? []).cast<Map<String, dynamic>>();
+          // 1º check-in = data do milestone mais antigo (define se "Não Iniciado" é permitido).
+          String? primeiroCheck;
+          for (final m in milestones) {
+            final d = m['data_ref'] as String?;
+            if (d != null && (primeiroCheck == null || d.compareTo(primeiroCheck) < 0)) {
+              primeiroCheck = d;
+            }
+          }
           final chart = data['chart'] as Map<String, dynamic>? ?? {};
           final agg = data['agregados'] as Map<String, dynamic>? ?? {};
           final orc = agg['orcamento'] as Map<String, dynamic>?;
@@ -72,7 +81,7 @@ class KrDetailScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _KrInfoCard(kr: kr),
+                _KrInfoCard(kr: kr, idKr: idKr, primeiroCheck: primeiroCheck),
                 const SizedBox(height: 16),
 
                 // Chart
@@ -171,7 +180,9 @@ class KrDetailScreen extends ConsumerWidget {
 
 class _KrInfoCard extends StatelessWidget {
   final Map<String, dynamic> kr;
-  const _KrInfoCard({required this.kr});
+  final String idKr;
+  final String? primeiroCheck;
+  const _KrInfoCard({required this.kr, required this.idKr, this.primeiroCheck});
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +210,11 @@ class _KrInfoCard extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 6, children: [
-              StatusBadge(label: kr['status'] ?? ''),
+              _KrStatusChip(
+                idKr: idKr,
+                currentStatus: kr['status'] as String? ?? '',
+                primeiroCheck: primeiroCheck,
+              ),
               if (kr['natureza_kr'] != null && kr['natureza_kr'] != '')
                 StatusBadge(label: kr['natureza_kr'], color: AppColors.blue),
               if (kr['tipo_kr'] != null && kr['tipo_kr'] != '')
@@ -232,6 +247,206 @@ class _KrInfoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+const _krStatusDisplay = <String, String>{
+  'nao iniciado': 'Não Iniciado',
+  'em andamento': 'Em Andamento',
+  'pausado': 'Pausado',
+  'concluido': 'Concluído',
+  'cancelado': 'Cancelado',
+};
+
+String _krNormStatus(String raw) {
+  final s = raw.toLowerCase().trim();
+  if (s.contains('cancel')) return 'cancelado';
+  if (s.contains('conclu') || s.contains('finaliz')) return 'concluido';
+  if (s.contains('pausad')) return 'pausado';
+  if (s.contains('andament') || s.contains('progress')) return 'em andamento';
+  if (s.contains('nao inici') || s.contains('não inici')) return 'nao iniciado';
+  return s;
+}
+
+bool _krRequerJustificativa(String idStatus) =>
+    idStatus == 'cancelado' || idStatus == 'pausado' || idStatus == 'concluido';
+
+/// Chip de status clicável: abre seletor com as opções válidas e aplica as regras.
+class _KrStatusChip extends ConsumerStatefulWidget {
+  final String idKr;
+  final String currentStatus;
+  final String? primeiroCheck;
+  const _KrStatusChip({
+    required this.idKr,
+    required this.currentStatus,
+    this.primeiroCheck,
+  });
+
+  @override
+  ConsumerState<_KrStatusChip> createState() => _KrStatusChipState();
+}
+
+class _KrStatusChipState extends ConsumerState<_KrStatusChip> {
+  bool _busy = false;
+
+  bool get _bloqueiaNaoIniciado {
+    final pc = widget.primeiroCheck;
+    if (pc == null) return false;
+    final t = DateTime.now();
+    final today =
+        '${t.year.toString().padLeft(4, '0')}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
+    return pc.compareTo(today) <= 0; // 1º check <= hoje → não pode "Não Iniciado"
+  }
+
+  Color _statusColor(String idStatus) {
+    switch (idStatus) {
+      case 'cancelado':
+        return AppColors.red;
+      case 'concluido':
+        return AppColors.green;
+      case 'em andamento':
+        return AppColors.blue;
+      case 'pausado':
+        return AppColors.warn;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_busy) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+        ),
+      );
+    }
+    final cur = _krNormStatus(widget.currentStatus);
+    final label = _krStatusDisplay[cur] ?? widget.currentStatus;
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: _pick,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StatusBadge(label: label),
+          const SizedBox(width: 2),
+          const Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick() async {
+    AppHaptics.light();
+    final cur = _krNormStatus(widget.currentStatus);
+    final opts = ['em andamento', 'pausado', 'concluido', 'cancelado', 'nao iniciado']
+        .where((s) => s != cur)
+        .where((s) => s != 'nao iniciado' || !_bloqueiaNaoIniciado)
+        .toList();
+
+    final escolhido = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Alterar status',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              ),
+            ),
+            ...opts.map((s) => ListTile(
+                  leading: Icon(Icons.circle, size: 12, color: _statusColor(s)),
+                  title: Text(_krStatusDisplay[s] ?? s),
+                  subtitle: _krRequerJustificativa(s)
+                      ? const Text('Requer justificativa',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted))
+                      : null,
+                  onTap: () => Navigator.of(ctx).pop(s),
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (escolhido == null) return;
+
+    String? justificativa;
+    if (_krRequerJustificativa(escolhido)) {
+      justificativa = await _promptJustificativa(_krStatusDisplay[escolhido] ?? escolhido);
+      if (justificativa == null) return; // cancelou o prompt
+    }
+    await _aplicar(escolhido, justificativa);
+  }
+
+  Future<void> _aplicar(String status, String? justificativa) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    AppHaptics.medium();
+    try {
+      await ref
+          .read(krRepositoryProvider)
+          .updateStatus(widget.idKr, status, justificativa: justificativa);
+      ref.invalidate(krDetailProvider(widget.idKr));
+      ref.invalidate(okrCascataProvider);
+      ref.invalidate(mapaEstrategicoProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Status alterado para ${_krStatusDisplay[status] ?? status}.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<String?> _promptJustificativa(String statusLabel) async {
+    final ctrl = TextEditingController();
+    final r = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Mudar para "$statusLabel"'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: 'Justificativa (obrigatória)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final t = ctrl.text.trim();
+              if (t.isEmpty) return;
+              Navigator.of(ctx).pop(t);
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    return r;
   }
 }
 

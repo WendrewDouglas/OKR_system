@@ -93,6 +93,10 @@ try{
 if (!$companyId) { header('Location: /OKR_system/organizacao'); exit; }
 $_SESSION['company_id'] = $companyId;
 
+// Auto-promoção: KR "não iniciado" cujo 1º check-in já chegou → "em andamento".
+require_once __DIR__ . '/../auth/helpers/kr_status.php';
+try { krs_auto_promover($pdo, $companyId); } catch (Throwable $e) { /* best-effort */ }
+
 /* ===================== Endpoints AJAX de ligações (antes de qualquer saída) ===================== */
 function json_out($arr){ header('Content-Type: application/json; charset=utf-8'); echo json_encode($arr); exit; }
 

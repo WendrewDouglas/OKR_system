@@ -27,6 +27,16 @@ class KrRepository extends BaseRepository {
     ensureOk(await dio.post('/krs/$id/reativar'));
   }
 
+  /// Altera o status do KR (id_status: 'em andamento' | 'pausado' | 'concluido' |
+  /// 'cancelado' | 'nao iniciado'). Justificativa obrigatória p/ cancelar/pausar/concluir.
+  Future<void> updateStatus(String id, String status, {String? justificativa}) async {
+    ensureOk(await dio.put('/krs/$id/status', data: {
+      'status': status,
+      if (justificativa != null && justificativa.trim().isNotEmpty)
+        'justificativa': justificativa.trim(),
+    }));
+  }
+
   Future<void> delete(String id) async {
     ensureOk(await dio.delete('/krs/$id'));
   }

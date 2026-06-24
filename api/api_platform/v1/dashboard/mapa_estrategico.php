@@ -12,6 +12,8 @@ if ($cid <= 0) api_error('E_AUTH', 'Company inválida.', 401);
 
 $pdo = api_db();
 api_load_helper('auth/helpers/kr_progress.php');
+api_load_helper('auth/helpers/kr_status.php');
+krs_auto_promover($pdo, $cid); // promove "não iniciado" cujo 1º check-in já chegou
 
 /* === PILARES + OBJETIVOS === */
 $st = $pdo->prepare("

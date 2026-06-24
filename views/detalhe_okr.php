@@ -1320,7 +1320,9 @@ foreach ($milestones as $m) {
     }
     $id_kr = $_POST['id_kr'] ?? '';
     $statusTarget = trim($_POST['status_target'] ?? '');
+    $just = trim($_POST['justificativa'] ?? '');
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    require_once __DIR__ . '/../auth/helpers/kr_status.php';
 
     try {
       $pdo->beginTransaction();
@@ -1372,11 +1374,20 @@ foreach ($milestones as $m) {
       }
       if ($targetId === null) throw new RuntimeException('Não há status válido para reativar.');
 
+      // Regras compartilhadas (kr_status.php)
+      $normTarget = krs_normalize_status((string)$targetId);
+      if ($normTarget === 'nao iniciado' && !krs_pode_nao_iniciado($pdo, $id_kr)) {
+        throw new RuntimeException('KR já iniciado: não pode voltar para "Não Iniciado".');
+      }
+      if (krs_requer_justificativa($normTarget) && $just === '') {
+        throw new RuntimeException('Justificativa obrigatória para este status.');
+      }
+
       $st = $pdo->prepare("UPDATE `key_results` SET `{$statusCol}` = :v WHERE `id_kr` = :id");
       $st->execute(['v'=>$targetId, 'id'=>$id_kr]);
 
       $user = (int)$_SESSION['user_id'];
-      $addKrComment($pdo, $id_kr, $user, "KR reativado para o status: " . $targetId);
+      $addKrComment($pdo, $id_kr, $user, "KR → status: " . $targetId . ($just !== '' ? " — " . $just : ""));
 
       $pdo->commit();
       echo json_encode(['success'=>true]);
@@ -3997,10 +4008,17 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     $('#btnReativarKrSave')?.addEventListener('click', async ()=>{
       const id     = $('#react_id_kr').value;
       const status = $('#react_status').value;
+      const norm = (status || '').toLowerCase();
+      let just = '';
+      if (/pausad|conclu|finaliz/.test(norm)) {
+        just = (prompt('Justificativa (obrigatória):') || '').trim();
+        if (!just) { toast('Justificativa obrigatória.', false); return; }
+      }
       const fd = new FormData();
       fd.append('csrf_token', csrfToken);
       fd.append('id_kr', id);
       fd.append('status_target', status);
+      if (just) fd.append('justificativa', just);
       const res  = await fetch(`${SCRIPT}?ajax=reactivate_kr`, { method:'POST', body: fd });
       const data = await res.json();
       if (!data.success){ toast(data.error || 'Falha ao reativar KR', false); return; }

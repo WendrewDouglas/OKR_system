@@ -81,6 +81,7 @@ $routes = [
   ['DELETE', 'krs/:id',                'krs/delete.php'],
   ['POST',   'krs/:id/cancelar',       'krs/cancel.php'],
   ['POST',   'krs/:id/reativar',       'krs/reactivate.php'],
+  ['PUT',    'krs/:id/status',         'krs/update_status.php'],
   ['GET',    'krs/:id/milestones',     'krs/milestones.php'],
 
   // Apontamentos

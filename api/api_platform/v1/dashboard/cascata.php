@@ -13,6 +13,9 @@ $cid  = (int)($auth['cid'] ?? 0);
 if ($cid <= 0) api_error('E_AUTH', 'Company inválida.', 401);
 
 $pdo   = api_db();
+api_load_helper('auth/helpers/kr_status.php');
+krs_auto_promover($pdo, $cid); // promove "não iniciado" cujo 1º check-in já chegou
+
 $scope = api_str($_GET['scope'] ?? 'company');
 $idObj = api_int_or_null($_GET['id_objetivo'] ?? null);
 
