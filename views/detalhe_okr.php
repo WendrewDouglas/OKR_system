@@ -4763,44 +4763,62 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     const t0 = performance.now();
     const ts = () => '+' + Math.round(performance.now() - t0) + 'ms';
     function rec(s){ log.push(s); console.log('[KRDIAG]', s); }
-    rec('inicio');
+    function nodeDesc(n){
+      if(!n || n.nodeType!==1) return String(n);
+      const id = n.id ? '#'+n.id : '';
+      const cls = (n.className && typeof n.className==='string') ? '.'+n.className.trim().split(/\s+/).join('.') : '';
+      const kr = n.closest?.('.kr-card') ? ' (dentro de .kr-card)' : '';
+      return (n.tagName.toLowerCase()+id+cls).slice(0,90)+kr;
+    }
+    rec('inicio v2');
 
-    // 1) Eventos de transição em qualquer .kr-body
-    ['transitionrun','transitionstart','transitionend','animationstart'].forEach(ev=>{
-      document.addEventListener(ev, e=>{
-        const el = e.target;
-        if (el && el.classList && (el.classList.contains('kr-body') || el.closest?.('.kr-body'))){
-          const card = el.closest?.('.kr-card');
-          rec(`${ev} prop=${e.propertyName||e.animationName} card.open=${card?card.classList.contains('open'):'?'} ${ts()}`);
+    // 1) LAYOUT SHIFT — o que efetivamente se desloca na tela
+    try{
+      new PerformanceObserver(list=>{
+        for(const e of list.getEntries()){
+          if (e.hadRecentInput) continue;
+          const srcs = (e.sources||[]).map(s=>nodeDesc(s.node)).join(' | ') || '(sem sources)';
+          rec(`LAYOUT-SHIFT val=${e.value.toFixed(4)} ${ts()} -> ${srcs}`);
         }
-      }, true);
-    });
+      }).observe({type:'layout-shift', buffered:true});
+    }catch(err){ rec('layout-shift indisponivel: '+err.message); }
 
-    // 2) Quem adiciona/remove a classe .open nos .kr-card
-    const mo = new MutationObserver(muts=>{
-      for (const m of muts){
-        if (m.type==='attributes' && m.attributeName==='class' && m.target.classList?.contains('kr-card')){
-          const had = (m.oldValue||'').includes('open');
-          const has = m.target.classList.contains('open');
-          if (had !== has){
-            rec(`kr-card[${m.target.dataset.id}] .open ${had}->${has} ${ts()}`);
-            console.trace('[KRDIAG] origem da mudanca de .open');
-          }
+    // 2) Re-render do #krContainer (filhos removidos/adicionados)
+    const moC = new MutationObserver(muts=>{
+      for(const m of muts){
+        if(m.type==='childList' && (m.addedNodes.length||m.removedNodes.length)){
+          rec(`#krContainer childList +${m.addedNodes.length}/-${m.removedNodes.length} (cards agora: ${document.querySelectorAll('#krContainer .kr-card').length}) ${ts()}`);
         }
       }
     });
+    // 3) .open nos .kr-card + transicoes no .kr-body
+    const moClass = new MutationObserver(muts=>{
+      for(const m of muts){
+        if(m.attributeName==='class' && m.target.classList?.contains('kr-card')){
+          const had=(m.oldValue||'').includes('open'), has=m.target.classList.contains('open');
+          if(had!==has){ rec(`kr-card[${m.target.dataset.id}] .open ${had}->${has} ${ts()}`); console.trace('[KRDIAG] origem .open'); }
+        }
+      }
+    });
+    ['transitionrun','transitionstart'].forEach(ev=>document.addEventListener(ev,e=>{
+      if(e.target?.closest?.('.kr-body')) rec(`${ev} prop=${e.propertyName} ${ts()}`);
+    },true));
+
     (function tryObserve(){
-      const c = document.getElementById('krContainer');
-      if (c){ mo.observe(c,{subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true}); rec('observando #krContainer '+ts()); }
+      const c=document.getElementById('krContainer');
+      if(c){ moC.observe(c,{childList:true}); moClass.observe(c,{subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true}); rec('observando #krContainer '+ts()); }
       else setTimeout(tryObserve,40);
     })();
 
-    // 3) Altura/opacity do 1o .kr-body por ~2.5s (loga só quando altura>0)
+    // 4) Altura do #krContainer e do 1o card por ~3s (loga quando muda)
+    let lastC=-1,lastCard=-1;
     (function snap(){
-      const b = document.querySelector('.kr-body');
-      if (b){ const cs=getComputedStyle(b); const h=Math.round(b.getBoundingClientRect().height);
-        if (h>0) rec(`kr-body ALTURA=${h} opacity=${cs.opacity} maxH=${cs.maxHeight} ${ts()}`); }
-      if (performance.now()-t0 < 2500) requestAnimationFrame(snap);
+      const c=document.getElementById('krContainer');
+      const card=document.querySelector('.kr-card');
+      const hc=c?Math.round(c.getBoundingClientRect().height):-1;
+      const hk=card?Math.round(card.getBoundingClientRect().height):-1;
+      if(hc!==lastC||hk!==lastCard){ rec(`alturas: container=${hc} card1=${hk} ${ts()}`); lastC=hc; lastCard=hk; }
+      if(performance.now()-t0<3000) requestAnimationFrame(snap);
       else rec('FIM. window.__KRDIAG tem '+log.length+' linhas.');
     })();
   })();
