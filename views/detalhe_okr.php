@@ -2221,6 +2221,14 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Detalhe do Objetivo – OKR System</title>
 
+  <!-- Critical CSS anti-flash: pinta o fundo escuro final já no primeiro paint,
+       evitando o flash branco enquanto o company_theme.php (injetado mais abaixo
+       pela sidebar e gerado dinamicamente via DB) ainda carrega. Espelha o
+       mesmo seletor 'html body' que o company_theme aplica depois, então NÃO
+       altera o estado final — apenas antecipa a cor. 'html body' + !important
+       vence o 'body{background:#fff!important}' declarado mais abaixo neste head. -->
+  <style>html body{ background:#070a0e !important; color:#eaeef6 !important; }</style>
+
   <link rel="stylesheet" href="/OKR_system/assets/css/base.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/layout.css">
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
