@@ -48,12 +48,24 @@ foreach ($strFields as $f) {
   }
 }
 
-$numFields = ['baseline', 'meta', 'margem_confianca'];
+$numFields = ['baseline', 'meta']; // margem_confianca tratada à parte (obrigatória p/ intervalo)
 foreach ($numFields as $f) {
   if (array_key_exists($f, $in)) {
     $sets[]   = "$f = ?";
     $params[] = api_float_or_null($in[$f]);
   }
+}
+
+// margem_confianca: obrigatória p/ INTERVALO_IDEAL (default 10%).
+$isIntervalo = array_key_exists('direcao_metrica', $in)
+  && strtoupper(api_str($in['direcao_metrica'])) === 'INTERVALO_IDEAL';
+if (array_key_exists('margem_confianca', $in) || $isIntervalo) {
+  $m = api_float_or_null($in['margem_confianca'] ?? null);
+  if ($isIntervalo && ($m === null || $m <= 0)) {
+    $m = 10.0;
+  }
+  $sets[]   = "margem_confianca = ?";
+  $params[] = $m;
 }
 
 if (array_key_exists('responsavel', $in)) {

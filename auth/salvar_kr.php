@@ -417,6 +417,10 @@ $meta             = filter_input(INPUT_POST, 'meta', FILTER_VALIDATE_FLOAT);
 $unidade_medida   = trim($_POST['unidade_medida'] ?? '');
 $direcao_metrica  = trim($_POST['direcao_metrica'] ?? '');
 $margem_confianca = ($_POST['margem_confianca'] ?? '') !== '' ? (float)$_POST['margem_confianca'] : null;
+// Margem de confiança é obrigatória p/ INTERVALO_IDEAL (default 10%).
+if (strtoupper($direcao_metrica) === 'INTERVALO_IDEAL' && ($margem_confianca === null || $margem_confianca <= 0)) {
+  $margem_confianca = 10.0;
+}
 
 $tipo_ciclo       = trim($_POST['ciclo_tipo'] ?? '');
 $responsavel      = ($_POST['responsavel'] ?? '') !== '' ? (string)$_POST['responsavel'] : null;

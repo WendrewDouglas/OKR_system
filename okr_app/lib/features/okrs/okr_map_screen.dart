@@ -22,6 +22,33 @@ final okrCascataProvider =
       .cast<Map<String, dynamic>>();
 });
 
+/// Progresso/esperado/farol por pilar, calculado no backend (helper kr_progress).
+class PillarProgress {
+  final double? progress; // 0..100 (barra)
+  final double? esperado; // 0..100 (tick)
+  final String farol; // verde | amarelo | vermelho | cinza
+  const PillarProgress({this.progress, this.esperado, required this.farol});
+}
+
+/// Mapa: pilar canônico → PillarProgress (fonte: /dashboard/mapa-estrategico).
+final mapaEstrategicoProvider =
+    FutureProvider.autoDispose<Map<String, PillarProgress>>((ref) async {
+  final api = ref.read(apiClientProvider);
+  final res = await api.dio.get('/dashboard/mapa-estrategico');
+  final pillars = ((res.data['pillars'] as List?) ?? [])
+      .cast<Map<String, dynamic>>();
+  final map = <String, PillarProgress>{};
+  for (final p in pillars) {
+    final canon = _canonicalPillar((p['pilar_nome'] as String?) ?? '');
+    map[canon] = PillarProgress(
+      progress: (p['progress'] as num?)?.toDouble(),
+      esperado: (p['esperado'] as num?)?.toDouble(),
+      farol: (p['farol'] as String?) ?? 'cinza',
+    );
+  }
+  return map;
+});
+
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
@@ -41,12 +68,16 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
     AppHaptics.light();
     // A API exige W:objetivo@ORG / W:kr@ORG; quem não tiver recebe 403 no submit.
     final created = await context.push(rota);
-    if (created == true) ref.invalidate(okrCascataProvider);
+    if (created == true) {
+      ref.invalidate(okrCascataProvider);
+      ref.invalidate(mapaEstrategicoProvider);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final cascata = ref.watch(okrCascataProvider);
+    final pillarProgress = ref.watch(mapaEstrategicoProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -112,6 +143,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
             onRefresh: () async {
               AppHaptics.medium();
               ref.invalidate(okrCascataProvider);
+              ref.invalidate(mapaEstrategicoProvider);
             },
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -120,24 +152,31 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                 if (i == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 3,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.goldGradient,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 3,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                gradient: AppColors.goldGradient,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Mapa BSC|OKR',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Mapa BSC|OKR',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
+                        const SizedBox(height: 16),
+                        _OkrStatsRow(objetivos: objetivos),
                       ],
                     ),
                   );
@@ -149,6 +188,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                   child: _PillarTile(
                     pillarName: pillarName,
                     objetivos: pillarObjs,
+                    prog: pillarProgress?[pillarName],
                   ),
                 );
               },
@@ -270,6 +310,212 @@ Widget _deadlineDot(String? deadline) {
 
 String _statusLabel(String? status) => status ?? '';
 
+/// Status que contam como "encerrados" (não entram em risco/atraso).
+bool _statusEncerrado(String? status) {
+  final s = (status ?? '').toLowerCase();
+  return s.contains('conclu') ||
+      s.contains('complet') ||
+      s.contains('finaliz') ||
+      s.contains('cancel') ||
+      s.contains('reprovad');
+}
+
+/// True quando o prazo já passou (mesma régua de [_deadlineColor]).
+bool _isOverdue(String? deadline) {
+  if (deadline == null || deadline.isEmpty) return false;
+  final dt = DateTime.tryParse(deadline);
+  if (dt == null) return false;
+  return dt.difference(DateTime.now()).inDays < 0;
+}
+
+// ---------------------------------------------------------------------------
+// Cards de resumo (Objetivos / Key Results / Iniciativas) — topo do mapa.
+// Calculados a partir da própria árvore /dashboard/cascata já carregada.
+// ---------------------------------------------------------------------------
+
+class _OkrStatsRow extends StatelessWidget {
+  final List<Map<String, dynamic>> objetivos;
+  const _OkrStatsRow({required this.objetivos});
+
+  @override
+  Widget build(BuildContext context) {
+    var totalObj = objetivos.length;
+    var objRisco = 0;
+    var totalKr = 0;
+    var krRisco = 0;
+    var totalInic = 0;
+    var inicAtrasadas = 0;
+
+    for (final obj in objetivos) {
+      final objStatus = obj['status'] as String?;
+      final krs =
+          (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      var objTemKrVermelho = false;
+
+      for (final kr in krs) {
+        totalKr++;
+        final farol = (kr['farol'] as String?)?.toLowerCase();
+        if (farol == 'vermelho') {
+          krRisco++;
+          objTemKrVermelho = true;
+        }
+        final inics =
+            (kr['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        for (final ini in inics) {
+          totalInic++;
+          final iniStatus = ini['status'] as String?;
+          if (!_statusEncerrado(iniStatus) &&
+              _isOverdue(ini['dt_prazo'] as String?)) {
+            inicAtrasadas++;
+          }
+        }
+      }
+
+      final emRisco =
+          (objStatus ?? '').toLowerCase().contains('risco') || objTemKrVermelho;
+      if (!_statusEncerrado(objStatus) && emRisco) objRisco++;
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _StatCard(
+              icon: Icons.flag_outlined,
+            accent: AppColors.gold,
+            total: totalObj,
+            label: 'Objetivos',
+            alert: objRisco,
+            alertLabel: 'em risco',
+            okLabel: 'sem risco',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.track_changes,
+            accent: AppColors.blue,
+            total: totalKr,
+            label: 'Key Results',
+            alert: krRisco,
+            alertLabel: 'em risco',
+            okLabel: 'sem risco',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.task_alt,
+            accent: AppColors.pilarAprendizado,
+            total: totalInic,
+            label: 'Iniciativas',
+            alert: inicAtrasadas,
+            alertLabel: 'atrasadas',
+            okLabel: 'no prazo',
+          ),
+        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color accent;
+  final int total;
+  final String label;
+  final int alert;
+  final String alertLabel;
+  final String okLabel;
+
+  const _StatCard({
+    required this.icon,
+    required this.accent,
+    required this.total,
+    required this.label,
+    required this.alert,
+    required this.alertLabel,
+    required this.okLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAlert = alert > 0;
+    final alertColor = hasAlert ? AppColors.red : AppColors.green;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderDefault, width: 0.5),
+        boxShadow: AppShadows.cardRest,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: accent, size: 18),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '$total',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: alertColor,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  hasAlert ? '$alert $alertLabel' : okLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: alertColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Avatar pequeno (com fallback para iniciais) lido de um map de pessoa
 /// (dono/responsavel) do endpoint /dashboard/cascata.
 Widget _personAvatar(Map<String, dynamic>? person, {double radius = 8}) {
@@ -350,11 +596,118 @@ class _ExpandableTileState extends State<_ExpandableTile>
 // Pillar tile (Level 0)
 // ---------------------------------------------------------------------------
 
+Color _farolColor(String farol) {
+  switch (farol) {
+    case 'verde':
+      return AppColors.green;
+    case 'amarelo':
+      return AppColors.warn;
+    case 'vermelho':
+      return AppColors.red;
+    default:
+      return AppColors.textMuted;
+  }
+}
+
+/// Barra de progresso do pilar: preenchimento na cor do farol + tick do esperado.
+class _PillarProgressBar extends StatelessWidget {
+  final PillarProgress prog;
+  const _PillarProgressBar({required this.prog});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = ((prog.progress ?? 0).clamp(0, 100)).toDouble();
+    final esp = prog.esperado?.clamp(0, 100).toDouble();
+    final c = _farolColor(prog.farol);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            return SizedBox(
+              width: w,
+              height: 12,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // track
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 2,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: c.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  // fill
+                  Positioned(
+                    left: 0,
+                    top: 2,
+                    child: Container(
+                      width: w * pct / 100.0,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  // tick do esperado
+                  if (esp != null)
+                    Positioned(
+                      left: (w * esp / 100.0 - 1).clamp(0.0, w - 2.0),
+                      top: 0,
+                      child: Container(
+                        width: 2,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: AppColors.text,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Text(
+              '${pct.toStringAsFixed(0)}%',
+              style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            if (esp != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                'esperado ${esp.toStringAsFixed(0)}%',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _PillarTile extends StatelessWidget {
   final String pillarName;
   final List<Map<String, dynamic>> objetivos;
+  final PillarProgress? prog;
 
-  const _PillarTile({required this.pillarName, required this.objetivos});
+  const _PillarTile({
+    required this.pillarName,
+    required this.objetivos,
+    this.prog,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -448,32 +801,41 @@ class _PillarTile extends StatelessWidget {
                   onTap: toggle,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(icon, color: color, size: 22),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                pillarName,
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        Row(
+                          children: [
+                            Icon(icon, color: color, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    pillarName,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${objetivos.length} obj  ·  $totalKrs KRs  ·  $totalIniciativas inic.',
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                              ),
-                            ],
-                          ),
+                            ),
+                            _deadlineDot(earliestDeadline),
+                            const SizedBox(width: 8),
+                            RotationTransition(
+                              turns: turns,
+                              child: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 22),
+                            ),
+                          ],
                         ),
-                        _deadlineDot(earliestDeadline),
-                        const SizedBox(width: 8),
-                        RotationTransition(
-                          turns: turns,
-                          child: const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 22),
-                        ),
+                        if (prog?.progress != null) ...[
+                          const SizedBox(height: 12),
+                          _PillarProgressBar(prog: prog!),
+                        ],
                       ],
                     ),
                   ),

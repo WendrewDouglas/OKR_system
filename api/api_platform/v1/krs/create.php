@@ -25,6 +25,10 @@ $tipoKr  = api_str($in['tipo_kr'] ?? '');
 $freqMilestone = api_str($in['tipo_frequencia_milestone'] ?? '');
 $responsavel = api_int_or_null($in['responsavel'] ?? null);
 $margem  = api_float_or_null($in['margem_confianca'] ?? null);
+// Margem de confiança é obrigatória p/ INTERVALO_IDEAL (default 10%).
+if (strtoupper($direcao) === 'INTERVALO_IDEAL' && ($margem === null || $margem <= 0)) {
+  $margem = 10.0;
+}
 $observacoes = api_str($in['observacoes'] ?? '');
 $autoMilestones = (int)($in['autogerar_milestones'] ?? 1);
 $socios = is_array($in['socios'] ?? null) ? $in['socios'] : [];

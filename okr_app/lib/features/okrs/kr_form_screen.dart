@@ -502,7 +502,11 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                         onChanged: (v) => setState(() {
                           _direcaoMetrica = v;
                           // Web: INTERVALO_IDEAL força natureza "pontual".
-                          if ((v ?? '').toUpperCase() == 'INTERVALO_IDEAL') _naturezaKr = 'pontual';
+                          if ((v ?? '').toUpperCase() == 'INTERVALO_IDEAL') {
+                            _naturezaKr = 'pontual';
+                            // Margem é obrigatória p/ intervalo — pré-preenche 10% se vazio.
+                            if (_margemCtrl.text.trim().isEmpty) _margemCtrl.text = '10';
+                          }
                         }),
                       ),
                     ),
@@ -522,7 +526,19 @@ class _KrFormScreenState extends ConsumerState<KrFormScreen> {
                   TextFormField(
                     controller: _margemCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Margem de confiança (%)', hintText: 'Opcional'),
+                    decoration: InputDecoration(
+                      labelText: _isIntervalo
+                          ? 'Margem de confiança (%) *'
+                          : 'Margem de confiança (%)',
+                      hintText: _isIntervalo ? 'Obrigatório p/ intervalo' : 'Opcional',
+                    ),
+                    validator: _isIntervalo
+                        ? (v) {
+                            final n = double.tryParse((v ?? '').trim().replaceAll(',', '.'));
+                            if (n == null || n <= 0) return 'Obrigatório p/ intervalo';
+                            return null;
+                          }
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   naturezas.when(

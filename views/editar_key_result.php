@@ -177,6 +177,10 @@ if (isset($_GET['ajax'])) {
     $unidade_medida  = trim((string)($_POST['unidade_medida'] ?? ($KR['unidade_medida'] ?? '')));
     $direcao_metrica = trim((string)($_POST['direcao_metrica'] ?? ($KR['direcao_metrica'] ?? '')));
     $margem_conf     = ($_POST['margem_confianca'] ?? '') !== '' ? (float)$_POST['margem_confianca'] : null;
+    // Margem de confiança é obrigatória p/ INTERVALO_IDEAL (default 10%).
+    if (strtoupper($direcao_metrica) === 'INTERVALO_IDEAL' && ($margem_conf === null || $margem_conf <= 0)) {
+      $margem_conf = 10.0;
+    }
 
     $responsavel     = ($_POST['responsavel'] ?? '') !== '' ? (string)$_POST['responsavel'] : ($KR['responsavel'] ?? null);
     $observacoes_new = trim((string)($_POST['observacoes'] ?? ($KR['observacoes'] ?? '')));

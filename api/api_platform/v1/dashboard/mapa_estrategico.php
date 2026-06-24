@@ -11,6 +11,7 @@ $cid  = (int)($auth['cid'] ?? 0);
 if ($cid <= 0) api_error('E_AUTH', 'Company inválida.', 401);
 
 $pdo = api_db();
+api_load_helper('auth/helpers/kr_progress.php');
 
 /* === PILARES + OBJETIVOS === */
 $st = $pdo->prepare("
@@ -34,31 +35,12 @@ foreach ($rows as $r) {
   if ($r['id_objetivo']) $objIds[] = $r['id_objetivo'];
 }
 
-/* === KRS + PROGRESS === */
-$krData = [];
-if (!empty($objIds)) {
-  $inPh = implode(',', array_fill(0, count($objIds), '?'));
-  $stKr = $pdo->prepare("
-    SELECT kr.id_kr, kr.id_objetivo, kr.baseline, kr.meta, kr.direcao_metrica,
-           kr.status,
-           (SELECT m.valor_real_consolidado
-              FROM milestones_kr m
-             WHERE m.id_kr = kr.id_kr AND m.data_ref <= CURDATE()
-               AND m.valor_real_consolidado IS NOT NULL
-             ORDER BY m.data_ref DESC LIMIT 1
-           ) AS ultimo_real
-      FROM key_results kr
-     WHERE kr.id_objetivo IN ($inPh)
-  ");
-  $stKr->execute($objIds);
-  foreach ($stKr->fetchAll() as $kr) {
-    $krData[$kr['id_objetivo']][] = $kr;
-  }
-}
+/* === KRS + PROGRESS (helper compartilhado) === */
+$today  = date('Y-m-d');
+$krByObj = krp_kr_results_for_objetivos($pdo, $objIds, $today);
 
 /* === BUILD PILLARS === */
 $pillars = [];
-$current = null;
 
 foreach ($rows as $r) {
   $pilarId = $r['id_pilar'];
@@ -71,28 +53,16 @@ foreach ($rows as $r) {
       'total_objetivos' => 0,
       'total_krs'       => 0,
       'progress'        => null,
+      'esperado'        => null,
+      'farol'           => 'cinza',
     ];
   }
 
   if (!$r['id_objetivo']) continue;
 
-  $objId = $r['id_objetivo'];
-  $krs   = $krData[$objId] ?? [];
-  $progressValues = [];
-
-  foreach ($krs as $kr) {
-    $base = (float)($kr['baseline'] ?? 0);
-    $meta = (float)($kr['meta'] ?? 0);
-    $real = $kr['ultimo_real'] !== null ? (float)$kr['ultimo_real'] : $base;
-    $range = $meta - $base;
-    if (abs($range) > 0.0001) {
-      $progressValues[] = min(100, max(0, (($real - $base) / $range) * 100));
-    }
-  }
-
-  $avgProgress = !empty($progressValues)
-    ? round(array_sum($progressValues) / count($progressValues), 1)
-    : null;
+  $objId = (int)$r['id_objetivo'];
+  $krs   = $krByObj[$objId] ?? [];
+  $agg   = krp_aggregate_krs($krs);
 
   $pillars[$pilarId]['objetivos'][] = [
     'id_objetivo' => $objId,
@@ -105,16 +75,20 @@ foreach ($rows as $r) {
       'avatar_url' => api_avatar_url_from_row(['path' => $r['dono_avatar_path'] ?? null, 'filename' => $r['dono_avatar_filename'] ?? null]),
     ],
     'qtd_krs'  => count($krs),
-    'progress' => $avgProgress,
+    'progress' => $agg['progress'],
+    'esperado' => $agg['esperado'],
+    'farol'    => $agg['farol'],
   ];
   $pillars[$pilarId]['total_objetivos']++;
   $pillars[$pilarId]['total_krs'] += count($krs);
 }
 
-// Calculate pillar-level averages
+// Agregação por pilar (média dos objetivos + farol pior-caso)
 foreach ($pillars as &$p) {
-  $objProgs = array_filter(array_column($p['objetivos'], 'progress'), fn($v) => $v !== null);
-  $p['progress'] = !empty($objProgs) ? round(array_sum($objProgs) / count($objProgs), 1) : null;
+  $agg = krp_aggregate_objs($p['objetivos']);
+  $p['progress'] = $agg['progress'];
+  $p['esperado'] = $agg['esperado'];
+  $p['farol']    = $agg['farol'];
 }
 unset($p);
 

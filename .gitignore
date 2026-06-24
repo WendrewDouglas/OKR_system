@@ -61,3 +61,8 @@ sync_from_server_sftp.sh
 
 # Estrutura antiga (já consolidada na raiz)
 public_html/
+
+# Artefatos temporários de smoke test
+_smoke/
+okr_app/run.pid
+okr_app/run_android*.log

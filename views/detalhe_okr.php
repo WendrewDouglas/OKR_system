@@ -661,7 +661,28 @@ if (isset($_GET['ajax'])) {
     elseif ($agg['amarelo'] > 0)   $farol_obj = 'amarelo';
     elseif ($agg['verde'] > 0)     $farol_obj = 'verde';
     else                            $farol_obj = 'sem_apontamento';
-    
+
+    /* === Override canônico: progresso/farol via helper compartilhado (kr_progress.php).
+       Mantém a nova lógica de INTERVALO_IDEAL (ponderada + bandas τ) e unifica web+app. === */
+    require_once __DIR__ . '/../auth/helpers/kr_progress.php';
+    $krpByObj   = krp_kr_results_for_objetivos($pdo, [$id_objetivo]);
+    $krpResults = $krpByObj[$id_objetivo] ?? [];
+    if ($krpResults) {
+      $krpMap = [];
+      foreach ($krpResults as $kr) { $krpMap[(string)$kr['id_kr']] = $kr; }
+      foreach ($out as &$o) {
+        $hit = $krpMap[(string)$o['id_kr']] ?? null;
+        if ($hit === null) continue;
+        $excl = krp_status_excluido($o['status'] ?? null);
+        $o['progress']['pct_atual']    = $excl ? null : $hit['p_barra']; // barra (P_barra)
+        $o['progress']['pct_esperado'] = $hit['esperado'];              // tick esperado
+        $o['farol_auto']               = $hit['farol'];
+      }
+      unset($o);
+      $aggObj    = krp_aggregate_krs($krpResults);
+      $farol_obj = ($aggObj['farol'] === 'cinza') ? 'sem_apontamento' : $aggObj['farol'];
+    }
+
     echo json_encode([
       'success'=>true,
       'krs'=>$out,
