@@ -4640,8 +4640,10 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         }
       }
 
-      // Garante que o header já existe no DOM
-      document.addEventListener('DOMContentLoaded', refreshObjectiveProgressFromKRs);
+      // NOTA: o chip de progresso e o farol do objetivo já são injetados por
+      // loadKRs() ao renderizar os KRs. A atualização redundante via
+      // refreshObjectiveProgressFromKRs() (segundo fetch, no DOMContentLoaded)
+      // foi removida por rodar tarde e causar layout-shift no carregamento.
     </script>
     <script>
     // Recarrega a página sempre que QUALQUER modal (.modal) for fechado (perder a classe .show)
@@ -4687,31 +4689,6 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }).observe(document.body, { childList: true, subtree: true });
     })();
     </script>
-    <script>
-      (async () => {
-        const idObj = <?= json_encode($id_objetivo) ?>;
-        const res = await fetch(`<?= basename(__FILE__) ?>?ajax=load_krs&id_objetivo=${idObj}`);
-        const json = await res.json();
-        if (!json.success) return;
-
-        // KPIs dinâmicos
-        const agg = json.farol_agg || {};
-        document.querySelector('[data-kpi="total_krs"]').textContent = agg.considerados ?? 0;
-        document.querySelector('[data-kpi="criticos"]').textContent  = agg.vermelho ?? 0;
-        document.querySelector('[data-kpi="em_risco"]').textContent  = agg.amarelo ?? 0;
-
-        // Farol do objetivo (pior cor)
-        const farol = json.obj_farol || 'sem_apontamento';
-        const el = document.getElementById('obj-farol');
-        el.dataset.farol = farol;           // mantém o valor semânticamente
-        el.classList.remove('verde','amarelo','vermelho','neutro','sem_apontamento');
-        el.classList.add(farol);            // sua CSS pinta pela classe
-
-        // Se você renderiza a lista de KRs no front, prefira usar kr.farol_auto
-        // e NUNCA exibir kr.farol do BD:
-        // json.krs.forEach(kr => renderKR({ ...kr, farol: kr.farol_auto }));
-      })();
-      </script>
       <script>
         (function(){
           const $modal = document.getElementById('modalApont');
@@ -4752,77 +4729,6 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           // <tr data-id_ms="{{id_ms}}" data-data_prevista="{{data_prevista}}"> ... </tr>
         })();
       </script>
-
-  <!-- ============================================================
-       DIAGNÓSTICO TEMPORÁRIO — flash "KR abre/fecha" no load.
-       Só faz console.log (não muda comportamento). REMOVER depois.
-       ============================================================ -->
-  <script>
-  (function(){
-    const log = []; window.__KRDIAG = log;
-    const t0 = performance.now();
-    const ts = () => '+' + Math.round(performance.now() - t0) + 'ms';
-    function rec(s){ log.push(s); console.log('[KRDIAG]', s); }
-    function nodeDesc(n){
-      if(!n || n.nodeType!==1) return String(n);
-      const id = n.id ? '#'+n.id : '';
-      const cls = (n.className && typeof n.className==='string') ? '.'+n.className.trim().split(/\s+/).join('.') : '';
-      const kr = n.closest?.('.kr-card') ? ' (dentro de .kr-card)' : '';
-      return (n.tagName.toLowerCase()+id+cls).slice(0,90)+kr;
-    }
-    rec('inicio v2');
-
-    // 1) LAYOUT SHIFT — o que efetivamente se desloca na tela
-    try{
-      new PerformanceObserver(list=>{
-        for(const e of list.getEntries()){
-          if (e.hadRecentInput) continue;
-          const srcs = (e.sources||[]).map(s=>nodeDesc(s.node)).join(' | ') || '(sem sources)';
-          rec(`LAYOUT-SHIFT val=${e.value.toFixed(4)} ${ts()} -> ${srcs}`);
-        }
-      }).observe({type:'layout-shift', buffered:true});
-    }catch(err){ rec('layout-shift indisponivel: '+err.message); }
-
-    // 2) Re-render do #krContainer (filhos removidos/adicionados)
-    const moC = new MutationObserver(muts=>{
-      for(const m of muts){
-        if(m.type==='childList' && (m.addedNodes.length||m.removedNodes.length)){
-          rec(`#krContainer childList +${m.addedNodes.length}/-${m.removedNodes.length} (cards agora: ${document.querySelectorAll('#krContainer .kr-card').length}) ${ts()}`);
-        }
-      }
-    });
-    // 3) .open nos .kr-card + transicoes no .kr-body
-    const moClass = new MutationObserver(muts=>{
-      for(const m of muts){
-        if(m.attributeName==='class' && m.target.classList?.contains('kr-card')){
-          const had=(m.oldValue||'').includes('open'), has=m.target.classList.contains('open');
-          if(had!==has){ rec(`kr-card[${m.target.dataset.id}] .open ${had}->${has} ${ts()}`); console.trace('[KRDIAG] origem .open'); }
-        }
-      }
-    });
-    ['transitionrun','transitionstart'].forEach(ev=>document.addEventListener(ev,e=>{
-      if(e.target?.closest?.('.kr-body')) rec(`${ev} prop=${e.propertyName} ${ts()}`);
-    },true));
-
-    (function tryObserve(){
-      const c=document.getElementById('krContainer');
-      if(c){ moC.observe(c,{childList:true}); moClass.observe(c,{subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true}); rec('observando #krContainer '+ts()); }
-      else setTimeout(tryObserve,40);
-    })();
-
-    // 4) Altura do #krContainer e do 1o card por ~3s (loga quando muda)
-    let lastC=-1,lastCard=-1;
-    (function snap(){
-      const c=document.getElementById('krContainer');
-      const card=document.querySelector('.kr-card');
-      const hc=c?Math.round(c.getBoundingClientRect().height):-1;
-      const hk=card?Math.round(card.getBoundingClientRect().height):-1;
-      if(hc!==lastC||hk!==lastCard){ rec(`alturas: container=${hc} card1=${hk} ${ts()}`); lastC=hc; lastCard=hk; }
-      if(performance.now()-t0<3000) requestAnimationFrame(snap);
-      else rec('FIM. window.__KRDIAG tem '+log.length+' linhas.');
-    })();
-  })();
-  </script>
 
   </body>
 </html>
