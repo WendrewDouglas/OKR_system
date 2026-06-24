@@ -189,6 +189,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                     pillarName: pillarName,
                     objetivos: pillarObjs,
                     prog: pillarProgress?[pillarName],
+                    progLoaded: pillarProgress != null,
                   ),
                 );
               },
@@ -702,11 +703,13 @@ class _PillarTile extends StatelessWidget {
   final String pillarName;
   final List<Map<String, dynamic>> objetivos;
   final PillarProgress? prog;
+  final bool progLoaded;
 
   const _PillarTile({
     required this.pillarName,
     required this.objetivos,
     this.prog,
+    this.progLoaded = false,
   });
 
   @override
@@ -832,9 +835,13 @@ class _PillarTile extends StatelessWidget {
                             ),
                           ],
                         ),
-                        if (prog?.progress != null) ...[
+                        // Sempre mostra a barra quando o progresso foi carregado.
+                        // Sem dado mensurável (sem apontamento) → 0% cinza, sem tick.
+                        if (progLoaded) ...[
                           const SizedBox(height: 12),
-                          _PillarProgressBar(prog: prog!),
+                          _PillarProgressBar(
+                            prog: prog ?? const PillarProgress(farol: 'cinza'),
+                          ),
                         ],
                       ],
                     ),
