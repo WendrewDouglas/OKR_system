@@ -2328,7 +2328,12 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .kr-card.open .kr-toggle i{ transform:rotate(180deg); }
     .kr-card.cancelado .kr-title { color:#9aa4b2; }
     .kr-card.cancelado [data-act="apont"], .kr-card.cancelado [data-act="nova"]{ display: none !important; }
-    .kr-body{ max-height:0; overflow:hidden; transition:max-height .25s ease, opacity .2s ease; opacity:0; }
+    .kr-body{ max-height:0; overflow:hidden; opacity:0; }
+    /* A transição é habilitada só após o 1º paint (classe .kr-anim adicionada
+       via JS quando os cards já estão renderizados e retraídos). Isso evita o
+       flash de colapso animado dos KRs ao carregar a página; o clique para
+       expandir/retrair continua animando normalmente. */
+    .kr-anim .kr-body{ transition:max-height .25s ease, opacity .2s ease; }
     .kr-card.open .kr-body{ max-height:1400px; opacity:1; margin-top:10px; }
     /* Abas */
     .tabs{ border-bottom:1px solid var(--border); display:flex; gap:6px; }
@@ -3577,6 +3582,12 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           </article>
         `);
       });
+
+      // Habilita as transições só após o primeiro paint (cards já inseridos e
+      // retraídos), evitando o flash de abrir→fechar no carregamento.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        cont.classList.add('kr-anim');
+      }));
 
       // ====== CHIP DE PROGRESSO DO OBJETIVO (média dos KRs) ======
       const objPctAtual = n > 0 ? Math.round(sumAtual / n) : null;
