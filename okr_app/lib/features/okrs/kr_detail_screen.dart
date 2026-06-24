@@ -403,6 +403,7 @@ class _KrStatusChipState extends ConsumerState<_KrStatusChip> {
       ref.invalidate(okrCascataProvider);
       ref.invalidate(mapaEstrategicoProvider);
       if (mounted) {
+        setState(() => _busy = false); // o State é reaproveitado no rebuild — reseta o spinner
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Status alterado para ${_krStatusDisplay[status] ?? status}.')),
         );
