@@ -4732,7 +4732,58 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         })();
       </script>
 
+  <!-- ============================================================
+       DIAGNÓSTICO TEMPORÁRIO — flash "KR abre/fecha" no load.
+       Só faz console.log (não muda comportamento). REMOVER depois.
+       ============================================================ -->
+  <script>
+  (function(){
+    const log = []; window.__KRDIAG = log;
+    const t0 = performance.now();
+    const ts = () => '+' + Math.round(performance.now() - t0) + 'ms';
+    function rec(s){ log.push(s); console.log('[KRDIAG]', s); }
+    rec('inicio');
 
+    // 1) Eventos de transição em qualquer .kr-body
+    ['transitionrun','transitionstart','transitionend','animationstart'].forEach(ev=>{
+      document.addEventListener(ev, e=>{
+        const el = e.target;
+        if (el && el.classList && (el.classList.contains('kr-body') || el.closest?.('.kr-body'))){
+          const card = el.closest?.('.kr-card');
+          rec(`${ev} prop=${e.propertyName||e.animationName} card.open=${card?card.classList.contains('open'):'?'} ${ts()}`);
+        }
+      }, true);
+    });
+
+    // 2) Quem adiciona/remove a classe .open nos .kr-card
+    const mo = new MutationObserver(muts=>{
+      for (const m of muts){
+        if (m.type==='attributes' && m.attributeName==='class' && m.target.classList?.contains('kr-card')){
+          const had = (m.oldValue||'').includes('open');
+          const has = m.target.classList.contains('open');
+          if (had !== has){
+            rec(`kr-card[${m.target.dataset.id}] .open ${had}->${has} ${ts()}`);
+            console.trace('[KRDIAG] origem da mudanca de .open');
+          }
+        }
+      }
+    });
+    (function tryObserve(){
+      const c = document.getElementById('krContainer');
+      if (c){ mo.observe(c,{subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true}); rec('observando #krContainer '+ts()); }
+      else setTimeout(tryObserve,40);
+    })();
+
+    // 3) Altura/opacity do 1o .kr-body por ~2.5s (loga só quando altura>0)
+    (function snap(){
+      const b = document.querySelector('.kr-body');
+      if (b){ const cs=getComputedStyle(b); const h=Math.round(b.getBoundingClientRect().height);
+        if (h>0) rec(`kr-body ALTURA=${h} opacity=${cs.opacity} maxH=${cs.maxHeight} ${ts()}`); }
+      if (performance.now()-t0 < 2500) requestAnimationFrame(snap);
+      else rec('FIM. window.__KRDIAG tem '+log.length+' linhas.');
+    })();
+  })();
+  </script>
 
   </body>
 </html>
