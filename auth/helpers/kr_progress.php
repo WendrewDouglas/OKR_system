@@ -192,6 +192,14 @@ if (!function_exists('krp_calc_pontual')) {
 if (!function_exists('krp_calc_kr')) {
   /** Despacha por direção. */
   function krp_calc_kr(array $kr, array $milestones, string $today): array {
+    // Status excluído (não iniciado / cancelado) NÃO entra no cálculo de
+    // progresso/farol: retorna neutro (cinza). Mantém o farol POR-KR coerente
+    // com as agregações (krp_aggregate_*), que já ignoram esses status — assim
+    // um KR não iniciado não aparece "Crítico" no card enquanto o objetivo
+    // fica cinza. Não altera os agregados (que já pulavam esses KRs).
+    if (krp_status_excluido($kr['status'] ?? null)) {
+      return ['p_barra' => null, 'esperado' => null, 'p_farol' => null, 'farol' => 'cinza'];
+    }
     if (krp_is_intervalo($kr['direcao_metrica'] ?? null)) {
       return krp_calc_intervalo($kr, $milestones, $today);
     }
