@@ -3656,16 +3656,21 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         }
       }
 
-      // ====== KPIs DO OBJETIVO (consistentes com o farol_auto dos cards) ======
+      // ====== KPIs DO OBJETIVO ======
       // O HTML renderiza valores iniciais via $kpi (coluna 'farol' do BD); aqui
-      // sobrescrevemos com a contagem dinâmica (farol_auto), igual aos cards e
-      // ao farol do objetivo, para não ficarem inconsistentes.
+      // sobrescrevemos com a contagem dinâmica para bater com o que está na tela:
+      //  - classificação idêntica à do card: (farol_auto || farol || 'neutro');
+      //  - usa farol_auto pós-override do helper (mesmo valor que o card exibe);
+      //  - críticos/em risco ignoram KRs cancelados, igual ao farol do objetivo;
+      //  - total = todos os KRs (igual ao render inicial e ao nº de cards).
       {
         const elTot = document.getElementById('kpiTotalKrs');
         const elCri = document.getElementById('kpiCriticos');
         const elRis = document.getElementById('kpiRisco');
-        const criticos = data.krs.filter(k => (k.farol_auto || '').toLowerCase() === 'vermelho').length;
-        const emRisco  = data.krs.filter(k => (k.farol_auto || '').toLowerCase() === 'amarelo').length;
+        const farolDe = k => (k.farol_auto || k.farol || 'neutro').toLowerCase();
+        const ativos  = data.krs.filter(k => !((k.status || '').toLowerCase().includes('cancel')));
+        const criticos = ativos.filter(k => farolDe(k) === 'vermelho').length;
+        const emRisco  = ativos.filter(k => farolDe(k) === 'amarelo').length;
         if (elTot) elTot.textContent = data.krs.length;
         if (elCri) elCri.textContent = criticos;
         if (elRis) elRis.textContent = emRisco;
