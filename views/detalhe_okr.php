@@ -3656,6 +3656,21 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         }
       }
 
+      // ====== KPIs DO OBJETIVO (consistentes com o farol_auto dos cards) ======
+      // O HTML renderiza valores iniciais via $kpi (coluna 'farol' do BD); aqui
+      // sobrescrevemos com a contagem dinâmica (farol_auto), igual aos cards e
+      // ao farol do objetivo, para não ficarem inconsistentes.
+      {
+        const elTot = document.getElementById('kpiTotalKrs');
+        const elCri = document.getElementById('kpiCriticos');
+        const elRis = document.getElementById('kpiRisco');
+        const criticos = data.krs.filter(k => (k.farol_auto || '').toLowerCase() === 'vermelho').length;
+        const emRisco  = data.krs.filter(k => (k.farol_auto || '').toLowerCase() === 'amarelo').length;
+        if (elTot) elTot.textContent = data.krs.length;
+        if (elCri) elCri.textContent = criticos;
+        if (elRis) elRis.textContent = emRisco;
+      }
+
     }
 
 
@@ -4552,98 +4567,11 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     // ID do objetivo disponível no PHP
       const OBJ_ID = <?= (int)$id_objetivo ?>;
 
-      // Calcula médias e injeta/atualiza o chip no header do objetivo
-      function injectObjectiveProgressChip(krs) {
-        let sumAtual = 0, sumEsper = 0, nAtual = 0, nEsper = 0;
-
-        (krs || []).forEach(kr => {
-          const pa = kr?.progress?.pct_atual;
-          const pe = kr?.progress?.pct_esperado;
-          if (Number.isFinite(pa)) { sumAtual += Math.max(0, Math.min(100, pa)); nAtual++; }
-          if (Number.isFinite(pe)) { sumEsper += Math.max(0, Math.min(100, pe)); nEsper++; }
-        });
-
-        const criticos = resp.krs.filter(k => k.farol_auto === 'vermelho').length;
-        const risco    = resp.krs.filter(k => k.farol_auto === 'amarelo').length;
-
-        const elTot  = document.getElementById('kpiTotalKrs');
-        const elCri  = document.getElementById('kpiCriticos');
-        const elRis  = document.getElementById('kpiRisco');
-
-        // === Farol do objetivo: vermelho se existir KR vermelho; senão amarelo se existir KR amarelo; senão verde
-        const objPill = document.getElementById('objFarolPill');
-        const objLbl  = document.getElementById('objFarolLabel');
-
-        if (objPill && objLbl) {
-          // remove estados anteriores
-          objPill.classList.remove('prog-ok','prog-warn','prog-bad','white');
-
-          let cls = 'prog-ok';
-          let txt = 'No trilho';
-          if (criticos > 0) { cls = 'prog-bad';  txt = 'Crítico'; }
-          else if (risco > 0) { cls = 'prog-warn'; txt = 'Atenção'; }
-
-          objPill.classList.add(cls);
-          objLbl.textContent = txt;
-          objPill.title = `Farol do objetivo — KRs vermelhos: ${criticos}, amarelos: ${risco}`;
-        }
-
-        if (elTot) elTot.textContent = resp.krs.length;
-        if (elCri) elCri.textContent = criticos;
-        if (elRis) elRis.textContent = risco;
-
-        const objPctAtual = nAtual ? Math.round(sumAtual / nAtual) : null;
-        const objPctEsper = nEsper ? Math.round(sumEsper / nEsper) : null;
-        const objOk = (objPctAtual !== null && objPctEsper !== null)
-          ? (objPctAtual >= objPctEsper)
-          : null;
-
-        const metaBar = document.querySelector('.obj-meta-pills');
-        if (!metaBar) return;
-
-        const id = 'objProgChip';
-        const cls = objOk === null ? 'white' : (objOk ? 'prog-ok' : 'prog-bad');
-        const lblAtual = (objPctAtual === null) ? '—' : (objPctAtual + '%');
-        const lblEsper = (objPctEsper === null) ? '—' : (objPctEsper + '%');
-        const title    = `Esperado: ${lblEsper} · Atual: ${lblAtual}`;
-
-        const html = `
-          <span class="meta-pill ${cls}" id="${id}" title="${title}">
-            <i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${lblAtual}
-          </span>
-        `;
-
-        // Atualiza se já existir; senão, insere como PRIMEIRO chip do header
-        const existing = document.getElementById(id);
-        if (existing) {
-          existing.classList.remove('prog-ok','prog-bad','white');
-          existing.classList.add(cls);
-          existing.title = title;
-          existing.innerHTML = `<i class="fa-solid fa-chart-line"></i> Progresso do objetivo: ${lblAtual}`;
-          if (metaBar.firstElementChild !== existing) metaBar.insertBefore(existing, metaBar.firstChild);
-        } else {
-          metaBar.insertAdjacentHTML('afterbegin', html);
-        }
-      }
-
-      // Busca os KRs e aciona a função acima
-      async function refreshObjectiveProgressFromKRs() {
-        try {
-          const url = `/OKR_system/views/detalhe_okr.php?ajax=load_krs&id_objetivo=${OBJ_ID}`;
-          const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          const data = await resp.json();
-          if (data?.success && Array.isArray(data.krs)) {
-            injectObjectiveProgressChip(data.krs);
-          }
-        } catch (e) {
-          console.error('Falha ao atualizar chip de progresso do objetivo:', e);
-        }
-      }
-
-      // NOTA: o chip de progresso e o farol do objetivo já são injetados por
-      // loadKRs() ao renderizar os KRs. A atualização redundante via
-      // refreshObjectiveProgressFromKRs() (segundo fetch, no DOMContentLoaded)
-      // foi removida por rodar tarde e causar layout-shift no carregamento.
+      // NOTA: KPIs (total/críticos/em risco), chip de progresso e farol do
+      // objetivo são atualizados dentro de loadKRs(), com base no farol_auto
+      // dinâmico — consistentes com os cards. As funções antigas que faziam
+      // isso via fetches redundantes foram removidas (rodavam tarde, causavam
+      // layout-shift e tinham bugs: "resp is not defined" / seletores nulos).
     </script>
     <script>
     // Recarrega a página sempre que QUALQUER modal (.modal) for fechado (perder a classe .show)
