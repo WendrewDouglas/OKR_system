@@ -78,6 +78,13 @@ foreach ($rows as $r) {
     'progress' => $agg['progress'],
     'esperado' => $agg['esperado'],
     'farol'    => $agg['farol'],
+    'key_results' => array_map(static fn(array $k): array => [
+      'id_kr'    => $k['id_kr'],
+      'status'   => $k['status'],
+      'progress' => $k['p_barra'],
+      'esperado' => $k['esperado'],
+      'farol'    => $k['farol'],
+    ], $krs),
   ];
   $pillars[$pilarId]['total_objetivos']++;
   $pillars[$pilarId]['total_krs'] += count($krs);

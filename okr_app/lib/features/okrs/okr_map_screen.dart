@@ -22,31 +22,57 @@ final okrCascataProvider =
       .cast<Map<String, dynamic>>();
 });
 
-/// Progresso/esperado/farol por pilar, calculado no backend (helper kr_progress).
+/// Progresso/esperado/farol de um nível (pilar/objetivo/KR), do backend (helper kr_progress).
 class PillarProgress {
   final double? progress; // 0..100 (barra)
   final double? esperado; // 0..100 (tick)
   final String farol; // verde | amarelo | vermelho | cinza
   const PillarProgress({this.progress, this.esperado, required this.farol});
+
+  factory PillarProgress.fromMap(Map<String, dynamic> m) => PillarProgress(
+        progress: (m['progress'] as num?)?.toDouble(),
+        esperado: (m['esperado'] as num?)?.toDouble(),
+        farol: (m['farol'] as String?) ?? 'cinza',
+      );
 }
 
-/// Mapa: pilar canônico → PillarProgress (fonte: /dashboard/mapa-estrategico).
+/// Progresso agregado do mapa: por pilar (nome canônico), por objetivo (id) e por KR (id).
+class MapaProgresso {
+  final Map<String, PillarProgress> pilares;
+  final Map<int, PillarProgress> objetivos;
+  final Map<String, PillarProgress> krs;
+  const MapaProgresso({
+    required this.pilares,
+    required this.objetivos,
+    required this.krs,
+  });
+}
+
+/// Fonte: /dashboard/mapa-estrategico (progresso calculado pelo helper kr_progress).
 final mapaEstrategicoProvider =
-    FutureProvider.autoDispose<Map<String, PillarProgress>>((ref) async {
+    FutureProvider.autoDispose<MapaProgresso>((ref) async {
   final api = ref.read(apiClientProvider);
   final res = await api.dio.get('/dashboard/mapa-estrategico');
   final pillars = ((res.data['pillars'] as List?) ?? [])
       .cast<Map<String, dynamic>>();
-  final map = <String, PillarProgress>{};
+
+  final pilares = <String, PillarProgress>{};
+  final objetivos = <int, PillarProgress>{};
+  final krs = <String, PillarProgress>{};
+
   for (final p in pillars) {
     final canon = _canonicalPillar((p['pilar_nome'] as String?) ?? '');
-    map[canon] = PillarProgress(
-      progress: (p['progress'] as num?)?.toDouble(),
-      esperado: (p['esperado'] as num?)?.toDouble(),
-      farol: (p['farol'] as String?) ?? 'cinza',
-    );
+    pilares[canon] = PillarProgress.fromMap(p);
+    for (final o in ((p['objetivos'] as List?) ?? []).cast<Map<String, dynamic>>()) {
+      final oid = (o['id_objetivo'] as num?)?.toInt();
+      if (oid != null) objetivos[oid] = PillarProgress.fromMap(o);
+      for (final k in ((o['key_results'] as List?) ?? []).cast<Map<String, dynamic>>()) {
+        final kid = k['id_kr'] as String?;
+        if (kid != null) krs[kid] = PillarProgress.fromMap(k);
+      }
+    }
   }
-  return map;
+  return MapaProgresso(pilares: pilares, objetivos: objetivos, krs: krs);
 });
 
 // ---------------------------------------------------------------------------
@@ -77,7 +103,7 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
   @override
   Widget build(BuildContext context) {
     final cascata = ref.watch(okrCascataProvider);
-    final pillarProgress = ref.watch(mapaEstrategicoProvider).asData?.value;
+    final mapa = ref.watch(mapaEstrategicoProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -188,8 +214,8 @@ class _OkrMapScreenState extends ConsumerState<OkrMapScreen> {
                   child: _PillarTile(
                     pillarName: pillarName,
                     objetivos: pillarObjs,
-                    prog: pillarProgress?[pillarName],
-                    progLoaded: pillarProgress != null,
+                    prog: mapa?.pilares[pillarName],
+                    progLoaded: mapa != null,
                   ),
                 );
               },
@@ -873,18 +899,92 @@ class _PillarTile extends StatelessWidget {
 // Objetivo tile (Level 1)
 // ---------------------------------------------------------------------------
 
-class _ObjetivoTile extends StatelessWidget {
+/// Barra compacta (objetivo/KR): preenchimento por farol + tick do esperado + label %.
+class _MiniProgressBar extends StatelessWidget {
+  final PillarProgress prog;
+  const _MiniProgressBar({required this.prog});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = ((prog.progress ?? 0).clamp(0, 100)).toDouble();
+    final esp = prog.esperado?.clamp(0, 100).toDouble();
+    final c = _farolColor(prog.farol);
+    return Row(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              return SizedBox(
+                height: 8,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 2,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: c.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      top: 2,
+                      child: Container(
+                        width: w * pct / 100.0,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: c,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    if (esp != null)
+                      Positioned(
+                        left: (w * esp / 100.0 - 1).clamp(0.0, w - 2.0),
+                        top: 0,
+                        child: Container(width: 2, height: 8, color: AppColors.text),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 34,
+          child: Text(
+            '${pct.toStringAsFixed(0)}%',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ObjetivoTile extends ConsumerWidget {
   final Map<String, dynamic> obj;
   const _ObjetivoTile({required this.obj});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final desc = obj['descricao'] ?? '';
     final status = _statusLabel(obj['status'] as String?);
     final deadline = obj['dt_prazo'] as String?;
     final donoMap = obj['dono'] as Map<String, dynamic>?;
     final dono = (donoMap?['nome'] as String?) ?? '';
     final krs = (obj['key_results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final mapa = ref.watch(mapaEstrategicoProvider).asData?.value;
+    final oid = (obj['id_objetivo'] as num?)?.toInt();
+    final op = oid != null ? mapa?.objetivos[oid] : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -899,7 +999,10 @@ class _ObjetivoTile extends StatelessWidget {
           onTap: toggle,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
               children: [
                 const Icon(Icons.flag_outlined, size: 16, color: AppColors.gold),
                 const SizedBox(width: 8),
@@ -950,6 +1053,12 @@ class _ObjetivoTile extends StatelessWidget {
                     child: const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
                   ),
               ],
+                ),
+                if (mapa != null) ...[
+                  const SizedBox(height: 6),
+                  _MiniProgressBar(prog: op ?? const PillarProgress(farol: 'cinza')),
+                ],
+              ],
             ),
           ),
         ),
@@ -977,7 +1086,7 @@ class _ObjetivoTile extends StatelessWidget {
 // KR tile (Level 2)
 // ---------------------------------------------------------------------------
 
-class _KrTile extends StatelessWidget {
+class _KrTile extends ConsumerWidget {
   final Map<String, dynamic> kr;
   const _KrTile({required this.kr});
 
@@ -995,7 +1104,7 @@ class _KrTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final desc = kr['descricao'] ?? '';
     final status = _statusLabel(kr['status'] as String?);
     final farol = kr['farol'] as String?;
@@ -1003,6 +1112,9 @@ class _KrTile extends StatelessWidget {
     final responsavelMap = kr['responsavel'] as Map<String, dynamic>?;
     final responsavel = (responsavelMap?['nome'] as String?) ?? '';
     final iniciativas = (kr['iniciativas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final mapa = ref.watch(mapaEstrategicoProvider).asData?.value;
+    final kid = kr['id_kr'] as String?;
+    final kp = kid != null ? mapa?.krs[kid] : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -1017,7 +1129,10 @@ class _KrTile extends StatelessWidget {
           onTap: toggle,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
               children: [
                 Icon(Icons.track_changes, size: 14, color: _farolColor(farol)),
                 const SizedBox(width: 6),
@@ -1066,6 +1181,12 @@ class _KrTile extends StatelessWidget {
                     turns: turns,
                     child: const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
                   ),
+              ],
+                ),
+                if (mapa != null) ...[
+                  const SizedBox(height: 6),
+                  _MiniProgressBar(prog: kp ?? const PillarProgress(farol: 'cinza')),
+                ],
               ],
             ),
           ),
