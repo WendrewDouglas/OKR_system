@@ -37,6 +37,11 @@ if (!defined('PG_BOOTSTRAPPED')) {
     if (!defined('PG_CONSENT_VERSION')) {
         define('PG_CONSENT_VERSION', '1.0');
     }
+    // Picker de animais: false = emoji (interim, sem custo); true = fotos em
+    // assets/img/animais/<slug>.png. Virar true quando as imagens forem subidas.
+    if (!defined('PG_ANIMAL_IMAGES')) {
+        define('PG_ANIMAL_IMAGES', false);
+    }
 
     require_once __DIR__ . '/db.php';
     require_once __DIR__ . '/helpers.php';

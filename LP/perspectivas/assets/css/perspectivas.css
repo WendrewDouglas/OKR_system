@@ -66,15 +66,28 @@ body {
   border: 1px solid var(--pg-line);
 }
 
-/* -------------------------- PROGRESSO ------------------------- */
-.pg-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.pg-progress-bar { flex: 1; height: 8px; background: #eef0f5; border-radius: 999px; overflow: hidden; }
-.pg-progress-bar span {
-  display: block; height: 100%; width: 0;
-  background: linear-gradient(90deg, var(--pg-orange), #ff8a65);
-  border-radius: 999px; transition: width .45s cubic-bezier(.4,0,.2,1);
+/* ---------------- PROGRESSO — trilha de bolinhas -------------- */
+.pg-progress-wrap { margin-bottom: 24px; }
+.pg-stepper { display: flex; align-items: center; width: 100%; }
+.pg-stepper-dot {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--pg-line); background: #fff; color: var(--pg-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700; transition: background .35s, border-color .35s, color .35s, box-shadow .35s;
 }
-.pg-progress-label { font-size: .8rem; font-weight: 600; color: var(--pg-muted); white-space: nowrap; }
+.pg-stepper-line {
+  flex: 1 1 auto; min-width: 6px; height: 3px; background: var(--pg-line);
+  transition: background .4s ease;
+}
+.pg-stepper-dot.is-done { background: var(--pg-orange); border-color: var(--pg-orange); color: #fff; }
+.pg-stepper-dot.is-active {
+  border-color: var(--pg-orange); color: var(--pg-orange);
+  box-shadow: 0 0 0 4px rgba(255,87,34,.15);
+}
+.pg-stepper-line.is-done { background: var(--pg-orange); }
+.pg-stepper-caption {
+  margin-top: 10px; text-align: center; font-size: .82rem; font-weight: 600; color: var(--pg-muted);
+}
 
 /* --------------------------- STEPS ---------------------------- */
 .pg-step { display: none; }
@@ -119,11 +132,12 @@ body {
 .pg-textarea { resize: vertical; min-height: 60px; }
 
 /* --------------------- ESCALA 0..10 (pílulas) ----------------- */
-.pg-scale { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Linha ÚNICA (nowrap): as 11 pílulas dividem a largura igualmente e nunca empilham. */
+.pg-scale { display: flex; flex-wrap: nowrap; gap: 4px; width: 100%; }
 .pg-pill {
-  flex: 1 0 auto; min-width: 40px; min-height: 44px;
+  flex: 1 1 0; min-width: 0; height: 44px; padding: 0;
   border: 1.5px solid var(--pg-line); background: #fff; color: var(--pg-ink-soft);
-  border-radius: 10px; font-family: inherit; font-size: .95rem; font-weight: 600;
+  border-radius: 9px; font-family: inherit; font-size: .85rem; font-weight: 600;
   cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent;
 }
 .pg-pill:hover { border-color: var(--pg-orange); color: var(--pg-orange); }
@@ -141,6 +155,71 @@ body {
 }
 .pg-radio:hover { border-color: var(--pg-orange); }
 .pg-radio input { accent-color: var(--pg-orange); width: 18px; height: 18px; }
+
+/* ---------------------- PICKER DE ANIMAIS --------------------- */
+.pg-animal-help {
+  font-size: .82rem; color: var(--pg-muted); line-height: 1.4;
+  margin: 0 0 12px; padding: 8px 10px;
+  background: #fbfcfe; border: 1px dashed var(--pg-line); border-radius: var(--pg-radius-sm);
+}
+.pg-animal-help strong { color: var(--pg-ink-soft); }
+.pg-animals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px 8px;
+  margin-top: 4px;
+}
+.pg-animal {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  background: none; border: none; padding: 6px 2px; cursor: pointer;
+  font-family: inherit; -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none; user-select: none;
+}
+.pg-animal-img {
+  position: relative;
+  width: 100%; max-width: 76px; aspect-ratio: 1 / 1; border-radius: 50%;
+  overflow: hidden; background: linear-gradient(135deg, #fff2ec, #ffe0d3);
+  border: 2.5px solid var(--pg-line);
+  transition: border-color .18s, box-shadow .18s, transform .12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pg-animal-img img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
+.pg-animal-emoji { position: absolute; z-index: 0; font-size: 2rem; line-height: 1; filter: saturate(1.05); }
+.pg-animal-name { font-size: .8rem; font-weight: 600; color: var(--pg-ink-soft); text-align: center; line-height: 1.12; }
+
+.pg-animal.is-selected .pg-animal-img { border-color: var(--pg-orange); box-shadow: 0 0 0 3px rgba(255,87,34,.25); }
+.pg-animal.is-selected .pg-animal-name { color: var(--pg-orange); }
+.pg-animal.is-selected .pg-animal-img::after {
+  content: '✓'; position: absolute; z-index: 2; right: -1px; bottom: -1px;
+  width: 20px; height: 20px; border-radius: 50%; background: var(--pg-orange); color: #fff;
+  font-size: .68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff;
+}
+
+/* Balão da característica */
+.pg-animal-tip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: max-content; max-width: 210px;
+  background: var(--pg-ink); color: #fff;
+  font-size: .78rem; font-weight: 500; line-height: 1.35; text-align: center;
+  padding: 8px 11px; border-radius: 9px; z-index: 30;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .18s, transform .18s; box-shadow: 0 8px 22px rgba(0,0,0,.24); white-space: normal;
+}
+.pg-animal-tip::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: var(--pg-ink);
+}
+.pg-animal.show-tip .pg-animal-tip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+/* Hover só em dispositivos com mouse (evita tooltip "grudado" no toque) */
+@media (hover: hover) {
+  .pg-animal:hover .pg-animal-img { border-color: var(--pg-orange); transform: translateY(-2px); }
+  .pg-animal:hover .pg-animal-tip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+}
+
+.pg-animal-hint { margin-top: 10px; font-size: .85rem; color: var(--pg-orange); font-weight: 600; }
 
 /* --------------------------- GRUPOS --------------------------- */
 .pg-group { padding: 12px; border: 1px dashed var(--pg-line); border-radius: var(--pg-radius-sm); margin-bottom: 12px; }
@@ -196,6 +275,8 @@ body {
   font-size: 2rem; display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
 .pg-thanks p { color: var(--pg-ink-soft); max-width: 480px; margin: 12px auto; }
+.pg-thanks-actions { margin-top: 26px; text-align: center; }
+.pg-btn-exit { display: inline-block; text-decoration: none; min-width: 160px; }
 
 /* ---------------------------- FOOTER -------------------------- */
 .pg-footer { text-align: center; color: var(--pg-muted); font-size: .8rem; margin-top: 22px; }
@@ -208,18 +289,9 @@ body {
   .pg-card { padding: 32px 34px 34px; }
   .pg-step-title { font-size: 1.5rem; }
 
-  /* Matriz aninhada: critérios lado a lado no desktop */
-  .pg-unit { display: grid; grid-template-columns: 1fr; gap: 12px; }
-  .pg-unit-crit { display: grid; grid-template-columns: 220px 1fr; align-items: center; gap: 16px; margin-bottom: 0; }
-  .pg-unit-crit .pg-matrix-label { margin: 0; }
-
-  /* Matriz plana: rótulo + escala lado a lado */
-  .pg-matrix-flat .pg-matrix-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
-}
-
-@media (min-width: 900px) {
-  .pg-matrix-flat .pg-matrix-row { grid-template-columns: 320px 1fr; align-items: center; }
-  .pg-matrix-flat .pg-matrix-label { margin: 0; }
+  /* Matrizes: rótulo em cima, escala 0..10 em UMA linha logo abaixo (todos os tamanhos). */
+  .pg-unit-crit { margin-bottom: 14px; }
+  .pg-stepper-dot { width: 30px; height: 30px; font-size: .82rem; }
 }
 
 /* Respeita quem prefere menos animação */

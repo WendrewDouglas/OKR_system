@@ -36,7 +36,30 @@ function pg_block_titles(): array
         'portfolio'   => 'Portfólio e unidades de negócio',
         'clientes'    => 'Clientes, receita e crescimento',
         'gestao_okr'  => 'Gestão, cultura, OKRs e execução',
-        'futuro'      => 'Futuro, capa de revista e animal',
+        'futuro'      => 'Futuro e identidade da FMX',
+    ];
+}
+
+/**
+ * Catálogo de animais (pergunta 20 — identidade da FMX).
+ * name => [slug (arquivo de imagem), carac (característica exibida no balão)].
+ * O `name` é o valor gravado (whitelist do enum). Ordem = ordem de exibição.
+ */
+function pg_animals(): array
+{
+    return [
+        'Castor'    => ['slug' => 'castor',    'emoji' => '🦫', 'carac' => 'constrói com método, processo e organização'],
+        'Águia'     => ['slug' => 'aguia',     'emoji' => '🦅', 'carac' => 'enxerga de cima, escolhe o alvo e busca visão estratégica'],
+        'Camaleão'  => ['slug' => 'camaleao',  'emoji' => '🦎', 'carac' => 'adapta-se rapidamente às mudanças do ambiente'],
+        'Polvo'     => ['slug' => 'polvo',     'emoji' => '🐙', 'carac' => 'conecta muitas frentes ao mesmo tempo, com inteligência distribuída'],
+        'Formiga'   => ['slug' => 'formiga',   'emoji' => '🐜', 'carac' => 'trabalha muito, em equipe, com disciplina e constância'],
+        'Lobo'      => ['slug' => 'lobo',      'emoji' => '🐺', 'carac' => 'atua em matilha, com liderança, estratégia e senso de território'],
+        'Golfinho'  => ['slug' => 'golfinho',  'emoji' => '🐬', 'carac' => 'cria relações fortes, colabora e entrega inteligência com proximidade'],
+        'Elefante'  => ['slug' => 'elefante',  'emoji' => '🐘', 'carac' => 'é sólido, confiável, experiente e carrega memória construída'],
+        'Falcão'    => ['slug' => 'falcao',    'emoji' => '🦅', 'carac' => 'mira oportunidades com velocidade, foco e precisão'],
+        'Tartaruga' => ['slug' => 'tartaruga', 'emoji' => '🐢', 'carac' => 'avança com cautela, consistência e resistência'],
+        'Leão'      => ['slug' => 'leao',      'emoji' => '🦁', 'carac' => 'busca protagonismo, autoridade e reconhecimento no mercado'],
+        'Abelha'    => ['slug' => 'abelha',    'emoji' => '🐝', 'carac' => 'produz valor coletivo com organização, especialização e colaboração'],
     ];
 }
 
@@ -288,9 +311,9 @@ function pg_questions(): array
             'spec'          => ['shape' => 'fields', 'fields' => [
                 'manchete_capa'           => ['type' => 'text'],
                 'conquista_justificativa' => ['type' => 'text'],
-                'animal_atual'            => ['type' => 'text'],
+                'animal_atual'            => ['type' => 'enum', 'render' => 'animal', 'options' => array_keys(pg_animals())],
                 'animal_atual_porque'     => ['type' => 'text'],
-                'animal_futuro'           => ['type' => 'text'],
+                'animal_futuro'           => ['type' => 'enum', 'render' => 'animal', 'options' => array_keys(pg_animals())],
                 'mudanca_necessaria'      => ['type' => 'text'],
             ]],
         ],

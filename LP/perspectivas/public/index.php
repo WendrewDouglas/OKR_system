@@ -59,6 +59,30 @@ function pg_render_scale(string $inputName, array $e): string
     return $html;
 }
 
+/** Picker visual de animais (foto redonda + nome + balão com característica). */
+function pg_render_animals(string $fname, callable $esc): string
+{
+    $h  = '<p class="pg-animal-help">💡 Toque para escolher. Para ver a característica de cada animal, <strong>segure o dedo</strong> sobre ele (no celular) ou <strong>passe o mouse</strong> (no computador).</p>';
+    $h .= '<div class="pg-animals" role="radiogroup" aria-label="Escolha um animal">';
+    $useImg = defined('PG_ANIMAL_IMAGES') && PG_ANIMAL_IMAGES;
+    foreach (pg_animals() as $name => $meta) {
+        $tip = $esc($name . ' — ' . $meta['carac']);
+        $h .= '<button type="button" class="pg-animal" data-val="' . $esc($name) . '" role="radio" aria-checked="false" aria-label="' . $tip . '">'
+            . '<span class="pg-animal-img">'
+            . '<span class="pg-animal-emoji" aria-hidden="true">' . $meta['emoji'] . '</span>'
+            . ($useImg
+                ? '<img src="../assets/img/animais/' . $esc($meta['slug']) . '.png" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+                : '')
+            . '</span>'
+            . '<span class="pg-animal-name">' . $esc($name) . '</span>'
+            . '<span class="pg-animal-tip" role="tooltip">' . $tip . '</span>'
+            . '</button>';
+    }
+    $h .= '</div>';
+    $h .= '<div class="pg-animal-hint" aria-live="polite"></div>';
+    return $h;
+}
+
 /** Renderiza uma pergunta completa conforme seu shape. */
 function pg_render_question(string $qkey, array $q, callable $esc, array $FIELD_LABELS, array $GROUP_LABELS): string
 {
@@ -84,15 +108,21 @@ function pg_render_question(string $qkey, array $q, callable $esc, array $FIELD_
         case 'fields':
             foreach (($spec['fields'] ?? []) as $fname => $rule) {
                 $type = $rule['type'] ?? 'text';
-                $h .= '<div class="pg-field" data-field="' . $esc($fname) . '" data-ftype="' . $esc($type) . '">';
+                $isAnimal  = ($type === 'enum' && ($rule['render'] ?? '') === 'animal');
+                $ftypeAttr = $isAnimal ? 'animal' : $type;
+                $h .= '<div class="pg-field" data-field="' . $esc($fname) . '" data-ftype="' . $esc($ftypeAttr) . '">';
                 $h .= '<label class="pg-sub-label">' . $esc($labelOf($fname)) . '</label>';
                 if ($type === 'scale') {
                     $h .= pg_render_scale($qkey, ['field' => $fname]);
+                } elseif ($isAnimal) {
+                    $h .= pg_render_animals($fname, $esc);
                 } elseif ($type === 'enum') {
                     $h .= '<div class="pg-options">';
+                    // Todas as opções compartilham o MESMO name -> grupo de rádio
+                    // (permite trocar de seleção; sem isso, cada rádio ficava isolado).
+                    $groupName = $esc('pgopt_' . $qkey . '_' . $fname);
                     foreach (($rule['options'] ?? []) as $i => $opt) {
-                        $id = $esc($qkey . '_' . $fname . '_' . $i);
-                        $h .= '<label class="pg-radio"><input type="radio" name="' . $id . '_g" value="' . $esc($opt) . '"> <span>' . $esc($opt) . '</span></label>';
+                        $h .= '<label class="pg-radio"><input type="radio" name="' . $groupName . '" value="' . $esc($opt) . '"> <span>' . $esc($opt) . '</span></label>';
                     }
                     $h .= '</div>';
                 } else {
@@ -167,7 +197,7 @@ $totalSteps = count($blockOrder) + 1;
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/perspectivas.css?v=1.0">
+<link rel="stylesheet" href="../assets/css/perspectivas.css?v=1.3">
 </head>
 <body
   data-csrf="<?= $e($csrf) ?>"
@@ -193,10 +223,15 @@ $totalSteps = count($blockOrder) + 1;
   <!-- CARD PRINCIPAL -->
   <section class="pg-card" id="pg-card">
 
-    <!-- PROGRESSO -->
-    <div class="pg-progress" aria-hidden="true">
-      <div class="pg-progress-bar"><span id="pg-progress-fill" style="width:0%"></span></div>
-      <div class="pg-progress-label"><span id="pg-progress-step">1</span> / <?= (int) $totalSteps ?></div>
+    <!-- PROGRESSO — trilha de bolinhas numeradas (step 0 = identificação) -->
+    <div class="pg-progress-wrap">
+      <div class="pg-stepper" aria-hidden="true">
+        <?php for ($s = 0; $s <= count($blockOrder); $s++): ?>
+          <?php if ($s > 0): ?><div class="pg-stepper-line" data-line="<?= (int) $s ?>"></div><?php endif; ?>
+          <div class="pg-stepper-dot" data-dot="<?= (int) $s ?>"><span><?= (int) $s ?></span></div>
+        <?php endfor; ?>
+      </div>
+      <div class="pg-stepper-caption" id="pg-step-caption">Identificação</div>
     </div>
 
     <form id="pg-form" novalidate>
@@ -214,7 +249,7 @@ $totalSteps = count($blockOrder) + 1;
 
         <div class="pg-field">
           <label class="pg-sub-label" for="pg-email">E-mail</label>
-          <input type="email" id="pg-email" class="pg-input" autocomplete="email" inputmode="email" maxlength="150" placeholder="voce@fmx.com.br">
+          <input type="email" id="pg-email" class="pg-input" autocomplete="email" inputmode="email" maxlength="150" placeholder="voce@fmxsolucoes.com.br">
           <div class="pg-q-error" data-for="email" aria-live="polite"></div>
         </div>
 
@@ -271,6 +306,9 @@ $totalSteps = count($blockOrder) + 1;
         <h2 class="pg-step-title">Obrigado por compartilhar sua perspectiva.</h2>
         <p>Suas respostas foram registradas com sucesso e serão utilizadas pela PlanningBI exclusivamente para compor o diagnóstico estratégico da FMX.</p>
         <p>A análise será consolidada buscando identificar convergências, divergências, oportunidades de alinhamento e prioridades para o próximo ciclo de gestão.</p>
+        <div class="pg-thanks-actions">
+          <a class="pg-btn pg-btn-primary pg-btn-exit" href="https://planningbi.com.br/">Sair</a>
+        </div>
       </section>
 
     </form>
@@ -281,6 +319,6 @@ $totalSteps = count($blockOrder) + 1;
   </footer>
 </main>
 
-<script src="../assets/js/perspectivas.js?v=1.0"></script>
+<script src="../assets/js/perspectivas.js?v=1.3"></script>
 </body>
 </html>

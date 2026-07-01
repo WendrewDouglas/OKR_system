@@ -19,8 +19,10 @@
 
   var form = document.getElementById('pg-form');
   var steps = Array.prototype.slice.call(document.querySelectorAll('.pg-step'));
-  var fill = document.getElementById('pg-progress-fill');
-  var stepLabel = document.getElementById('pg-progress-step');
+  var dots = Array.prototype.slice.call(document.querySelectorAll('.pg-stepper-dot'));
+  var lines = Array.prototype.slice.call(document.querySelectorAll('.pg-stepper-line'));
+  var caption = document.getElementById('pg-step-caption');
+  var NBLOCKS = Math.max(1, dots.length - 1); // nº de blocos (dots = identificação + blocos)
 
   var state = { step: 0, sessionToken: null, busy: false };
 
@@ -72,13 +74,33 @@
   }
 
   function updateProgress() {
-    var dataStep = steps[state.step].getAttribute('data-step');
-    var n;
-    if (dataStep === 'thanks') { n = CFG.totalSteps; }
-    else { n = parseInt(dataStep, 10) + 1; }
-    var pct = Math.round((n / CFG.totalSteps) * 100);
-    if (fill) fill.style.width = pct + '%';
-    if (stepLabel) stepLabel.textContent = String(Math.min(n, CFG.totalSteps));
+    var el = steps[state.step];
+    var dataStep = el.getAttribute('data-step');
+    // activeNum: número do step ativo (0 = identificação, 1..N = blocos).
+    // Na tela de agradecimento, todos concluídos (activeNum além do último dot).
+    var activeNum = (dataStep === 'thanks') ? dots.length : parseInt(dataStep, 10);
+
+    dots.forEach(function (dot) {
+      var d = parseInt(dot.getAttribute('data-dot'), 10);
+      dot.classList.remove('is-done', 'is-active');
+      if (d < activeNum) dot.classList.add('is-done');
+      else if (d === activeNum) dot.classList.add('is-active');
+    });
+    lines.forEach(function (ln) {
+      var l = parseInt(ln.getAttribute('data-line'), 10);
+      ln.classList.toggle('is-done', activeNum >= l);
+    });
+
+    if (caption) {
+      if (dataStep === 'thanks') {
+        caption.textContent = 'Concluído';
+      } else if (dataStep === '0') {
+        caption.textContent = 'Identificação';
+      } else {
+        var title = el.querySelector('.pg-step-title');
+        caption.textContent = 'Bloco ' + dataStep + ' de ' + NBLOCKS + (title ? ' — ' + title.textContent : '');
+      }
+    }
   }
 
   /* --------------------- Escala 0..10 ------------------------ */
@@ -96,6 +118,65 @@
     scale.setAttribute('data-value', pill.getAttribute('data-val'));
     clearError(scale.closest('.pg-question'));
     saveDraft();
+  });
+
+  /* --------------------- Picker de animais ------------------- */
+  // Seleção (toque curto / clique). O long-press é tratado abaixo (só mostra o balão).
+  document.addEventListener('click', function (ev) {
+    var card = ev.target.closest ? ev.target.closest('.pg-animal') : null;
+    if (!card) return;
+    if (card._suppressClick) { card._suppressClick = false; return; } // veio de long-press
+    selectAnimal(card);
+  });
+
+  function selectAnimal(card) {
+    var group = card.parentNode; // .pg-animals
+    var cards = group.querySelectorAll('.pg-animal');
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].classList.remove('is-selected');
+      cards[i].setAttribute('aria-checked', 'false');
+    }
+    card.classList.add('is-selected');
+    card.setAttribute('aria-checked', 'true');
+    var hint = group.parentNode.querySelector('.pg-animal-hint');
+    var tip = card.querySelector('.pg-animal-tip');
+    if (hint && tip) hint.textContent = tip.textContent;
+    var q = card.closest('.pg-question');
+    if (q) clearError(q);
+    saveDraft();
+  }
+
+  // Long-press no mobile: segura ~350ms -> mostra o balão; soltar/arrastar esconde.
+  var lpTimer = null, lpCard = null;
+  document.addEventListener('touchstart', function (ev) {
+    var card = ev.target.closest ? ev.target.closest('.pg-animal') : null;
+    if (!card) return;
+    card._suppressClick = false;
+    lpCard = card;
+    lpTimer = setTimeout(function () {
+      card.classList.add('show-tip');
+      card._suppressClick = true; // segurar não seleciona
+      lpTimer = null;
+    }, 350);
+  }, { passive: true });
+
+  function endLongPress() {
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    if (lpCard) {
+      var c = lpCard;
+      setTimeout(function () { c.classList.remove('show-tip'); }, 1200);
+      lpCard = null;
+    }
+  }
+  document.addEventListener('touchend', endLongPress, { passive: true });
+  document.addEventListener('touchcancel', endLongPress, { passive: true });
+  document.addEventListener('touchmove', function () {
+    if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    if (lpCard) { lpCard.classList.remove('show-tip'); }
+  }, { passive: true });
+  // Evita o menu de contexto do navegador ao segurar a imagem.
+  document.addEventListener('contextmenu', function (ev) {
+    if (ev.target.closest && ev.target.closest('.pg-animal')) ev.preventDefault();
   });
 
   function scaleValue(scaleEl) {
@@ -143,6 +224,10 @@
           var sv = scaleValue(f.querySelector('.pg-scale'));
           if (sv === null) { err = 'Informe uma nota de 0 a 10.'; break; }
           value[name] = sv;
+        } else if (ftype === 'animal') {
+          var selA = f.querySelector('.pg-animal.is-selected');
+          if (!selA) { err = 'Escolha um animal.'; break; }
+          value[name] = selA.getAttribute('data-val');
         } else if (ftype === 'enum') {
           var checked = f.querySelector('input[type="radio"]:checked');
           if (!checked) { err = 'Selecione uma das opções.'; break; }
@@ -269,6 +354,8 @@
       setVal('pg-nome', data.identification.nome);
       setVal('pg-email', data.identification.email);
       setVal('pg-whatsapp', data.identification.whatsapp);
+      var wp = document.getElementById('pg-whatsapp');
+      if (wp && wp.value) wp.value = maskPhone(wp.value);
     }
     if (data.sessionToken) state.sessionToken = data.sessionToken;
     if (data.answers) {
@@ -297,6 +384,17 @@
         var v = value ? value[name] : undefined;
         if (v === undefined) continue;
         if (ftype === 'scale') setScaleValue(fields[i].querySelector('.pg-scale'), v);
+        else if (ftype === 'animal') {
+          var acards = fields[i].querySelectorAll('.pg-animal');
+          for (var am = 0; am < acards.length; am++) {
+            var amm = acards[am].getAttribute('data-val') === v;
+            acards[am].classList.toggle('is-selected', amm);
+            acards[am].setAttribute('aria-checked', amm ? 'true' : 'false');
+          }
+          var ahint = fields[i].querySelector('.pg-animal-hint');
+          var atip = fields[i].querySelector('.pg-animal.is-selected .pg-animal-tip');
+          if (ahint && atip) ahint.textContent = atip.textContent;
+        }
         else if (ftype === 'enum') {
           var radios = fields[i].querySelectorAll('input[type="radio"]');
           for (var k = 0; k < radios.length; k++) radios[k].checked = (radios[k].value === v);
@@ -337,6 +435,31 @@
 
   function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
   function setVal(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; }
+
+  /* --------------------- Máscara de telefone ----------------- */
+  // Formata "(99) 99999-9999" (celular) ou "(99) 9999-9999" (fixo) conforme digita.
+  function maskPhone(v) {
+    var d = (v || '').replace(/\D/g, '').slice(0, 11);
+    if (d.length === 0) return '';
+    var p = '(' + d.slice(0, 2);
+    if (d.length < 2) return p;
+    p += ') ';
+    if (d.length <= 6) return p + d.slice(2);
+    if (d.length <= 10) return p + d.slice(2, 6) + '-' + d.slice(6);
+    return p + d.slice(2, 7) + '-' + d.slice(7);
+  }
+
+  (function bindPhoneMask() {
+    var wp = document.getElementById('pg-whatsapp');
+    if (!wp) return;
+    wp.addEventListener('input', function () {
+      var start = wp.selectionStart, len0 = wp.value.length;
+      wp.value = maskPhone(wp.value);
+      // Mantém o cursor próximo do fim ao digitar (mask simples).
+      var delta = wp.value.length - len0;
+      try { wp.setSelectionRange(start + delta, start + delta); } catch (e) {}
+    });
+  })();
 
   /* --------------------- Identificação ----------------------- */
   function validateIdentification() {
