@@ -598,11 +598,16 @@ function indexCapabilities(){
   CAP_BY_KEY = new Map();
   CAPS_INDEX = { R:{}, W:{} };
   (OPTIONS.capabilities||[]).forEach(c=>{
-    const action = String(c.action).toUpperCase();
-    const resource = String(c.resource).toLowerCase();
-    const scope = String(c.scope).toUpperCase();
+    if (!c) return;
+    const action = String(c.action ?? '').toUpperCase();
+    const resource = String(c.resource ?? '').toLowerCase();
+    const scope = String(c.scope ?? '').toUpperCase();
+    if (!action || !resource || !scope) return;
     const key = `${action}:${resource}@${scope}`;
     CAP_BY_KEY.set(key, c);
+    // Auto-inicializa o balde da ação: o schema pode ter capacidades com
+    // action diferente de R/W (ex.: módulo de aprovação), que antes quebravam aqui.
+    (CAPS_INDEX[action] ||= {});
     (CAPS_INDEX[action][resource] ||= []);
     if (!CAPS_INDEX[action][resource].includes(scope)) CAPS_INDEX[action][resource].push(scope);
   });
