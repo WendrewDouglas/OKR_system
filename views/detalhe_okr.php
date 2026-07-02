@@ -4523,42 +4523,13 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }
     }
 
-    // Forms
-    $('#ni_sw_orc')?.addEventListener('change', e=> $('#ni_orc_group').style.display = e.target.checked ? 'block':'none');
-
-    $('#btnSalvarIni')?.addEventListener('click', async ()=>{
-      const fd = new FormData($('#formNovaIniciativa'));
-      const incl = $('#ni_sw_orc')?.checked;
-      if (incl){
-        const total = Number($('#ni_valor_total').value || 0);
-        if (!total || total <= 0) { toast('Informe o valor total do orçamento.', false); return; }
-        if (!previsoes.length){ toast('Adicione ao menos uma competência na previsão de desembolso.', false); return; }
-        const soma = previsoes.reduce((a,b)=> a + (Number(b.valor)||0), 0);
-        if (Math.abs(soma - total) > 0.005){ toast('A soma das competências deve ser igual ao total.', false); return; }
-      }
-      const res  = await fetch('/OKR_system/auth/salvar_iniciativas.php', { method:'POST', body:fd });
-      let data = {};
-      try { data = await res.json(); } catch(e){}
-      if (!data.success){ toast(data.error||'Erro ao salvar', false); return; }
-      toast('Iniciativa criada com sucesso!');
-      toggleDrawer('#drawerNovaIni', false);
-      await loadIniciativas($('#ni_id_kr').value);
-      const open = document.querySelector('.kr-card.open');
-      if (open){ const id=open.getAttribute('data-id'); await loadKrDetail(id); }
-      await loadKRs();
-    });
-
-    $('#btnSalvarDesp')?.addEventListener('click', async ()=>{
-      const fd  = new FormData($('#formDespesa'));
-      const res = await fetch(`${SCRIPT}?ajax=create_despesa`, { method:'POST', body:fd });
-      const data= await res.json();
-      if(!data.success){ toast(data.error||'Erro ao lançar', false); return; }
-      toast('Despesa lançada com sucesso!');
-      toggleDrawer('#drawerDespesa', false);
-      const open = document.querySelector('.kr-card.open');
-      if(open){ const id=open.getAttribute('data-id'); await loadKrDetail(id); await loadIniciativas(id); }
-      $('#formDespesa').reset();
-    });
+    // NOTA: handlers legados duplicados de #btnSalvarIni e #btnSalvarDesp foram
+    // removidos aqui. Eles postavam para auth/salvar_iniciativas.php e para
+    // ?ajax=create_despesa (endpoint inexistente) e, por ficarem empilhados via
+    // addEventListener, disparavam junto com os handlers ativos — salvando certo
+    // mas exibindo um toast de erro logo em seguida (e com risco de duplicidade).
+    // Os handlers ativos estão acima: iniciativa (?ajax=nova_iniciativa) e
+    // despesa (?ajax=add_despesa).
 
     // Filtros
     $('#btnClearFilters')?.addEventListener('click', ()=> $('#chipsFilters').innerHTML='');
