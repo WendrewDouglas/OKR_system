@@ -197,7 +197,7 @@ $totalSteps = count($blockOrder) + 1;
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/perspectivas.css?v=1.3">
+<link rel="stylesheet" href="../assets/css/perspectivas.css?v=1.4">
 </head>
 <body
   data-csrf="<?= $e($csrf) ?>"
@@ -319,6 +319,6 @@ $totalSteps = count($blockOrder) + 1;
   </footer>
 </main>
 
-<script src="../assets/js/perspectivas.js?v=1.3"></script>
+<script src="../assets/js/perspectivas.js?v=1.4"></script>
 </body>
 </html>

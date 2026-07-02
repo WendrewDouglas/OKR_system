@@ -144,6 +144,9 @@ try {
     pg_fail('server_error', 500, 'Não foi possível salvar agora. Tente novamente.');
 }
 
+// Tempo gasto neste bloco (fora da transação; nunca derruba o fluxo).
+pg_record_step_time($pdo, $sess, $blockKey, pg_clamp_elapsed_ms($input['elapsed_ms'] ?? 0));
+
 pg_ok([
     'saved'         => $saved,
     'current_block' => pg_next_block($blockKey) ?? $blockKey,

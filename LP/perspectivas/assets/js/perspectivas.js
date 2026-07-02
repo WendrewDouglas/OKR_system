@@ -24,9 +24,65 @@
   var caption = document.getElementById('pg-step-caption');
   var NBLOCKS = Math.max(1, dots.length - 1); // nº de blocos (dots = identificação + blocos)
 
-  var state = { step: 0, sessionToken: null, busy: false };
+  var state = {
+    step: 0,
+    sessionToken: null,
+    busy: false,
+    // --- cronômetro por etapa ---
+    times: {},        // step_key -> ms acumulados nesta carga da página
+    sent: {},         // step_key -> ms já reportados ao servidor (evita dupla contagem)
+    timingKey: null,  // step_key da etapa cronometrada no momento
+    enterAt: null,    // timestamp de entrada na etapa (null = pausado)
+    paused: false     // aba em segundo plano
+  };
 
   try { document.getElementById('pg-year').textContent = String(new Date().getFullYear()); } catch (e) {}
+
+  /* --------------------- Cronômetro por etapa ---------------- */
+  function nowMs() { return Date.now(); }
+
+  // step_key da etapa atual: usa data-block (identificacao, alinhamento, ...)
+  // e cai para data-step (ex.: 'thanks') quando não houver bloco.
+  function currentStepKey() {
+    var el = steps[state.step];
+    if (!el) return 'step';
+    return el.getAttribute('data-block') || el.getAttribute('data-step') || 'step';
+  }
+
+  // Fecha o tempo ativo da etapa cronometrada e reinicia o marcador.
+  function touchTime() {
+    if (state.enterAt !== null && state.timingKey) {
+      state.times[state.timingKey] = (state.times[state.timingKey] || 0) + (nowMs() - state.enterAt);
+      state.enterAt = nowMs();
+    }
+  }
+
+  // Passa a cronometrar a etapa atual.
+  function startTiming() {
+    state.timingKey = currentStepKey();
+    state.enterAt = state.paused ? null : nowMs();
+  }
+
+  // Delta (ms) ainda não reportado desta etapa; marca como enviado.
+  function stepDelta(key) {
+    var total = Math.round(state.times[key] || 0);
+    var delta = total - (state.sent[key] || 0);
+    if (delta < 0) delta = 0;
+    state.sent[key] = total;
+    return delta;
+  }
+
+  // Pausa a contagem quando a aba sai de foco; retoma ao voltar.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      touchTime();
+      state.paused = true;
+      state.enterAt = null;
+    } else {
+      state.paused = false;
+      state.enterAt = nowMs();
+    }
+  });
 
   /* --------------------------- Rede --------------------------- */
   function postJSON(endpoint, data) {
@@ -52,6 +108,7 @@
 
   function showStep(i) {
     if (i < 0 || i >= steps.length) return;
+    touchTime(); // fecha a contagem da etapa que está saindo
     var current = steps[state.step];
     var nextEl = steps[i];
     var forward = i >= state.step;
@@ -69,8 +126,22 @@
     setTimeout(function () { nextEl.classList.remove('enter-right', 'enter-left'); }, 380);
 
     state.step = i;
+    startTiming();  // passa a cronometrar a nova etapa
     updateProgress();
+    saveDraft();    // persiste o passo atual (retomada)
     try { document.getElementById('pg-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  }
+
+  // Troca de etapa SEM animação nem scroll (usado só para retomar o rascunho).
+  function gotoStepImmediate(i) {
+    if (i < 0 || i >= steps.length) return;
+    for (var s = 0; s < steps.length; s++) {
+      steps[s].classList.remove('is-active', 'leave-left', 'leave-right', 'enter-left', 'enter-right');
+    }
+    steps[i].classList.add('is-active');
+    state.step = i;
+    startTiming();
+    updateProgress();
   }
 
   function updateProgress() {
@@ -329,8 +400,12 @@
 
   function saveDraft() {
     try {
+      var consentEl = document.getElementById('pg-consent');
+      var stepEl = steps[state.step];
       var data = {
         sessionToken: state.sessionToken,
+        step: stepEl ? stepEl.getAttribute('data-step') : '0',
+        consent: !!(consentEl && consentEl.checked),
         identification: {
           nome: val('pg-nome'), email: val('pg-email'), whatsapp: val('pg-whatsapp')
         },
@@ -357,7 +432,10 @@
       var wp = document.getElementById('pg-whatsapp');
       if (wp && wp.value) wp.value = maskPhone(wp.value);
     }
+    var consentEl = document.getElementById('pg-consent');
+    if (consentEl && data.consent) consentEl.checked = true;
     if (data.sessionToken) state.sessionToken = data.sessionToken;
+    if (data.step) state.savedStep = String(data.step);
     if (data.answers) {
       var qEls = form.querySelectorAll('.pg-question');
       for (var i = 0; i < qEls.length; i++) {
@@ -437,9 +515,9 @@
   function setVal(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; }
 
   /* --------------------- Máscara de telefone ----------------- */
-  // Formata "(99) 99999-9999" (celular) ou "(99) 9999-9999" (fixo) conforme digita.
-  function maskPhone(v) {
-    var d = (v || '').replace(/\D/g, '').slice(0, 11);
+  // Aceita até 13 dígitos (mesmo range do backend). Sem DDI: "(99) 99999-9999"
+  // (celular) ou "(99) 9999-9999" (fixo). Com DDI (12–13 dígitos): "+55 (99) ...".
+  function maskNational(d) {
     if (d.length === 0) return '';
     var p = '(' + d.slice(0, 2);
     if (d.length < 2) return p;
@@ -447,6 +525,17 @@
     if (d.length <= 6) return p + d.slice(2);
     if (d.length <= 10) return p + d.slice(2, 6) + '-' + d.slice(6);
     return p + d.slice(2, 7) + '-' + d.slice(7);
+  }
+
+  function maskPhone(v) {
+    var d = (v || '').replace(/\D/g, '').slice(0, 13);
+    if (d.length === 0) return '';
+    if (d.length > 11) {
+      // Dígitos além dos 11 nacionais são o DDI (ex.: 55).
+      var ddi = d.slice(0, d.length - 11);
+      return '+' + ddi + ' ' + maskNational(d.slice(d.length - 11));
+    }
+    return maskNational(d);
   }
 
   (function bindPhoneMask() {
@@ -494,17 +583,25 @@
     if (state.busy) return;
     if (!validateIdentification()) { focusFirst('.pg-q-error[data-for]'); return; }
     state.busy = true; setBusy('start', true);
+    touchTime(); // fecha o tempo da etapa de identificação
 
     postJSON('start.php', {
       nome: val('pg-nome'),
       email: val('pg-email'),
       whatsapp: val('pg-whatsapp'),
       consent: document.getElementById('pg-consent').checked,
-      website: val('pg-website')
+      website: val('pg-website'),
+      elapsed_ms: stepDelta('identificacao')
     }).then(function (resp) {
       state.busy = false; setBusy('start', false);
       if (!resp.body || !resp.body.ok) { return handleError(resp); }
-      state.sessionToken = resp.body.data.session_token;
+      var d = resp.body.data || {};
+      // Sem token: requisição não persistiu (ex.: honeypot). Dá feedback e não avança.
+      if (!d.session_token) {
+        alertBox('Não foi possível iniciar o diagnóstico. Recarregue a página e tente novamente.');
+        return;
+      }
+      state.sessionToken = d.session_token;
       saveDraft();
       // Vai ao primeiro bloco (step 1).
       var target = indexByStep(1);
@@ -523,12 +620,15 @@
     if (!state.sessionToken) { alertBox('Sessão expirada. Recarregue a página.'); return; }
 
     state.busy = true;
+    touchTime(); // fecha o tempo deste bloco antes de reportar
     saveDraft();
 
+    var blockKey = stepEl.getAttribute('data-block');
     postJSON('save_block.php', {
       session_token: state.sessionToken,
-      block_key: stepEl.getAttribute('data-block'),
-      answers: res.answers
+      block_key: blockKey,
+      answers: res.answers,
+      elapsed_ms: stepDelta(blockKey)
     }).then(function (resp) {
       if (!resp.body || !resp.body.ok) { state.busy = false; return handleError(resp, stepEl); }
       if (finish) { return doFinish(); }
@@ -544,9 +644,9 @@
     postJSON('finish.php', { session_token: state.sessionToken }).then(function (resp) {
       state.busy = false;
       if (!resp.body || !resp.body.ok) { return handleError(resp); }
-      clearDraft();
       var t = indexByStep('thanks');
       showStep(t >= 0 ? t : steps.length - 1);
+      clearDraft(); // após showStep (que persiste rascunho) — mantém o LS limpo
     }).catch(function () {
       state.busy = false;
       alertBox('Falha de conexão ao concluir. Tente novamente.');
@@ -644,5 +744,11 @@
 
   /* --------------------- Inicialização ----------------------- */
   restoreDraft();
+  // Retoma o passo salvo apenas se a sessão já havia sido iniciada.
+  if (state.sessionToken && state.savedStep && state.savedStep !== '0' && state.savedStep !== 'thanks') {
+    var ri = indexByStep(state.savedStep);
+    if (ri > 0) gotoStepImmediate(ri);
+  }
   updateProgress();
+  startTiming(); // começa a cronometrar a etapa exibida
 })();

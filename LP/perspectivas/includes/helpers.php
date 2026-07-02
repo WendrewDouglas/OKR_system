@@ -85,6 +85,63 @@ function pg_generate_token(): string
 }
 
 /* ------------------------------------------------------------------ */
+/* Tempo por etapa (pg_step_timings)                                  */
+/* ------------------------------------------------------------------ */
+
+// Teto defensivo por envio: 24h. Descarta ruído/manipulação (aba aberta
+// por dias, relógio adulterado, valores absurdos).
+const PG_STEP_MS_MAX = 86400000;
+
+/**
+ * Normaliza um delta de tempo (ms) vindo do cliente: inteiro, 0..PG_STEP_MS_MAX.
+ */
+function pg_clamp_elapsed_ms($value): int
+{
+    if (!is_numeric($value)) {
+        return 0;
+    }
+    $ms = (int) $value;
+    if ($ms < 0) {
+        return 0;
+    }
+    return $ms > PG_STEP_MS_MAX ? PG_STEP_MS_MAX : $ms;
+}
+
+/**
+ * Acumula (upsert) o tempo gasto pelo respondente numa etapa da trilha.
+ * $deltaMs é o tempo AINDA NÃO reportado desta etapa; revisitas somam.
+ * Nunca lança: falha de timing não pode derrubar o fluxo do formulário.
+ *
+ * @param array $sess linha com ['id','id_company','id_user']
+ */
+function pg_record_step_time(PDO $pdo, array $sess, string $stepKey, int $deltaMs): void
+{
+    $stepKey = pg_clean_str($stepKey, 80);
+    if ($stepKey === '' || $deltaMs <= 0) {
+        return;
+    }
+    try {
+        $pdo->prepare(
+            'INSERT INTO pg_step_timings
+                (session_id, id_company, id_user, step_key, elapsed_ms, flushes, created_at)
+             VALUES (:sid, :company, :uid, :step, :ms, 1, NOW())
+             ON DUPLICATE KEY UPDATE
+                elapsed_ms = elapsed_ms + VALUES(elapsed_ms),
+                flushes    = flushes + 1,
+                updated_at = NOW()'
+        )->execute([
+            ':sid'     => (int) $sess['id'],
+            ':company' => (int) $sess['id_company'],
+            ':uid'     => isset($sess['id_user']) && $sess['id_user'] !== null ? (int) $sess['id_user'] : null,
+            ':step'    => $stepKey,
+            ':ms'      => $deltaMs,
+        ]);
+    } catch (\Throwable $e) {
+        error_log('[PG] step_time falhou: ' . $e->getMessage());
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* Sessão do formulário                                               */
 /* ------------------------------------------------------------------ */
 

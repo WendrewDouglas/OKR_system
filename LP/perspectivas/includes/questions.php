@@ -56,7 +56,7 @@ function pg_animals(): array
         'Lobo'      => ['slug' => 'lobo',      'emoji' => '🐺', 'carac' => 'atua em matilha, com liderança, estratégia e senso de território'],
         'Golfinho'  => ['slug' => 'golfinho',  'emoji' => '🐬', 'carac' => 'cria relações fortes, colabora e entrega inteligência com proximidade'],
         'Elefante'  => ['slug' => 'elefante',  'emoji' => '🐘', 'carac' => 'é sólido, confiável, experiente e carrega memória construída'],
-        'Falcão'    => ['slug' => 'falcao',    'emoji' => '🦅', 'carac' => 'mira oportunidades com velocidade, foco e precisão'],
+        'Falcão'    => ['slug' => 'falcao',    'emoji' => '🐦', 'carac' => 'mira oportunidades com velocidade, foco e precisão'],
         'Tartaruga' => ['slug' => 'tartaruga', 'emoji' => '🐢', 'carac' => 'avança com cautela, consistência e resistência'],
         'Leão'      => ['slug' => 'leao',      'emoji' => '🦁', 'carac' => 'busca protagonismo, autoridade e reconhecimento no mercado'],
         'Abelha'    => ['slug' => 'abelha',    'emoji' => '🐝', 'carac' => 'produz valor coletivo com organização, especialização e colaboração'],

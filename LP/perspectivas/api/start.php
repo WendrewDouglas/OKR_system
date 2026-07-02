@@ -145,6 +145,14 @@ try {
     pg_fail('server_error', 500, 'Não foi possível iniciar agora. Tente novamente em instantes.');
 }
 
+// Tempo gasto na etapa de identificação (fora da transação; nunca derruba o fluxo).
+pg_record_step_time(
+    $pdo,
+    ['id' => $sessionId, 'id_company' => PG_FMX_COMPANY_ID, 'id_user' => $idUser],
+    'identificacao',
+    pg_clamp_elapsed_ms($input['elapsed_ms'] ?? 0)
+);
+
 pg_ok([
     'session_token' => $sessionToken,
     'current_block' => $currentBlock,
