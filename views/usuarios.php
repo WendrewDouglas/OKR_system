@@ -192,6 +192,14 @@ $csrf = $_SESSION['csrf_token'];
     .cap-item select{ background:#0b1118; border:1px solid #223047; color:#e6e9f2; border-radius:8px; padding:6px 8px; }
     .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
 
+    /* ===== Modal de Permissões: menor, centralizado e com rolagem interna ===== */
+    #permModal .modal-card{ width:min(640px,95vw); max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+    #permModal .modal-header{ flex:0 0 auto; flex-wrap:wrap; }
+    #permModal .modal-actions{ flex:0 0 auto; }
+    /* Só a aba ativa aparece (antes as 3 empilhavam e estouravam a tela) */
+    #permModal .modal-body[role="tabpanel"]{ display:none; }
+    #permModal .modal-body[role="tabpanel"].show{ display:block; flex:1 1 auto; min-height:0; overflow:auto; }
+
     /* ===== Form user ===== */
     .uf-grid{ display:grid; gap:10px; background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:14px; margin:8px 0 14px; }
     .row-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -320,13 +328,13 @@ $csrf = $_SESSION['csrf_token'];
         <div class="tabs" role="tablist" aria-label="Abas de permissões">
           <button class="tab active" data-tab="resumo" role="tab" aria-selected="true">Resumo</button>
           <button class="tab" data-tab="roles" role="tab">Papéis</button>
-          <button class="tab" data-tab="overrides" role="tab">Overrides</button>
+          <button class="tab" data-tab="overrides" role="tab">Exceções</button>
         </div>
       </div>
 
       <div id="tab-resumo" class="modal-body show" role="tabpanel">
         <div class="hint" style="margin-bottom:6px;">
-          Resumo do acesso herdado + overrides. Use as abas para ajustar papéis e exceções.
+          Resumo do acesso herdado dos papéis + exceções. Use as abas para ajustar papéis e exceções.
         </div>
         <div class="access">
           <div class="access-row">
@@ -346,7 +354,7 @@ $csrf = $_SESSION['csrf_token'];
 
       <div id="tab-overrides" class="modal-body" role="tabpanel" aria-hidden="true">
         <div id="capsBoxModal" class="grid-cap"></div>
-        <div class="hint" style="margin-top:6px;">Overrides aplicam exceções por capacidade (ALLOW/DENY). “Inherit” remove a exceção e mantém o herdado dos papéis.</div>
+        <div class="hint" style="margin-top:6px;">As exceções definem uma permissão específica por capacidade: <b>Permitir</b> libera e <b>Negar</b> bloqueia, mesmo que o papel diga o contrário. <b>Herdar</b> remove a exceção e mantém o que vem dos papéis.</div>
       </div>
 
       <div class="modal-actions">
@@ -582,7 +590,7 @@ const LABELS = {
     aprovacao:'Aprovação', auditoria:'Auditoria', custo:'Custos', iniciativa:'Iniciativas',
     kr:'Resultados-chave', milestone:'Marcos', objetivo:'Objetivos', relatorio:'Relatórios', usuario:'Usuários'
   },
-  scopes: { OWN:'Meu', TEAM:'Time', UNIT:'Unidade', ORG:'Org' },
+  scopes: { OWN:'Individual', TEAM:'Equipe', UNIT:'Unidade', ORG:'Organização' },
   actions: { R:'Leitura', W:'Edição' }
 };
 const CHIP_CLASS = {
@@ -703,14 +711,16 @@ function renderOverrides(container, overrides){
     items.forEach(c=>{
       const key = String(c.capability_id);
       const sel = ov.get(key) || 'INHERIT';
-      const label = `${c.action} @ ${c.scope}`;
+      const actLabel = LABELS.actions[String(c.action||'').toUpperCase()] || String(c.action||'').toUpperCase();
+      const scpLabel = LABELS.scopes[String(c.scope||'').toUpperCase()] || String(c.scope||'').toUpperCase();
+      const label = `${actLabel} · ${scpLabel}`;
       box.insertAdjacentHTML('beforeend', `
         <div class="cap-item">
           <span style="min-width:120px;display:inline-block;">${label}</span>
           <select name="ov_${key}" data-cap="${key}">
-            <option value="INHERIT" ${sel==='INHERIT'?'selected':''}>Inherit</option>
-            <option value="ALLOW"   ${sel==='ALLOW'  ?'selected':''}>Allow</option>
-            <option value="DENY"    ${sel==='DENY'   ?'selected':''}>Deny</option>
+            <option value="INHERIT" ${sel==='INHERIT'?'selected':''}>Herdar</option>
+            <option value="ALLOW"   ${sel==='ALLOW'  ?'selected':''}>Permitir</option>
+            <option value="DENY"    ${sel==='DENY'   ?'selected':''}>Negar</option>
           </select>
         </div>
       `);
