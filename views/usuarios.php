@@ -717,7 +717,7 @@ function renderRoles(container, selectedIds){
   container.innerHTML = '';
   const selectedId = Array.isArray(selectedIds) && selectedIds.length ? String(selectedIds[0]) : String(selectedIds||'');
   const name = 'roles_single';
-  OPTIONS.roles.forEach(r=>{
+  (OPTIONS.roles||[]).forEach(r=>{
     const rid  = String(r.role_id);
     const key  = r.role_key;
     const text = r.role_name || key;
@@ -748,8 +748,18 @@ async function openPerm(id_user, name){
     await ensureCapabilities();
     indexCapabilities();
 
-    const r = await fetch(API+`?action=get_permissions&id=${id_user}`, {cache:'no-store'});
-    const j = await r.json();
+    const r = await fetch(API+`?action=get_permissions&id=${encodeURIComponent(id_user)}`, {cache:'no-store'});
+    const raw = await r.text();
+    let j;
+    try {
+      j = JSON.parse(raw);
+    } catch (parseErr) {
+      logClient('openPerm.badjson', { id_user, status: r.status, snippet: String(raw).slice(0, 300) });
+      throw new Error('Resposta inválida do servidor (não-JSON). HTTP ' + r.status);
+    }
+    if (!r.ok || !j.success) {
+      throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
+    }
 
     resetPermState();
     const sum = j.summary || j.data?.summary || {};
@@ -762,7 +772,7 @@ async function openPerm(id_user, name){
     renderOverrides($('#capsBoxModal'), j.overrides || j.data?.overrides || []);
   }catch(e){
     logClient('openPerm.fail', { id_user, error: String(e?.message||e) });
-    alert('Falha ao abrir permissões.');
+    alert('Falha ao abrir permissões: ' + String(e?.message||e));
   }
 }
 function collectRolesFrom(){

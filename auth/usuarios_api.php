@@ -6,8 +6,11 @@
 // (aliases para compat: get/save + departamentos_by_company/cargos_niveis/niveis)
 
 declare(strict_types=1);
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+// API JSON: nunca imprimir erros no corpo da resposta (sujaria o JSON e vazaria
+// detalhes internos). Mantém o log de erros no servidor.
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 session_start();
