@@ -12,6 +12,14 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 
+/* Acesso restrito: CRM disponível apenas para usuários autorizados.
+   Os demais são redirecionados silenciosamente (não revela a existência da página). */
+$CRM_ALLOWED_USER_IDS = [1, 310]; // 1 = Wendrew Gomes, 310 = Willian Agner
+if (!in_array((int)$_SESSION['user_id'], $CRM_ALLOWED_USER_IDS, true)) {
+  header('Location: /OKR_system/dashboard');
+  exit;
+}
+
 $views = [
   'overview'   => ['title' => 'Visão Geral', 'icon' => 'fa-chart-line', 'subtitle' => 'Leitura executiva da base LinkedIn e prioridades de prospecção.'],
   'leads'      => ['title' => 'Leads', 'icon' => 'fa-filter-circle-dollar', 'subtitle' => 'Pessoas priorizadas por score, senioridade e aderência à consultoria.'],

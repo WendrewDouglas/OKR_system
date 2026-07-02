@@ -128,6 +128,12 @@ if ($pdo && $userId) {
     $isAdminMaster = (bool)$stAdm->fetchColumn();
   } catch (Throwable $e) { /* ignora */ }
 }
+
+/* --- Allowlist de menus restritos (CRM + Administrador) ---
+   Somente estes usuários enxergam essas opções no menu lateral; os demais
+   nem sabem que existem. Mantido por id_user (estável). */
+$SIDEBAR_PRIVILEGED_USER_IDS = [1, 310]; // 1 = Wendrew Gomes, 310 = Willian Agner
+$canSeePrivileged = in_array((int)$userId, $SIDEBAR_PRIVILEGED_USER_IDS, true);
 ?>
 <!-- ===================== SIDEBAR ===================== -->
 <style>
@@ -388,7 +394,7 @@ body.collapsed .sidebar-footer .org { display: none; }
         <?php endif; ?>
       </ul>
     </li>
-    <?php if ($isAdminMaster): ?>
+    <?php if ($canSeePrivileged): ?>
     <li class="<?= $isAdminGroup ? 'open' : '' ?>">
       <div class="menu-item <?= $isAdminGroup ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
         <i class="fas fa-shield-halved icon-main"></i><span>Administrador</span>
@@ -415,6 +421,7 @@ body.collapsed .sidebar-footer .org { display: none; }
       </ul>
     </li>
     <?php endif; ?>
+    <?php if ($canSeePrivileged): ?>
     <li class="sidebar-section-label">CRM Comercial</li>
     <li class="<?= $isCrmGroup ? 'open' : '' ?>">
       <div class="menu-item crm-menu <?= $isCrmGroup ? 'active' : '' ?>"
@@ -478,6 +485,7 @@ body.collapsed .sidebar-footer .org { display: none; }
         </li>
       </ul>
     </li>
+    <?php endif; ?>
   </ul>
 
   <!-- Rodapé -->
