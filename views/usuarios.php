@@ -200,6 +200,21 @@ $csrf = $_SESSION['csrf_token'];
     #permModal .modal-body[role="tabpanel"]{ display:none; }
     #permModal .modal-body[role="tabpanel"].show{ display:block; flex:1 1 auto; min-height:0; overflow:auto; }
 
+    /* ===== Resumo de acesso: blocos organizados com "pills" ===== */
+    #permModal .access{ display:flex; flex-direction:column; gap:14px; margin-top:4px; }
+    #permModal .access-row{ display:flex; flex-direction:column; gap:6px; }
+    #permModal .access-row > .label{
+      font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#93a4bd;
+    }
+    #permModal .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    #permModal .chips:empty::after{ content:'—'; color:#64748b; }
+    #permModal .group-chip{
+      display:inline-flex; flex-direction:column; align-items:flex-start; gap:2px;
+      background:#0c1118; border:1px solid #223047; border-radius:10px; padding:6px 10px; line-height:1.2;
+    }
+    #permModal .group-chip .label{ font-weight:700; color:#e6e9f2; font-size:.9rem; }
+    #permModal .group-chip .scopes{ font-size:.72rem; color:#93a4bd; }
+
     /* ===== Form user ===== */
     .uf-grid{ display:grid; gap:10px; background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:14px; margin:8px 0 14px; }
     .row-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -338,12 +353,12 @@ $csrf = $_SESSION['csrf_token'];
         </div>
         <div class="access">
           <div class="access-row">
-            <span class="label">Leitura</span>
-            <div id="sumR" class="chips">—</div>
+            <span class="label">Pode editar</span>
+            <div id="sumW" class="chips"></div>
           </div>
           <div class="access-row">
-            <span class="label">Edição</span>
-            <div id="sumW" class="chips">—</div>
+            <span class="label">Somente visualizar</span>
+            <div id="sumR" class="chips"></div>
           </div>
         </div>
       </div>
@@ -659,20 +674,28 @@ function groupFromSet(actSet){
 function niceRes(resource){ return LABELS.resources[resource] || resource; }
 
 function renderSummaryGrouped(){
+  // Recursos que o usuário pode EDITAR (editar já pressupõe visualizar),
+  // para não repetir os mesmos itens na seção "Somente visualizar".
+  const editable = new Set(Object.keys(groupFromSet(PERM_STATE.W)));
+
   const build = (act, mountSel) => {
     const container = $(mountSel);
     const g = groupFromSet(PERM_STATE[act]);
-    const resources = Object.keys(g).sort((a,b)=> niceRes(a).localeCompare(niceRes(b),'pt-BR'));
+    let resources = Object.keys(g);
+    if (act === 'R') resources = resources.filter(r => !editable.has(r));
+    resources.sort((a,b)=> niceRes(a).localeCompare(niceRes(b),'pt-BR'));
     let html = '';
     resources.forEach(resource=>{
-      const count = g[resource].size;
       const cls = CHIP_CLASS[resource] || '';
-      html += `<span class="group-chip ${cls}" title="${LABELS.actions[act]} — ${niceRes(resource)}">
+      const scopes = Array.from(g[resource])
+        .sort((a,b)=> SCOPE_ORDER.indexOf(a) - SCOPE_ORDER.indexOf(b))
+        .map(s => LABELS.scopes[s] || s);
+      html += `<span class="group-chip ${cls}" title="${LABELS.actions[act]||act} — ${niceRes(resource)}">
                  <span class="label">${niceRes(resource)}</span>
-                 <span class="count">${count}</span>
+                 <span class="scopes">${scopes.join(' · ')}</span>
                </span>`;
     });
-    container.innerHTML = html || '—';
+    container.innerHTML = html;
   };
   build('R', '#sumR'); build('W', '#sumW');
 }
