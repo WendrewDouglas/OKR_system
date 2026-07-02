@@ -732,10 +732,33 @@ function renderRoles(container, selectedIds){
        </label>`);
   });
 }
+/* GET resiliente: usa fetch e, se um wrapper externo (ex.: extensão do navegador
+   que sobrescreve window.fetch) quebrar a chamada, cai para XMLHttpRequest.
+   Retorna { ok, status, text }. */
+function resilientGetText(url){
+  return fetch(url, {cache:'no-store'})
+    .then(r => r.text().then(text => ({ ok:r.ok, status:r.status, text })))
+    .catch(err => new Promise((resolve, reject)=>{
+      try{
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.withCredentials = true;
+        try { xhr.setRequestHeader('Cache-Control','no-store'); } catch(_){}
+        xhr.onreadystatechange = ()=>{
+          if (xhr.readyState === 4){
+            resolve({ ok: xhr.status>=200 && xhr.status<300, status: xhr.status, text: xhr.responseText });
+          }
+        };
+        xhr.onerror = ()=> reject(err);
+        xhr.send();
+      }catch(e2){ reject(err); }
+    }));
+}
 async function ensureCapabilities(){
   if (OPTIONS.capabilities?.length) return;
-  const r = await fetch(API+'?action=capabilities',{cache:'no-store'});
-  const j = await r.json();
+  const res = await resilientGetText(API+'?action=capabilities');
+  let j = {};
+  try { j = JSON.parse(res.text); } catch(_){}
   OPTIONS.capabilities = j.capabilities || j.data?.capabilities || [];
 }
 async function openPerm(id_user, name){
@@ -748,17 +771,17 @@ async function openPerm(id_user, name){
     await ensureCapabilities();
     indexCapabilities();
 
-    const r = await fetch(API+`?action=get_permissions&id=${encodeURIComponent(id_user)}`, {cache:'no-store'});
-    const raw = await r.text();
+    const res = await resilientGetText(API+`?action=get_permissions&id=${encodeURIComponent(id_user)}`);
+    const raw = res.text;
     let j;
     try {
       j = JSON.parse(raw);
     } catch (parseErr) {
-      logClient('openPerm.badjson', { id_user, status: r.status, snippet: String(raw).slice(0, 300) });
-      throw new Error('Resposta inválida do servidor (não-JSON). HTTP ' + r.status);
+      logClient('openPerm.badjson', { id_user, status: res.status, snippet: String(raw).slice(0, 300) });
+      throw new Error('Resposta inválida do servidor (não-JSON). HTTP ' + res.status);
     }
-    if (!r.ok || !j.success) {
-      throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
+    if (!res.ok || !j.success) {
+      throw new Error(j && j.error ? j.error : ('HTTP ' + res.status));
     }
 
     resetPermState();
@@ -771,7 +794,7 @@ async function openPerm(id_user, name){
     renderRoles($('#rolesBoxModal'), j.roles || j.data?.roles || []);
     renderOverrides($('#capsBoxModal'), j.overrides || j.data?.overrides || []);
   }catch(e){
-    logClient('openPerm.fail', { id_user, error: String(e?.message||e) });
+    logClient('openPerm.fail', { id_user, error: String(e?.message||e), stack: String(e?.stack||'').slice(0,600) });
     alert('Falha ao abrir permissões: ' + String(e?.message||e));
   }
 }
