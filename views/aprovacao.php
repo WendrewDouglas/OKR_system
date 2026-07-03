@@ -36,7 +36,8 @@ $meuId = (string)$_SESSION['user_id'];
 $stmt = $pdo->prepare("SELECT primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome FROM usuarios WHERE id_user = ?");
 $stmt->execute([$meuId]);
 $u = $stmt->fetch() ?: ['primeiro_nome'=>'Usuário','ultimo_nome'=>''];
-$meuNome = trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''));
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
+$meuNome = nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">

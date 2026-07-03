@@ -29,7 +29,8 @@ function nomeUsuario(PDO $pdo, int $id): string {
   if ($id<=0) return '—';
   $st=$pdo->prepare("SELECT primeiro_nome, ultimo_nome FROM usuarios WHERE id_user=:id LIMIT 1");
   $st->execute(['id'=>$id]); $r=$st->fetch();
-  $pn=trim((string)($r['primeiro_nome']??'')); $ln=trim((string)($r['ultimo_nome']??'')); return trim($pn.' '.$ln) ?: ($pn ?: '—');
+  require_once __DIR__ . '/helpers/nome_format.php';
+  $nm = nome_exibicao($r['primeiro_nome']??'', $r['ultimo_nome']??''); return $nm !== '' ? $nm : '—';
 }
 function progressoObjetivo(PDO $pdo, int $id): float {
   $st = $pdo->prepare("

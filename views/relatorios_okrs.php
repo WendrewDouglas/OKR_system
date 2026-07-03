@@ -31,6 +31,7 @@ if (isset($_GET['ajax'])) {
   require_once __DIR__ . '/../auth/config.php';
   require_once __DIR__ . '/../auth/functions.php';
   require_once __DIR__.'/../auth/acl.php';
+  require_once __DIR__.'/../auth/helpers/nome_format.php';
 
   // Gate automático pela tabela dom_paginas.requires_cap
   gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
@@ -303,7 +304,7 @@ if (isset($_GET['ajax'])) {
           'pilar'=>$p ?: '—',
           'status'=>$o['status'] ?: '—',
           'dono_id'=> (int)$o['dono'],
-          'dono'=> trim(($o['dono_nome']?:'').' '.($o['dono_sobrenome']?:'')) ?: ($o['dono'] ?? '—'),
+          'dono'=> nome_exibicao($o['dono_nome']??'', $o['dono_sobrenome']??'') ?: ($o['dono'] ?? '—'),
           'prazo'=> $o['dt_prazo'] ?: null,
 
           '__sum'=>0.0,'__cnt'=>0,        // [FIX] acumuladores de % do objetivo (média dos KRs válidos)
@@ -1279,7 +1280,7 @@ function renderObjetivos(items){
     const pKey = String(o.pilar||'').toLowerCase();
     const color = pillarColor(pKey);
     const icon = pillarIcon(pKey);
-    const donoFirst = (o.dono||'—').toString().trim().split(/\s+/)[0] || '—';
+    const donoFirst = (window.nomeExibicaoStr ? window.nomeExibicaoStr(o.dono) : (o.dono||'').toString().trim()) || '—';
     const counts = (o.kr_counts || {verde:0,amarelo:0,vermelho:0});
     const card = document.createElement('div');
     card.className='obj-card';
@@ -1768,7 +1769,7 @@ function renderObjetivos(items){
       const pKey = String(o.pilar||'').toLowerCase();
       const color = pillarColor(pKey);
       const icon  = pillarIcon(pKey);
-      const donoFirst = (o.dono||'—').toString().trim().split(/\s+/)[0] || '—';
+      const donoFirst = (window.nomeExibicaoStr ? window.nomeExibicaoStr(o.dono) : (o.dono||'').toString().trim()) || '—';
       const counts = (o.kr_counts || {verde:0,amarelo:0,vermelho:0,cinza:0});
 
       const card = document.createElement('div');

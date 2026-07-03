@@ -966,7 +966,8 @@ function userCard(_u){
   const u = normalizeUser(_u);
 
   const safeId = (u.id_user ?? '').toString();
-  const name = `${u.primeiro_nome||''} ${u.ultimo_nome||''}`.trim() || (safeId ? ('#'+safeId) : '(sem id)');
+  const name = (window.nomeExibicao ? window.nomeExibicao(u.primeiro_nome, u.ultimo_nome)
+                : `${u.primeiro_nome||''} ${u.ultimo_nome||''}`.trim()) || (safeId ? ('#'+safeId) : '(sem id)');
   // preferir o caminho enviado pelo backend (igual ao header)
   const primaryAvatar = (u.avatar && String(u.avatar).trim())
     ? u.avatar

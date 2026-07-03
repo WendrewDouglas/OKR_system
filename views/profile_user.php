@@ -477,6 +477,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       $pdo->commit();
 
+      // Atualiza a sessão para o header/sidebar refletirem o novo nome imediatamente
+      require_once __DIR__ . '/../auth/helpers/nome_format.php';
+      $_SESSION['primeiro_nome'] = $pn;
+      $_SESSION['ultimo_nome']   = ($un !== '' ? $un : '');
+      $_SESSION['user_name']     = nome_exibicao($pn, ($un !== '' ? $un : ''));
+
       $_SESSION['success_message'] = 'Perfil salvo com sucesso.';
       $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     } catch (Throwable $e) {

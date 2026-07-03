@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 session_start();
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 
@@ -448,7 +449,7 @@ function roleBadge(string $role): string {
             <div class="ac-user-row" data-search="<?= h(strtolower($u['primeiro_nome'].' '.$u['ultimo_nome'].' '.$u['email_corporativo'])) ?>">
               <div class="ac-user-avatar"><?php $__au = $acAvatarUrls[(int)$u['id_user']] ?? null; if ($__au): ?><img src="<?= h($__au) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('<?= h($initials) ?>'))"><?php else: ?><?= h($initials) ?><?php endif; ?></div>
               <div class="ac-user-info">
-                <div class="ac-user-name"><?= h($u['primeiro_nome'].' '.($u['ultimo_nome'] ?? '')) ?></div>
+                <div class="ac-user-name"><?= h(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '')) ?></div>
                 <div class="ac-user-email"><?= h($u['email_corporativo']) ?></div>
               </div>
               <div class="ac-user-roles">
@@ -484,7 +485,7 @@ function roleBadge(string $role): string {
       <div class="ac-user-row" data-search="<?= h(strtolower($u['primeiro_nome'].' '.$u['ultimo_nome'].' '.$u['email_corporativo'])) ?>">
         <div class="ac-user-avatar"><?php $__au = $acAvatarUrls[(int)$u['id_user']] ?? null; if ($__au): ?><img src="<?= h($__au) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('<?= h($initials) ?>'))"><?php else: ?><?= h($initials) ?><?php endif; ?></div>
         <div class="ac-user-info">
-          <div class="ac-user-name"><?= h($u['primeiro_nome'].' '.($u['ultimo_nome'] ?? '')) ?></div>
+          <div class="ac-user-name"><?= h(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '')) ?></div>
           <div class="ac-user-email"><?= h($u['email_corporativo']) ?></div>
         </div>
         <div class="ac-user-roles">

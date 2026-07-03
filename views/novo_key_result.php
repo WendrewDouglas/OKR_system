@@ -13,6 +13,7 @@ ini_set('log_errors', '0');
 session_start();
 
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/logger.php'; // << logger que grava em views/error_log
 require_once __DIR__.'/../auth/acl.php';
@@ -530,7 +531,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
                 <option value="">Selecione...</option>
                 <?php foreach($users as $u): ?>
                   <option value="<?= (int)$u['id_user'] ?>">
-                    <?= htmlspecialchars(trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? '')), ENT_QUOTES, 'UTF-8') ?>
+                    <?= htmlspecialchars(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
                   </option>
                 <?php endforeach; ?>
               </select>
@@ -545,7 +546,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
                 <select name="socios[<?= $si ?>][id_user]" style="flex:1;">
                   <option value="">Sócio <?= $si+1 ?> (opcional)…</option>
                   <?php foreach($users as $u): ?>
-                    <option value="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars(trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? '')), ENT_QUOTES, 'UTF-8') ?></option>
+                    <option value="<?= (int)$u['id_user'] ?>"><?= htmlspecialchars(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? ''), ENT_QUOTES, 'UTF-8') ?></option>
                   <?php endforeach; ?>
                 </select>
                 <input type="text" name="socios[<?= $si ?>][motivo]" placeholder="Motivo da sociedade" style="flex:2;">

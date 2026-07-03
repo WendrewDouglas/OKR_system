@@ -8,7 +8,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 // Usuário e notificações (definidos em session no login)
-$userName    = $_SESSION['user_name']    ?? 'Usuário';
+require_once dirname(__DIR__, 2) . '/auth/helpers/nome_format.php';
+$userName = nome_exibicao(
+  (string)($_SESSION['primeiro_nome'] ?? ''),
+  (string)($_SESSION['ultimo_nome'] ?? '')
+);
+if ($userName === '') { $userName = (string)($_SESSION['user_name'] ?? 'Usuário'); }
 $newMessages = (int)($_SESSION['new_messages'] ?? 0);
 
 // ===== Avatar (catálogo único, via auth/avatar_helpers.php) =====

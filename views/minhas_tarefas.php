@@ -2,6 +2,7 @@
 // views/minhas_tarefas.php — Minhas Tarefas (lista unificada de obrigações)
 session_start();
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/../auth/avatar_helpers.php';
@@ -75,7 +76,7 @@ $stTarget = $pdo->prepare("
 ");
 $stTarget->execute([':uid' => $targetUserId]);
 $target = $stTarget->fetch();
-$targetName = trim(($target['primeiro_nome'] ?? '') . ' ' . ($target['ultimo_nome'] ?? ''));
+$targetName = nome_exibicao($target['primeiro_nome'] ?? '', $target['ultimo_nome'] ?? '');
 $targetRole = $target['role_key'] ?? 'colaborador';
 $targetCompanyId = (int)($target['id_company'] ?? $myCompanyId);
 
@@ -427,7 +428,7 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
             <?php foreach ($userList as $u): ?>
               <option value="<?= (int)$u['id_user'] ?>"
                       <?= (int)$u['id_user'] === $targetUserId ? 'selected' : '' ?>>
-                <?= htmlspecialchars(trim($u['primeiro_nome'].' '.($u['ultimo_nome']??''))) ?>
+                <?= htmlspecialchars(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '')) ?>
               </option>
             <?php endforeach; ?>
           </select>

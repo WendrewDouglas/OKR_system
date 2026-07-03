@@ -31,7 +31,8 @@ try {
 $st = $pdo->prepare("SELECT primeiro_nome, COALESCE(ultimo_nome,'') AS ultimo_nome FROM usuarios WHERE id_user=?");
 $st->execute([$MEU_ID]);
 $u = $st->fetch() ?: ['primeiro_nome'=>'Usuário','ultimo_nome'=>''];
-$MEU_NOME = trim(($u['primeiro_nome']??'').' '.($u['ultimo_nome']??''));
+require_once __DIR__ . '/helpers/nome_format.php';
+$MEU_NOME = nome_exibicao($u['primeiro_nome']??'', $u['ultimo_nome']??'');
 
 // Contexto de empresa e role RBAC
 $stCtx = $pdo->prepare("

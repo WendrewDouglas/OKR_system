@@ -18,6 +18,7 @@ require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/../auth/helpers/iniciativa_envolvidos.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -168,7 +169,7 @@ if ($allIniIds) {
     foreach ($stEnv->fetchAll() as $row) {
         $envolvMap[$row['id_iniciativa']][] = [
             'id_user'   => (int)$row['id_user'],
-            'nome'      => trim($row['nome']),
+            'nome'      => nome_exibicao($row['primeiro_nome'], $row['ultimo_nome']),
             'primeiro_nome' => $row['primeiro_nome'],
             'ultimo_nome'   => $row['ultimo_nome'],
             'avatar'    => $row['avatar'],
@@ -222,7 +223,7 @@ $mkInitials = function(?string $primeiro, ?string $ultimo) {
 $mkPerson = function(int $id, ?string $primeiro, ?string $ultimo, ?string $avatarFn) use ($mkAvatar, $mkInitials) {
     return [
         'id_user'  => $id,
-        'nome'     => trim(($primeiro ?? '') . ' ' . ($ultimo ?? '')),
+        'nome'     => nome_exibicao($primeiro, $ultimo),
         'initials' => $mkInitials($primeiro, $ultimo),
         'avatar'   => $mkAvatar($avatarFn),
     ];
@@ -253,7 +254,7 @@ foreach ($objetivos as $obj) {
             foreach ($envolvMap[$iid] ?? [] as $env) {
                 $person = [
                     'id_user'  => $env['id_user'],
-                    'nome'     => $env['nome'],
+                    'nome'     => nome_exibicao($env['primeiro_nome'], $env['ultimo_nome']),
                     'initials' => $mkInitials($env['primeiro_nome'], $env['ultimo_nome']),
                     'avatar'   => $mkAvatar($env['avatar']),
                 ];
@@ -299,7 +300,7 @@ foreach ($objetivos as $obj) {
                 'dt_prazo'       => $ini['dt_prazo'],
                 'responsavel'    => [
                     'id_user'  => $iniRespId,
-                    'nome'     => trim(($ini['resp_nome'] ?? '') . ' ' . ($ini['resp_sobrenome'] ?? '')),
+                    'nome'     => nome_exibicao($ini['resp_nome'], $ini['resp_sobrenome']),
                     'initials' => $mkInitials($ini['resp_nome'], $ini['resp_sobrenome']),
                     'avatar'   => $mkAvatar($ini['resp_avatar']),
                 ],
@@ -324,7 +325,7 @@ foreach ($objetivos as $obj) {
             'data_fim'    => $kr['data_fim'],
             'responsavel' => [
                 'id_user'  => $krRespId,
-                'nome'     => trim(($kr['resp_nome'] ?? '') . ' ' . ($kr['resp_sobrenome'] ?? '')),
+                'nome'     => nome_exibicao($kr['resp_nome'], $kr['resp_sobrenome']),
                 'initials' => $mkInitials($kr['resp_nome'], $kr['resp_sobrenome']),
                 'avatar'   => $mkAvatar($kr['resp_avatar']),
             ],
@@ -352,7 +353,7 @@ foreach ($objetivos as $obj) {
         'dt_inicio'       => $obj['dt_inicio'],
         'dono'            => [
             'id_user'  => $donoId,
-            'nome'     => trim(($obj['dono_nome'] ?? '') . ' ' . ($obj['dono_sobrenome'] ?? '')),
+            'nome'     => nome_exibicao($obj['dono_nome'], $obj['dono_sobrenome']),
             'initials' => $mkInitials($obj['dono_nome'], $obj['dono_sobrenome']),
             'avatar'   => $mkAvatar($obj['dono_avatar']),
         ],

@@ -11,6 +11,7 @@ if (isset($_GET['ajax'])) {
   require_once __DIR__ . '/../auth/config.php';
   require_once __DIR__ . '/../auth/functions.php';
   require_once __DIR__.'/../auth/acl.php';
+  require_once __DIR__.'/../auth/helpers/nome_format.php';
 
   // Gate automático pela tabela dom_paginas.requires_cap
   gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
@@ -313,7 +314,7 @@ if (isset($_GET['ajax'])) {
     ";
     $join = "";
     if ($krUserIdCol) {
-      $select .= ", kr.`$krUserIdCol` AS kr_user_id, u.`primeiro_nome` AS responsavel_nome ";
+      $select .= ", kr.`$krUserIdCol` AS kr_user_id, CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS responsavel_nome ";
       $join    = " LEFT JOIN `usuarios` u ON u.`id_user` = kr.`$krUserIdCol` ";
     }
     if ($hasRespText) $select .= ", kr.`responsavel` AS responsavel_text";
@@ -590,7 +591,7 @@ if (isset($_GET['ajax'])) {
         'data_fim' => $r['data_fim'],
         'dt_novo_prazo' => $r['dt_novo_prazo'],
         'prazo_final' => $r['prazo_final'],
-        'responsavel' => $nome ?: '—',
+        'responsavel' => ($nome !== null && $nome !== '') ? nome_exibicao_str($nome) : '—',
         'has_ms_before_today' => $has_ms_before_today,
 
         /* === ADD: progresso calculado === */
@@ -906,7 +907,7 @@ foreach ($milestones as $m) {
 
     $stmI = $pdo->prepare("
       SELECT i.`id_iniciativa`, i.`num_iniciativa`, i.`descricao`, i.`status`, i.`dt_prazo`,
-             i.`id_user_responsavel`, u.`primeiro_nome` AS responsavel_nome
+             i.`id_user_responsavel`, CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS responsavel_nome
       FROM `iniciativas` i
       LEFT JOIN `usuarios` u ON u.`id_user` = i.`id_user_responsavel`
       WHERE i.`id_kr`=:id
@@ -946,7 +947,7 @@ foreach ($milestones as $m) {
         'descricao'=>$ini['descricao'],
         'status'=>$ini['status'],
         'dt_prazo'=>$ini['dt_prazo'],
-        'responsavel'=>$ini['responsavel_nome'] ?: '—',
+        'responsavel'=>($ini['responsavel_nome'] ? nome_exibicao_str($ini['responsavel_nome']) : '') ?: '—',
         'orcamento'=>[
           'aprovado'=>$aprov,'realizado'=>$real,'saldo'=>max(0,$aprov-$real),
           'id_orcamento'=>$id_orc
@@ -1195,7 +1196,7 @@ foreach ($milestones as $m) {
       // Por iniciativa (totais)
       $sqlInis = "
         SELECT i.`id_iniciativa`, i.`num_iniciativa`, i.`descricao`,
-               u.`primeiro_nome` AS responsavel,
+               CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS responsavel,
                COALESCE(a.v_aprov,0) AS aprovado,
                COALESCE(r.v_real,0) AS realizado
         FROM `iniciativas` i
@@ -1222,7 +1223,7 @@ foreach ($milestones as $m) {
           'id_iniciativa' => $row['id_iniciativa'],
           'num_iniciativa' => (int)$row['num_iniciativa'],
           'descricao' => $row['descricao'],
-          'responsavel' => $row['responsavel'] ?: '—',
+          'responsavel' => ($row['responsavel'] ? nome_exibicao_str($row['responsavel']) : '') ?: '—',
           'aprovado' => (float)$row['aprovado'],
           'realizado' => (float)$row['realizado'],
           'saldo' => $saldoI
@@ -1232,7 +1233,7 @@ foreach ($milestones as $m) {
       // Pendências
       $stPend = $pdo->prepare("
         SELECT o.`id_orcamento`, o.`id_iniciativa`, o.`valor`, o.`data_desembolso`, o.`justificativa_orcamento`,
-               u.`primeiro_nome` AS criador_nome
+               CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS criador_nome
         FROM `orcamentos` o
         INNER JOIN `iniciativas` i ON i.`id_iniciativa`=o.`id_iniciativa`
         LEFT JOIN `usuarios` u ON u.`id_user` = o.`id_user_criador`
@@ -1246,7 +1247,7 @@ foreach ($milestones as $m) {
       // Últimas despesas
       $stUlt = $pdo->prepare("
         SELECT od.`id_despesa`, od.`valor`, od.`data_pagamento`, od.`descricao`,
-               u.`primeiro_nome` AS criador_nome
+               CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS criador_nome
         FROM `orcamentos_detalhes` od
         INNER JOIN `orcamentos` o ON o.`id_orcamento`=od.`id_orcamento`
         INNER JOIN `iniciativas` i ON i.`id_iniciativa`=o.`id_iniciativa`
@@ -2178,14 +2179,15 @@ if ($id_objetivo<=0 && preg_match('#/detalhe_okr/([0-9]+)#', $_SERVER['REQUEST_U
 }
 if ($id_objetivo<=0) { http_response_code(400); die('id_objetivo inválido.'); }
 
-/* Objetivo + nome do dono (primeiro_nome) */
+/* Objetivo + nome do dono (primeiro + último sobrenome) */
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 $g = static function(array $row, string $k, $d='—'){
   return array_key_exists($k,$row) && $row[$k]!==null && $row[$k]!=='' ? $row[$k] : $d;
 };
 
 $st = $pdo->prepare("
   SELECT o.`id_objetivo`, o.`descricao` AS nome_objetivo, o.`descricao`, o.`pilar_bsc`, o.`tipo`,
-         o.`status`, o.`status_aprovacao`, o.`dono`, u.`primeiro_nome` AS dono_nome,
+         o.`status`, o.`status_aprovacao`, o.`dono`, CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS dono_nome,
          o.`dt_criacao`, o.`dt_prazo`, o.`dt_conclusao`, o.`qualidade`, o.`observacoes`
   FROM `objetivos` o
   LEFT JOIN `usuarios` u ON u.`id_user` = o.`dono`
@@ -2496,7 +2498,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         <div class="obj-meta-pills">
           <span class="pill" title="Pilar BSC"><i class="fa-solid fa-layer-group"></i><?= htmlspecialchars($g($objetivo,'pilar_bsc')) ?></span>
           <span class="pill" title="Tipo do objetivo"><i class="fa-solid fa-tag"></i><?= htmlspecialchars($g($objetivo,'tipo')) ?></span>
-          <span class="pill" title="Dono (responsável)"><i class="fa-solid fa-user-tie"></i><?= htmlspecialchars($g($objetivo,'dono_nome',$g($objetivo,'dono'))) ?></span>
+          <span class="pill" title="Dono (responsável)"><i class="fa-solid fa-user-tie"></i><?= htmlspecialchars(nome_exibicao_str($g($objetivo,'dono_nome',$g($objetivo,'dono')))) ?></span>
           <span class="pill" title="Status"><i class="fa-solid fa-clipboard-check"></i><?= htmlspecialchars($g($objetivo,'status')) ?></span>
           <span class="pill" title="Aprovação"><i class="fa-regular fa-circle-check"></i><?= htmlspecialchars($g($objetivo,'status_aprovacao')) ?></span>
         </div>
@@ -3092,7 +3094,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           const opt = document.createElement('option');
           opt.value = u.id_user;
           const ln  = (u.ultimo_nome || '').trim();
-          opt.textContent = ln ? `${u.primeiro_nome} ${ln}` : (u.primeiro_nome || u.id_user);
+          opt.textContent = (window.nomeExibicao ? window.nomeExibicao(u.primeiro_nome, ln)
+                              : (ln ? `${u.primeiro_nome} ${ln}` : u.primeiro_nome)) || u.id_user;
           sel.appendChild(opt);
         });
         if (sel.options.length) {
@@ -4492,7 +4495,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                 <div class="item">
                   <div><strong>${mesLabel((p.data_desembolso||'').slice(0,7))}</strong> · ${fmtBRL(p.valor||0)}</div>
                   <div>${escapeHtml(p.justificativa_orcamento||'—')}</div>
-                  <div style="opacity:.8">Criado por: ${escapeHtml(p.criador_nome||'—')}</div>
+                  <div style="opacity:.8">Criado por: ${escapeHtml((window.nomeExibicaoStr?window.nomeExibicaoStr(p.criador_nome):p.criador_nome)||'—')}</div>
                 </div>
               `);
             });
@@ -4512,7 +4515,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                 <div class="item">
                   <div><strong>${toDDMMYYYY(d.data_pagamento,'/')}</strong> · ${fmtBRL(d.valor||0)}</div>
                   <div>${escapeHtml(d.descricao||'—')}</div>
-                  <div style="opacity:.8">Por: ${escapeHtml(d.criador_nome||'—')}</div>
+                  <div style="opacity:.8">Por: ${escapeHtml((window.nomeExibicaoStr?window.nomeExibicaoStr(d.criador_nome):d.criador_nome)||'—')}</div>
                 </div>
               `);
             });

@@ -5,11 +5,49 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once __DIR__ . '/../../auth/acl.php';
 
 
+require_once __DIR__ . '/../../auth/helpers/nome_format.php';
+
 /* ============ INJETAR O TEMA (uma vez por página) ============ */
 if (!defined('PB_THEME_LINK_EMITTED')) {
   define('PB_THEME_LINK_EMITTED', true);
   // Se quiser forçar recarregar em testes, acrescente ?nocache=1
   echo '<link rel="stylesheet" href="/OKR_system/assets/company_theme.php">';
+}
+
+/* ==== Helper JS global de nome (curto = primeiro + última palavra do sobrenome) ==== */
+if (!defined('PB_NOME_JS_EMITTED')) {
+  define('PB_NOME_JS_EMITTED', true);
+  echo <<<'HTML'
+<script>
+(function(){
+  if (window.nomeExibicao) return;
+  var P = ['de','da','do','das','dos','e','di','du','del','della','la','le','van','von','y'];
+  function cap(w){ return w ? w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1) : w; }
+  function norm(s){
+    s = (s==null?'':String(s)).replace(/\s+/g,' ').trim();
+    if(!s) return '';
+    var parts = s.toLocaleLowerCase('pt-BR').split(' ').map(cap);
+    for(var i=0;i<parts.length;i++){
+      if(i>0 && P.indexOf(parts[i].toLocaleLowerCase('pt-BR'))>=0) parts[i]=parts[i].toLocaleLowerCase('pt-BR');
+    }
+    return parts.join(' ');
+  }
+  function fromStr(s){ var n=norm(s); if(!n) return ''; var t=n.split(' '); return t.length<=1?n:(t[0]+' '+t[t.length-1]); }
+  function exib(primeiro, ultimo){
+    var p=norm(primeiro), u=norm(ultimo);
+    if(!u) return fromStr(p);
+    var pn = p ? p.split(' ')[0] : '';
+    var tu = u.split(' '), last = tu[tu.length-1];
+    while(tu.length>1 && P.indexOf(last.toLocaleLowerCase('pt-BR'))>=0){ tu.pop(); last=tu[tu.length-1]; }
+    return (pn+' '+last).trim();
+  }
+  window.nomeNormalizar = norm;
+  window.nomeExibicao = exib;
+  window.nomeExibicaoStr = fromStr;
+  window.nomeCompleto = function(primeiro, ultimo){ return norm(((primeiro||'')+' '+(ultimo||'')).trim()); };
+})();
+</script>
+HTML;
 }
 
 /* ===================== ROTAS ATIVAS ===================== */
@@ -100,7 +138,7 @@ if ($firstName === '' && $fullName !== '') {
   $firstName = $parts[0] ?? 'Usuário';
   $lastName  = (count($parts) > 1) ? $parts[count($parts)-1] : '';
 }
-$userShort = trim($firstName . ($lastName !== '' ? ' '.$lastName : ''));
+$userShort = nome_exibicao($firstName, $lastName);
 if ($userShort === '') { $userShort = 'Usuário'; }
 
 /* --- busca nome da empresa (company.organizacao) se faltar --- */

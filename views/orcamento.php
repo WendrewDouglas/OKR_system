@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 
 session_start();
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__.'/../auth/acl.php';
 
@@ -98,7 +99,8 @@ if (isset($_GET['ajax'])) {
         $st->execute([':c'=>$companyId]);
         $responsaveis = $st->fetchAll() ?: [];
       } catch(Throwable $e){ $responsaveis = []; }
-      foreach ($responsaveis as &$r) { if (empty($r['nome'])) $r['nome'] = (string)$r['id_user']; }
+      foreach ($responsaveis as &$r) { $r['nome'] = !empty($r['nome']) ? nome_exibicao_str($r['nome']) : (string)$r['id_user']; }
+      unset($r);
 
       // Status aprovação/financeiro apenas da company
       $aprov = [];
@@ -305,7 +307,7 @@ if (isset($_GET['ajax'])) {
         GROUP BY o.id_user_criador, responsavel
         ORDER BY responsavel
       "); $stB2->execute($binds);
-      $byResp=[]; foreach($stB2 as $r){ $ap=(float)$r['aprovado']; $re=(float)$r['realizado']; $byResp[]=['responsavel'=>$g($r,'responsavel','—'),'aprovado'=>$ap,'realizado'=>$re,'saldo'=>max(0,$ap-$re)]; }
+      $byResp=[]; foreach($stB2 as $r){ $ap=(float)$r['aprovado']; $re=(float)$r['realizado']; $byResp[]=['responsavel'=>nome_exibicao_str($g($r,'responsavel','—')),'aprovado'=>$ap,'realizado'=>$re,'saldo'=>max(0,$ap-$re)]; }
 
       // Tabela Orçamentos
       $stTab=$pdo->prepare("

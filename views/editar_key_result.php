@@ -16,6 +16,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/diff_helpers.php';
 require_once __DIR__.'/../auth/acl.php';
@@ -609,7 +610,7 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
                 <option value="">Selecione...</option>
                 <?php foreach($users as $u): ?>
                   <option value="<?= (int)$u['id_user'] ?>" <?= (string)$u['id_user']===$responsavelSel?'selected':'' ?>>
-                    <?= h(trim(($u['primeiro_nome'] ?? '').' '.($u['ultimo_nome'] ?? ''))) ?>
+                    <?= h(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '')) ?>
                   </option>
                 <?php endforeach; ?>
               </select>

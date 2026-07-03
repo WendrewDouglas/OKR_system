@@ -248,6 +248,7 @@ function pick(array $candidates, callable $existsCb): ?string {
 $emailCol = pick(['email_corporativo','email'], fn($c)=>colExists($pdo,'usuarios',$c)) ?? 'email_corporativo';
 $idCol    = pick(['id_user','user_id','id'],    fn($c)=>colExists($pdo,'usuarios',$c)) ?? 'id_user';
 $nameCol  = pick(['primeiro_nome','nome'],      fn($c)=>colExists($pdo,'usuarios',$c)) ?? 'primeiro_nome';
+$lastCol  = colExists($pdo,'usuarios','ultimo_nome') ? 'ultimo_nome' : null;
 $actCol   = pick(['ativo','is_active','status'],fn($c)=>colExists($pdo,'usuarios',$c)); // opcional
 
 $hashColsCred = array_values(array_filter(['senha_hash','password_hash','hash_senha'], fn($c)=>colExists($pdo,'usuarios_credenciais',$c)));
@@ -260,6 +261,7 @@ try {
     SELECT
       u.`{$idCol}`    AS id,
       u.`{$nameCol}`  AS nome,
+      ".($lastCol ? "u.`{$lastCol}` AS sobrenome," : "'' AS sobrenome,")."
       u.`{$emailCol}` AS email,
       u.`id_company`  AS id_company,
       ".($actCol ? "u.`{$actCol}` AS ativo," : "1 AS ativo,")."
@@ -287,8 +289,11 @@ if (!(int)($user['ativo'] ?? 1)) {
 
 /* ===== Sessão ===== */
 session_regenerate_id(true);
+require_once __DIR__ . '/helpers/nome_format.php';
 $_SESSION['user_id']       = (string)$user['id'];
-$_SESSION['user_name']     = (string)$user['nome'];
+$_SESSION['primeiro_nome'] = (string)$user['nome'];
+$_SESSION['ultimo_nome']   = (string)($user['sobrenome'] ?? '');
+$_SESSION['user_name']     = nome_exibicao((string)$user['nome'], (string)($user['sobrenome'] ?? ''));
 $_SESSION['user_email']    = (string)$user['email'];
 $_SESSION['id_company']    = (int)($user['id_company'] ?? 0);
 $_SESSION['last_activity'] = time();

@@ -188,13 +188,14 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
 
 /* ======================= Dados base ======================= */
 
-// Usuários (somente da mesma company) — id -> primeiro_nome
+// Usuários (somente da mesma company) — id -> primeiro + último sobrenome
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 $usuarios=[];
 if ($pdo && table_exists($pdo,'usuarios')){
-  $st = $pdo->prepare("SELECT id_user, primeiro_nome FROM usuarios WHERE id_company = :cid");
+  $st = $pdo->prepare("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios WHERE id_company = :cid");
   $st->execute([':cid'=>$companyId]);
   foreach($st as $r){
-    $usuarios[(string)$r['id_user']] = $r['primeiro_nome'] ?: $r['id_user'];
+    $usuarios[(string)$r['id_user']] = nome_exibicao($r['primeiro_nome'] ?? '', $r['ultimo_nome'] ?? '') ?: (string)$r['id_user'];
   }
 }
 

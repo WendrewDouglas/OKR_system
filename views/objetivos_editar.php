@@ -7,6 +7,7 @@ error_reporting(E_ALL);
 
 session_start();
 require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__.'/../auth/acl.php';
 
@@ -575,7 +576,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
                 <div class="dropdown-list d-none" id="responsavel_list">
                   <ul>
                     <?php foreach($users as $u): ?>
-                      <li data-id="<?= (int)$u['id_user'] ?>"><?= h($u['primeiro_nome'].' '.$u['ultimo_nome']) ?></li>
+                      <li data-id="<?= (int)$u['id_user'] ?>"><?= h(nome_exibicao($u['primeiro_nome'] ?? '', $u['ultimo_nome'] ?? '')) ?></li>
                     <?php endforeach; ?>
                   </ul>
                 </div>

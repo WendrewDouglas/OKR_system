@@ -1,7 +1,11 @@
 <?php
 // partials/tutorial.php — Tutorial interativo do sistema OKR
 // Incluir no final do <body>, após chat.php
-$tutorialUserName = $_SESSION['primeiro_nome'] ?? $_SESSION['user_name'] ?? 'Usuário';
+require_once dirname(__DIR__, 2) . '/auth/helpers/nome_format.php';
+$tutorialUserName = nome_exibicao(
+  (string)($_SESSION['primeiro_nome'] ?? ''),
+  (string)($_SESSION['ultimo_nome'] ?? '')
+) ?: ($_SESSION['user_name'] ?? 'Usuário');
 ?>
 
 <style>
