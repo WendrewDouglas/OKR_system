@@ -861,15 +861,38 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
         updateHidden();
       }
 
-      inputResp.addEventListener('focus', () => listCont.classList.remove('d-none'));
+      // Posiciona o dropdown com position:fixed para escapar do overflow:hidden do
+      // acordeão "Detalhes" (.pd-body/.pd-fieldset), que recortava a lista absoluta.
+      function positionRespList(){
+        if (listCont.classList.contains('d-none')) return;
+        const r = containerCh.getBoundingClientRect();
+        listCont.style.position = 'fixed';
+        listCont.style.left  = r.left + 'px';
+        listCont.style.width = r.width + 'px';
+        const listH = Math.min(listCont.scrollHeight, 240) + 2;
+        const spaceBelow = window.innerHeight - r.bottom;
+        if (spaceBelow < listH + 8 && r.top > listH + 8) {
+          listCont.style.top = Math.max(8, r.top - listH - 6) + 'px';  // abre para cima
+        } else {
+          listCont.style.top = (r.bottom + 6) + 'px';                  // abre para baixo
+        }
+      }
+      function openRespList(){ listCont.classList.remove('d-none'); positionRespList(); }
+      function closeRespList(){ listCont.classList.add('d-none'); }
+
+      inputResp.addEventListener('focus', openRespList);
+      inputResp.addEventListener('click', openRespList);
       document.addEventListener('click', e => {
-        if (!containerCh.contains(e.target) && !listCont.contains(e.target)) listCont.classList.add('d-none');
+        if (!containerCh.contains(e.target) && !listCont.contains(e.target)) closeRespList();
       });
+      window.addEventListener('scroll', positionRespList, true);
+      window.addEventListener('resize', positionRespList);
       inputResp.addEventListener('input', () => {
         const filter = inputResp.value.toLowerCase();
         listCont.querySelectorAll('li').forEach(li => {
           li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
         });
+        positionRespList();
       });
 
       listCont.querySelectorAll('li').forEach(li => {
