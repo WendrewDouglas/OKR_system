@@ -91,7 +91,15 @@ $stObj = $pdo->prepare("
     LEFT JOIN usuarios u ON u.id_user = o.dono
     LEFT JOIN avatars  a ON a.id = u.avatar_id
     $objWhere
-    ORDER BY o.dt_prazo ASC
+    ORDER BY
+        CASE
+            WHEN o.pilar_bsc LIKE 'Financ%'   THEN 1
+            WHEN o.pilar_bsc LIKE 'Client%'   THEN 2
+            WHEN o.pilar_bsc LIKE 'Processo%' THEN 3
+            WHEN o.pilar_bsc LIKE 'Aprendiz%' THEN 4
+            ELSE 5
+        END ASC,
+        o.dt_prazo ASC
 ");
 $stObj->execute($objParams);
 $objetivos = $stObj->fetchAll();
