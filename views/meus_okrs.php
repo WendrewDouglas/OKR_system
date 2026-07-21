@@ -390,6 +390,7 @@ function pill_text_color(string $hex): string {
         s = (s||'').toLowerCase();
         if (/conclu|finaliz|complet/.test(s)) return 'ok';
         if (/risco|critic|cancel/.test(s)) return 'danger';
+        if (/pausad/.test(s)) return 'warn';
         if (/penden|aguar/.test(s)) return 'warn';
         if (/andamento|ativ|progr/.test(s)) return 'info';
         return 'neutral';

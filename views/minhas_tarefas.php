@@ -375,6 +375,7 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
     .mt-status.nao-inic   { background: rgba(127, 140, 141, .14); color: #4a5556; }
     .mt-status.concluido  { background: rgba(46, 204, 113, .16); color: var(--mt-success); }
     .mt-status.cancelado  { background: rgba(231, 76, 60, .14); color: var(--mt-danger); }
+    .mt-status.pausado    { background: rgba(243, 196, 15, .18); color: #8a6d0b; }
     .mt-status.sem-status { background: rgba(127, 140, 141, .10); color: #5f6770; }
 
     /* Empty state */
@@ -504,6 +505,7 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
             // Status CSS class
             $stLower = mb_strtolower($t['status_label']);
             if (strpos($stLower, 'andamento') !== false)      $statusClass = 'andamento';
+            elseif (strpos($stLower, 'pausad') !== false)      $statusClass = 'pausado';
             elseif (strpos($stLower, 'não') !== false || strpos($stLower, 'nao') !== false) $statusClass = 'nao-inic';
             elseif (strpos($stLower, 'conclu') !== false)      $statusClass = 'concluido';
             elseif (strpos($stLower, 'cancel') !== false)      $statusClass = 'cancelado';

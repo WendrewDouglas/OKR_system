@@ -2353,6 +2353,13 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .meta-pill{ display:inline-flex; align-items:center; gap:6px; background:#0b0f14; border:1px solid var(--border); color:#a6adbb; padding:5px 8px; border-radius:999px; font-size:.78rem; font-weight:700; }
     .meta-pill i{ font-size:.85rem; }
     .meta-pill.white, .meta-pill.white i { color:#eee !important; }
+    /* Cores padronizadas do status do KR */
+    .meta-pill.st-andamento{ color:#60a5fa; background:#0b1626; border-color:#1e3a5f; }
+    .meta-pill.st-naoiniciado{ color:#9ca3af; background:#14171c; border-color:#2a2f3a; }
+    .meta-pill.st-concluido{ color:#22c55e; background:#0c1f14; border-color:#1a3d2a; }
+    .meta-pill.st-cancelado{ color:#f87171; background:#1a0b0e; border-color:#3b0d13; }
+    .meta-pill.st-pausado{ color:#fbbf24; background:#1f1a0b; border-color:#4a3b0a; }
+    .meta-pill.st-andamento i,.meta-pill.st-naoiniciado i,.meta-pill.st-concluido i,.meta-pill.st-cancelado i,.meta-pill.st-pausado i{ color:inherit; }
     .kr-actions{ display:flex; gap:8px; flex-wrap:nowrap; align-items:center; }
     .kr-actions .btn.btn-sm { width: 180px; flex: 0 0 180px; white-space: nowrap; text-align:center; box-sizing:border-box; }
     @media (max-width:560px){ .kr-actions { flex-wrap: nowrap; } }
@@ -2936,6 +2943,16 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       const raw = kr.prazo_final || kr.dt_novo_prazo || kr.data_fim || kr.dt_prazo || kr.data_limite || kr.dt_limite;
       const fmt = toDDMMYYYY(raw, '/');
       return fmt || '—';
+    }
+    // Classe de cor do status do KR: azul=andamento, cinza=não iniciado,
+    // verde=concluído, vermelho=cancelado, amarelo=pausado.
+    function krStatusClass(raw){
+      const s = String(raw||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      if (s.includes('cancel')) return 'st-cancelado';
+      if (s.includes('conclu') || s.includes('finaliz')) return 'st-concluido';
+      if (s.includes('pausad')) return 'st-pausado';
+      if (s.includes('andament') || s.includes('progress')) return 'st-andamento';
+      return 'st-naoiniciado';
     }
 
     // ====== Nova Iniciativa (previsões) ======
@@ -3595,7 +3612,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                     <i class="fa-solid fa-traffic-light"></i> ${farolAutoLabel}
                   </span>
 
-                  <span class="meta-pill" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
+                  <span class="meta-pill ${krStatusClass(kr.status)}" title="Status"><i class="fa-solid fa-clipboard-check"></i>${escapeHtml(kr.status||'—')}</span>
                   <span class="meta-pill" title="Responsável do KR"><i class="fa-regular fa-user"></i>${escapeHtml(respLabel(kr))}</span>
                   <span class="meta-pill white" title="Data limite"><i class="fa-regular fa-calendar-days"></i>${escapeHtml(prazoLabel(kr))}</span>
                   <span class="meta-pill" title="Baseline"><i class="fa-solid fa-gauge"></i>${fmtNum(kr.baseline)} ${escapeHtml(kr.unidade_medida||'')}</span>
