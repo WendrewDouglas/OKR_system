@@ -26,19 +26,22 @@ try {
         ->execute();
     $idModulo = (int)$pdo->query("SELECT id_modulo FROM okrm_modulos WHERE codigo='M1'")->fetchColumn();
 
-    // ---- Limpa versao anterior 'v1' (recriacao limpa) ----
-    $old = $pdo->prepare("SELECT id_versao FROM okrm_versao WHERE id_modulo=? AND label='v1'");
+    // ---- Versao v1 (reaproveita se ja existir; nunca apaga) ----
+    // Upsert por posicao (ordem) preserva os IDs de questoes/alternativas,
+    // entao sessoes e respostas ja gravadas continuam validas.
+    $old = $pdo->prepare("SELECT id_versao FROM okrm_versao WHERE id_modulo=? AND label='v1' ORDER BY id_versao DESC LIMIT 1");
     $old->execute([$idModulo]);
-    foreach ($old->fetchAll(PDO::FETCH_COLUMN) as $iv) {
-        $pdo->prepare("DELETE FROM okrm_versao WHERE id_versao=?")->execute([$iv]);
+    $idVersao = (int)($old->fetchColumn() ?: 0);
+
+    $pdo->prepare("UPDATE okrm_versao SET is_ativa=0 WHERE id_modulo=?")->execute([$idModulo]);
+    if ($idVersao > 0) {
+        $pdo->prepare("UPDATE okrm_versao SET is_ativa=1 WHERE id_versao=?")->execute([$idVersao]);
+    } else {
+        $pdo->prepare("INSERT INTO okrm_versao (id_modulo,label,is_ativa) VALUES (?, 'v1', 1)")->execute([$idModulo]);
+        $idVersao = (int)$pdo->lastInsertId();
     }
 
-    // ---- Nova versao ativa ----
-    $pdo->prepare("UPDATE okrm_versao SET is_ativa=0 WHERE id_modulo=?")->execute([$idModulo]);
-    $pdo->prepare("INSERT INTO okrm_versao (id_modulo,label,is_ativa) VALUES (?, 'v1', 1)")->execute([$idModulo]);
-    $idVersao = (int)$pdo->lastInsertId();
-
-    // ---- Blocos ----
+    // ---- Blocos (upsert por ordem) ----
     $blocos = [
         ['Conduzir a redação de objetivos', 'Objetivos', 1],
         ['Conduzir o mapa e as relações causais', 'Mapa e causa-efeito', 2],
@@ -46,13 +49,18 @@ try {
         ['Conduzir iniciativas, orçamento e governança', 'Iniciativas e governança', 4],
     ];
     $idBloco = [];
-    $stB = $pdo->prepare("INSERT INTO okrm_blocos (id_versao,nome,nome_curto,ordem) VALUES (?,?,?,?)");
+    $selB = $pdo->prepare("SELECT id_bloco FROM okrm_blocos WHERE id_versao=? AND ordem=? LIMIT 1");
+    $updB = $pdo->prepare("UPDATE okrm_blocos SET nome=?, nome_curto=? WHERE id_bloco=?");
+    $insB = $pdo->prepare("INSERT INTO okrm_blocos (id_versao,nome,nome_curto,ordem) VALUES (?,?,?,?)");
     foreach ($blocos as $i => $b) {
-        $stB->execute([$idVersao, $b[0], $b[1], $b[2]]);
-        $idBloco[$i+1] = (int)$pdo->lastInsertId();
+        $selB->execute([$idVersao, $b[2]]);
+        $bid = (int)($selB->fetchColumn() ?: 0);
+        if ($bid > 0) { $updB->execute([$b[0], $b[1], $bid]); }
+        else { $insB->execute([$idVersao, $b[0], $b[1], $b[2]]); $bid = (int)$pdo->lastInsertId(); }
+        $idBloco[$i+1] = $bid;
     }
 
-    // ---- Faixas (20 questoes) ----
+    // ---- Faixas (upsert por pct_min) ----
     $faixas = [
         [85,100,'Apto a facilitar com autonomia',
          'Domínio consolidado da aplicação prática do BSC. Você está apto a conduzir sessões de construção de objetivos, mapa, indicadores e iniciativas com autonomia.','verde'],
@@ -63,8 +71,15 @@ try {
         [0,44,'Requer revisão do módulo',
          'É recomendável revisar o Módulo 1 integralmente, incluindo fundamentos, perspectivas, mapa e indicadores, antes de avançar para o Módulo 2.','vermelho'],
     ];
-    $stF = $pdo->prepare("INSERT INTO okrm_faixas (id_versao,pct_min,pct_max,rotulo,leitura,cor) VALUES (?,?,?,?,?,?)");
-    foreach ($faixas as $f) $stF->execute([$idVersao, $f[0], $f[1], $f[2], $f[3], $f[4]]);
+    $selF = $pdo->prepare("SELECT id_faixa FROM okrm_faixas WHERE id_versao=? AND pct_min=? LIMIT 1");
+    $updF = $pdo->prepare("UPDATE okrm_faixas SET pct_max=?, rotulo=?, leitura=?, cor=? WHERE id_faixa=?");
+    $insF = $pdo->prepare("INSERT INTO okrm_faixas (id_versao,pct_min,pct_max,rotulo,leitura,cor) VALUES (?,?,?,?,?,?)");
+    foreach ($faixas as $f) {
+        $selF->execute([$idVersao, $f[0]]);
+        $fid = (int)($selF->fetchColumn() ?: 0);
+        if ($fid > 0) { $updF->execute([$f[1], $f[2], $f[3], $f[4], $fid]); }
+        else { $insF->execute([$idVersao, $f[0], $f[1], $f[2], $f[3], $f[4]]); }
+    }
 
     // ---- Questoes ----
     // Estrutura: [bloco, enunciado, [ [texto, is_correta, justificativa], ... ] ]
@@ -335,18 +350,27 @@ try {
          'Divisão em partes iguais pressupõe potencial de contribuição idêntico entre as áreas, o que raramente se verifica. A distribuição deve refletir a alavanca real de cada uma, apurada com indicadores próprios.'],
       ]];
 
-    // ---- Insere questoes + alternativas ----
-    $stQ = $pdo->prepare("INSERT INTO okrm_questoes (id_versao,id_bloco,ordem,enunciado) VALUES (?,?,?,?)");
-    $stA = $pdo->prepare("INSERT INTO okrm_alternativas (id_questao,ordem,texto,is_correta,justificativa) VALUES (?,?,?,?,?)");
+    // ---- Questoes + alternativas (upsert por ordem, preserva IDs) ----
+    $selQ = $pdo->prepare("SELECT id_questao FROM okrm_questoes WHERE id_versao=? AND ordem=? LIMIT 1");
+    $updQ = $pdo->prepare("UPDATE okrm_questoes SET id_bloco=?, enunciado=? WHERE id_questao=?");
+    $insQ = $pdo->prepare("INSERT INTO okrm_questoes (id_versao,id_bloco,ordem,enunciado) VALUES (?,?,?,?)");
+    $selA = $pdo->prepare("SELECT id_alternativa FROM okrm_alternativas WHERE id_questao=? AND ordem=? LIMIT 1");
+    $updA = $pdo->prepare("UPDATE okrm_alternativas SET texto=?, is_correta=?, justificativa=? WHERE id_alternativa=?");
+    $insA = $pdo->prepare("INSERT INTO okrm_alternativas (id_questao,ordem,texto,is_correta,justificativa) VALUES (?,?,?,?,?)");
     $ordem = 0;
     foreach ($Q as $q) {
         $ordem++;
-        $stQ->execute([$idVersao, $idBloco[$q[0]], $ordem, $q[1]]);
-        $idQ = (int)$pdo->lastInsertId();
+        $selQ->execute([$idVersao, $ordem]);
+        $idQ = (int)($selQ->fetchColumn() ?: 0);
+        if ($idQ > 0) { $updQ->execute([$idBloco[$q[0]], $q[1], $idQ]); }
+        else { $insQ->execute([$idVersao, $idBloco[$q[0]], $ordem, $q[1]]); $idQ = (int)$pdo->lastInsertId(); }
         $oa = 0;
         foreach ($q[2] as $alt) {
             $oa++;
-            $stA->execute([$idQ, $oa, $alt[0], (int)$alt[1], $alt[2]]);
+            $selA->execute([$idQ, $oa]);
+            $aid = (int)($selA->fetchColumn() ?: 0);
+            if ($aid > 0) { $updA->execute([$alt[0], (int)$alt[1], $alt[2], $aid]); }
+            else { $insA->execute([$idQ, $oa, $alt[0], (int)$alt[1], $alt[2]]); }
         }
     }
 
