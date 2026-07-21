@@ -402,6 +402,15 @@ function pill_text_color(string $hex): string {
         'aprendizado':'#8e44ad','aprendizado e crescimento':'#8e44ad',
       };
       const pilarColor = p => pilarColors[(p||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')] || '#6c757d';
+
+      // \u00cdcones dos pilares BSC (mesma conven\u00e7\u00e3o usada no Mapa Estrat\u00e9gico)
+      const pilarIcons = {
+        'financeiro':'fa-solid fa-coins',
+        'cliente':'fa-solid fa-users','clientes':'fa-solid fa-users',
+        'processos':'fa-solid fa-gears','processos internos':'fa-solid fa-gears',
+        'aprendizado':'fa-solid fa-graduation-cap','aprendizado e crescimento':'fa-solid fa-graduation-cap',
+      };
+      const pilarIcon = p => pilarIcons[(p||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')] || 'fa-solid fa-bullseye';
       const contrastColor = hex => {
         hex = hex.replace('#','');
         if (hex.length===3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
@@ -566,6 +575,7 @@ function pill_text_color(string $hex): string {
 
         const pilCor = pilarColor(obj.pilar_bsc||'');
         const pilFg  = contrastColor(pilCor);
+        const pilIco = pilarIcon(obj.pilar_bsc||'');
 
         const isMeus = currentScope === 'meus';
         const mine = isMeus && userInObj(obj);
@@ -575,13 +585,13 @@ function pill_text_color(string $hex): string {
           <div class="tree-node${mine?' mine':''}${dimmed?' dimmed':''}">
             <div class="node-header" onclick="this.parentElement.classList.toggle('open')">
               <span class="node-chevron ${isLeaf?'leaf':''}"><i class="fa-solid fa-chevron-right"></i></span>
-              <span class="node-icon obj"><i class="fa-solid fa-bullseye"></i></span>
+              <span class="node-icon obj" style="color:${pilCor};background:${pilCor}22"><i class="${pilIco}"></i></span>
               <div class="node-info">
                 <div class="node-title" style="color:var(--gold)">${h(obj.descricao)}</div>
                 <div class="node-sub">
+                  <span class="pill-pilar" style="background:${pilCor};color:${pilFg}">${h(obj.pilar_bsc||'—')}</span>
                   ${avatarHtml(obj.dono)}
                   <span class="tag" style="margin-left:2px">${h(obj.dono?.nome || '—')}</span>
-                  <span class="pill-pilar" style="background:${pilCor};color:${pilFg}">${h(obj.pilar_bsc||'—')}</span>
                   <span class="tag"><i class="fa-regular fa-calendar"></i> ${fmtDate(obj.dt_prazo)}</span>
                   <span class="tag"><i class="fa-solid fa-rotate"></i> ${h((obj.tipo_ciclo||'')+ ' - ' +(obj.ciclo||''))}</span>
                   <span class="pill-status ${statusClass(obj.status)}">${h(obj.status || '—')}</span>
