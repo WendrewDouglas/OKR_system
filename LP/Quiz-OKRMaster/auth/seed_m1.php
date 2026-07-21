@@ -7,11 +7,15 @@
  * Executar UMA vez apos rodar sql/schema.sql.
  */
 declare(strict_types=1);
+
+// Somente linha de comando (SSH). Nunca executavel por HTTP:
+// evita que a semeadura seja disparada por qualquer visitante.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
 require __DIR__ . '/_bootstrap.php';
 header('Content-Type: text/plain; charset=utf-8');
-
-$SEED_TOKEN = 'okrm-seed-2026';
-if (($_GET['token'] ?? '') !== $SEED_TOKEN) { fail('Token de seed inválido.', 403); }
 
 $pdo = pdo();
 $pdo->beginTransaction();
