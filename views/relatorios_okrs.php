@@ -967,6 +967,7 @@ function pillarColor(key){ return PILLAR_COLORS[String(key).toLowerCase()] || '#
 function pillarIcon(key){ return PILLAR_ICONS[String(key).toLowerCase()] || 'fa-solid fa-layer-group'; }
 function strnatcasecmp(a,b){ return (a||'').toString().localeCompare((b||'').toString(),'pt-BR',{numeric:true,sensitivity:'base'}); }
 function esc(s){ if(s===null||s===undefined) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;"); }
+function fmtBrDate(s){ if(s===null||s===undefined||s==='') return '—'; const str=String(s).trim().split(' ')[0]; const m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return `${m[3]}/${m[2]}/${m[1]}`; const d=new Date(str); if(!isNaN(d)) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return str; }
 function labelPillar(k){ switch(String(k).toLowerCase()){ case 'aprendizado': return 'Aprendizado'; case 'processos': return 'Processos'; case 'clientes': return 'Clientes'; case 'financeiro': return 'Financeiro'; default: return k||'—'; } }
 function contrastText(hex){ if(!hex) return '#fff'; const c=hex.replace('#',''); const r=parseInt(c.substring(0,2),16); const g=parseInt(c.substring(2,4),16); const b=parseInt(c.substring(4,6),16); const yiq=((r*299)+(g*587)+(b*114))/1000; return yiq >= 200 ? '#0b0f14' : '#ffffff'; }
 function avatarHTML(userId){
@@ -1299,7 +1300,7 @@ function renderObjetivos(items){
       <div class="obj-title"><i class="${icon}" style="color:${color}"></i> ${esc(o.nome||'Objetivo')}</div>
       <div class="obj-meta">
         <span class="pill"><i class="fa-regular fa-user"></i> ${esc(donoFirst)}</span>
-        <span class="pill"><i class="fa-regular fa-calendar-days"></i> ${esc(o.prazo||'—')}</span>
+        <span class="pill"><i class="fa-regular fa-calendar-days"></i> ${esc(fmtBrDate(o.prazo))}</span>
       </div>
       <div class="obj-prog"><span style="width:0%"></span></div>
       <div class="obj-foot">
@@ -1435,6 +1436,7 @@ function esc(s){
   if(s===null||s===undefined) return '';
   return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 }
+function fmtBrDate(s){ if(s===null||s===undefined||s==='') return '—'; const str=String(s).trim().split(' ')[0]; const m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return `${m[3]}/${m[2]}/${m[1]}`; const d=new Date(str); if(!isNaN(d)) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return str; }
 function labelPillar(k){
   switch(String(k).toLowerCase()){
     case 'aprendizado': return 'Aprendizado';
@@ -1787,7 +1789,7 @@ function renderObjetivos(items){
          <div class="obj-title"><i class="${icon}" style="color:${color}"></i> ${esc(o.nome||'Objetivo')}</div>
          <div class="obj-meta">
            <span class="pill"><i class="fa-regular fa-user"></i> ${esc(donoFirst)}</span>
-           <span class="pill"><i class="fa-regular fa-calendar-days"></i> ${esc(o.prazo||'—')}</span>
+           <span class="pill"><i class="fa-regular fa-calendar-days"></i> ${esc(fmtBrDate(o.prazo))}</span>
          </div>
          <div class="obj-prog"><span style="width:0%"></span></div>
          <div class="obj-foot">

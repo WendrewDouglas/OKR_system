@@ -721,6 +721,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
   // ========= Helpers de datas =========
   function pad2(n){ return String(n).padStart(2,'0'); }
   function toISODate(d){ return d ? `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` : ''; }
+  function fmtBR(iso){ const p=(iso||'').split(' ')[0].split('-'); return (p.length===3 && p[0]) ? `${p[2]}/${p[1]}/${p[0]}` : (iso||''); }
   function lastDayOfMonth(year, monthIndex0){ return new Date(year, monthIndex0+1, 0).getDate(); }
 
   function computePeriodFromCycle(){
@@ -924,7 +925,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     $('#data_inicio').value = startISO;
     $('#data_fim').value    = endISO;
 
-    if (pt){ pt.textContent = `Período: ${startISO} → ${endISO}`; pb.style.display = 'inline-flex'; }
+    if (pt){ pt.textContent = `Período: ${fmtBR(startISO)} → ${fmtBR(endISO)}`; pb.style.display = 'inline-flex'; }
     if (mt && freq){
       const qtd = estimateMilestones(startISO, endISO, (freq||'').toLowerCase());
       mt.textContent = `Estimativa de milestones: ${qtd}`;
@@ -1062,7 +1063,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${i+1}</td>
-          <td>${d}</td>
+          <td>${fmtBR(d)}</td>
           <td class="right">${lo}</td>
           <td class="right">${hi}</td>
         `;
@@ -1087,7 +1088,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${i+1}</td>
-          <td>${d}</td>
+          <td>${fmtBR(d)}</td>
           <td class="right">${String(esperados[i])}</td>
         `;
         tbody.appendChild(tr);

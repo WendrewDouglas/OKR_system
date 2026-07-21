@@ -2510,8 +2510,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         </div>
 
         <div class="obj-dates">
-          <span class="pill" title="Data de criação"><i class="fa-regular fa-calendar-plus"></i><?= htmlspecialchars($g($objetivo,'dt_criacao')) ?></span>
-          <span class="pill" title="Prazo"><i class="fa-regular fa-calendar-days"></i><?= htmlspecialchars($g($objetivo,'dt_prazo')) ?></span>
+          <span class="pill" title="Data de criação"><i class="fa-regular fa-calendar-plus"></i><?php $__dc = $g($objetivo,'dt_criacao'); $__t = $__dc ? strtotime($__dc) : false; echo htmlspecialchars($__t ? date('d/m/Y', $__t) : '—'); ?></span>
+          <span class="pill" title="Prazo"><i class="fa-regular fa-calendar-days"></i><?php $__dp = $g($objetivo,'dt_prazo'); $__t = $__dp ? strtotime($__dp) : false; echo htmlspecialchars($__t ? date('d/m/Y', $__t) : '—'); ?></span>
 
           <!-- Farol do objetivo (dinâmico) -->
           <span class="pill meta-pill white" id="objFarolPill" title="Farol do objetivo">
@@ -3562,7 +3562,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         const mVal   = kr?.farol_calc?.m;
         const sTxt   = (typeof sVal === 'number' && isFinite(sVal)) ? sVal.toFixed(3) : '—';
         const mTxt   = (typeof mVal === 'number' && isFinite(mVal)) ? mVal.toFixed(3) : '—';
-        const refDt  = kr?.ref_milestone?.data || '—';
+        const refDt  = kr?.ref_milestone?.data ? toDDMMYYYY(kr.ref_milestone.data) : '—';
         const refAp  = kr?.ref_milestone?.tem_apontamento ? 'com apontamento' : 'sem apontamento';
         const farolTitle = `Ref: ${refDt} · ${refAp} · s=${sTxt} · m=${mTxt}`;
 

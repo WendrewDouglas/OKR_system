@@ -358,6 +358,7 @@ function renderDiffs(row){
   `;
 }
 
+function fmtBRdate(s){ if(!s) return ''; const str=String(s).trim().split(' ')[0]; const m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return `${m[3]}/${m[2]}/${m[1]}`; const d=new Date(str); if(!isNaN(d)) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return str; }
 function card(row){
   const title = row.module==='orcamento'
     ? `Orçamento #${row.id} — ${currencyBR(row.valor||0)}`
@@ -388,8 +389,8 @@ function card(row){
           ${badgeStatus(row.status_aprovacao)}
           ${movLabel(row)}
           <span class="badge"><i class="fa-regular fa-user"></i> Autor: ${row.usuario_criador_nome || '—'}</span>
-          ${row.dt_criacao ? `<span class="badge"><i class="fa-regular fa-calendar"></i> Criado: ${row.dt_criacao}</span>`:''}
-          ${row.dt_aprovacao ? `<span class="badge"><i class="fa-regular fa-clock"></i> Últ. decisão: ${row.dt_aprovacao}</span>`:''}
+          ${row.dt_criacao ? `<span class="badge"><i class="fa-regular fa-calendar"></i> Criado: ${fmtBRdate(row.dt_criacao)}</span>`:''}
+          ${row.dt_aprovacao ? `<span class="badge"><i class="fa-regular fa-clock"></i> Últ. decisão: ${fmtBRdate(row.dt_aprovacao)}</span>`:''}
         </div>
 
         <div class="details">

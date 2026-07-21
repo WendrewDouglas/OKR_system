@@ -687,6 +687,7 @@ if (isset($_GET['ajax'])) {
     function fmtBRL(x){ return (Number(x)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
     function escapeHtml(s){ return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
     function toDMY(ym){ const [y,m] = (ym||'').split('-'); return `${m}/${y}`; }
+    function toDMYd(s){ const p=(s||'').split(' ')[0].split('-'); return (p.length===3 && p[0]) ? `${p[2]}/${p[1]}/${p[0]}` : '—'; }
 
     async function getJSON(url){
       try{
@@ -759,7 +760,7 @@ if (isset($_GET['ajax'])) {
 
       // Período
       const pb = document.getElementById('periodBadge'), pt = document.getElementById('periodText');
-      if (pt){ pt.textContent = `Período: ${data.periodo.ini} → ${data.periodo.fim}`; pb.style.display='inline-flex'; }
+      if (pt){ pt.textContent = `Período: ${data.periodo.ini?toDMY(data.periodo.ini):'—'} → ${data.periodo.fim?toDMY(data.periodo.fim):'—'}`; pb.style.display='inline-flex'; }
 
       // Chart datasets
       const labels = (data.series||[]).map(s=>toDMY(s.competencia));
@@ -896,7 +897,7 @@ if (isset($_GET['ajax'])) {
         const iniFull = ((d.num_iniciativa?('#'+d.num_iniciativa+' – '):'') + (d.ini_desc||''));
         tbD.insertAdjacentHTML('beforeend', `
           <tr>
-            <td class="nowrap">${escapeHtml((d.data_pagamento||'').split(' ')[0]||'—')}</td>
+            <td class="nowrap">${escapeHtml(toDMYd(d.data_pagamento))}</td>
             <td class="right nowrap">${fmtBRL(d.valor||0)}</td>
             <td>${escapeHtml(d.descricao||'—')}</td>
             <td class="nowrap">${escapeHtml(d.codigo_orcamento||('#'+d.id_orcamento))}</td>

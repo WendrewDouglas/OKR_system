@@ -42,6 +42,14 @@ function crm_h(?string $value): string {
   return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+// Exibição de data no padrão brasileiro dd/mm/aaaa (não altera o valor gravado).
+function crm_date(?string $value): string {
+  $value = trim((string)$value);
+  if ($value === '' || $value === '-' || strncmp($value, '0000-00-00', 10) === 0) return '—';
+  $ts = strtotime($value);
+  return $ts ? date('d/m/Y', $ts) : crm_h($value);
+}
+
 function crm_int(PDO $pdo, string $sql, array $params = []): int {
   $st = $pdo->prepare($sql);
   $st->execute($params);
@@ -799,7 +807,7 @@ body {
                     <td><?= crm_h($row['original_filename'] ?: $row['source_name']) ?></td>
                     <td><span class="crm-pill teal"><?= crm_h($row['status']) ?></span></td>
                     <td><?= crm_number((int)$row['processed_rows']) ?> / <?= crm_number((int)$row['total_rows']) ?></td>
-                    <td><?= crm_h($row['finished_at'] ?: $row['created_at']) ?></td>
+                    <td><?= crm_date($row['finished_at'] ?: $row['created_at']) ?></td>
                   </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -884,7 +892,7 @@ body {
                   <td><span class="crm-pill teal"><?= crm_h(crm_label('seniority', $row['seniority'])) ?></span> <span class="crm-pill"><?= crm_h(crm_label('department', $row['department'])) ?></span></td>
                   <td><span class="crm-pill gold"><?= crm_h(crm_label('status', $row['contact_status'])) ?></span></td>
                   <td><?= crm_number((int)$row['channels_count']) ?></td>
-                  <td><?= crm_h($row['next_action_at'] ?: '-') ?></td>
+                  <td><?= crm_date($row['next_action_at']) ?></td>
                 </tr>
               <?php endforeach; ?>
               </tbody>
@@ -927,7 +935,7 @@ body {
                     <td><?= crm_h($row['account_name'] ?: '-') ?></td>
                     <td><?= crm_h($row['campaign_name'] ?: '-') ?></td>
                     <td><span class="crm-pill teal"><?= crm_h($row['status']) ?></span></td>
-                    <td><?= crm_h($row['due_at'] ?: '-') ?></td>
+                    <td><?= crm_date($row['due_at']) ?></td>
                   </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -951,8 +959,8 @@ body {
                     <td><strong><?= crm_h($row['subject'] ?: '-') ?></strong><div class="crm-muted"><?= crm_h($row['direction']) ?></div></td>
                     <td><?= crm_h($row['full_name'] ?: '-') ?></td>
                     <td><?= crm_h($row['account_name'] ?: '-') ?></td>
-                    <td><?= crm_h($row['activity_at']) ?></td>
-                    <td><?= crm_h($row['due_at'] ?: '-') ?></td>
+                    <td><?= crm_date($row['activity_at']) ?></td>
+                    <td><?= crm_date($row['due_at']) ?></td>
                   </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -1005,7 +1013,7 @@ body {
                     <td><span class="crm-pill gold"><?= crm_h($row['status']) ?></span></td>
                     <td><?= crm_h($row['segment_name'] ?: '-') ?></td>
                     <td><?= crm_number((int)$row['members_count']) ?></td>
-                    <td><?= crm_h(($row['start_at'] ?: '-') . ' / ' . ($row['end_at'] ?: '-')) ?></td>
+                    <td><?= crm_date($row['start_at']) . ' / ' . crm_date($row['end_at']) ?></td>
                   </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -1030,7 +1038,7 @@ body {
                   <td><?= crm_number((int)$row['processed_rows']) ?> / <?= crm_number((int)$row['total_rows']) ?></td>
                   <td><?= crm_number((int)$row['inserted_rows']) ?></td>
                   <td><?= crm_number((int)$row['updated_rows']) ?></td>
-                  <td><?= crm_h($row['finished_at'] ?: '-') ?></td>
+                  <td><?= crm_date($row['finished_at']) ?></td>
                 </tr>
               <?php endforeach; ?>
               </tbody>

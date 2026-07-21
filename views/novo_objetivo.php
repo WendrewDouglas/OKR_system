@@ -360,6 +360,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
   function pad2(n){ return String(n).padStart(2,'0'); }
   function lastDayOfMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
   function toISO(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function fmtBR(iso){ const p=(iso||'').split(' ')[0].split('-'); return (p.length===3 && p[0]) ? `${p[2]}/${p[1]}/${p[0]}` : (iso||''); }
 
   function computePeriodFromCycle(){
     const tipo = ($('#ciclo_tipo')?.value || 'trimestral').toLowerCase();
@@ -436,7 +437,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
   function updateBadges(){
     const {startISO, endISO} = computePeriodFromCycle();
     const pb = $('#periodBadge'), pt = $('#periodText');
-    if (pt && pb){ pt.textContent = `Período: ${startISO} → ${endISO}`; pb.style.display='inline-flex'; }
+    if (pt && pb){ pt.textContent = `Período: ${fmtBR(startISO)} → ${fmtBR(endISO)}`; pb.style.display='inline-flex'; }
     const ids = ($('#responsavel')?.value || '').split(',').filter(Boolean);
     const ob = $('#ownersBadge'), ot = $('#ownersText');
     if (ids.length>0 && ob && ot){ ot.textContent = `Responsáveis: ${ids.length}`; ob.style.display='inline-flex'; }
