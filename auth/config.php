@@ -147,6 +147,10 @@ define('SMTP_PORT',        env_int('SMTP_PORT', 587)); // força inteiro
 define('SMTP_FROM',       (string)env('SMTP_FROM', env('SMTP_USER', '')));
 define('SMTP_FROM_NAME',  (string)env('SMTP_FROM_NAME', 'OKR System'));
 
+// ===== OKR Master (avaliacoes) =====
+// Destino das notificacoes de conclusao das avaliacoes OKR Master.
+define('OKRM_INSTRUTOR_EMAIL', (string)env('OKRM_INSTRUTOR_EMAIL', 'wendrew.gomes@planningbi.com.br'));
+
 // ===== APP flags =====
 define('APP_ENV',   (string)env('APP_ENV', 'production'));
 define('APP_DEBUG',  env_bool('APP_DEBUG', false));
