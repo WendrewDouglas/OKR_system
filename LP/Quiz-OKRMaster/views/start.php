@@ -6,7 +6,7 @@ $base = '/OKR_system/LP/Quiz-OKRMaster';
 <section class="wrap narrow">
   <div class="hero">
     <span class="eyebrow">Programa de Formação OKR Master</span>
-    <h1>Avaliação do Módulo 1 — Balanced Scorecard</h1>
+    <h1>Avaliação do Módulo 1: Balanced Scorecard</h1>
     <p class="sub">São 20 questões sobre a aplicação prática do BSC. A cada resposta você verá se acertou e a fundamentação. Leva cerca de 15 minutos.</p>
   </div>
 

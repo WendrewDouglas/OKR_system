@@ -20,7 +20,7 @@ $sid  = isset($_GET['sid']) ? trim($_GET['sid']) : '';
             <div class="score-den" id="scoreDen">de 20</div>
           </div>
         </div>
-        <div class="faixa-tag" id="faixaTag">—</div>
+        <div class="faixa-tag" id="faixaTag"></div>
         <p class="leitura" id="leitura"></p>
       </div>
 

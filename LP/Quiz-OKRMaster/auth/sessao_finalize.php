@@ -79,29 +79,30 @@ if ($S['status'] !== 'finalizada') {
 if ($primeiraVez) {
     // notificacao ao instrutor (nao bloqueia a resposta se falhar)
     try {
-        $mailer = dirname(__DIR__, 3) . '/auth/mailer.php';
-        if (is_file($mailer)) {
-            require_once $mailer;
-            if (function_exists('send_email')) {
+        $fn = dirname(__DIR__, 3) . '/auth/functions.php';
+        if (is_file($fn)) {
+            require_once $fn;
+            if (function_exists('sendTransactionalMail')) {
                 $destino = defined('OKRM_INSTRUTOR_EMAIL') ? OKRM_INSTRUTOR_EMAIL
                          : (defined('SMTP_FROM') ? SMTP_FROM : '');
                 if ($destino) {
                     $nome  = htmlspecialchars($S['aluno_nome']);
                     $email = htmlspecialchars($S['aluno_email']);
                     $mm = ($tempoMedio/1000);
-                    $subj = "OKR Master · {$S['aluno_nome']} concluiu a avaliação do Módulo 1 ({$acertos}/{$total})";
+                    $rot = htmlspecialchars((string)($faixa['rotulo'] ?? ''));
+                    $subj = "OKR Master: {$S['aluno_nome']} concluiu a avaliação do Módulo 1 ({$acertos}/{$total})";
                     $html = "<div style='font-family:system-ui,Arial,sans-serif;color:#1a1a1a'>"
-                          . "<h2 style='margin:0 0 8px'>Avaliação concluída — Módulo 1 (BSC)</h2>"
+                          . "<h2 style='margin:0 0 8px'>Avaliação concluída no Módulo 1 (BSC)</h2>"
                           . "<table style='border-collapse:collapse;font-size:14px'>"
                           . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Aluno</td><td><b>{$nome}</b></td></tr>"
                           . "<tr><td style='padding:4px 12px 4px 0;color:#666'>E-mail</td><td>{$email}</td></tr>"
                           . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Data da aula</td><td>" . htmlspecialchars((string)$S['data_aula']) . "</td></tr>"
-                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Resultado</td><td><b>{$acertos}/{$total}</b> ({$pct}%) — " . htmlspecialchars((string)($faixa['rotulo'] ?? '')) . "</td></tr>"
-                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Tempo médio/questão</td><td>" . number_format($mm,1,',','.') . "s</td></tr>"
-                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Respostas &lt; 8s</td><td>{$rapidas}</td></tr>"
+                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Resultado</td><td><b>{$acertos}/{$total}</b> ({$pct}%), faixa {$rot}</td></tr>"
+                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Tempo médio por questão</td><td>" . number_format($mm,1,',','.') . "s</td></tr>"
+                          . "<tr><td style='padding:4px 12px 4px 0;color:#666'>Respostas em menos de 8s</td><td>{$rapidas}</td></tr>"
                           . "</table>"
-                          . "<p style='margin:14px 0 0;font-size:13px;color:#888'>Dar continuidade ao processo de formação OKR Master.</p></div>";
-                    @send_email($destino, $subj, $html);
+                          . "<p style='margin:14px 0 0;font-size:13px;color:#888'>Entre em contato com o aluno para dar continuidade ao processo de formação OKR Master.</p></div>";
+                    @sendTransactionalMail($destino, $subj, $html);
                 }
             }
         }

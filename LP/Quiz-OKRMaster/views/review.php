@@ -6,7 +6,7 @@ $sid  = isset($_GET['sid']) ? trim($_GET['sid']) : '';
 ?>
 <section class="wrap">
   <div class="card">
-    <h2>Revisão das respostas — Módulo 1</h2>
+    <h2>Revisão das respostas do Módulo 1</h2>
     <p class="muted">Confira cada questão, o gabarito e a fundamentação. Use os filtros para focar nos erros.</p>
     <div class="filters" id="filters">
       <button class="filter-btn active" data-f="todas">Todas</button>

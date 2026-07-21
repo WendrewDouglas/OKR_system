@@ -21,7 +21,7 @@ $sid  = isset($_GET['sid']) ? trim($_GET['sid']) : '';
     <div class="q-head">
       <span id="qChip" class="chip">Bloco</span>
     </div>
-    <div id="qText" class="q-text">—</div>
+    <div id="qText" class="q-text"></div>
     <div id="qOptions" class="options" role="group" aria-label="Alternativas"></div>
 
     <div id="feedback" class="fb hidden"></div>
