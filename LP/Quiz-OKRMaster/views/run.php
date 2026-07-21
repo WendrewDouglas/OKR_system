@@ -132,25 +132,27 @@ $sid  = isset($_GET['sid']) ? trim($_GET['sid']) : '';
       if(id === state.escolhaId && !ans.acertou) el.classList.add('is-wrong');
     });
 
+    // justificativas vem na resposta (id -> texto); revela o gabarito
+    // so agora, apos responder.
+    const jmap = {};
+    (ans.alternativas||[]).forEach(a=> jmap[+a.id_alternativa] = a.justificativa);
+
     // Feedback: veredito + fundamentacao da correta + (se errou) a justificativa
     // da escolhida + bloco recolhivel com as demais.
     const fb = $('#feedback'); fb.className='fb';
-    const correta = q._alts.find(a=>+a.id_alternativa===ans.id_correta);
-    const escolhida = q._alts.find(a=>+a.id_alternativa===state.escolhaId);
-
     let html = '';
     if(ans.acertou){
       html += `<div class="fb-verdict ok">✓ Resposta correta</div>`;
-      html += `<div class="fb-box ok"><span class="lbl">Por que está correta</span>${correta.justificativa}</div>`;
+      html += `<div class="fb-box ok"><span class="lbl">Por que está correta</span>${jmap[ans.id_correta]||''}</div>`;
     }else{
       html += `<div class="fb-verdict no">✕ Resposta incorreta</div>`;
-      html += `<div class="fb-box no"><span class="lbl">Sua escolha (${letraDe(state.escolhaId)})</span>${escolhida.justificativa}</div>`;
-      html += `<div class="fb-box ok"><span class="lbl">Resposta correta (${letraDe(ans.id_correta)})</span>${correta.justificativa}</div>`;
+      html += `<div class="fb-box no"><span class="lbl">Sua escolha (${letraDe(state.escolhaId)})</span>${jmap[state.escolhaId]||''}</div>`;
+      html += `<div class="fb-box ok"><span class="lbl">Resposta correta (${letraDe(ans.id_correta)})</span>${jmap[ans.id_correta]||''}</div>`;
     }
     // demais alternativas
     const outras = q._alts.filter(a=> +a.id_alternativa!==ans.id_correta && +a.id_alternativa!==state.escolhaId);
     if(outras.length){
-      let inner = outras.map(a=>`<p><b>Alternativa ${letraDe(a.id_alternativa)}:</b> ${a.justificativa}</p>`).join('');
+      let inner = outras.map(a=>`<p><b>Alternativa ${letraDe(a.id_alternativa)}:</b> ${jmap[+a.id_alternativa]||''}</p>`).join('');
       html += `<details class="mais"><summary>Ver a análise das demais alternativas</summary><div class="body">${inner}</div></details>`;
     }
     fb.innerHTML = html;

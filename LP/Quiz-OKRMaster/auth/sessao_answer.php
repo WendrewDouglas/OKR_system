@@ -40,7 +40,18 @@ $pdo->prepare("
                           tempo_ms=VALUES(tempo_ms), dt_resposta=NOW()
 ")->execute([$idSessao, $idQ, $idA, $acertou, $ms]);
 
+// justificativas de TODAS as alternativas: reveladas apenas apos
+// responder (nao vao no versao_ativa, para nao entregar o gabarito antes)
+$allSt = $pdo->prepare("SELECT id_alternativa, is_correta, justificativa FROM okrm_alternativas WHERE id_questao=? ORDER BY ordem");
+$allSt->execute([$idQ]);
+$alternativas = array_map(fn($a) => [
+    'id_alternativa' => (int)$a['id_alternativa'],
+    'is_correta'     => (int)$a['is_correta'] === 1,
+    'justificativa'  => $a['justificativa'],
+], $allSt->fetchAll());
+
 ok([
-  'acertou'    => (bool)$acertou,
-  'id_correta' => $idCorreta,
+  'acertou'      => (bool)$acertou,
+  'id_correta'   => $idCorreta,
+  'alternativas' => $alternativas,
 ]);
