@@ -1,0 +1,3 @@
+# Isola do WordPress/cache e evita listagem
+RewriteEngine Off
+Options -Indexes
