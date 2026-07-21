@@ -12,10 +12,13 @@ if (mb_strlen($nome) < 3) fail('Informe seu nome completo.');
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('E-mail inválido.');
 if (!$consent) fail('É necessário autorizar o uso dos dados.');
 
-// valida data (nao futura, formato ISO)
-$d = DateTime::createFromFormat('Y-m-d', $dataAula);
+// valida data (nao futura, formato ISO). Fuso de Sao Paulo para o "hoje".
+// O "!" no formato zera a hora em 00:00 (sem ele, createFromFormat usa a
+// hora atual e um mesmo-dia com hora > 0 seria lido como "futuro").
+$tz = new DateTimeZone('America/Sao_Paulo');
+$d = DateTime::createFromFormat('!Y-m-d', $dataAula, $tz);
 if (!$d || $d->format('Y-m-d') !== $dataAula) fail('Data da aula inválida.');
-if ($d > new DateTime('today')) fail('A data da aula não pode ser futura.');
+if ($d > new DateTime('today', $tz)) fail('A data da aula não pode ser futura.');
 
 $pdo = pdo();
 $mod = versao_ativa($pdo, 'M1');

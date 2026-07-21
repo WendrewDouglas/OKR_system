@@ -45,15 +45,16 @@ $base = '/OKR_system/LP/Quiz-OKRMaster';
   const API  = { start: BASE + '/auth/sessao_start.php' };
   const $ = s => document.querySelector(s);
 
-  // Limita o date picker: nao permite datas futuras
+  // Limita o date picker: nao permite datas futuras.
+  // Usa data LOCAL (nao toISOString, que e UTC e pode adiantar/atrasar um dia).
   (function(){
     const d = $('#data_aula');
+    const p = n => String(n).padStart(2,'0');
+    const local = dt => dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());
     const hoje = new Date();
-    const iso = hoje.toISOString().slice(0,10);
-    d.max = iso;
-    // sugere ate 90 dias atras como piso razoavel
+    d.max = local(hoje);
     const min = new Date(hoje.getTime() - 120*864e5);
-    d.min = min.toISOString().slice(0,10);
+    d.min = local(min);
   })();
 
   gtag('event', 'okrm_avaliacao_view', { event_category:'okrmaster', event_label:'modulo_1' });
