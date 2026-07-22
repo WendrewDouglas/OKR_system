@@ -19,6 +19,7 @@ require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/diff_helpers.php';
+require_once __DIR__ . '/../auth/helpers/kr_helpers.php'; // fonte única: gerarSerieDatas/gerarMilestonesParaKR (sem overflow de data)
 require_once __DIR__.'/../auth/acl.php';
 
 // Gate automático pela tabela dom_paginas.requires_cap
@@ -83,62 +84,12 @@ if (isset($_GET['ajax'])) {
     $desc=$labels[$slug] ?? ucfirst($slug);
     $pdo->prepare("INSERT INTO dom_tipo_frequencia_milestone (id_frequencia, descricao_exibicao) VALUES (?,?)")->execute([$slug,$desc]);
   }
-  function unidadeRequerInteiro(?string $u): bool {
-    $u = strtolower(trim((string)$u));
-    $ints = ['unid','itens','pcs','ord','proc','contratos','processos','pessoas','casos','tickets','visitas'];
-    return in_array($u, $ints, true);
-  }
-  function gerarSerieDatas(string $data_inicio, string $data_fim, string $freq): array {
-    $out=[]; $start=new DateTime($data_inicio); $end=new DateTime($data_fim);
-    if ($end < $start) $end = clone $start;
-    $push=function(array &$a,DateTime $d){ $iso=$d->format('Y-m-d'); if(empty($a)||end($a)!==$iso) $a[]=$iso; };
-    $freq=strtolower($freq);
-    if ($freq==='semanal' || $freq==='quinzenal') {
-      $step = $freq==='semanal' ? 7 : 15;
-      $d=(clone $start)->modify("+{$step} days");
-      while ($d < $end) { $push($out,$d); $d->modify("+{$step} days"); }
-      $push($out,$end);
-    } else {
-      $step = ['mensal'=>1,'bimestral'=>2,'trimestral'=>3,'semestral'=>6,'anual'=>12][$freq] ?? 1;
-      $firstEnd=(clone $start)->modify('last day of this month');
-      if ($step>1){ $tmp=(clone $start)->modify('first day of this month')->modify('+'.($step-1).' months'); $firstEnd=$tmp->modify('last day of this month'); }
-      if ($firstEnd > $end) { $push($out,$end); }
-      else {
-        $push($out,$firstEnd);
-        $d=(clone $firstEnd)->modify('+'.$step.' months')->modify('last day of this month');
-        while ($d < $end){ $push($out,$d); $d=$d->modify('+'.$step.' months')->modify('last day of this month'); }
-        $push($out,$end);
-      }
-    }
-    if (count($out)===0) $out[]=$end->format('Y-m-d');
-    return $out;
-  }
+  // Recriação de milestones: delega à geração canônica (kr_helpers), fonte única
+  // de verdade. Corrige datas sem overflow (mensal/bi/tri/semestral/anual) e trata
+  // pontual/acumulativo/binário/exponencial e INTERVALO_IDEAL (min/max).
+  // gerarMilestonesParaKR já faz o DELETE dos milestones antigos.
   function recriarMilestones(PDO $pdo, string $id_kr, string $data_inicio, string $data_fim, string $freqSlug, float $baseline, float $meta, string $natureza, ?string $direcao, ?string $unidade): int {
-    $pdo->prepare("DELETE FROM milestones_kr WHERE id_kr = ?")->execute([$id_kr]);
-    $datas = gerarSerieDatas($data_inicio, $data_fim, $freqSlug);
-    $N = count($datas);
-    $ins = $pdo->prepare("
-      INSERT INTO milestones_kr (id_kr, num_ordem, data_ref, valor_esperado, gerado_automatico, editado_manual, bloqueado_para_edicao)
-      VALUES (:id_kr, :ord, :data, :valor, 1, 0, 0)
-    ");
-    $isInt = unidadeRequerInteiro($unidade);
-    $round = fn($v)=> $isInt ? (int)round($v,0) : round($v,2);
-    $nat = strtolower($natureza);
-    if ($nat==='acumulativo') $nat='acumulativa';
-    $acum = ($nat==='acumulativa');
-    $bin  = in_array($nat, ['binaria','binário','binario','binária'], true);
-    $maior = (strtoupper((string)$direcao) !== 'MENOR_MELHOR');
-
-    for ($i=1; $i<=$N; $i++) {
-      if ($bin)        $esp = ($i===$N)?1:0;
-      elseif ($acum)   $esp = $maior ? ($baseline + ($meta-$baseline)*($i/$N)) : ($baseline - ($baseline-$meta)*($i/$N));
-      else             $esp = ($i===$N)?$meta:$baseline; // pontual: mantém no baseline até a meta (alinhado à geração canônica)
-
-      $ins->execute([
-        ':id_kr'=>$id_kr, ':ord'=>$i, ':data'=>$datas[$i-1], ':valor'=>$round($esp)
-      ]);
-    }
-    return $N;
+    return gerarMilestonesParaKR($pdo, 'milestones_kr', $id_kr, $data_inicio, $data_fim, $freqSlug, $baseline, $meta, $natureza, $direcao, $unidade);
   }
 
   try {
