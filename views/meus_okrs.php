@@ -243,6 +243,19 @@ function pill_text_color(string $hex): string {
     }
     .count-badge i{ font-size:.65rem; }
 
+    /* ── Minicard de progresso (cor do farol de confiança) ── */
+    .progress-mini{
+      width:46px; height:46px; border-radius:12px;
+      display:grid; place-items:center; flex-shrink:0;
+      font-size:.82rem; font-weight:800; letter-spacing:.3px;
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 2px 8px rgba(0,0,0,.28);
+    }
+
+    /* Título do objetivo clicável */
+    .node-title a{ color:var(--gold); text-decoration:none; }
+    .node-title a:hover{ text-decoration:underline; }
+
     /* ── ORC (orçamento) node extras ── */
     .orc-bar{
       display:flex; align-items:center; gap:8px; margin-top:4px;
@@ -412,6 +425,21 @@ function pill_text_color(string $hex): string {
         'aprendizado':'fa-solid fa-graduation-cap','aprendizado e crescimento':'fa-solid fa-graduation-cap',
       };
       const pilarIcon = p => pilarIcons[(p||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')] || 'fa-solid fa-bullseye';
+
+      /* \u2500\u2500 Minicard de progresso (cor do farol de confian\u00e7a) \u2500\u2500 */
+      const farolStyles = {
+        verde:    ['#22c55e','#ffffff'],
+        amarelo:  ['#f6c343','#111111'],
+        vermelho: ['#ef4444','#ffffff'],
+        cinza:    ['#6b7280','#ffffff'],
+      };
+      function farolStyle(f){ return farolStyles[(f||'cinza').toLowerCase()] || farolStyles.cinza; }
+      function miniCardHtml(farol, progress){
+        const [bg,fg] = farolStyle(farol);
+        const pct = (progress===null || progress===undefined || progress==='') ? '\u2014' : `${Math.round(progress)}%`;
+        const fLabel = farol ? String(farol).charAt(0).toUpperCase()+String(farol).slice(1) : '\u2014';
+        return `<span class="progress-mini" style="background:${bg};color:${fg}" title="Progresso: ${pct} \u00b7 Farol: ${fLabel}">${pct}</span>`;
+      }
       const contrastColor = hex => {
         hex = hex.replace('#','');
         if (hex.length===3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
@@ -564,6 +592,7 @@ function pill_text_color(string $hex): string {
                 ${sociosHtml(kr.socios)}
                 ${childCount > 0 ? `<span class="count-badge" title="${childCount} iniciativas"><i class="fa-solid fa-list-check"></i> ${childCount}</span>` : ''}
               </div>
+              ${miniCardHtml(kr.farol, kr.progress)}
             </div>
             <div class="tree-children">${inisHtml}</div>
           </div>`;
@@ -588,7 +617,7 @@ function pill_text_color(string $hex): string {
               <span class="node-chevron ${isLeaf?'leaf':''}"><i class="fa-solid fa-chevron-right"></i></span>
               <span class="node-icon obj" style="color:${pilCor};background:${pilCor}22"><i class="${pilIco}"></i></span>
               <div class="node-info">
-                <div class="node-title" style="color:var(--gold)">${h(obj.descricao)}</div>
+                <div class="node-title"><a href="/OKR_system/views/detalhe_okr.php?id=${obj.id_objetivo}" onclick="event.stopPropagation()" title="Ver detalhes do objetivo">${h(obj.descricao)}</a></div>
                 <div class="node-sub">
                   <span class="pill-pilar" style="background:${pilCor};color:${pilFg}">${h(obj.pilar_bsc||'—')}</span>
                   ${avatarHtml(obj.dono)}
@@ -601,10 +630,8 @@ function pill_text_color(string $hex): string {
               <div class="node-badges">
                 ${sociosHtml(obj.socios)}
                 ${childCount > 0 ? `<span class="count-badge" title="${childCount} Key Results"><i class="fa-solid fa-key"></i> ${childCount}</span>` : ''}
-                <a class="node-link" href="/OKR_system/views/detalhe_okr.php?id=${obj.id_objetivo}" onclick="event.stopPropagation()">
-                  <i class="fa-regular fa-circle-right"></i> Detalhar
-                </a>
               </div>
+              ${miniCardHtml(obj.farol, obj.progress)}
             </div>
             <div class="tree-children">${krsHtml}</div>
           </div>`;

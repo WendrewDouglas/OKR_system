@@ -19,6 +19,7 @@ require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/../auth/helpers/iniciativa_envolvidos.php';
 require_once __DIR__ . '/../auth/helpers/nome_format.php';
+require_once __DIR__ . '/../auth/helpers/kr_progress.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -110,6 +111,26 @@ if (empty($objetivos)) {
 }
 
 $objIds = array_column($objetivos, 'id_objetivo');
+
+// ──── Farol de confiança + progresso (helper unificado kr_progress) ────
+// Calcula por KR (farol/p_barra) e agrega por objetivo (farol pior-caso + média).
+// Somente leitura: campos adicionais no payload, não afeta gravação.
+$krFarolById = [];   // id_kr => ['farol'=>..., 'progress'=>...]
+$objFarolById = [];  // id_objetivo => ['farol'=>..., 'progress'=>...]
+try {
+    $krCalcByObj = krp_kr_results_for_objetivos($pdo, $objIds);
+    foreach ($krCalcByObj as $oidCalc => $list) {
+        foreach ($list as $r) {
+            $krFarolById[$r['id_kr']] = ['farol' => $r['farol'], 'progress' => $r['p_barra']];
+        }
+        $agg = krp_aggregate_krs($list);
+        $objFarolById[(int)$oidCalc] = ['farol' => $agg['farol'], 'progress' => $agg['progress']];
+    }
+} catch (Throwable $e) {
+    // Em caso de falha no cálculo, segue sem farol (cinza/—) sem quebrar a cascata.
+    $krFarolById = $krFarolById ?: [];
+    $objFarolById = $objFarolById ?: [];
+}
 
 // ──── 2) Buscar KRs de todos os objetivos ────
 $phObj = implode(',', array_fill(0, count($objIds), '?'));
@@ -322,6 +343,7 @@ foreach ($objetivos as $obj) {
             ];
         }
 
+        $krFarol = $krFarolById[$kid] ?? ['farol' => 'cinza', 'progress' => null];
         $krsOut[] = [
             'id_kr'       => $kid,
             'num'         => (int)$kr['key_result_num'],
@@ -331,6 +353,8 @@ foreach ($objetivos as $obj) {
             'meta'        => $kr['meta'],
             'unidade'     => $kr['unidade_medida'],
             'data_fim'    => $kr['data_fim'],
+            'farol'       => $krFarol['farol'] ?? 'cinza',
+            'progress'    => $krFarol['progress'],
             'responsavel' => [
                 'id_user'  => $krRespId,
                 'nome'     => nome_exibicao($kr['resp_nome'], $kr['resp_sobrenome']),
@@ -348,12 +372,15 @@ foreach ($objetivos as $obj) {
         $objSocios[$donoId] = $mkPerson($donoId, $obj['dono_nome'], $obj['dono_sobrenome'], $obj['dono_avatar']);
     }
 
+    $objFarol = $objFarolById[(int)$oid] ?? ['farol' => 'cinza', 'progress' => null];
     $tree[] = [
         'id_objetivo'     => (int)$oid,
         'descricao'       => $obj['descricao'],
         'tipo'            => $obj['tipo'],
         'pilar_bsc'       => $obj['pilar_bsc'],
         'status'          => $obj['status'],
+        'farol'           => $objFarol['farol'] ?? 'cinza',
+        'progress'        => $objFarol['progress'],
         'status_aprovacao'=> $obj['status_aprovacao'],
         'tipo_ciclo'      => $obj['tipo_ciclo'],
         'ciclo'           => $obj['ciclo'],
