@@ -4569,8 +4569,21 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       updateChatWidth();
     }
 
+    // Deep-link vindo de "Meus OKRs": ?kr=<id_kr> abre e rola até o KR.
+    async function openKrFromUrl(){
+      const krId = new URLSearchParams(location.search).get('kr');
+      if (!krId) return;
+      const card = document.querySelector(`.kr-card[data-id="${krId.replace(/["\\]/g,'')}"]`);
+      if (!card) return;
+      if (!card.classList.contains('open')){
+        card.classList.add('open');
+        try { await loadKrDetail(krId); await loadIniciativas(krId); } catch(e){ console.error(e); }
+      }
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+
     document.addEventListener('DOMContentLoaded', ()=>{
-      loadKRs();
+      loadKRs().then(openKrFromUrl);
       setupChatObservers();
       const moBody = new MutationObserver(()=>{
         if(findChatEl()){ setupChatObservers(); moBody.disconnect(); }

@@ -573,18 +573,18 @@ function pill_text_color(string $hex): string {
         </div>`;
       }
 
-      function buildKrNode(kr) {
+      function buildKrNode(kr, objId) {
         const childCount = (kr.iniciativas||[]).length;
-        const isLeaf = childCount === 0;
-        const inisHtml = (kr.iniciativas||[]).map(buildIniNode).join('');
         const isMeus = currentScope === 'meus';
         const mine = isMeus && userInKr(kr);
         const dimmed = isMeus && !mine;
+        // Clique no KR leva ao objetivo com este KR já expandido.
+        const krHref = `/OKR_system/views/detalhe_okr.php?id=${objId}&kr=${encodeURIComponent(kr.id_kr)}`;
 
         return `
           <div class="tree-node${mine?' mine':''}${dimmed?' dimmed':''}">
-            <div class="node-header" onclick="this.parentElement.classList.toggle('open')">
-              <span class="node-chevron ${isLeaf?'leaf':''}"><i class="fa-solid fa-chevron-right"></i></span>
+            <div class="node-header node-nav" title="Abrir no objetivo" onclick="location.href='${krHref}'">
+              <span class="node-chevron"><i class="fa-solid fa-arrow-right"></i></span>
               <span class="node-icon kr"><i class="fa-solid fa-key"></i></span>
               <div class="node-info">
                 <div class="node-title"><span style="color:var(--blue);font-weight:700">KR${kr.num||''}</span> ${h(kr.descricao)}</div>
@@ -602,14 +602,13 @@ function pill_text_color(string $hex): string {
               </div>
               ${miniCardHtml(kr.farol, kr.progress)}
             </div>
-            <div class="tree-children">${inisHtml}</div>
           </div>`;
       }
 
       function buildObjNode(obj) {
         const childCount = (obj.key_results||[]).length;
         const isLeaf = childCount === 0;
-        const krsHtml = (obj.key_results||[]).map(buildKrNode).join('');
+        const krsHtml = (obj.key_results||[]).map(kr => buildKrNode(kr, obj.id_objetivo)).join('');
 
         const pilCor = pilarColor(obj.pilar_bsc||'');
         const pilFg  = contrastColor(pilCor);
