@@ -250,7 +250,10 @@ function pill_text_color(string $hex): string {
       font-size:.82rem; font-weight:800; letter-spacing:.3px;
       border:1px solid rgba(255,255,255,.14);
       box-shadow:0 2px 8px rgba(0,0,0,.28);
+      text-decoration:none;
     }
+    a.progress-mini{ cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+    a.progress-mini:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.35); }
 
     /* Título do objetivo clicável */
     .node-title a{ color:var(--gold); text-decoration:none; }
@@ -434,11 +437,16 @@ function pill_text_color(string $hex): string {
         cinza:    ['#6b7280','#ffffff'],
       };
       function farolStyle(f){ return farolStyles[(f||'cinza').toLowerCase()] || farolStyles.cinza; }
-      function miniCardHtml(farol, progress){
+      function miniCardHtml(farol, progress, href){
         const [bg,fg] = farolStyle(farol);
         const pct = (progress===null || progress===undefined || progress==='') ? '\u2014' : `${Math.round(progress)}%`;
         const fLabel = farol ? String(farol).charAt(0).toUpperCase()+String(farol).slice(1) : '\u2014';
-        return `<span class="progress-mini" style="background:${bg};color:${fg}" title="Progresso: ${pct} \u00b7 Farol: ${fLabel}">${pct}</span>`;
+        const style = `background:${bg};color:${fg}`;
+        const title = `Progresso: ${pct} \u00b7 Farol: ${fLabel}`;
+        if (href) {
+          return `<a class="progress-mini" href="${href}" onclick="event.stopPropagation()" style="${style}" title="Ver detalhes \u00b7 ${title}">${pct}</a>`;
+        }
+        return `<span class="progress-mini" style="${style}" title="${title}">${pct}</span>`;
       }
       const contrastColor = hex => {
         hex = hex.replace('#','');
@@ -631,7 +639,7 @@ function pill_text_color(string $hex): string {
                 ${sociosHtml(obj.socios)}
                 ${childCount > 0 ? `<span class="count-badge" title="${childCount} Key Results"><i class="fa-solid fa-key"></i> ${childCount}</span>` : ''}
               </div>
-              ${miniCardHtml(obj.farol, obj.progress)}
+              ${miniCardHtml(obj.farol, obj.progress, `/OKR_system/views/detalhe_okr.php?id=${obj.id_objetivo}`)}
             </div>
             <div class="tree-children">${krsHtml}</div>
           </div>`;
