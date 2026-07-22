@@ -132,7 +132,7 @@ if (isset($_GET['ajax'])) {
     for ($i=1; $i<=$N; $i++) {
       if ($bin)        $esp = ($i===$N)?1:0;
       elseif ($acum)   $esp = $maior ? ($baseline + ($meta-$baseline)*($i/$N)) : ($baseline - ($baseline-$meta)*($i/$N));
-      else             $esp = ($i===$N)?$meta:0;
+      else             $esp = ($i===$N)?$meta:$baseline; // pontual: mantém no baseline até a meta (alinhado à geração canônica)
 
       $ins->execute([
         ':id_kr'=>$id_kr, ':ord'=>$i, ':data'=>$datas[$i-1], ':valor'=>$round($esp)

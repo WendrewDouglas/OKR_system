@@ -145,23 +145,43 @@ if (!function_exists('krp_calc_pontual')) {
     $real  = $lastRealMs !== null ? (float)$lastRealMs['valor_real_consolidado'] : null;
     $range = ($base !== null && $meta !== null) ? ($meta - $base) : 0.0;
 
-    // barra: real vs [base..meta]
+    $dir = strtolower((string)($kr['direcao_metrica'] ?? ''));
+    $isMenor = (strpos($dir, 'menor') !== false);
+
+    // KR "manter" (baseline == meta) => range 0: escala o progresso pela própria
+    // meta, evitando barra travada em 0% e tick "esperado" inválido.
+    $manter = ($base !== null && $meta !== null && abs($range) <= 1e-9);
+
+    // barra: real vs [base..meta] (ou vs meta quando baseline == meta)
     $p_barra = 0.0;
-    if ($base !== null && $meta !== null && abs($range) > 1e-9) {
-      $rv = $real !== null ? $real : $base;
-      $p_barra = max(0.0, min(100.0, ($rv - $base) / $range * 100.0));
+    if ($base !== null && $meta !== null) {
+      if (!$manter) {
+        $rv = $real !== null ? $real : $base;
+        $p_barra = max(0.0, min(100.0, ($rv - $base) / $range * 100.0));
+      } elseif ($real !== null) {
+        if (abs((float)$meta) > 1e-9) {
+          $p_barra = $isMenor
+            ? ($real <= 0 ? 100.0 : max(0.0, min(100.0, $meta / $real * 100.0)))
+            : max(0.0, min(100.0, $real / $meta * 100.0));
+        } else {
+          $ok = $isMenor ? ($real <= $meta) : ($real >= $meta);
+          $p_barra = $ok ? 100.0 : 0.0;
+        }
+      }
     }
 
-    // tick esperado: esperado do último vencido vs [base..meta]
+    // tick esperado: % onde deveria estar no último vencido
     $esperado = null;
-    if ($base !== null && $meta !== null && abs($range) > 1e-9 && $lastDue !== null) {
-      $espDue = (float)$lastDue['valor_esperado'];
-      $esperado = max(0.0, min(100.0, ($espDue - $base) / $range * 100.0));
+    if ($base !== null && $meta !== null && $lastDue !== null) {
+      if (!$manter) {
+        $espDue = (float)$lastDue['valor_esperado'];
+        $esperado = max(0.0, min(100.0, ($espDue - $base) / $range * 100.0));
+      } else {
+        $esperado = 100.0; // manter: espera-se estar na meta durante todo o ciclo
+      }
     }
 
     // farol pontual
-    $dir = strtolower((string)($kr['direcao_metrica'] ?? ''));
-    $isMenor = (strpos($dir, 'menor') !== false);
     $farol = 'cinza';
     if ($lastDue === null) {
       $farol = 'cinza';            // ciclo não começou
