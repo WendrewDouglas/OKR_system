@@ -234,10 +234,18 @@ if (isset($_GET['ajax'])) {
 
     $datesChanged = ($data_inicio !== (string)$KR['data_inicio'] || $data_fim !== (string)$KR['data_fim']);
 
+    // Frequência mudou? (compara slug antigo x novo, normalizados)
+    $freqChanged  = (strtolower(trim((string)($KR['tipo_frequencia_milestone'] ?? ''))) !== strtolower(trim($freqSlug)));
+
+    // Recriar milestones quando o PERÍODO ou a FREQUÊNCIA mudarem.
+    // Em ambos os casos a série de milestones muda, então apontamentos/evidências
+    // atrelados aos milestones antigos precisam ser descartados.
+    $milestonesRecriar = ($datesChanged || $freqChanged);
+
     $pdo->beginTransaction();
 
-    // Se período mudou: apaga apontamentos + anexos + milestones
-    if ($datesChanged) {
+    // Se período/frequência mudou: apaga apontamentos + anexos + milestones
+    if ($milestonesRecriar) {
       $idsAp = $pdo->prepare("SELECT id_apontamento FROM apontamentos_kr WHERE id_kr = ?");
       $idsAp->execute([$id_kr]);
       $rows = $idsAp->fetchAll(PDO::FETCH_COLUMN);
@@ -345,14 +353,14 @@ if (isset($_GET['ajax'])) {
       ':resp'=>$responsavel, ':obs'=>$observacoes, ':user'=>$userId, ':id'=>$id_kr
     ]);
 
-    // Recria milestones se mudou
+    // Recria milestones se período OU frequência mudou
     $qtde = 0;
-    if ($datesChanged) {
+    if ($milestonesRecriar) {
       $qtde = recriarMilestones($pdo, $id_kr, $data_inicio, $data_fim, $freqSlug, (float)$baseline, (float)$meta, (string)$natureza_kr, $direcao_metrica ?: null, $unidade_medida ?: null);
     }
 
     $pdo->commit();
-    echo json_encode(['success'=>true, 'id_kr'=>$id_kr, 'periodo_mudou'=>$datesChanged?1:0, 'milestones_recriados'=>$qtde]);
+    echo json_encode(['success'=>true, 'id_kr'=>$id_kr, 'periodo_mudou'=>$datesChanged?1:0, 'freq_mudou'=>$freqChanged?1:0, 'milestones_recriados'=>$qtde]);
     exit;
 
   } catch (Throwable $e) {
@@ -644,7 +652,7 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
             </div>
           </div>
 
-          <div class="warning">⚠️ Se você alterar <strong>data início</strong> ou <strong>data fim</strong>, todos os milestones serão recriados e <strong>todos os apontamentos e evidências serão apagados</strong> deste KR.</div>
+          <div class="warning">⚠️ Se você alterar <strong>data início</strong>, <strong>data fim</strong> ou a <strong>frequência de apontamento</strong>, todos os milestones serão recriados e <strong>todos os apontamentos e evidências serão apagados</strong> deste KR.</div>
 
           <div class="save-row">
             <button type="button" id="btnSalvar" class="btn btn-primary"><i class="fa-regular fa-floppy-disk"></i> Salvar Alterações</button>
@@ -777,8 +785,9 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
           setLoading(false);
 
           if (data?.success) {
-            if (data.periodo_mudou) {
-              $('#successText').innerHTML = 'Período alterado: milestones foram recriados e todos os apontamentos/evidências foram apagados. KR reenviado para aprovação.';
+            if (data.periodo_mudou || data.freq_mudou) {
+              const motivo = data.periodo_mudou ? 'Período alterado' : 'Frequência alterada';
+              $('#successText').innerHTML = motivo + ': milestones foram recriados e todos os apontamentos/evidências deste KR foram apagados. KR reenviado para aprovação.';
             }
             show(succOvr);
           } else {
