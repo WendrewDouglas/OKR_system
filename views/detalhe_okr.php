@@ -71,6 +71,13 @@ if (isset($_GET['ajax'])) {
     if (!is_finite($v)) return null;
     return (int)round(max(0.0, min(100.0, $v)));
   };
+  // Igual ao clampPct, mas preserva 1 casa decimal (para Progresso/Prog. ideal/Variação).
+  $clampPct1 = static function($v){
+    if ($v === null) return null;
+    $v = (float)$v;
+    if (!is_finite($v)) return null;
+    return round(max(0.0, min(100.0, $v)), 1);
+  };
   $findKrUserIdCol = static function(PDO $pdo): ?string {
     try { $st = $pdo->query("SHOW COLUMNS FROM `key_results`"); }
     catch (Throwable $e) { return null; }
@@ -431,11 +438,6 @@ if (isset($_GET['ajax'])) {
       ? $pdo->prepare("SELECT `$msExp` FROM `$msTable` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1")
       : null;
 
-    // Esperado do PRÓXIMO milestone (primeiro com data_ref >= hoje) → "Prog. ideal"
-    $stExpNext = ($msTable && $msKr && $msDate && $msExp)
-      ? $pdo->prepare("SELECT `$msExp` FROM `$msTable` WHERE `$msKr`=:id AND `$msDate`>=CURDATE() ORDER BY `$msDate` ASC LIMIT 1")
-      : null;
-
     $stRealMs = ($msTable && $msKr && $msReal)
       ? $pdo->prepare("SELECT `$msReal` FROM `$msTable` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ".
                       ($msDate? "ORDER BY `$msDate` DESC ":"ORDER BY 1 LIMIT 1")." LIMIT 1")
@@ -464,11 +466,6 @@ if (isset($_GET['ajax'])) {
       }
       $expNow  = is_numeric($expNow)  ? (float)$expNow  : null;
       $realNow = is_numeric($realNow) ? (float)$realNow : null;
-
-      // Esperado do próximo milestone (>= hoje) para o "Prog. ideal"
-      $expNext = null;
-      if ($stExpNext) { $stExpNext->execute(['id'=>$r['id_kr']]); $expNext = $stExpNext->fetchColumn(); }
-      $expNext = is_numeric($expNext) ? (float)$expNext : null;
 
       $base = is_numeric($r['baseline']) ? (float)$r['baseline'] : null;
       $meta = is_numeric($r['meta'])     ? (float)$r['meta']     : null;
@@ -499,17 +496,13 @@ if (isset($_GET['ajax'])) {
       // Garante as regras:
       // 1) acima da meta => no máximo 100%
       // 2) aquém da baseline => no mínimo 0%
+      // Versões com 1 casa decimal (Progresso, Prog. ideal e Variação),
+      // capturadas ANTES do arredondamento para inteiro.
+      $pctAtual1 = $clampPct1($pctAtual);
+      $pctEsper1 = $clampPct1($pctEsper);
+
       $pctAtual = $clampPct($pctAtual);
       $pctEsper = $clampPct($pctEsper);
-
-      // Prog. ideal: % esperado no próximo milestone (>= hoje)
-      $pctIdeal = null;
-      if ($base !== null && $meta !== null && $meta != $base && $expNext !== null) {
-        $pctIdeal = ($meta > $base)
-          ? (($expNext - $base)/($meta - $base))*100
-          : (($base - $expNext)/($base - $meta))*100;
-      }
-      $pctIdeal = $clampPct($pctIdeal);
 
       // Margem de confiança do KR em % (aceita 10 => 10% ou 0.10 => 10%)
       $margemPct = null;
@@ -624,10 +617,11 @@ if (isset($_GET['ajax'])) {
         'progress' => [
           'valor_atual'    => $realNow,
           'valor_esperado' => $expNow,
-          'pct_atual'      => $pctAtual,   // inteiro (%)
-          'pct_esperado'   => $pctEsper,   // inteiro (%)
-          'pct_ideal'      => $pctIdeal,   // inteiro (%) — próximo milestone (>= hoje)
-          'ok'             => $ok          // true=verde, false=vermelho, null=indefinido
+          'pct_atual'      => $pctAtual,    // inteiro (%)
+          'pct_esperado'   => $pctEsper,    // inteiro (%)
+          'pct_atual_1d'   => $pctAtual1,   // 1 casa decimal
+          'pct_esperado_1d'=> $pctEsper1,   // 1 casa decimal (= "Prog. ideal": último MS <= hoje)
+          'ok'             => $ok           // true=verde, false=vermelho, null=indefinido
         ],
         'margem_confianca_pct' => $margemPct,
         'farol_auto'   => $farol_auto,    // 'verde' | 'amarelo' | 'vermelho'
@@ -3587,15 +3581,20 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           n++;
         }
 
-        const pctLabel  = pctAtualNum !== null ? `${pctAtualNum}%` : '—';
-        const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
+        // % com 1 casa decimal (sem ".0" desnecessário: 50 -> "50%", 38.3 -> "38.3%")
+        const fmtPct1 = v => (v === null) ? '—' : `${(Math.round(v*10)/10).toString()}%`;
+
+        // Progresso e Prog. ideal (esperado no último milestone <= hoje) em 1 casa decimal
+        const pctAtual1 = toNum(kr?.progress?.pct_atual_1d);
+        const pctEsper1 = toNum(kr?.progress?.pct_esperado_1d);
+        const pctLabel  = fmtPct1(pctAtual1);
+        const expLabel  = fmtPct1(pctEsper1);
+        const idealLabel= fmtPct1(pctEsper1);
         const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
 
-        // Prog. ideal (próximo milestone >= hoje), Variação (ideal - atual) e Margem de confiança
-        const pctIdealNum  = toNum(kr?.progress?.pct_ideal);
-        const idealLabel   = pctIdealNum !== null ? `${pctIdealNum}%` : '—';
-        const variacaoNum  = (pctIdealNum !== null && pctAtualNum !== null) ? (pctIdealNum - pctAtualNum) : null;
-        const variacaoLabel= variacaoNum !== null ? `${variacaoNum > 0 ? '+' : ''}${variacaoNum}%` : '—';
+        // Variação = Prog. ideal − Progresso (1 casa decimal; verde se no trilho/adiante)
+        const variacaoNum  = (pctEsper1 !== null && pctAtual1 !== null) ? (Math.round((pctEsper1 - pctAtual1)*10)/10) : null;
+        const variacaoLabel= variacaoNum === null ? '—' : `${variacaoNum > 0 ? '+' : ''}${variacaoNum.toString()}%`;
         const variacaoCls  = variacaoNum === null ? 'white' : (variacaoNum <= 0 ? 'prog-ok' : 'prog-bad');
         const margemNum    = toNum(kr?.margem_confianca_pct);
         const margemLabel  = margemNum !== null ? `${margemNum}%` : '—';
@@ -3644,7 +3643,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                     <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
                   </span>
 
-                  <span class="meta-pill white" title="Progresso ideal (próximo milestone ≥ hoje)">
+                  <span class="meta-pill white" title="Progresso ideal (esperado no último milestone ≤ hoje)">
                     <i class="fa-regular fa-circle-dot"></i> Prog. ideal: ${idealLabel}
                   </span>
                   <span class="meta-pill ${variacaoCls}" title="Variação = Prog. ideal − Progresso">
