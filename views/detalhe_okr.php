@@ -608,6 +608,21 @@ if (isset($_GET['ajax'])) {
         }
       }
 
+      // DEBUG TEMPORÁRIO (remover após diagnóstico do farol)
+      if ((string)$id_objetivo === '50') {
+        app_log('FAROL_DBG', [
+          'id_kr'      => $r['id_kr'],
+          'hoje'       => $hoje,
+          'ref'        => $ref['data_ref'] ?? null,
+          'rjust'      => $rjust,
+          'ref_R'      => $ref['R'] ?? null,
+          'ref_hasAp'  => $ref ? ($hasApont($ref, $r['id_kr']) ? 1 : 0) : null,
+          's'          => $farol_calc['s'] ?? null,
+          'm'          => $farol_calc['m'] ?? null,
+          'farol_auto' => $farol_auto,
+        ]);
+      }
+
       $out[] = [
         'id_kr' => $r['id_kr'],
         'key_result_num' => $r['key_result_num'],
