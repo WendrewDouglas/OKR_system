@@ -3604,10 +3604,10 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         const idealLabel= fmtPct1(pctEsper1);
         const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
 
-        // Variação = Prog. ideal − Progresso (1 casa decimal; verde se no trilho/adiante)
-        const variacaoNum  = (pctEsper1 !== null && pctAtual1 !== null) ? (Math.round((pctEsper1 - pctAtual1)*10)/10) : null;
+        // Variação = Progresso − Prog. ideal (1 casa decimal). Atrás => negativo/vermelho; adiante => positivo/verde.
+        const variacaoNum  = (pctAtual1 !== null && pctEsper1 !== null) ? (Math.round((pctAtual1 - pctEsper1)*10)/10) : null;
         const variacaoLabel= variacaoNum === null ? '—' : `${variacaoNum > 0 ? '+' : ''}${variacaoNum.toString()}%`;
-        const variacaoCls  = variacaoNum === null ? 'white' : (variacaoNum <= 0 ? 'prog-ok' : 'prog-bad');
+        const variacaoCls  = variacaoNum === null ? 'white' : (variacaoNum >= 0 ? 'prog-ok' : 'prog-bad');
         const margemNum    = toNum(kr?.margem_confianca_pct);
         const margemLabel  = margemNum !== null ? `${margemNum}%` : '—';
 
@@ -3658,7 +3658,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                   <span class="meta-pill white" title="Progresso ideal (esperado no último milestone ≤ hoje)">
                     <i class="fa-regular fa-circle-dot"></i> Prog. ideal: ${idealLabel}
                   </span>
-                  <span class="meta-pill ${variacaoCls}" title="Variação = Prog. ideal − Progresso">
+                  <span class="meta-pill ${variacaoCls}" title="Variação = Progresso − Prog. ideal">
                     <i class="fa-solid fa-plus-minus"></i> Variação: ${variacaoLabel}
                   </span>
                   <span class="meta-pill white" title="Margem de confiança do KR">
