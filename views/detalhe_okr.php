@@ -288,6 +288,9 @@ if (isset($_GET['ajax'])) {
 
   /* ---------- LISTA DE KRs (robusto a colunas ausentes) ---------- */
   if ($action === 'load_krs') {
+    // Nunca cachear: farol/progresso mudam com apontamentos.
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
     $id_objetivo = isset($_GET['id_objetivo']) ? (int)$_GET['id_objetivo'] : 0;
     if ($id_objetivo <= 0) { echo json_encode(['success'=>false,'error'=>'id_objetivo inválido']); exit; }
 
@@ -606,21 +609,6 @@ if (isset($_GET['ajax'])) {
 
           $farol_calc = ['s'=>$s, 'm'=>$m, 'dir'=>$dir];
         }
-      }
-
-      // DEBUG TEMPORÁRIO (remover após diagnóstico do farol)
-      if ((string)$id_objetivo === '50') {
-        app_log('FAROL_DBG', [
-          'id_kr'      => $r['id_kr'],
-          'hoje'       => $hoje,
-          'ref'        => $ref['data_ref'] ?? null,
-          'rjust'      => $rjust,
-          'ref_R'      => $ref['R'] ?? null,
-          'ref_hasAp'  => $ref ? ($hasApont($ref, $r['id_kr']) ? 1 : 0) : null,
-          's'          => $farol_calc['s'] ?? null,
-          'm'          => $farol_calc['m'] ?? null,
-          'farol_auto' => $farol_auto,
-        ]);
       }
 
       $out[] = [
@@ -2585,7 +2573,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         const pill  = document.getElementById('objFarolPill');
         const label = document.getElementById('objFarolLabel');
 
-        fetch('<?= htmlspecialchars(basename(__FILE__), ENT_QUOTES) ?>?ajax=load_krs&id_objetivo=' + idObj)
+        fetch('<?= htmlspecialchars(basename(__FILE__), ENT_QUOTES) ?>?ajax=load_krs&id_objetivo=' + idObj + '&_=' + Date.now(), { cache: 'no-store' })
           .then(r => r.json())
           .then(json => {
             if (!json || !json.success) return;
@@ -3579,7 +3567,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       const cont = $('#krContainer');
       cont.innerHTML = `<div class="chip"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando KRs...</div>`;
 
-      const res  = await fetch(`${SCRIPT}?ajax=load_krs&id_objetivo=${idObjetivo}`);
+      const res  = await fetch(`${SCRIPT}?ajax=load_krs&id_objetivo=${idObjetivo}&_=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
 
       if(!data.success){
