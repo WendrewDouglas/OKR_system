@@ -431,6 +431,11 @@ if (isset($_GET['ajax'])) {
       ? $pdo->prepare("SELECT `$msExp` FROM `$msTable` WHERE `$msKr`=:id AND `$msDate`<=CURDATE() ORDER BY `$msDate` DESC LIMIT 1")
       : null;
 
+    // Esperado do PRÓXIMO milestone (primeiro com data_ref >= hoje) → "Prog. ideal"
+    $stExpNext = ($msTable && $msKr && $msDate && $msExp)
+      ? $pdo->prepare("SELECT `$msExp` FROM `$msTable` WHERE `$msKr`=:id AND `$msDate`>=CURDATE() ORDER BY `$msDate` ASC LIMIT 1")
+      : null;
+
     $stRealMs = ($msTable && $msKr && $msReal)
       ? $pdo->prepare("SELECT `$msReal` FROM `$msTable` WHERE `$msKr`=:id AND `$msReal` IS NOT NULL AND `$msReal`<>'' ".
                       ($msDate? "ORDER BY `$msDate` DESC ":"ORDER BY 1 LIMIT 1")." LIMIT 1")
@@ -459,6 +464,11 @@ if (isset($_GET['ajax'])) {
       }
       $expNow  = is_numeric($expNow)  ? (float)$expNow  : null;
       $realNow = is_numeric($realNow) ? (float)$realNow : null;
+
+      // Esperado do próximo milestone (>= hoje) para o "Prog. ideal"
+      $expNext = null;
+      if ($stExpNext) { $stExpNext->execute(['id'=>$r['id_kr']]); $expNext = $stExpNext->fetchColumn(); }
+      $expNext = is_numeric($expNext) ? (float)$expNext : null;
 
       $base = is_numeric($r['baseline']) ? (float)$r['baseline'] : null;
       $meta = is_numeric($r['meta'])     ? (float)$r['meta']     : null;
@@ -491,6 +501,22 @@ if (isset($_GET['ajax'])) {
       // 2) aquém da baseline => no mínimo 0%
       $pctAtual = $clampPct($pctAtual);
       $pctEsper = $clampPct($pctEsper);
+
+      // Prog. ideal: % esperado no próximo milestone (>= hoje)
+      $pctIdeal = null;
+      if ($base !== null && $meta !== null && $meta != $base && $expNext !== null) {
+        $pctIdeal = ($meta > $base)
+          ? (($expNext - $base)/($meta - $base))*100
+          : (($base - $expNext)/($base - $meta))*100;
+      }
+      $pctIdeal = $clampPct($pctIdeal);
+
+      // Margem de confiança do KR em % (aceita 10 => 10% ou 0.10 => 10%)
+      $margemPct = null;
+      if (isset($r['margem_tolerancia']) && is_numeric($r['margem_tolerancia'])) {
+        $mv = (float)$r['margem_tolerancia'];
+        if ($mv > 0) $margemPct = ($mv > 1.0) ? (int)round($mv) : (int)round($mv*100.0);
+      }
 
       
       // === NOVO: Farol de confiança do KR baseado no "MS de referência" ===
@@ -600,8 +626,10 @@ if (isset($_GET['ajax'])) {
           'valor_esperado' => $expNow,
           'pct_atual'      => $pctAtual,   // inteiro (%)
           'pct_esperado'   => $pctEsper,   // inteiro (%)
+          'pct_ideal'      => $pctIdeal,   // inteiro (%) — próximo milestone (>= hoje)
           'ok'             => $ok          // true=verde, false=vermelho, null=indefinido
         ],
+        'margem_confianca_pct' => $margemPct,
         'farol_auto'   => $farol_auto,    // 'verde' | 'amarelo' | 'vermelho'
         'farol_reason' => $rjust,         // explicação da referência usada
         'ref_milestone'=> [
@@ -3563,6 +3591,15 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         const expLabel  = pctEsperNum !== null ? `${pctEsperNum}%` : '—';
         const progCls   = okFlag === null ? 'white' : (okFlag ? 'prog-ok' : 'prog-bad');
 
+        // Prog. ideal (próximo milestone >= hoje), Variação (ideal - atual) e Margem de confiança
+        const pctIdealNum  = toNum(kr?.progress?.pct_ideal);
+        const idealLabel   = pctIdealNum !== null ? `${pctIdealNum}%` : '—';
+        const variacaoNum  = (pctIdealNum !== null && pctAtualNum !== null) ? (pctIdealNum - pctAtualNum) : null;
+        const variacaoLabel= variacaoNum !== null ? `${variacaoNum > 0 ? '+' : ''}${variacaoNum}%` : '—';
+        const variacaoCls  = variacaoNum === null ? 'white' : (variacaoNum <= 0 ? 'prog-ok' : 'prog-bad');
+        const margemNum    = toNum(kr?.margem_confianca_pct);
+        const margemLabel  = margemNum !== null ? `${margemNum}%` : '—';
+
         // === NOVO: farol baseado na lógica do backend (farol_auto) com fallback ===
         const farolAuto      = (kr.farol_auto || kr.farol || 'neutro').toLowerCase();
         const farolAutoCls   = farolAuto === 'verde'   ? 'prog-ok'
@@ -3605,6 +3642,16 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                   <!-- PROGRESSO EM PRIMEIRO LUGAR -->
                   <span class="meta-pill ${farolAutoCls}" title="Esperado: ${expLabel} · Atual: ${pctLabel}">
                     <i class="fa-solid fa-chart-line"></i> Progresso: ${pctLabel}
+                  </span>
+
+                  <span class="meta-pill white" title="Progresso ideal (próximo milestone ≥ hoje)">
+                    <i class="fa-regular fa-circle-dot"></i> Prog. ideal: ${idealLabel}
+                  </span>
+                  <span class="meta-pill ${variacaoCls}" title="Variação = Prog. ideal − Progresso">
+                    <i class="fa-solid fa-plus-minus"></i> Variação: ${variacaoLabel}
+                  </span>
+                  <span class="meta-pill white" title="Margem de confiança do KR">
+                    <i class="fa-solid fa-shield-halved"></i> Margem: ${margemLabel}
                   </span>
 
                   <!-- === TROCA: farol dinâmico (novo) em vez do badge antigo === -->
