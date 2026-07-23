@@ -492,6 +492,18 @@ if (isset($_GET['ajax'])) {
           $ok = ($realNow >= $lo && $realNow <= $hi);
           // percentuais permanecem com a mesma fórmula baseada em base→meta
         }
+      } elseif ($base !== null && $meta !== null && $meta == $base && $meta != 0) {
+        // KR "manter" (baseline == meta): sem faixa base→meta, escala pela própria meta.
+        $isMenor = (bool)preg_match('/menor/', strtolower((string)$r['direcao_metrica']));
+        if ($isMenor) {
+          if ($realNow!==null) $pctAtual = ($realNow<=0) ? 100.0 : ($meta/$realNow)*100.0;
+          if ($expNow !==null) $pctEsper = ($expNow <=0) ? 100.0 : ($meta/$expNow )*100.0;
+          if ($realNow!==null && $expNow!==null) $ok = ($realNow <= $expNow);
+        } else {
+          if ($realNow!==null) $pctAtual = ($realNow/$meta)*100.0;
+          if ($expNow !==null) $pctEsper = ($expNow /$meta)*100.0;
+          if ($realNow!==null && $expNow!==null) $ok = ($realNow >= $expNow);
+        }
       }
       // Garante as regras:
       // 1) acima da meta => no máximo 100%
