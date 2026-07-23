@@ -181,7 +181,11 @@ if (!function_exists('krp_calc_pontual')) {
       }
     }
 
-    // farol pontual
+    // farol pontual — usa a margem de confiança (τ) do KR, com bandas 1×/3×
+    // (verde ≤ τ, amarelo ≤ 3τ, vermelho > 3τ), coerente com INTERVALO_IDEAL.
+    // Antes era um limiar fixo de 10% (esp×0,90), o que ignorava a margem do KR
+    // e não tinha a faixa de atenção até 3τ.
+    $tau = krp_tau_pct($kr['margem_confianca'] ?? null) / 100.0; // fração (ex.: 10 => 0.10)
     $farol = 'cinza';
     if ($lastDue === null) {
       $farol = 'cinza';            // ciclo não começou
@@ -189,15 +193,12 @@ if (!function_exists('krp_calc_pontual')) {
       $farol = 'vermelho';         // vencido sem apontamento
     } else {
       $esp = (float)$lastDue['valor_esperado'];
-      if ($isMenor) {
-        if ($real <= $esp)            $farol = 'verde';
-        elseif ($real <= $esp * 1.10) $farol = 'amarelo';
-        else                          $farol = 'vermelho';
-      } else {
-        if ($real >= $esp)            $farol = 'verde';
-        elseif ($real >= $esp * 0.90) $farol = 'amarelo';
-        else                          $farol = 'vermelho';
-      }
+      $den = ($esp == 0.0) ? 1e-12 : abs($esp);
+      // desvio relativo "ruim" (>= 0): quanto o realizado ficou pior que o esperado
+      $sdev = $isMenor ? max(0.0, ($real - $esp) / $den) : max(0.0, ($esp - $real) / $den);
+      if     ($sdev <= $tau)        $farol = 'verde';
+      elseif ($sdev <= 3.0 * $tau)  $farol = 'amarelo';
+      else                          $farol = 'vermelho';
     }
 
     return [
