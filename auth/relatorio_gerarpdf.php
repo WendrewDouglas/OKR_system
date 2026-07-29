@@ -7,6 +7,10 @@ require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__.'/../auth/acl.php';
 
+// Autenticação obrigatória (endpoint gerava PDF de qualquer objetivo sem login).
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (empty($_SESSION['user_id'])) { http_response_code(401); exit('Não autorizado.'); }
+
 $autoload = __DIR__ . '/../vendor/autoload.php';
 if (file_exists($autoload)) require_once $autoload;
 
@@ -82,6 +86,9 @@ function aponts(PDO $pdo, int $id): array {
 /* ===== Entrada ===== */
 if ($_SERVER['REQUEST_METHOD']!=='POST' || empty($_POST['id_objetivo'])) exit('Requisição inválida.');
 $id = (int)$_POST['id_objetivo'];
+
+// Isolamento multi-tenant: só gera PDF de objetivo da própria empresa (admin_master faz bypass).
+require_cap('R:objetivo@ORG', ['id_objetivo' => $id]);
 
 $st = $pdo->prepare("SELECT * FROM objetivos WHERE id_objetivo=:id"); $st->execute(['id'=>$id]);
 $obj = $st->fetch(); if(!$obj) exit('Objetivo não encontrado.');

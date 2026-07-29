@@ -19,7 +19,9 @@ if (empty($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['cs
   echo json_encode(['success'=>false,'error'=>'CSRF inválido']); exit;
 }
 
-$id_company = (int)($_POST['id_company'] ?? 0);
+// Isolamento multi-tenant: usa SEMPRE a empresa da sessão, nunca o valor do POST
+// (a tela usa a própria empresa do usuário — ver organizacao.php).
+$id_company = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
 $missao     = trim((string)($_POST['missao'] ?? ''));
 $visao      = trim((string)($_POST['visao'] ?? ''));
 
