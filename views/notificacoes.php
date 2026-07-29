@@ -60,17 +60,20 @@ $csrf = $_SESSION['csrf_token'];
 const API = '/OKR_system/auth/notificacoes_api.php';
 const CSRF = '<?= htmlspecialchars($csrf, ENT_QUOTES, "UTF-8") ?>';
 
+// Escapa dados para HTML. Obrigatório em innerHTML (título/mensagem vêm de push).
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
 function card(n){
   return `
-    <article class="card" data-id="${n.id_notificacao}">
+    <article class="card" data-id="${esc(n.id_notificacao)}">
       <div>
         <div class="title">
           <i class="fa-regular ${n.lida?'fa-envelope-open':'fa-envelope'}"></i>
-          <span>${n.titulo}</span>
+          <span>${esc(n.titulo)}</span>
           ${n.lida?'<span class="badge">lida</span>':'<span class="badge">não lida</span>'}
         </div>
-        <div class="msg">${n.mensagem}</div>
-        <div class="meta"><i class="fa-regular fa-clock"></i> ${n.dt_criado_fmt}</div>
+        <div class="msg">${esc(n.mensagem)}</div>
+        <div class="meta"><i class="fa-regular fa-clock"></i> ${esc(n.dt_criado_fmt)}</div>
       </div>
       <div class="actions">
         ${n.lida?'':'<button class="btn btnRead">Marcar como lida</button>'}

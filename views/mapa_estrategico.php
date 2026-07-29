@@ -901,8 +901,8 @@ $totalPil = count($pilares);
   // ===== Chat-width is now handled centrally by partials/chat.php =====
 
   // ===== Dados do backend
-  window.__links = <?= json_encode($links, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-  window.__objTitles = <?= json_encode($objTitles, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+  window.__links = <?= json_encode($links, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>;
+  window.__objTitles = <?= json_encode($objTitles, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>;
 
   // ===== Overlay / desenho de ligações (NEON)
   const pillarsContainer = document.getElementById('pillarsContainer');
@@ -1167,8 +1167,8 @@ $totalPil = count($pilares);
         <div style="display:grid; gap:8px;">
           <div>Você está prestes a <strong>excluir</strong> a ligação:</div>
           <div style="padding:8px; border:1px dashed #334155; border-radius:10px;">
-            <div><strong>Origem:</strong> ${srcName}</div>
-            <div><strong>Destino:</strong> ${dstName}</div>
+            <div><strong>Origem:</strong> ${esc(srcName)}</div>
+            <div><strong>Destino:</strong> ${esc(dstName)}</div>
           </div>
           <div style="margin-top:4px; color:#fca5a5;">Esta ação não pode ser desfeita.</div>
         </div>

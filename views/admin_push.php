@@ -739,8 +739,8 @@ async function generateAI() {
         div.className = 'ap-ai-option';
         div.innerHTML = `<div style="display:flex;align-items:flex-start;gap:.5rem">
           <div style="flex:1">
-            <div class="ai-title">${s.titulo}</div>
-            <div class="ai-body">${s.descricao}</div>
+            <div class="ai-title">${esc(s.titulo)}</div>
+            <div class="ai-body">${esc(s.descricao)}</div>
           </div>
           <button type="button" class="ap-btn primary" style="font-size:.7rem;padding:4px 10px;flex-shrink:0;white-space:nowrap" data-idx="${i}">
             <i class="fas fa-check"></i> Usar
@@ -758,7 +758,7 @@ async function generateAI() {
         };
         box.appendChild(div);
       });
-    } else { box.innerHTML = '<p style="color:#f87171;font-size:.8rem">'+(d.message||'Sem sugestoes')+'</p>'; }
+    } else { box.innerHTML = '<p style="color:#f87171;font-size:.8rem">'+esc(d.message||'Sem sugestoes')+'</p>'; }
   } catch(e) { showFormStatus('Erro IA: '+e.message, 'err'); }
   finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sparkles"></i> Gerar sugestoes'; }
 }

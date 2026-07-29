@@ -334,15 +334,17 @@ function currencyBR(v){
 }
 
 /* [MOV] tabela HTML das diferenças */
+// Escapa dados para HTML (texto e atributo com aspas). Obrigatório em innerHTML.
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function renderDiffs(row){
   if ((row.mov_tipo||'')!=='alteracao') return '';
   const diffs = Array.isArray(row.mov_diffs) ? row.mov_diffs : [];
   if (!diffs.length && !row.mov_just) return '';
   const trs = diffs.map(d=>`
     <tr>
-      <td><code>${(d.campo||'').toString()}</code></td>
-      <td>${(d.antes ?? '—')}</td>
-      <td><strong>${(d.depois ?? '—')}</strong></td>
+      <td><code>${esc((d.campo||'').toString())}</code></td>
+      <td>${esc(d.antes ?? '—')}</td>
+      <td><strong>${esc(d.depois ?? '—')}</strong></td>
     </tr>
   `).join('');
   return `
@@ -353,7 +355,7 @@ function renderDiffs(row){
           <thead><tr><th>Campo</th><th>Valor anterior</th><th>Valor atual</th></tr></thead>
           <tbody>${trs}</tbody>
         </table>` : `<div style="opacity:.7">Sem diferenças de campo informadas.</div>`}
-      ${row.mov_just ? `<div class="just"><i class="fa-regular fa-comment-dots"></i> <strong>Justificativa:</strong> ${row.mov_just}</div>`:''}
+      ${row.mov_just ? `<div class="just"><i class="fa-regular fa-comment-dots"></i> <strong>Justificativa:</strong> ${esc(row.mov_just)}</div>`:''}
     </div>
   `;
 }
@@ -383,22 +385,22 @@ function card(row){
           <span>${title}</span>
           ${sub}
         </div>
-        <div class="desc">${row.descricao ? row.descricao : (row.resumo||'—')}</div>
+        <div class="desc">${esc(row.descricao ? row.descricao : (row.resumo||'—'))}</div>
 
         <div class="meta">
           ${badgeStatus(row.status_aprovacao)}
           ${movLabel(row)}
-          <span class="badge"><i class="fa-regular fa-user"></i> Autor: ${row.usuario_criador_nome || '—'}</span>
+          <span class="badge"><i class="fa-regular fa-user"></i> Autor: ${esc(row.usuario_criador_nome || '—')}</span>
           ${row.dt_criacao ? `<span class="badge"><i class="fa-regular fa-calendar"></i> Criado: ${fmtBRdate(row.dt_criacao)}</span>`:''}
           ${row.dt_aprovacao ? `<span class="badge"><i class="fa-regular fa-clock"></i> Últ. decisão: ${fmtBRdate(row.dt_aprovacao)}</span>`:''}
         </div>
 
         <div class="details">
           <dl>
-            ${row.module==='kr' && row.objetivo_desc ? `<dt>Objetivo</dt><dd>${row.objetivo_desc}</dd>`:''}
-            ${row.module==='orcamento' ? `<dt>Iniciativa</dt><dd>${row.id_iniciativa||'—'}</dd>`:''}
-            ${row.comentarios_aprovacao ? `<dt>Comentários</dt><dd>${row.comentarios_aprovacao}</dd>`:''}
-            ${row.justificativa ? `<dt>Justificativa (orçamento)</dt><dd>${row.justificativa}</dd>`:''}
+            ${row.module==='kr' && row.objetivo_desc ? `<dt>Objetivo</dt><dd>${esc(row.objetivo_desc)}</dd>`:''}
+            ${row.module==='orcamento' ? `<dt>Iniciativa</dt><dd>${esc(row.id_iniciativa||'—')}</dd>`:''}
+            ${row.comentarios_aprovacao ? `<dt>Comentários</dt><dd>${esc(row.comentarios_aprovacao)}</dd>`:''}
+            ${row.justificativa ? `<dt>Justificativa (orçamento)</dt><dd>${esc(row.justificativa)}</dd>`:''}
           </dl>
           ${renderDiffs(row)}
         </div>

@@ -874,6 +874,10 @@ async function savePerm(){
 }
 
 /* ====================== LISTA (cards com Departamento e Função) ====================== */
+// Escapa dados para HTML (contexto de texto E de atributo com aspas). Obrigatório
+// antes de qualquer interpolação em innerHTML. Para argumento de string em JS inline
+// (ex.: onclick), use esc(JSON.stringify(valor)).
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function roleChip(roleKey){
   const safe = String(roleKey||'').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
   return `<span class="role role-level" title="Ver matriz de acessos de ${safe}" onclick="openRoleMatrixByName('${safe}')">${safe||'sem papel'}</span>`;
@@ -975,7 +979,7 @@ function userCard(_u){
 
   const avatar = `
     <img class="avatar" src="${primaryAvatar}" loading="lazy"
-      alt="Avatar de ${name}"
+      alt="Avatar de ${esc(name)}"
       onerror="
         this.onerror=null;
         const id='${safeId||'0'}';
@@ -1000,25 +1004,25 @@ function userCard(_u){
     <article class="card">
       <div class="av">${avatar}</div>
       <div class="info">
-        <div class="name">${name}</div>
+        <div class="name">${esc(name)}</div>
         <div class="meta">
-          <span class="badge"><i class="fa-regular fa-envelope"></i> ${u.email_corporativo||'—'}</span>
-          <span class="badge"><i class="fa-regular fa-building"></i> ${u.company_name||'—'}</span>
-          ${u.telefone ? `<span class="badge"><i class="fa-brands fa-whatsapp"></i> ${u.telefone}</span>` : ''}
+          <span class="badge"><i class="fa-regular fa-envelope"></i> ${esc(u.email_corporativo||'—')}</span>
+          <span class="badge"><i class="fa-regular fa-building"></i> ${esc(u.company_name||'—')}</span>
+          ${u.telefone ? `<span class="badge"><i class="fa-brands fa-whatsapp"></i> ${esc(u.telefone)}</span>` : ''}
         </div>
         <div class="meta">
-          <span class="badge" title="Departamento"><i class="fa-solid fa-sitemap"></i> ${dep}</span>
-          <span class="badge" title="Função (cargo)"><i class="fa-solid fa-id-badge"></i> ${func}</span>
+          <span class="badge" title="Departamento"><i class="fa-solid fa-sitemap"></i> ${esc(dep)}</span>
+          <span class="badge" title="Função (cargo)"><i class="fa-solid fa-id-badge"></i> ${esc(func)}</span>
           ${roleHtml}
         </div>
       </div>
       <div class="right">
-        <button class="btn" title="Permissões" onclick="openPerm(${safeId||0}, '${name.replace(/'/g,"&#39;")}')"><i class="fa-solid fa-shield-halved"></i></button>
+        <button class="btn" title="Permissões" onclick="openPerm(${safeId||0}, ${esc(JSON.stringify(name))})"><i class="fa-solid fa-shield-halved"></i></button>
         <button class="btn" title="Editar cadastro" onclick="openUserForm(${safeId||0})"><i class="fa-regular fa-pen-to-square"></i></button>
         ${canDeleteThis ? `
           <button class="btn btn-danger" title="Excluir usuário"
             data-id="${safeId}"
-            data-name="${name.replace(/"/g,'&quot;')}"
+            data-name="${esc(name)}"
             onclick="askDelete(this)">
             <i class="fa-regular fa-trash-can"></i>
           </button>` : ''}
@@ -1318,10 +1322,10 @@ async function askDelete(btn){
     }
     pendingDeleteScenario = j.scenario;
     if (j.scenario === 'solo'){
-      detail.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> <strong>Este é o único usuário da empresa "${j.company_name || '?'}".</strong><br>A empresa e <strong>TODOS</strong> os dados OKR serão excluídos permanentemente.`;
+      detail.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> <strong>Este é o único usuário da empresa "${esc(j.company_name || '?')}".</strong><br>A empresa e <strong>TODOS</strong> os dados OKR serão excluídos permanentemente.`;
     } else {
       if (j.item_count > 0){
-        detail.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left" style="color:#60a5fa;"></i> Este usuário possui <strong>${j.item_count}</strong> item(ns) OKR que serão reatribuídos para <strong>${j.reassign_to_name || '?'}</strong>.`;
+        detail.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left" style="color:#60a5fa;"></i> Este usuário possui <strong>${parseInt(j.item_count,10)||0}</strong> item(ns) OKR que serão reatribuídos para <strong>${esc(j.reassign_to_name || '?')}</strong>.`;
       } else {
         detail.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> Este usuário não possui itens OKR vinculados. A exclusão é direta.`;
       }
@@ -1574,7 +1578,7 @@ function renderMatrix(highlightRoleId=null){
   let html = `<table class="matrix" role="table" aria-label="Matriz de acessos por perfil">
     <thead><tr>
       <th class="sticky-left" scope="col">Tela</th>
-      ${roles.map(r=>`<th class="role-col" scope="col"><div class="role-head"><span class="tag ${String(r.role_id)===String(highlightRoleId)?'hl':''}">${r.role_name||r.role_key}</span></div></th>`).join('')}
+      ${roles.map(r=>`<th class="role-col" scope="col"><div class="role-head"><span class="tag ${String(r.role_id)===String(highlightRoleId)?'hl':''}">${esc(r.role_name||r.role_key)}</span></div></th>`).join('')}
     </tr></thead>
     <tbody>`;
 
@@ -1583,8 +1587,8 @@ function renderMatrix(highlightRoleId=null){
     const needW = splitCaps(p.cap_write);
     html += `<tr>
       <th scope="row" class="sticky-left">
-        ${p.titulo||'(sem título)'}
-        ${p.path ? `<span class="page-path">${p.path}</span>`:''}
+        ${esc(p.titulo||'(sem título)')}
+        ${p.path ? `<span class="page-path">${esc(p.path)}</span>`:''}
       </th>
       ${roles.map(r=>{
         const caps = new Set(MATRIX.role_caps?.[String(r.role_id)] || []);
