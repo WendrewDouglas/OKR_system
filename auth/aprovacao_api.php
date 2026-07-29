@@ -388,6 +388,30 @@ if ($module === 'socio') {
 
 if (in_array($action,['approve','reject'],true) && !$IS_APROVADOR) jexit(403,['success'=>false,'error'=>'Sem permissão para aprovar/reprovar.']);
 
+/* Isolamento multi-tenant: o item precisa pertencer à empresa do usuário.
+   Cobre approve/reject E resubmit (antes qualquer usuário decidia/reenviava
+   itens de outras empresas). admin_master faz bypass. */
+if (!$IS_ADMIN_MASTER) {
+  if ($module === 'objetivo') {
+    $q = $pdo->prepare("SELECT id_company FROM objetivos WHERE id_objetivo=?");
+    $q->execute([(int)$id]);
+  } elseif ($module === 'kr') {
+    $q = $pdo->prepare("SELECT o.id_company FROM key_results k JOIN objetivos o ON o.id_objetivo=k.id_objetivo WHERE k.id_kr=?");
+    $q->execute([$id]);
+  } else { // orcamento
+    $q = $pdo->prepare("SELECT o.id_company FROM orcamentos b
+                          JOIN iniciativas i ON i.id_iniciativa=b.id_iniciativa
+                          JOIN key_results k ON k.id_kr=i.id_kr
+                          JOIN objetivos  o ON o.id_objetivo=k.id_objetivo
+                         WHERE b.id_orcamento=?");
+    $q->execute([(int)$id]);
+  }
+  $itemCompany = $q->fetchColumn();
+  if ($itemCompany === false || (int)$itemCompany !== (int)$MY_COMPANY) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão sobre este item.']);
+  }
+}
+
 $ip  = $_SERVER['REMOTE_ADDR'] ?? null;
 $ua  = substr($_SERVER['HTTP_USER_AGENT'] ?? '',0,255);
 $now = date('Y-m-d H:i:s');
