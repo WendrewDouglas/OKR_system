@@ -1,0 +1,10 @@
+# Copie para android/key.properties e preencha (NÃO commitar — já está no .gitignore).
+# Gere o keystore com:
+#   keytool -genkey -v -keystore okr-release.jks -keyalg RSA -keysize 2048 \
+#           -validity 10000 -alias okr
+# Guarde o .jks e as senhas em local seguro: perder = não conseguir atualizar o app.
+
+storeFile=/caminho/absoluto/para/okr-release.jks
+storePassword=SUA_SENHA_DO_KEYSTORE
+keyAlias=okr
+keyPassword=SUA_SENHA_DA_CHAVE
