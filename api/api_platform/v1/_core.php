@@ -255,9 +255,9 @@ function b64url_decode(string $s): string {
 }
 
 function api_token_secret(): string {
-  $pepper = (string)(defined('APP_TOKEN_PEPPER') ? APP_TOKEN_PEPPER : getenv('APP_TOKEN_PEPPER'));
-  if ($pepper === '') $pepper = 'CHANGE_ME_APP_TOKEN_PEPPER';
-  return $pepper;
+  // Sem default inseguro: auth/config.php já garante um pepper forte em produção
+  // (fail-closed). Aqui apenas devolvemos o valor definido; nunca um literal público.
+  return (string)(defined('APP_TOKEN_PEPPER') ? APP_TOKEN_PEPPER : (string)getenv('APP_TOKEN_PEPPER'));
 }
 
 function api_issue_token(array $payload, int $ttlSeconds = 86400): string {

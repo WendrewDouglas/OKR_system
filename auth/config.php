@@ -161,4 +161,20 @@ define('CAPTCHA_PROVIDER',     (string)env('CAPTCHA_PROVIDER', 'off')); // 'reca
 define('CAPTCHA_SITE_KEY',     (string)env('CAPTCHA_SITE_KEY', ''));
 define('CAPTCHA_SECRET',       (string)env('CAPTCHA_SECRET', ''));
 define('RECAPTCHA_MIN_SCORE', (float)env('RECAPTCHA_MIN_SCORE', 0.5)); // usado no reCAPTCHA v3
-define('APP_TOKEN_PEPPER',     (string)env('APP_TOKEN_PEPPER', 'mude-este-valor'));
+// ===== Token pepper (HMAC dos tokens de API + hash dos resets de senha) =====
+// SEM default inseguro. Em produção a aplicação recusa-se a iniciar (fail-closed)
+// se o pepper estiver ausente ou fraco — um pepper conhecido torna os tokens de
+// API forjáveis (qualquer um assinaria um token para qualquer usuário/empresa).
+$__pepper = (string)env('APP_TOKEN_PEPPER', '');
+$__pepperFraco = ($__pepper === '' || strlen($__pepper) < 32
+                  || in_array($__pepper, ['mude-este-valor', 'CHANGE_ME_APP_TOKEN_PEPPER'], true));
+if ($__pepperFraco && (string)env('APP_ENV', 'production') === 'production') {
+    error_log('CONFIG FATAL: APP_TOKEN_PEPPER ausente ou fraco no .env de produção. Defina >=32 caracteres aleatórios.');
+    http_response_code(500);
+    exit('Configuração inválida do servidor. Contate o administrador.');
+}
+if ($__pepperFraco) {
+    error_log('AVISO: APP_TOKEN_PEPPER fraco/ausente — defina um segredo forte (>=32 chars) no .env.');
+}
+define('APP_TOKEN_PEPPER', $__pepper);
+unset($__pepper, $__pepperFraco);
