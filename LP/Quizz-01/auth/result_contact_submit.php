@@ -42,16 +42,37 @@ try {
         echo json_encode(['ok'=>false,'error'=>'PHONE_REQUIRED']);
         exit;
     }
+    // Valida formato do telefone (impede HTML/CRLF injection no e-mail do operador).
+    if (!preg_match('/^\+?[0-9()\-\s]{6,25}$/', $phoneE164)) {
+        http_response_code(422);
+        echo json_encode(['ok'=>false,'error'=>'INVALID_PHONE']);
+        exit;
+    }
 
     // ===== Conexão DB =====
     $dsn = sprintf('mysql:host=%s;dbname=%s;charset=%s', DB_HOST, DB_NAME, DB_CHARSET);
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 
-    // ===== 1) Lead mais recente =====
-    $stmt = $pdo->query("SELECT id_lead, nome, email, dt_update FROM lp001_quiz_leads ORDER BY dt_update DESC LIMIT 1");
+    // ===== 1) Lead VINCULADO À SESSÃO informada =====
+    // Antes pegava o lead mais recente do sistema (ORDER BY dt_update DESC),
+    // permitindo sobrescrever o telefone/opt-in de um desconhecido. Agora resolve
+    // o lead pela sessão do próprio respondente.
+    if ($sessionToken === '') {
+        http_response_code(400);
+        echo json_encode(['ok'=>false,'error'=>'SESSION_REQUIRED']);
+        exit;
+    }
+    $stmt = $pdo->prepare("
+        SELECT l.id_lead, l.nome, l.email, l.dt_update
+          FROM lp001_quiz_sessoes s
+          JOIN lp001_quiz_leads   l ON l.id_lead = s.id_lead
+         WHERE s.session_token = :tok
+         LIMIT 1
+    ");
+    $stmt->execute([':tok' => $sessionToken]);
     $lead = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$lead) {
-        error_log('[RESULT_CONTACT] no_lead_found');
+        error_log('[RESULT_CONTACT] no_lead_for_session token=' . $sessionToken);
         http_response_code(404);
         echo json_encode(['ok'=>false,'error'=>'LEAD_NOT_FOUND']);
         exit;
@@ -106,6 +127,7 @@ try {
     $subject = 'Novo resultado de quiz + contato (WhatsApp)';
     $leadNomeSafe = htmlspecialchars($leadNome ?: '(sem nome)', ENT_QUOTES, 'UTF-8');
     $leadMailSafe = htmlspecialchars($leadMail ?: '(sem e-mail)', ENT_QUOTES, 'UTF-8');
+    $phoneSafe    = htmlspecialchars($phoneE164, ENT_QUOTES, 'UTF-8');
     $msgDateTime  = date('Y-m-d H:i:s');
 
     $pdfBlock = '<p><b>PDF:</b> ainda não disponível.</p>';
@@ -129,7 +151,7 @@ try {
       <h3>Novo contato (WhatsApp) – LP/Quizz-01</h3>
       <p><b>Nome:</b> {$leadNomeSafe}</p>
       <p><b>E-mail:</b> {$leadMailSafe}</p>
-      <p><b>WhatsApp (E.164):</b> {$phoneE164}</p>
+      <p><b>WhatsApp (E.164):</b> {$phoneSafe}</p>
       <p><b>Data/Hora (servidor):</b> {$msgDateTime}</p>
       {$pdfBlock}
       <p><i>Envio imediato para reduzir latência.</i></p>
