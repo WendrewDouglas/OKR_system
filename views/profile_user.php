@@ -606,7 +606,7 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
 
     <main class="profile-wrapper">
       <?php if ($success): ?>
-        <div class="alert alert-success"><?= $success ?></div>
+        <div class="alert alert-success"><?= htmlspecialchars((string)$success, ENT_QUOTES, 'UTF-8') ?></div>
       <?php endif; ?>
       <?php if ($errors): ?>
         <div class="alert alert-danger">

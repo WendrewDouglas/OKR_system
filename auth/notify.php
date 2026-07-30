@@ -111,10 +111,11 @@ function notify_event(PDO $pdo, array $context): void {
     notify_inapp($pdo, $uid, $titulo, nl2br(htmlentities($mensagem, ENT_QUOTES, 'UTF-8')), $url);
   }
 
-  // Email
+  // Email (escapa a mensagem — contém a observação/justificativa do usuário)
   if (!empty($creator['email'])) {
+    $mensagemHtml = nl2br(htmlspecialchars($mensagem, ENT_QUOTES, 'UTF-8'));
     notify_email($creator['email'], "[OKR] {$titulo}",
-      "<p>{$mensagem}</p><p><a href='{$url}'>Abrir no OKR System</a></p>");
+      "<p>{$mensagemHtml}</p><p><a href='{$url}'>Abrir no OKR System</a></p>");
   }
 
   // WhatsApp (se telefone estiver em E.164 ex.: +5511988887777)
