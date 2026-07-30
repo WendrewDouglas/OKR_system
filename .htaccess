@@ -2,6 +2,24 @@
   Require all denied
 </Files>
 
+# --- Segurança (Fase 0): bloqueia arquivos sensíveis servidos como texto ---
+# Chave de service account do Firebase (fica na raiz; movida p/ fora do webroot na Fase 2)
+<FilesMatch "firebase-adminsdk.*\.json$">
+  Require all denied
+</FilesMatch>
+# Dumps SQL, backups (.bak e .bak-AAAAMMDD-HHMMSS), logs e e-mails em fila
+<FilesMatch "(\.(sql|eml|log|bak)$|\.bak-[0-9-]+$)">
+  Require all denied
+</FilesMatch>
+<Files "error_log">
+  Require all denied
+</Files>
+
+# Desabilita listagem de diretórios (uploads/, logs/, tools/, docs/, ...)
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
+
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"

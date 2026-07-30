@@ -1,0 +1,5 @@
+# Segurança (Fase 0): scripts de operação/one-shot não devem ser acessíveis via HTTP.
+# health.php e push_processor.php ficam liberados (podem ser acionados por cron HTTP).
+<FilesMatch "^(diag_delete|run_composer|run_tests|crm_import_linkedin|crm_import_report|crm_company_root_report|crm_health|assign_planningbi_avatars|backfill_company_style)\.php$">
+  Require all denied
+</FilesMatch>
