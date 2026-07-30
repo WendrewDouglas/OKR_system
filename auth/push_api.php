@@ -36,6 +36,16 @@ $raw = file_get_contents('php://input');
 $in = json_decode($raw, true) ?: [];
 $action = trim($_GET['action'] ?? $in['action'] ?? '');
 
+// CSRF para ações que alteram estado (aceita header X-CSRF-Token ou body).
+$mutating = ['send-test','cancel','duplicate','segments-save','segments-delete'];
+if (in_array($action, $mutating, true)) {
+  $tok = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($in['csrf_token'] ?? '');
+  if (empty($_SESSION['csrf_token']) || !hash_equals((string)$_SESSION['csrf_token'], (string)$tok)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'message' => 'CSRF inválido']); exit;
+  }
+}
+
 switch ($action) {
 
   case 'send-test':
