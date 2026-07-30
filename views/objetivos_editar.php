@@ -1,8 +1,8 @@
 <?php
 // views/objetivos_editar.php — Edição de Objetivo (com justificativa obrigatória e reenvio para aprovação)
 
-ini_set('display_errors','1');
-ini_set('display_startup_errors','1');
+ini_set('display_errors','0');
+ini_set('display_startup_errors','0');
 error_reporting(E_ALL);
 
 session_start();

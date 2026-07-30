@@ -1,0 +1,26 @@
+# Segurança (Fase 3): a pasta de uploads NUNCA deve executar código.
+# Mesmo que um arquivo com extensão perigosa seja gravado, aqui ele é servido
+# como conteúdo estático (nunca interpretado).
+
+# Desliga o motor PHP (mod_php)
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+  php_flag engine off
+</IfModule>
+
+# Remove qualquer handler/execução de scripts (CGI, PHP-FPM via handler, etc.)
+<FilesMatch "\.(php|php\d*|phtml|pht|phar|phps|cgi|pl|py|sh|shtml|asp|aspx|jsp)$">
+  SetHandler none
+  SetHandler default-handler
+  ForceType text/plain
+  Require all denied
+</FilesMatch>
+
+# Sem listagem de diretório e sem execução de CGI
+Options -Indexes -ExecCGI
+RemoveHandler .php .phtml .phar .cgi .pl .py
