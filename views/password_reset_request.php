@@ -58,11 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirect();
   }
 
-  // Busca usuário (sem vazar se existe)
+  // Busca usuário (sem vazar se existe).
+  // Segurança: leads criados por formulário público (LP/perspectivas, sem
+  // credencial) NÃO são elegíveis a reset — senão qualquer um transformaria
+  // um lead em conta autenticada pedindo "esqueci a senha".
   $stmt = $pdo->prepare(
-    "SELECT id_user
-       FROM usuarios
-      WHERE LOWER(TRIM(email_corporativo)) = LOWER(TRIM(:email))
+    "SELECT u.id_user
+       FROM usuarios u
+       LEFT JOIN usuarios_credenciais c ON c.id_user = u.id_user
+      WHERE LOWER(TRIM(u.email_corporativo)) = LOWER(TRIM(:email))
+        AND NOT (u.origem_cadastro = 'form_perspectivas' AND c.id_user IS NULL)
       LIMIT 1"
   );
   $stmt->execute([':email' => $email]);

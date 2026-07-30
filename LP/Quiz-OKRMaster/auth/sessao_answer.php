@@ -32,13 +32,21 @@ $idCorreta = (int)$c->fetchColumn();
 
 $acertou = ((int)$alt['is_correta'] === 1) ? 1 : 0;
 
-// grava (uma resposta por questao; re-resposta sobrescreve enquanto aberta)
-$pdo->prepare("
-  INSERT INTO okrm_respostas (id_sessao, id_questao, id_alternativa, acertou, tempo_ms, dt_resposta)
-  VALUES (?,?,?,?,?,NOW())
-  ON DUPLICATE KEY UPDATE id_alternativa=VALUES(id_alternativa), acertou=VALUES(acertou),
-                          tempo_ms=VALUES(tempo_ms), dt_resposta=NOW()
-")->execute([$idSessao, $idQ, $idA, $acertou, $ms]);
+// A PRIMEIRA resposta é DEFINITIVA. Como o retorno revela o gabarito
+// (id_correta/justificativas), permitir re-resposta deixaria qualquer aluno
+// zerar-e-acertar até 100%. Se já respondeu, mantém a resposta original.
+$prev = $pdo->prepare("SELECT id_alternativa, acertou FROM okrm_respostas WHERE id_sessao=? AND id_questao=? LIMIT 1");
+$prev->execute([$idSessao, $idQ]);
+$prevRow = $prev->fetch();
+if ($prevRow) {
+    $idA     = (int)$prevRow['id_alternativa'];
+    $acertou = (int)$prevRow['acertou'];
+} else {
+    $pdo->prepare("
+      INSERT INTO okrm_respostas (id_sessao, id_questao, id_alternativa, acertou, tempo_ms, dt_resposta)
+      VALUES (?,?,?,?,?,NOW())
+    ")->execute([$idSessao, $idQ, $idA, $acertou, $ms]);
+}
 
 // justificativas de TODAS as alternativas: reveladas apenas apos
 // responder (nao vao no versao_ativa, para nao entregar o gabarito antes)

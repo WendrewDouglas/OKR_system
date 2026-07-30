@@ -94,13 +94,18 @@ if (is_string($notifCode) && $notifCode !== '') {
 /* (A) Fluxo MODERNO: JSON com charges[]                                 */
 /* ==================================================================== */
 $token = getenv('LP_PAGBANK_TOKEN');
-if (is_string($token) && $token !== '') {
-    $sig = $_SERVER['HTTP_X_AUTHENTICITY_TOKEN'] ?? '';
-    $expected = hash('sha256', $token . '-' . $raw);
-    if (!is_string($sig) || $sig === '' || !hash_equals($expected, $sig)) {
-        error_log('[LP_IA][webhook] assinatura moderna invalida.');
-        lp_webhook_respond(401, ['ok' => false, 'error' => 'invalid_signature']);
-    }
+// Fail-closed: sem o token configurado NÃO há como validar a autenticidade do
+// webhook — antes, se o token estivesse vazio, a assinatura era simplesmente
+// ignorada e o corpo (ex.: "pagamento aprovado") era aceito sem verificação.
+if (!is_string($token) || $token === '') {
+    error_log('[LP_IA][webhook] LP_PAGBANK_TOKEN ausente — recusando por segurança.');
+    lp_webhook_respond(500, ['ok' => false, 'error' => 'server_misconfigured']);
+}
+$sig = $_SERVER['HTTP_X_AUTHENTICITY_TOKEN'] ?? '';
+$expected = hash('sha256', $token . '-' . $raw);
+if (!is_string($sig) || $sig === '' || !hash_equals($expected, $sig)) {
+    error_log('[LP_IA][webhook] assinatura moderna invalida.');
+    lp_webhook_respond(401, ['ok' => false, 'error' => 'invalid_signature']);
 }
 
 $data = json_decode($raw, true);

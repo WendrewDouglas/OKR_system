@@ -1,6 +1,15 @@
 <?php
 // /OKR_system/LP/Quizz-01/auth/import_questionario.php
 declare(strict_types=1);
+
+// Ferramenta de importação DESTRUTIVA (recria o banco de questões do quiz).
+// Somente linha de comando: não pode ser acionada via HTTP — antes era um GET
+// anônimo que qualquer crawler/CSRF disparava, zerando as questões/notas.
+if (PHP_SAPI !== 'cli') {
+  http_response_code(403);
+  exit("Esta ferramenta só pode ser executada via linha de comando (CLI).\n");
+}
+
 header('Content-Type: text/plain; charset=utf-8');
 
 $root = dirname(__DIR__, 3); // .../OKR_system

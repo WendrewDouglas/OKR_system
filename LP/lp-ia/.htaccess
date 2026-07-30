@@ -1,0 +1,7 @@
+# Segurança (Fase 4): não servir arquivos sensíveis do módulo LP-IA.
+# O schema SQL das migrations contém o código de cupom seed (desconto) e não
+# deve ser baixável via HTTP; docs/backups/logs também ficam negados.
+<FilesMatch "\.(sql|md|bak|log|ini|lock|sample|example)$">
+  Require all denied
+</FilesMatch>
+Options -Indexes
