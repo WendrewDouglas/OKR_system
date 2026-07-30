@@ -62,6 +62,19 @@ if ($dt_prazo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt_prazo)) {
   $dt_prazo = $ts ? date('Y-m-d', $ts) : '';
 }
 
+// ---------- Isolamento multi-tenant (espelha api/.../iniciativas/create.php) ----------
+// O KR precisa pertencer à empresa da sessão e o usuário ter W:iniciativa.
+$my_company = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
+$krCompany  = resolve_resource_company($pdo, 'kr', ['id_kr' => $id_kr]);
+if ($krCompany === null || $krCompany !== $my_company) {
+  http_response_code(404);
+  echo json_encode(['success'=>false,'error'=>'KR não encontrado.']); exit;
+}
+if (!has_cap('W:iniciativa@ORG')) {
+  http_response_code(403);
+  echo json_encode(['success'=>false,'error'=>'Sem permissão para criar iniciativas.']); exit;
+}
+
 try {
   $pdo->beginTransaction();
 

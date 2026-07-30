@@ -127,6 +127,18 @@ function resolve_role_ids(PDO $pdo, array $rolesAny): array {
   return array_values(array_unique($ids));
 }
 
+/* Autoriza alteração de avatar: self, master ou usuário da MESMA empresa. */
+function assert_pode_editar_avatar(PDO $pdo, int $targetId, bool $isMaster, int $meuId): void {
+  if ($isMaster || $targetId === $meuId) return;
+  $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user=?");
+  $st->execute([$targetId]);
+  $tc  = (int)($st->fetchColumn() ?: 0);
+  $myc = (int)(get_my_company($pdo, $meuId) ?: 0);
+  if ($tc <= 0 || $myc <= 0 || $tc !== $myc) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão para alterar este avatar.']);
+  }
+}
+
 /* Busca roles do usuário (keys para chips) */
 function fetch_user_role_keys(PDO $pdo, int $userId): array {
   if (!table_exists($pdo,'rbac_user_role') || !table_exists($pdo,'rbac_roles')) return [];
@@ -387,26 +399,9 @@ if ($method==='GET' && $action==='list') {
     $stmt->execute();
     $rows = $stmt->fetchAll();
 
-    // fallback (vazio com filtros) — mostra últimos 100
-    if ($total===0) {
-      $rows = $pdo->query("
-        SELECT u.id_user, u.primeiro_nome, COALESCE(u.ultimo_nome,'') AS ultimo_nome,
-               u.email_corporativo, u.telefone, u.id_company, $companyName AS company_name,
-               (SELECT GROUP_CONCAT(r.role_key ORDER BY r.role_key SEPARATOR ',')
-                  FROM rbac_user_role ur
-                  JOIN rbac_roles r ON r.role_id=ur.role_id
-                 WHERE ur.user_id=u.id_user) AS roles_csv
-               $selectExtra,
-               NULL AS consulta_R, NULL AS edicao_W,
-               a.path AS avatar_path
-        FROM usuarios u
-        $joinCompany
-        $joinAv
-        ORDER BY u.id_user DESC
-        LIMIT 100
-      ")->fetchAll();
-      $total = is_array($rows) ? count($rows) : 0;
-    }
+    // (removido) o fallback antigo rodava um SELECT SEM escopo de empresa quando o
+    // filtro não retornava nada, vazando usuários de todos os tenants. Resultado vazio
+    // agora permanece vazio — a busca já é escopada por empresa acima.
 
     $users = array_map(function($r) use($IS_MASTER, $MEU_ID){
       $roles = array_values(array_filter(array_map('trim', explode(',', (string)($r['roles_csv'] ?? '')))));
@@ -466,7 +461,7 @@ if ($method==='GET' && $action==='get') {
     $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user=?");
     $st->execute([$id]);
     $targetCompany = $st->fetchColumn();
-    if ($targetCompany === false || ($myc !== null && (int)$targetCompany !== (int)$myc)) {
+    if ($targetCompany === false || $myc === null || (int)$targetCompany !== (int)$myc) {
       jexit(403, ['success'=>false,'error'=>'Sem permissão para consultar este usuário.']);
     }
   }
@@ -534,7 +529,7 @@ if ($method==='GET' && $action==='get_access') {
     $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user=?");
     $st->execute([$id]);
     $targetCompany = $st->fetchColumn();
-    if ($targetCompany === false || ($myc !== null && (int)$targetCompany !== (int)$myc)) {
+    if ($targetCompany === false || $myc === null || (int)$targetCompany !== (int)$myc) {
       jexit(403, ['success'=>false,'error'=>'Sem permissão.']);
     }
   }
@@ -560,6 +555,8 @@ if ($method==='GET' && $action==='capabilities') {
 if ($method==='GET' && $action==='departamentos') {
   // aceita 'cid' (é o que o front envia)
   $cid = (int)($_GET['cid'] ?? $_GET['company'] ?? $_GET['company_id'] ?? $_GET['id_company'] ?? 0);
+  // Isolamento: não-master só enxerga departamentos da própria empresa (ignora cid do request).
+  if (!$IS_MASTER) { $cid = (int)(get_my_company($pdo, $MEU_ID) ?: 0); }
 
   // inclui dom_departamentos (primeira opção)
   $table = first_existing_table($pdo, ['dom_departamentos','departamentos','okr_departamentos']);
@@ -594,11 +591,12 @@ if ($method==='GET' && $action==='departamentos') {
   $st->execute($args);
   $items = $st->fetchAll();
 
-  // 2) Fallback: se não encontrou para a empresa escolhida, retorna catálogo global (sem filtrar company)
+  // 2) Fallback: se não encontrou para a empresa escolhida, retorna apenas o catálogo
+  //    GLOBAL (linhas sem empresa). Para não-master nunca expõe deptos de outros tenants.
   if ($cid > 0 && $compCol && empty($items)) {
-    $sql2 = $select;
-    if ($baseConds) $sql2 .= " WHERE " . implode(' AND ', $baseConds);
-    $sql2 .= $orderBy;
+    $conds2 = $baseConds;
+    $conds2[] = "$compCol IS NULL";
+    $sql2 = $select . " WHERE " . implode(' AND ', $conds2) . $orderBy;
     $items = $pdo->query($sql2)->fetchAll();
   }
 
@@ -662,9 +660,15 @@ if ($method==='POST' && $action==='save') {
     $myCompanyId = get_my_company($pdo, $MEU_ID);
     if ($myCompanyId > 0) $id_company = $myCompanyId;
     else jexit(422, ['success'=>false,'error'=>'Seu usuário não está vinculado a nenhuma organização.']);
-    // não-master não concede admin_master
+    // não-master não concede admin_master (bloqueia por chave OU por role_id numérico)
     if (is_array($rolesAny)) {
-      $rolesAny = array_values(array_filter($rolesAny, fn($r)=> strtolower((string)$r) !== 'admin_master'));
+      $amId = (int)($pdo->query("SELECT role_id FROM rbac_roles WHERE role_key='admin_master' LIMIT 1")->fetchColumn() ?: 0);
+      $rolesAny = array_values(array_filter($rolesAny, function($r) use ($amId){
+        $r = trim((string)$r);
+        if (strtolower($r) === 'admin_master') return false;
+        if ($amId > 0 && ctype_digit($r) && (int)$r === $amId) return false;
+        return true;
+      }));
     }
   }
 
@@ -705,7 +709,9 @@ if ($method==='POST' && $action==='save') {
         }
       }
 
-      $canChangeAcl = $IS_MASTER || $id===$MEU_ID;
+      // Só master altera papéis/capabilities. Antes "|| $id===$MEU_ID" permitia
+      // que qualquer usuário se auto-promovesse editando o próprio registro.
+      $canChangeAcl = $IS_MASTER;
 
       // UPDATE dinâmico com campos opcionais
       $sets = [
@@ -946,6 +952,7 @@ if ($method==='POST' && $action==='delete') {
 if ($method==='POST' && $action==='upload_avatar') {
   $id = (int)($_POST['id_user'] ?? 0);
   if ($id<=0) jexit(400, ['success'=>false,'error'=>'ID inválido']);
+  assert_pode_editar_avatar($pdo, $id, $IS_MASTER, $MEU_ID);
   if (!isset($_FILES['avatar']) || $_FILES['avatar']['error']!==UPLOAD_ERR_OK) jexit(400, ['success'=>false,'error'=>'Falha no upload']);
 
   // Fluxo unificado: WebP 256/64 + linha custom + repontar avatar_id
@@ -962,6 +969,7 @@ if ($method==='POST' && $action==='save_avatar_canvas') {
   $id = (int)($_POST['id_user'] ?? 0);
   $data = (string)($_POST['data_url'] ?? '');
   if ($id<=0 || strpos($data,'data:image/png;base64,')!==0) jexit(400, ['success'=>false,'error'=>'Dados inválidos']);
+  assert_pode_editar_avatar($pdo, $id, $IS_MASTER, $MEU_ID);
   $bin = base64_decode(substr($data, strlen('data:image/png;base64,')), true);
   if ($bin===false) jexit(400, ['success'=>false,'error'=>'Base64 inválido']);
 

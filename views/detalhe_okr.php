@@ -156,6 +156,32 @@ if (isset($_GET['ajax'])) {
     return null;
   };
 
+  /* ---------- Isolamento multi-tenant (Fase 1 segurança) ----------
+   * Garante que o recurso tocado pertence à empresa da sessão.
+   * admin_master faz bypass (enxerga todas as empresas), igual ao has_cap().
+   */
+  $isMasterUser = static function(PDO $pdo): bool {
+    static $m = null;
+    if ($m !== null) return $m;
+    $uid = (int)($_SESSION['user_id'] ?? 0);
+    if ($uid <= 0) return $m = false;
+    try {
+      $st = $pdo->prepare("SELECT 1 FROM rbac_user_role ur JOIN rbac_roles r ON r.role_id=ur.role_id AND r.is_active=1 WHERE ur.user_id=? AND r.role_key='admin_master' LIMIT 1");
+      $st->execute([$uid]);
+      return $m = (bool)$st->fetchColumn();
+    } catch (Throwable $e) { return $m = false; }
+  };
+  $assertTenant = static function(string $resource, array $ctx) use ($pdo, $isMasterUser): void {
+    if ($isMasterUser($pdo)) return;
+    $my = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
+    $co = resolve_resource_company($pdo, $resource, $ctx);
+    if ($co === null || (int)$co !== $my) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Acesso negado.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+  };
+
   $action = $_GET['ajax'];
 
   /* ---------- LISTAR STATUS DE INICIATIVA (NOVO) ---------- */
@@ -202,6 +228,7 @@ if (isset($_GET['ajax'])) {
 
     if (!$id_ini || $novo==='') { echo json_encode(['success'=>false,'error'=>'Dados inválidos']); exit; }
     if ($obs==='')              { echo json_encode(['success'=>false,'error'=>'Observação é obrigatória.']); exit; }
+    $assertTenant('iniciativa', ['id_iniciativa'=>$id_ini]);
 
     try {
       $pdo->beginTransaction();
@@ -293,6 +320,7 @@ if (isset($_GET['ajax'])) {
     header('Pragma: no-cache');
     $id_objetivo = isset($_GET['id_objetivo']) ? (int)$_GET['id_objetivo'] : 0;
     if ($id_objetivo <= 0) { echo json_encode(['success'=>false,'error'=>'id_objetivo inválido']); exit; }
+    $assertTenant('objetivo', ['id_objetivo'=>$id_objetivo]);
 
     $krUserIdCol = $findKrUserIdCol($pdo);
     $hasRespText = $colExists($pdo,'key_results','responsavel');
@@ -735,6 +763,7 @@ if (isset($_GET['ajax'])) {
   if ($action === 'kr_detail') {
     $id_kr = $_GET['id_kr'] ?? '';
     if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
 
     $hasUlt = $colExists($pdo, 'key_results', 'dt_ultima_atualizacao');
     $st = $pdo->prepare("
@@ -941,6 +970,7 @@ foreach ($milestones as $m) {
   if ($action === 'iniciativas_list') {
     $id_kr = $_GET['id_kr'] ?? '';
     if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
 
     $stmI = $pdo->prepare("
       SELECT i.`id_iniciativa`, i.`num_iniciativa`, i.`descricao`, i.`status`, i.`dt_prazo`,
@@ -1019,6 +1049,7 @@ foreach ($milestones as $m) {
       if (!$id_kr || $desc==='') {
         echo json_encode(['success'=>false,'error'=>'Dados obrigatórios ausentes']); exit;
       }
+      $assertTenant('kr', ['id_kr'=>$id_kr]);
 
       try {
         $pdo->beginTransaction();
@@ -1109,6 +1140,7 @@ foreach ($milestones as $m) {
       if (!$id_orc || $valor<=0 || !$data) {
         echo json_encode(['success'=>false,'error'=>'Dados da despesa inválidos']); exit;
       }
+      $assertTenant('orcamento', ['id_orcamento'=>$id_orc]);
 
       try {
         $ins = ['id_orcamento'=>$id_orc];
@@ -1136,6 +1168,7 @@ foreach ($milestones as $m) {
     $id_kr = $_GET['id_kr'] ?? '';
     $ano   = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
     if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
 
     try {
       // status KR
@@ -1360,6 +1393,7 @@ foreach ($milestones as $m) {
     $statusTarget = trim($_POST['status_target'] ?? '');
     $just = trim($_POST['justificativa'] ?? '');
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
     require_once __DIR__ . '/../auth/helpers/kr_status.php';
 
     try {
@@ -1448,6 +1482,7 @@ foreach ($milestones as $m) {
     $id_kr = $_POST['id_kr'] ?? '';
     $just  = trim($_POST['justificativa'] ?? '');
     if (!$id_kr || $just===''){ echo json_encode(['success'=>false,'error'=>'Informe a justificativa.']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
 
     try {
       $pdo->beginTransaction();
@@ -1510,6 +1545,7 @@ foreach ($milestones as $m) {
     }
     $id_kr = $_POST['id_kr'] ?? '';
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
 
     try {
       $pdo->beginTransaction();
@@ -1601,6 +1637,7 @@ foreach ($milestones as $m) {
   if ($action === 'apont_modal_data') {
     $id_kr = $_GET['id_kr'] ?? '';
     if (!$id_kr) { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('apontamento', ['id_kr'=>$id_kr]);
 
     // Info do KR (resiliente a colunas)
     $cKR = fn($name)=> $colExists($pdo,'key_results',$name) ? "`$name`" : "NULL AS `$name`";
@@ -1915,13 +1952,17 @@ if ($action === 'apont_file_upload') {
 
 /* ---------- APONTAMENTO: LISTAR EVIDÊNCIAS (por milestone) ---------- */
 if ($action === 'apont_file_list') {
-  $id_kr = $_GET['id_kr'] ?? '';
-  $id_ms = $_GET['id_ms'] ?? '';
+  // Sanitiza igual ao upload (impede path traversal via ../).
+  $id_kr = preg_replace('/[^a-zA-Z0-9_\-]/','', (string)($_GET['id_kr'] ?? ''));
+  $id_ms = preg_replace('/[^a-zA-Z0-9_\-]/','', (string)($_GET['id_ms'] ?? ''));
   if (!$id_kr || !$id_ms){ echo json_encode(['success'=>false,'error'=>'Parâmetros inválidos']); exit; }
+  $assertTenant('apontamento', ['id_kr'=>$id_kr]);
 
+  $root = realpath(__DIR__ . '/../uploads/kr_evidencias');
   $base = realpath(__DIR__ . '/../uploads/kr_evidencias/' . $id_kr . '/' . $id_ms);
   $items = [];
-  if ($base && is_dir($base)) {
+  // Containment: só lista se $base estiver realmente dentro de kr_evidencias.
+  if ($root && $base && strpos($base, $root) === 0 && is_dir($base)) {
     foreach (scandir($base) as $f) {
       if ($f==='.'||$f==='..') continue;
       $path = $base.'/'.$f;
@@ -2223,7 +2264,7 @@ $g = static function(array $row, string $k, $d='—'){
 };
 
 $st = $pdo->prepare("
-  SELECT o.`id_objetivo`, o.`descricao` AS nome_objetivo, o.`descricao`, o.`pilar_bsc`, o.`tipo`,
+  SELECT o.`id_objetivo`, o.`id_company`, o.`descricao` AS nome_objetivo, o.`descricao`, o.`pilar_bsc`, o.`tipo`,
          o.`status`, o.`status_aprovacao`, o.`dono`, CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS dono_nome,
          o.`dt_criacao`, o.`dt_prazo`, o.`dt_conclusao`, o.`qualidade`, o.`observacoes`
   FROM `objetivos` o
@@ -2233,6 +2274,15 @@ $st = $pdo->prepare("
 $st->execute(['id'=>$id_objetivo]);
 $objetivo = $st->fetch();
 if (!$objetivo) { http_response_code(404); die('Objetivo não encontrado.'); }
+
+/* Isolamento multi-tenant: só abre objetivo da própria empresa (admin_master enxerga todas). */
+$my_company  = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
+$obj_company = (int)($objetivo['id_company'] ?? 0);
+if ($obj_company !== $my_company) {
+  $stM = $pdo->prepare("SELECT 1 FROM rbac_user_role ur JOIN rbac_roles r ON r.role_id=ur.role_id AND r.is_active=1 WHERE ur.user_id=? AND r.role_key='admin_master' LIMIT 1");
+  $stM->execute([(int)$_SESSION['user_id']]);
+  if (!$stM->fetchColumn()) { http_response_code(403); die('Acesso negado.'); }
+}
 
 $stI = $pdo->prepare("SELECT COUNT(*) AS total FROM `iniciativas` i INNER JOIN `key_results` kr ON kr.`id_kr`=i.`id_kr` WHERE kr.`id_objetivo`=:id");
 $stI->execute(['id'=>$id_objetivo]);

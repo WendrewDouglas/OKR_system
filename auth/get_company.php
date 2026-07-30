@@ -1,7 +1,5 @@
 <?php
 // auth/get_company.php
-ini_set('display_errors',1); ini_set('display_startup_errors',1); error_reporting(E_ALL);
-
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 require_once __DIR__ . '/config.php';
@@ -19,6 +17,13 @@ if ($id_company <= 0) {
   echo json_encode(['success'=>false,'error'=>'Parâmetro inválido']); exit;
 }
 
+// Isolamento multi-tenant: só permite ler a própria empresa (evita enumeração de tenants).
+$my_company = (int)($_SESSION['id_company'] ?? $_SESSION['company_id'] ?? 0);
+if ($id_company !== $my_company) {
+  http_response_code(403);
+  echo json_encode(['success'=>false,'error'=>'Acesso negado']); exit;
+}
+
 try {
   $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4", DB_USER, DB_PASS, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -31,6 +36,7 @@ try {
 
   echo json_encode(['success'=>true, 'record'=>$rec ?: null]);
 } catch (PDOException $e) {
+  error_log('get_company: '.$e->getMessage());
   http_response_code(500);
-  echo json_encode(['success'=>false,'error'=>'Erro: '.$e->getMessage()]);
+  echo json_encode(['success'=>false,'error'=>'Falha ao processar.']);
 }
