@@ -14,6 +14,13 @@ if ($email === '' || $pass === '') {
 
 $pdo = api_db();
 
+// Rate limiting (anti brute-force / credential stuffing) — a API não tem captcha.
+require_once dirname(__DIR__, 4) . '/auth/login_throttle.php';
+$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+if (login_throttle_check($pdo, $ip, $email)['blocked']) {
+  api_error('E_THROTTLE', 'Muitas tentativas. Aguarde alguns minutos e tente novamente.', 429);
+}
+
 // Busca usuário + hash
 $sql = "
   SELECT
@@ -34,8 +41,10 @@ $st->execute([':email' => $email]);
 $user = $st->fetch();
 
 if (!$user || empty($user['senha_hash']) || !password_verify($pass, (string)$user['senha_hash'])) {
+  login_throttle_record($pdo, $ip, $email, false);
   api_error('E_AUTH', 'E-mail ou senha incorretos.', 401);
 }
+login_throttle_record($pdo, $ip, $email, true);
 
 $token = api_issue_token([
   'sub' => (int)$user['id_user'],
