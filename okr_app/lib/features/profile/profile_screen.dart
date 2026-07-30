@@ -80,6 +80,81 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        bool canDelete = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Excluir conta'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Esta ação é PERMANENTE e não pode ser desfeita. Sua conta e seus '
+                  'dados pessoais serão excluídos. Se você for o único usuário da sua '
+                  'empresa, os dados da empresa também serão removidos.',
+                ),
+                const SizedBox(height: 16),
+                const Text('Digite EXCLUIR para confirmar:',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(hintText: 'EXCLUIR'),
+                  onChanged: (v) => setDialogState(
+                      () => canDelete = v.trim().toUpperCase() == 'EXCLUIR'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: canDelete ? () => Navigator.pop(ctx, true) : null,
+                style: TextButton.styleFrom(foregroundColor: AppColors.red),
+                child: const Text('Excluir conta'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    AppHaptics.heavy();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      ),
+    );
+    try {
+      final api = ref.read(apiClientProvider);
+      await api.dio.post('/usuarios/delete-account', data: {'confirm': true});
+      AppHaptics.success();
+      if (mounted) Navigator.pop(context); // fecha o loading
+      await ref.read(authProvider.notifier).logout(); // router redireciona ao login
+    } catch (e) {
+      AppHaptics.error();
+      if (mounted) {
+        Navigator.pop(context); // fecha o loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao excluir conta. Tente novamente.')),
+        );
+      }
+    }
+  }
+
   void _showAvatarOptions() {
     final auth = ref.read(authProvider);
     final hasAvatar = auth.avatarUrl != null && auth.avatarUrl!.isNotEmpty;
@@ -280,6 +355,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               AppHaptics.heavy();
               ref.read(authProvider.notifier).logout();
             },
+          ),
+          const SizedBox(height: 8),
+          _ActionTile(
+            icon: Icons.delete_forever_outlined,
+            label: 'Excluir conta',
+            color: AppColors.red,
+            onTap: _deleteAccount,
           ),
         ],
       ),

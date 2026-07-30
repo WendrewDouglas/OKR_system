@@ -120,6 +120,7 @@ $routes = [
   // Usuários
   ['GET',    'usuarios',                       'usuarios/list.php'],
   ['POST',   'usuarios',                       'usuarios/create.php'],
+  ['POST',   'usuarios/delete-account',        'usuarios/delete_account.php'],
   ['GET',    'usuarios/:id',                   'usuarios/get.php'],
   ['PUT',    'usuarios/:id',                   'usuarios/update.php'],
   ['DELETE', 'usuarios/:id',                   'usuarios/delete.php'],

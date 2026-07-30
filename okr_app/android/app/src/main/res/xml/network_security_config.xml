@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Segurança de rede: bloqueia tráfego em texto claro (cleartext).
+     O app só fala HTTPS com o backend (planningbi.com.br) e serviços Google/Firebase. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

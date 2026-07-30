@@ -7,7 +7,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Okr App</string>
+		<string>OKR System</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -68,5 +68,21 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- Privacidade: descrições de uso (obrigatórias — image_picker usa câmera/galeria no avatar) -->
+		<key>NSCameraUsageDescription</key>
+		<string>O app usa a câmera para você tirar uma foto de perfil (avatar).</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>O app acessa suas fotos para você escolher uma imagem de perfil (avatar).</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>O app pode salvar imagens na sua galeria quando você exporta conteúdo.</string>
+		<!-- Conformidade de exportação: o app usa apenas criptografia padrão/isenta (HTTPS). -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<!-- App Transport Security: exige HTTPS (sem exceções de cleartext). -->
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<false/>
+		</dict>
 	</dict>
 </plist>
