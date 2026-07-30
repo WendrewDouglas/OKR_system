@@ -255,6 +255,14 @@ $hashColsCred = array_values(array_filter(['senha_hash','password_hash','hash_se
 $hashColCred  = $hashColsCred[0] ?? 'senha_hash';
 $hasCredTable = (bool)$pdo->query("SHOW TABLES LIKE 'usuarios_credenciais'")->fetchColumn();
 
+/* ===== Rate limiting (anti brute-force) ===== */
+require_once __DIR__ . '/login_throttle.php';
+$__ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+if (login_throttle_check($pdo, $__ip, $email)['blocked']) {
+  alog('E_THROTTLE', 'login bloqueado por excesso de tentativas', ['ip'=>$__ip, 'email'=>$email]);
+  back_with_error('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.', 'E_THROTTLE');
+}
+
 /* ===== Query ===== */
 try {
   $sql = "
@@ -281,11 +289,13 @@ try {
 
 /* ===== Autenticação ===== */
 if (!$user || empty($user['password_hash']) || !password_verify($password, (string)$user['password_hash'])) {
+  login_throttle_record($pdo, $__ip, $email, false);
   back_with_error('E-mail ou senha incorretos.', 'E_AUTH');
 }
 if (!(int)($user['ativo'] ?? 1)) {
   back_with_error('Conta inativa. Contate o administrador.', 'E_INACTIVE');
 }
+login_throttle_record($pdo, $__ip, $email, true);
 
 /* ===== Sessão ===== */
 session_regenerate_id(true);

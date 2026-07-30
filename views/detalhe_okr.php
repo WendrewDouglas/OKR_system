@@ -3,8 +3,8 @@
 
 /* ===================== MODO AJAX (ENDPOINTS) ===================== */
 if (isset($_GET['ajax'])) {
-  ini_set('display_errors', 1);
-  ini_set('display_startup_errors', 1);
+  ini_set('display_errors', 0);
+  ini_set('display_startup_errors', 0);
   error_reporting(E_ALL);
 
   session_start();
@@ -1922,21 +1922,42 @@ if ($action === 'apont_file_upload') {
   $destDir = $base . '/kr_evidencias/' . preg_replace('/[^a-zA-Z0-9_\-]/','',$id_kr) . '/' . preg_replace('/[^a-zA-Z0-9_\-]/','',$id_ms);
   if (!is_dir($destDir)) @mkdir($destDir, 0775, true);
 
-  // Bloqueia executáveis por extensão e por MIME
+  // Allowlist de tipos de evidência (imagem, PDF, planilha, documento).
+  // Segurança primária: só extensões seguras podem ser gravadas; combinado com
+  // uploads/.htaccess (engine off) impede execução de código no webroot.
   $fn   = $_FILES['evidencia']['name'] ?? 'arquivo';
   $tmp  = $_FILES['evidencia']['tmp_name'];
+  $size = (int)($_FILES['evidencia']['size'] ?? 0);
   $ext  = strtolower(pathinfo($fn, PATHINFO_EXTENSION));
-  $banExt = ['exe','msi','bat','cmd','sh','com','scr','jar','apk','cgi','php','phar','pl','py'];
-  if (in_array($ext, $banExt,true)) { echo json_encode(['success'=>false,'error'=>'Extensão não permitida']); exit; }
+
+  // Limite de tamanho: 20 MB
+  if ($size <= 0 || $size > 20 * 1024 * 1024) {
+    echo json_encode(['success'=>false,'error'=>'Arquivo vazio ou acima de 20MB']); exit;
+  }
+
+  $allowExt = ['png','jpg','jpeg','webp','gif','pdf','doc','docx','xls','xlsx','csv','ppt','pptx','txt'];
+  if (!in_array($ext, $allowExt, true)) {
+    echo json_encode(['success'=>false,'error'=>'Extensão não permitida (envie imagem, PDF, planilha ou documento)']); exit;
+  }
 
   $fi = new finfo(FILEINFO_MIME_TYPE);
   $mime = $fi->file($tmp) ?: 'application/octet-stream';
-  $banMime = [
-    'application/x-dosexec','application/x-msdownload','application/x-ms-installer',
-    'application/x-executable','application/x-sh','application/java-archive',
-    'application/x-php','text/x-php','application/x-python','text/x-python',
+  $allowMime = [
+    'image/png','image/jpeg','image/webp','image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain','text/csv','application/csv',
+    // docx/xlsx/pptx são contêineres ZIP; csv/xls podem cair aqui conforme o PHP:
+    'application/zip','application/octet-stream',
   ];
-  if (in_array($mime,$banMime,true)) { echo json_encode(['success'=>false,'error'=>'Tipo de arquivo não permitido']); exit; }
+  if (!in_array($mime, $allowMime, true)) {
+    echo json_encode(['success'=>false,'error'=>'Tipo de arquivo não permitido']); exit;
+  }
 
   // Move com nome único
   $safe = preg_replace('/[^a-zA-Z0-9_\-\.]/','_', $fn);
@@ -2228,8 +2249,8 @@ if ($action === 'apont_delete') {
 }
 
 /* ===================== MODO PÁGINA ===================== */
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
+ini_set('display_errors',0);
+ini_set('display_startup_errors',0);
 error_reporting(E_ALL);
 
 session_start();
