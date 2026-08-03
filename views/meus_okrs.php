@@ -87,6 +87,66 @@ function pill_text_color(string $hex): string {
     }
     .scope-btn:hover:not(.active){ border-color:#3a4050; }
 
+    /* ── Filtro de status dos KRs ── */
+    .status-filter-bar{
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      margin:0 0 18px;
+      padding:10px 12px;
+      border:1px solid var(--border); border-radius:14px;
+      background: linear-gradient(180deg, var(--card), #0e1319);
+    }
+    .status-filter-label{
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:.7rem; font-weight:700; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.6px;
+      margin-right:4px;
+    }
+    .status-chip{
+      display:inline-flex; align-items:center; gap:7px;
+      padding:6px 12px; border-radius:999px;
+      font-size:.76rem; font-weight:600;
+      border:1px solid var(--border);
+      background:var(--btn); color:var(--muted);
+      cursor:pointer; user-select:none;
+      transition:all .18s ease;
+    }
+    .status-chip .dot{
+      width:8px; height:8px; border-radius:50%;
+      background:var(--chip-color, #6b7280);
+      box-shadow:0 0 0 0 transparent;
+      transition:box-shadow .18s ease;
+      flex-shrink:0;
+    }
+    .status-chip .chip-count{
+      font-size:.66rem; font-weight:800;
+      padding:1px 7px; border-radius:999px;
+      background:rgba(255,255,255,.06); color:var(--muted);
+      line-height:1.4;
+    }
+    .status-chip:hover{ border-color:#3a4050; color:var(--text); transform:translateY(-1px); }
+    .status-chip.active{
+      background:color-mix(in srgb, var(--chip-color) 14%, transparent);
+      border-color:color-mix(in srgb, var(--chip-color) 45%, transparent);
+      color:var(--text);
+    }
+    .status-chip.active .dot{
+      box-shadow:0 0 8px 1px color-mix(in srgb, var(--chip-color) 70%, transparent);
+    }
+    .status-chip.active .chip-count{
+      background:color-mix(in srgb, var(--chip-color) 25%, transparent);
+      color:var(--text);
+    }
+    /* Fallback p/ navegadores sem color-mix */
+    @supports not (background: color-mix(in srgb, red 10%, blue)) {
+      .status-chip.active{ background:rgba(246,195,67,.12); border-color:var(--gold); }
+    }
+    .status-filter-hint{
+      font-size:.68rem; color:var(--muted); margin-left:auto; opacity:.7;
+    }
+    @media(max-width:768px){
+      .status-filter-hint{ display:none; }
+    }
+
     /* ── Loading ── */
     .cascade-loading{
       text-align:center; padding:60px 20px; color:var(--muted); font-size:.9rem;
@@ -363,6 +423,13 @@ function pill_text_color(string $hex): string {
               </button>
             </div>
 
+            <!-- Filtro de status dos KRs -->
+            <div class="status-filter-bar" id="status-filter-bar" role="group" aria-label="Filtrar KRs por status">
+              <span class="status-filter-label"><i class="fa-solid fa-filter"></i> Status dos KRs</span>
+              <!-- chips renderizados via JS -->
+              <span class="status-filter-hint">Nenhum selecionado = exibir todos</span>
+            </div>
+
             <!-- Container da cascata -->
             <div id="cascade-root">
               <div class="cascade-loading">
@@ -383,7 +450,30 @@ function pill_text_color(string $hex): string {
       const root = document.getElementById('cascade-root');
       let currentScope = 'company';
       let loggedUserId = 0; // preenchido após fetch
+      let lastData = null;  // última resposta da API (re-render sem refetch)
       const AVATAR_DEFAULT = '/OKR_system/assets/img/avatars/default_avatar/default.png';
+
+      /* ── Filtro de status dos KRs (espelha auth/helpers/kr_status.php) ── */
+      const KR_STATUSES = [
+        { id:'em andamento', label:'Em Andamento', color:'#60a5fa' },
+        { id:'nao iniciado', label:'Não Iniciado', color:'#9ca3af' },
+        { id:'pausado',      label:'Pausado',      color:'#f6c343' },
+        { id:'concluido',    label:'Concluído',    color:'#22c55e' },
+        { id:'cancelado',    label:'Cancelado',    color:'#ef4444' },
+      ];
+      const activeStatuses = new Set(['em andamento']); // padrão: só em andamento
+
+      const normStatus = raw => {
+        let s = (raw||'').toLowerCase().trim().replace(/[_-]/g,' ')
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+        if (s.includes('cancel')) return 'cancelado';
+        if (s.includes('conclu') || s.includes('finaliz')) return 'concluido';
+        if (s.includes('pausad')) return 'pausado';
+        if (s.includes('andament') || s.includes('progress')) return 'em andamento';
+        if (s.includes('nao inici')) return 'nao iniciado';
+        return 'em andamento'; // fallback: auto-promoção torna este o caso comum
+      };
+      const krVisible = kr => activeStatuses.size === 0 || activeStatuses.has(normStatus(kr.status));
 
       /* ── helpers ── */
       const h = s => {
@@ -606,9 +696,10 @@ function pill_text_color(string $hex): string {
       }
 
       function buildObjNode(obj) {
-        const childCount = (obj.key_results||[]).length;
+        const krs = (obj.key_results||[]).filter(krVisible);
+        const childCount = krs.length;
         const isLeaf = childCount === 0;
-        const krsHtml = (obj.key_results||[]).map(kr => buildKrNode(kr, obj.id_objetivo)).join('');
+        const krsHtml = krs.map(kr => buildKrNode(kr, obj.id_objetivo)).join('');
 
         const pilCor = pilarColor(obj.pilar_bsc||'');
         const pilFg  = contrastColor(pilCor);
@@ -644,7 +735,66 @@ function pill_text_color(string $hex): string {
           </div>`;
       }
 
-      /* ── Fetch & render ── */
+      /* ── Chips de filtro por status ── */
+      function statusCounts() {
+        const counts = {};
+        KR_STATUSES.forEach(s => counts[s.id] = 0);
+        ((lastData && lastData.objetivos) || []).forEach(o =>
+          (o.key_results||[]).forEach(kr => { counts[normStatus(kr.status)]++; })
+        );
+        return counts;
+      }
+
+      function renderChips() {
+        const bar = document.getElementById('status-filter-bar');
+        const hint = bar.querySelector('.status-filter-hint');
+        KR_STATUSES.forEach(st => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'status-chip' + (activeStatuses.has(st.id) ? ' active' : '');
+          chip.style.setProperty('--chip-color', st.color);
+          chip.dataset.status = st.id;
+          chip.setAttribute('aria-pressed', activeStatuses.has(st.id) ? 'true' : 'false');
+          chip.innerHTML = `<span class="dot"></span>${h(st.label)}<span class="chip-count">–</span>`;
+          chip.addEventListener('click', () => {
+            const on = activeStatuses.has(st.id);
+            if (on) activeStatuses.delete(st.id); else activeStatuses.add(st.id);
+            chip.classList.toggle('active', !on);
+            chip.setAttribute('aria-pressed', String(!on));
+            renderCascade();
+          });
+          bar.insertBefore(chip, hint);
+        });
+      }
+
+      function updateChipCounts() {
+        const counts = statusCounts();
+        document.querySelectorAll('#status-filter-bar .status-chip').forEach(chip => {
+          chip.querySelector('.chip-count').textContent = counts[chip.dataset.status] ?? 0;
+        });
+      }
+
+      /* ── Render (a partir de lastData, aplicando filtros) ── */
+      function renderCascade() {
+        if (!lastData) return;
+        updateChipCounts();
+
+        if (!lastData.objetivos || lastData.objetivos.length === 0) {
+          root.innerHTML = `
+            <div class="cascade-empty">
+              <i class="fa-solid fa-bullseye"></i>
+              <p>Nenhum objetivo encontrado.</p>
+              <a href="/OKR_system/views/novo_objetivo.php" style="color:var(--gold)">
+                <i class="fa-solid fa-plus"></i> Criar novo objetivo
+              </a>
+            </div>`;
+          return;
+        }
+
+        root.innerHTML = lastData.objetivos.map(buildObjNode).join('');
+      }
+
+      /* ── Fetch ── */
       async function loadCascade(scope) {
         root.innerHTML = `<div class="cascade-loading"><i class="fa-solid fa-spinner fa-spin"></i>Carregando cascata...</div>`;
         try {
@@ -655,20 +805,8 @@ function pill_text_color(string $hex): string {
           if (!data.success) throw new Error(data.error||'Erro');
 
           if (data.user_id) loggedUserId = data.user_id;
-
-          if (!data.objetivos || data.objetivos.length === 0) {
-            root.innerHTML = `
-              <div class="cascade-empty">
-                <i class="fa-solid fa-bullseye"></i>
-                <p>Nenhum objetivo encontrado.</p>
-                <a href="/OKR_system/views/novo_objetivo.php" style="color:var(--gold)">
-                  <i class="fa-solid fa-plus"></i> Criar novo objetivo
-                </a>
-              </div>`;
-            return;
-          }
-
-          root.innerHTML = data.objetivos.map(buildObjNode).join('');
+          lastData = data;
+          renderCascade();
         } catch(e) {
           console.error('Cascata error:', e);
           root.innerHTML = `<div class="cascade-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Erro ao carregar: ${h(e.message)}</p></div>`;
@@ -686,6 +824,7 @@ function pill_text_color(string $hex): string {
       });
 
       /* ── Init ── */
+      renderChips();
       loadCascade(currentScope);
     })();
     </script>
