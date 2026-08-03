@@ -20,6 +20,7 @@ require_once __DIR__ . '/../auth/helpers/nome_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/diff_helpers.php';
 require_once __DIR__ . '/../auth/helpers/kr_helpers.php'; // fonte única: gerarSerieDatas/gerarMilestonesParaKR (sem overflow de data)
+require_once __DIR__ . '/../auth/helpers/kr_milestones.php'; // validação/ajuste de milestones previstos (fecho da meta)
 require_once __DIR__.'/../auth/acl.php';
 
 // Gate automático pela tabela dom_paginas.requires_cap
@@ -188,10 +189,149 @@ if (isset($_GET['ajax'])) {
     // Frequência mudou? (compara slug antigo x novo, normalizados)
     $freqChanged  = (strtolower(trim((string)($KR['tipo_frequencia_milestone'] ?? ''))) !== strtolower(trim($freqSlug)));
 
-    // Recriar milestones quando o PERÍODO ou a FREQUÊNCIA mudarem.
-    // Em ambos os casos a série de milestones muda, então apontamentos/evidências
-    // atrelados aos milestones antigos precisam ser descartados.
-    $milestonesRecriar = ($datesChanged || $freqChanged);
+    // Direção mudou de tipo (intervalo ↔ valor único)? A estrutura da série é
+    // outra (min/max vs valor), então também força recriação.
+    $dirTypeChanged = (krp_is_intervalo($KR['direcao_metrica'] ?? null) !== krp_is_intervalo($direcao_metrica ?: null));
+
+    // Edição manual de milestones previstos + estratégia de ajuste
+    $msEdits    = json_decode((string)($_POST['milestones_json'] ?? ''), true);
+    $msEdits    = is_array($msEdits) ? $msEdits : [];
+    $estrategia = strtolower(trim((string)($_POST['estrategia_ajuste'] ?? '')));
+
+    // Recriar milestones quando PERÍODO/FREQUÊNCIA/TIPO DE DIREÇÃO mudarem, ou
+    // quando o usuário escolher "regenerar" no modal de ajuste. Em todos os
+    // casos a série muda de estrutura, então apontamentos/evidências dos
+    // milestones antigos são descartados.
+    $milestonesRecriar = ($datesChanged || $freqChanged || $dirTypeChanged || $estrategia === 'regenerar');
+
+    // ==== [MS] Validação/ajuste da série de milestones (fecho na meta) ====
+    // Só se aplica quando a série NÃO será recriada — recriação já nasce coerente.
+    $msFinais = [];      // série final a persistir (apenas linhas alteradas)
+    $msDiffAudit = null; // diff p/ aprovacao_movimentos
+    $msAvisos = [];
+    if (!$milestonesRecriar) {
+      $stMs = $pdo->prepare("
+        SELECT id_milestone, num_ordem, data_ref, valor_esperado,
+               valor_esperado_min, valor_esperado_max,
+               valor_real_consolidado, bloqueado_para_edicao
+          FROM milestones_kr
+         WHERE id_kr = :id
+         ORDER BY num_ordem
+      ");
+      $stMs->execute([':id'=>$id_kr]);
+      $msOrig = $stMs->fetchAll();
+
+      if ($msOrig) {
+        $krNovo = [
+          'baseline'         => $baseline,
+          'meta'             => $meta,
+          'direcao_metrica'  => $direcao_metrica ?: null,
+          'natureza_kr'      => $natureza_kr,
+          'unidade_medida'   => $unidade_medida ?: null,
+          'margem_confianca' => $margem_conf,
+        ];
+        $isIntervalo = krp_is_intervalo($direcao_metrica ?: null);
+
+        // 1) aplica edições do grid em memória
+        $serie = $msOrig;
+        foreach ($serie as &$m) {
+          $ed = $msEdits[(string)$m['id_milestone']] ?? null;
+          if ($ed === null) continue;
+          if ((int)$m['bloqueado_para_edicao'] === 1) {
+            http_response_code(422);
+            echo json_encode(['success'=>false,'error'=>'Milestone bloqueado para edição (ordem '.$m['num_ordem'].').']);
+            exit;
+          }
+          if ($isIntervalo) {
+            if (isset($ed['min']) && is_numeric($ed['min'])) $m['valor_esperado_min'] = (float)$ed['min'];
+            if (isset($ed['max']) && is_numeric($ed['max'])) $m['valor_esperado_max'] = (float)$ed['max'];
+            if (is_numeric($m['valor_esperado_min']) && is_numeric($m['valor_esperado_max'])) {
+              $m['valor_esperado'] = ((float)$m['valor_esperado_min'] + (float)$m['valor_esperado_max']) / 2;
+            }
+          } elseif (isset($ed['valor']) && is_numeric($ed['valor'])) {
+            $m['valor_esperado'] = (float)$ed['valor'];
+          }
+        }
+        unset($m);
+
+        // 2) aplica estratégia de ajuste, se solicitada
+        if ($estrategia === 'reescalar') {
+          $serie = $isIntervalo ? krm_ajustar_faixa_final($krNovo, $serie) : krm_reescalar($krNovo, $serie);
+        } elseif ($estrategia === 'residuo') {
+          $aj = $isIntervalo ? krm_ajustar_faixa_final($krNovo, $serie) : krm_distribuir_residuo($krNovo, $serie, date('Y-m-d'));
+          if ($aj === null) {
+            http_response_code(422);
+            echo json_encode(['success'=>false,'error'=>'Não há milestones futuros para distribuir o ajuste. Use "reescalar trajetória".']);
+            exit;
+          }
+          $serie = $aj;
+        }
+
+        // 3) marca o que mudou vs banco (p/ aviso de vencido e persistência)
+        $origById = [];
+        foreach ($msOrig as $o) $origById[(int)$o['id_milestone']] = $o;
+        foreach ($serie as &$m) {
+          $o = $origById[(int)$m['id_milestone']];
+          $chg = (round((float)$m['valor_esperado'],2) !== round((float)$o['valor_esperado'],2))
+              || (($m['valor_esperado_min'] ?? null) !== null && round((float)$m['valor_esperado_min'],2) !== round((float)($o['valor_esperado_min'] ?? 0),2))
+              || (($m['valor_esperado_max'] ?? null) !== null && round((float)$m['valor_esperado_max'],2) !== round((float)($o['valor_esperado_max'] ?? 0),2));
+          $m['editado'] = $chg;
+        }
+        unset($m);
+
+        // 4) valida — erro rígido devolve 422 com sugestões p/ o modal
+        $val = krm_validar_serie($krNovo, $serie, date('Y-m-d'));
+        if (!empty($val['erros'])) {
+          $sugestoes = [];
+          if ($isIntervalo) {
+            $sugestoes['reescalar'] = krm_ajustar_faixa_final($krNovo, $serie);
+          } else {
+            $sugestoes['reescalar'] = krm_reescalar($krNovo, $serie);
+            $sugestoes['residuo']   = krm_distribuir_residuo($krNovo, $serie, date('Y-m-d'));
+          }
+          $limpa = function($arr){
+            if (!is_array($arr)) return null;
+            return array_map(fn($m)=>[
+              'id_milestone'=>(int)$m['id_milestone'], 'num_ordem'=>(int)$m['num_ordem'],
+              'data_ref'=>$m['data_ref'],
+              'valor_esperado'=>isset($m['valor_esperado'])?(float)$m['valor_esperado']:null,
+              'valor_esperado_min'=>isset($m['valor_esperado_min'])&&$m['valor_esperado_min']!==null?(float)$m['valor_esperado_min']:null,
+              'valor_esperado_max'=>isset($m['valor_esperado_max'])&&$m['valor_esperado_max']!==null?(float)$m['valor_esperado_max']:null,
+            ], $arr);
+          };
+          http_response_code(422);
+          echo json_encode([
+            'success'=>false,
+            'code'=>'MILESTONES_INCOERENTES',
+            'error'=>$val['erros'][0]['msg'] ?? 'Série de milestones incoerente com a meta.',
+            'erros'=>$val['erros'],
+            'avisos'=>$val['avisos'],
+            'sugestoes'=>[
+              'reescalar'=>$limpa($sugestoes['reescalar'] ?? null),
+              'residuo'=>$limpa($sugestoes['residuo'] ?? null),
+            ],
+          ], JSON_UNESCAPED_UNICODE);
+          exit;
+        }
+        $msAvisos = $val['avisos'];
+
+        // 5) prepara persistência e diff de auditoria (só linhas alteradas)
+        $antes = []; $depois = [];
+        foreach ($serie as $m) {
+          if (empty($m['editado'])) continue;
+          $o = $origById[(int)$m['id_milestone']];
+          $antes[]  = ['num_ordem'=>(int)$o['num_ordem'], 'valor_esperado'=>(float)$o['valor_esperado'],
+                       'min'=>$o['valor_esperado_min']!==null?(float)$o['valor_esperado_min']:null,
+                       'max'=>$o['valor_esperado_max']!==null?(float)$o['valor_esperado_max']:null];
+          $depois[] = ['num_ordem'=>(int)$m['num_ordem'], 'valor_esperado'=>(float)$m['valor_esperado'],
+                       'min'=>$m['valor_esperado_min']!==null?(float)$m['valor_esperado_min']:null,
+                       'max'=>$m['valor_esperado_max']!==null?(float)$m['valor_esperado_max']:null];
+          $msFinais[] = $m;
+        }
+        if ($msFinais) $msDiffAudit = ['antes'=>$antes, 'depois'=>$depois];
+      }
+    }
+    // ==== [/MS] ====
 
     $pdo->beginTransaction();
 
@@ -246,6 +386,15 @@ if (isset($_GET['ajax'])) {
           'depois' => $depois
         ];
       }
+    }
+
+    // Milestones editados manualmente entram no diff de auditoria
+    if ($msDiffAudit !== null) {
+      $diff[] = [
+        'campo'  => 'milestones',
+        'antes'  => $msDiffAudit['antes'],
+        'depois' => $msDiffAudit['depois'],
+      ];
     }
 
     // Só grava movimento "alteracao" se houver diferenças reais
@@ -304,14 +453,43 @@ if (isset($_GET['ajax'])) {
       ':resp'=>$responsavel, ':obs'=>$observacoes, ':user'=>$userId, ':id'=>$id_kr
     ]);
 
-    // Recria milestones se período OU frequência mudou
+    // Recria milestones se período/frequência/tipo de direção mudou (ou "regenerar")
     $qtde = 0;
     if ($milestonesRecriar) {
       $qtde = recriarMilestones($pdo, $id_kr, $data_inicio, $data_fim, $freqSlug, (float)$baseline, (float)$meta, (string)$natureza_kr, $direcao_metrica ?: null, $unidade_medida ?: null);
+    } elseif ($msFinais) {
+      // Persiste edições manuais de previstos (série já validada)
+      $upMs = $pdo->prepare("
+        UPDATE milestones_kr
+           SET valor_esperado = :ve,
+               valor_esperado_min = :vmin,
+               valor_esperado_max = :vmax,
+               editado_manual = 1,
+               justificativa_edicao = :just
+         WHERE id_milestone = :idms AND id_kr = :idkr
+         LIMIT 1
+      ");
+      foreach ($msFinais as $m) {
+        $upMs->execute([
+          ':ve'   => round((float)$m['valor_esperado'], 2),
+          ':vmin' => $m['valor_esperado_min'] !== null ? round((float)$m['valor_esperado_min'], 2) : null,
+          ':vmax' => $m['valor_esperado_max'] !== null ? round((float)$m['valor_esperado_max'], 2) : null,
+          ':just' => $justEdit,
+          ':idms' => (int)$m['id_milestone'],
+          ':idkr' => $id_kr,
+        ]);
+      }
     }
 
     $pdo->commit();
-    echo json_encode(['success'=>true, 'id_kr'=>$id_kr, 'periodo_mudou'=>$datesChanged?1:0, 'freq_mudou'=>$freqChanged?1:0, 'milestones_recriados'=>$qtde]);
+    echo json_encode([
+      'success'=>true, 'id_kr'=>$id_kr,
+      'periodo_mudou'=>$datesChanged?1:0, 'freq_mudou'=>$freqChanged?1:0,
+      'direcao_mudou'=>$dirTypeChanged?1:0,
+      'milestones_recriados'=>$qtde,
+      'milestones_alterados'=>count($msFinais),
+      'avisos'=>$msAvisos,
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 
   } catch (Throwable $e) {
@@ -400,6 +578,22 @@ $obs            = (string)($KR['observacoes'] ?? '');
 $dt_ini         = (string)($KR['data_inicio'] ?? '');
 $dt_fim         = (string)($KR['data_fim'] ?? '');
 $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
+
+// Milestones previstos (grid de edição)
+$stMsView = $pdo->prepare("
+  SELECT id_milestone, num_ordem, data_ref, valor_esperado,
+         valor_esperado_min, valor_esperado_max,
+         valor_real_consolidado, bloqueado_para_edicao, editado_manual
+    FROM milestones_kr
+   WHERE id_kr = :id
+   ORDER BY num_ordem
+");
+$stMsView->execute([':id'=>$id_kr]);
+$MS_ROWS = $stMsView->fetchAll();
+
+$IS_INTERVALO = krp_is_intervalo($dir ?: null);
+$IS_BINARIO   = krm_natureza_binaria($natSel);
+$HOJE         = date('Y-m-d');
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -455,6 +649,24 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
     .ai-subtle{ font-size:.85rem; opacity:.7; }
     .ai-bubble{ background:#111833; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:16px; margin:8px 0 14px; }
     .warning{ color:#fbbf24; font-size:.85rem; margin-top:6px; }
+    /* ---- grid de milestones previstos ---- */
+    .ms-table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+    .ms-table th{ text-align:left; color:#9aa4b2; font-weight:700; padding:8px 10px; border-bottom:1px solid #1f2635; }
+    .ms-table td{ padding:6px 10px; border-bottom:1px solid #151b27; color:#e5e7eb; }
+    .ms-table input[type="number"]{ width:120px; padding:6px 8px; }
+    .ms-table tr.ms-locked td{ background:rgba(246,195,67,.06); }
+    .ms-badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:700; }
+    .ms-badge.vencido{ background:rgba(251,191,36,.15); color:#fbbf24; }
+    .ms-badge.futuro{ background:rgba(96,165,250,.12); color:#60a5fa; }
+    .ms-badge.meta{ background:rgba(246,195,67,.18); color:var(--gold); }
+    .ms-chip{ margin-top:10px; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; font-weight:800; font-size:.9rem; }
+    .ms-chip.ok{ background:rgba(34,197,94,.12); color:#4ade80; border:1px solid rgba(34,197,94,.35); }
+    .ms-chip.bad{ background:rgba(239,68,68,.12); color:#f87171; border:1px solid rgba(239,68,68,.35); }
+    .adj-opt{ display:block; border:1px solid #223047; border-radius:12px; padding:12px; margin-bottom:10px; cursor:pointer; }
+    .adj-opt.sel{ border-color:var(--gold); background:rgba(246,195,67,.07); }
+    .adj-opt .t{ font-weight:800; }
+    .adj-opt .d{ font-size:.85rem; opacity:.75; margin-top:2px; }
+    .adj-preview{ max-height:220px; overflow:auto; margin-top:10px; border:1px solid #1f2635; border-radius:10px; }
   </style>
 </head>
 <body>
@@ -603,7 +815,7 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
             </div>
           </div>
 
-          <div class="warning">⚠️ Se você alterar <strong>data início</strong>, <strong>data fim</strong> ou a <strong>frequência de apontamento</strong>, todos os milestones serão recriados e <strong>todos os apontamentos e evidências serão apagados</strong> deste KR.</div>
+          <div class="warning">⚠️ Se você alterar <strong>data início</strong>, <strong>data fim</strong>, a <strong>frequência de apontamento</strong> ou o <strong>tipo de direção</strong> (intervalo ↔ valor único), todos os milestones serão recriados e <strong>todos os apontamentos, evidências e edições manuais de milestones serão apagados</strong> deste KR.</div>
 
           <div class="save-row">
             <button type="button" id="btnSalvar" class="btn btn-primary"><i class="fa-regular fa-floppy-disk"></i> Salvar Alterações</button>
@@ -611,6 +823,71 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
           </div>
         </form>
       </section>
+
+      <?php if ($MS_ROWS): ?>
+      <section class="form-card" id="msCard">
+        <h2><i class="fa-solid fa-flag-checkered"></i> Milestones previstos</h2>
+        <p class="helper" style="margin:0 0 10px;">
+          Edite os valores planejados de cada período. O último milestone é o espelho da <strong>Meta</strong> —
+          para alterá-lo, altere o campo Meta acima.
+          <?php if ($IS_BINARIO): ?><br><strong>KR binário:</strong> valores não são editáveis.<?php endif; ?>
+        </p>
+        <div style="overflow-x:auto;">
+        <table class="ms-table" id="msTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Data</th>
+              <?php if ($IS_INTERVALO): ?>
+                <th>Mín. previsto</th><th>Máx. previsto</th>
+              <?php else: ?>
+                <th>Previsto</th>
+              <?php endif; ?>
+              <th>Realizado</th><th>Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php $N = count($MS_ROWS); foreach ($MS_ROWS as $i => $m):
+            $isLast   = ($i === $N - 1);
+            $vencido  = ((string)$m['data_ref'] <= $HOJE);
+            $lock     = $isLast || $IS_BINARIO || (int)$m['bloqueado_para_edicao'] === 1;
+            $dataBr   = date('d/m/Y', strtotime((string)$m['data_ref']));
+          ?>
+            <tr class="<?= $isLast ? 'ms-locked' : '' ?>" data-idms="<?= (int)$m['id_milestone'] ?>" data-vencido="<?= $vencido?1:0 ?>">
+              <td><?= (int)$m['num_ordem'] ?></td>
+              <td><?= h($dataBr) ?></td>
+              <?php if ($IS_INTERVALO): ?>
+                <td><input type="number" step="0.01" class="ms-min" value="<?= h($m['valor_esperado_min']) ?>"
+                     data-orig="<?= h($m['valor_esperado_min']) ?>" <?= $lock?'disabled':'' ?>></td>
+                <td><input type="number" step="0.01" class="ms-max" value="<?= h($m['valor_esperado_max']) ?>"
+                     data-orig="<?= h($m['valor_esperado_max']) ?>" <?= $lock?'disabled':'' ?>></td>
+              <?php else: ?>
+                <td>
+                  <?php if ($isLast): ?>
+                    <span id="msLastVal" style="font-weight:800;color:var(--gold);"><?= h($m['valor_esperado']) ?></span>
+                  <?php else: ?>
+                    <input type="number" step="0.01" class="ms-val" value="<?= h($m['valor_esperado']) ?>"
+                       data-orig="<?= h($m['valor_esperado']) ?>" <?= $lock?'disabled':'' ?>>
+                  <?php endif; ?>
+                </td>
+              <?php endif; ?>
+              <td><?= $m['valor_real_consolidado'] !== null ? h($m['valor_real_consolidado']) : '—' ?></td>
+              <td>
+                <?php if ($isLast): ?><span class="ms-badge meta">= Meta do KR</span>
+                <?php elseif ((int)$m['bloqueado_para_edicao'] === 1): ?><span class="ms-badge vencido">🔒 bloqueado</span>
+                <?php elseif ($vencido): ?><span class="ms-badge vencido">vencido ⚠</span>
+                <?php else: ?><span class="ms-badge futuro">futuro</span><?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+        </div>
+        <div id="msChip" class="ms-chip ok" style="display:none;"></div>
+        <p class="helper" style="margin-top:8px;">
+          ⚠ Alterar o previsto de um milestone <strong>vencido</strong> reescreve o histórico do farol — a justificativa da edição cobre essa alteração.
+        </p>
+      </section>
+      <?php endif; ?>
 
       <?php include __DIR__ . '/partials/chat.php'; ?>
     </main>
@@ -656,6 +933,40 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
       </div>
       <div class="save-row" style="margin-top:0;">
         <a href="/OKR_system/meus_okrs" class="btn btn-primary">Ir para Meus OKRs</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ajuste de Milestones -->
+  <div id="adjustOverlay" class="overlay" aria-hidden="true" hidden>
+    <div class="ai-card" role="dialog" aria-modal="true">
+      <div class="ai-header">
+        <div class="ai-avatar">OKR</div>
+        <div>
+          <div class="ai-title">A série de milestones não fecha na meta</div>
+          <div class="ai-subtle" id="adjustErrText">Escolha como ajustar os milestones para que o último período termine exatamente na meta do KR.</div>
+        </div>
+      </div>
+      <div class="ai-bubble">
+        <label class="adj-opt sel" data-estrategia="reescalar">
+          <span class="t">📐 Reescalar a trajetória inteira</span>
+          <div class="d">Mantém a forma do plano e redistribui todos os valores proporcionalmente até fechar na meta. Reescreve também os períodos já vencidos.</div>
+        </label>
+        <label class="adj-opt" data-estrategia="residuo" id="optResiduo">
+          <span class="t">🛡️ Ajustar somente os futuros</span>
+          <div class="d">Preserva os milestones vencidos como estão e redistribui a diferença apenas nos períodos futuros. Recomendado quando já há apontamentos.</div>
+        </label>
+        <label class="adj-opt" data-estrategia="regenerar">
+          <span class="t">♻️ Regenerar do zero</span>
+          <div class="d" style="color:#f87171;">Recria a série pela natureza do KR e <strong>apaga todos os apontamentos e evidências</strong>. Use apenas se quiser recomeçar o acompanhamento.</div>
+        </label>
+        <div class="adj-preview" id="adjPreview" style="display:none;">
+          <table class="ms-table" id="adjPreviewTable"></table>
+        </div>
+      </div>
+      <div class="save-row" style="margin-top:0;">
+        <button id="cancelAdjust" class="btn"><i class="fa-regular fa-circle-xmark"></i> Cancelar</button>
+        <button id="confirmAdjust" class="btn btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar Ajuste e Salvar</button>
       </div>
     </div>
   </div>
@@ -719,36 +1030,140 @@ $novoPrazo      = (string)($KR['dt_novo_prazo'] ?? '');
 
       $('#cancelJust')?.addEventListener('click', () => hide(justOvr));
 
-      $('#confirmJust')?.addEventListener('click', async () => {
-        const just = ($('#justificativa_edicao')?.value || '').trim();
-        if (!just) { alert('A justificativa de edição é obrigatória.'); return; }
+      /* ===================== Milestones previstos ===================== */
+      const adjOvr = $('#adjustOverlay');
+      const IS_INTERVALO = <?= $IS_INTERVALO ? 'true' : 'false' ?>;
+      let lastJust = '';
+      let sugestoes = null; // payload do 422 (reescalar/residuo)
 
-        hide(justOvr);
+      function fmt(v){
+        if (v === null || v === undefined || v === '') return '—';
+        const n = parseFloat(v);
+        return Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',');
+      }
+
+      // Coleta apenas os valores alterados vs original (data-orig)
+      function collectMilestoneEdits(){
+        const edits = {};
+        document.querySelectorAll('#msTable tbody tr').forEach(tr => {
+          const idms = tr.dataset.idms;
+          if (!idms) return;
+          if (IS_INTERVALO) {
+            const mn = tr.querySelector('.ms-min'), mx = tr.querySelector('.ms-max');
+            const e = {};
+            if (mn && !mn.disabled && mn.value !== mn.dataset.orig) e.min = mn.value;
+            if (mx && !mx.disabled && mx.value !== mx.dataset.orig) e.max = mx.value;
+            if (Object.keys(e).length) edits[idms] = e;
+          } else {
+            const inp = tr.querySelector('.ms-val');
+            if (inp && !inp.disabled && inp.value !== inp.dataset.orig) edits[idms] = { valor: inp.value };
+          }
+        });
+        return edits;
+      }
+
+      // Chip de fecho: penúltimos livres, último = meta (espelho)
+      function updateFechoChip(){
+        const chip = $('#msChip');
+        if (!chip) return;
+        const meta = parseFloat($('#meta')?.value);
+        const lastVal = $('#msLastVal');
+        if (lastVal && !Number.isNaN(meta)) lastVal.textContent = fmt(meta);
+        if (Number.isNaN(meta)) { chip.style.display='none'; return; }
+        chip.style.display = 'inline-flex';
+        chip.className = 'ms-chip ok';
+        chip.innerHTML = '<i class="fa-solid fa-circle-check"></i> Série fecha na meta (' + fmt(meta) + ') — o último milestone acompanha o campo Meta.';
+      }
+      $('#meta')?.addEventListener('input', updateFechoChip);
+      updateFechoChip();
+
+      /* ---------- envio (com estratégia opcional de ajuste) ---------- */
+      async function doSubmit(just, estrategia){
         setLoading(true);
-
         try {
           const fd = new FormData(form);
           fd.append('justificativa_edicao', just);
+          fd.append('milestones_json', JSON.stringify(collectMilestoneEdits()));
+          fd.append('estrategia_ajuste', estrategia || '');
 
           const res  = await fetch(form.action, { method:'POST', body:fd });
           const data = await res.json();
-
           setLoading(false);
 
           if (data?.success) {
-            if (data.periodo_mudou || data.freq_mudou) {
-              const motivo = data.periodo_mudou ? 'Período alterado' : 'Frequência alterada';
-              $('#successText').innerHTML = motivo + ': milestones foram recriados e todos os apontamentos/evidências deste KR foram apagados. KR reenviado para aprovação.';
+            let msg = 'Tudo certo. Você será notificado quando o aprovador decidir.';
+            if (data.periodo_mudou || data.freq_mudou || data.direcao_mudou || data.milestones_recriados > 0) {
+              const motivo = data.periodo_mudou ? 'Período alterado'
+                           : data.freq_mudou   ? 'Frequência alterada'
+                           : data.direcao_mudou ? 'Tipo de direção alterado'
+                           : 'Milestones regenerados';
+              msg = motivo + ': milestones foram recriados e todos os apontamentos/evidências deste KR foram apagados. KR reenviado para aprovação.';
+            } else if (data.milestones_alterados > 0) {
+              msg = data.milestones_alterados + ' milestone(s) previsto(s) atualizado(s). KR reenviado para aprovação.';
             }
+            if (Array.isArray(data.avisos) && data.avisos.length) {
+              msg += '<br><br>⚠ Avisos: ' + data.avisos.map(a => a.msg).join(' ');
+            }
+            $('#successText').innerHTML = msg;
             show(succOvr);
-          } else {
-            alert(data?.error || 'Falha ao salvar alterações.');
+            return;
           }
+
+          // Série não fecha na meta → modal de ajuste com sugestões do servidor
+          if (data?.code === 'MILESTONES_INCOERENTES') {
+            sugestoes = data.sugestoes || null;
+            $('#adjustErrText').textContent = (data.erros && data.erros[0]?.msg) || data.error || '';
+            const optRes = $('#optResiduo');
+            if (optRes) optRes.style.display = (sugestoes && sugestoes.residuo) ? '' : 'none';
+            selectAdjOpt(document.querySelector('.adj-opt[data-estrategia="reescalar"]'));
+            show(adjOvr);
+            return;
+          }
+
+          alert(data?.error || 'Falha ao salvar alterações.');
         } catch (err) {
           console.error(err);
           setLoading(false);
           alert('Erro de rede ao salvar alterações.');
         }
+      }
+
+      /* ---------- modal de ajuste ---------- */
+      function selectAdjOpt(el){
+        if (!el) return;
+        document.querySelectorAll('.adj-opt').forEach(o => o.classList.remove('sel'));
+        el.classList.add('sel');
+        const estrategia = el.dataset.estrategia;
+        const prev = $('#adjPreview'), tbl = $('#adjPreviewTable');
+        const serie = sugestoes ? sugestoes[estrategia] : null;
+        if (!serie) { prev.style.display = 'none'; return; }
+        let html = '<thead><tr><th>#</th><th>Data</th><th>' + (IS_INTERVALO ? 'Mín</th><th>Máx' : 'Previsto') + '</th></tr></thead><tbody>';
+        serie.forEach(m => {
+          const d = m.data_ref ? m.data_ref.split('-').reverse().join('/') : '';
+          html += '<tr><td>' + m.num_ordem + '</td><td>' + d + '</td><td>' +
+                  (IS_INTERVALO ? fmt(m.valor_esperado_min) + '</td><td>' + fmt(m.valor_esperado_max) : fmt(m.valor_esperado)) +
+                  '</td></tr>';
+        });
+        tbl.innerHTML = html + '</tbody>';
+        prev.style.display = '';
+      }
+      document.querySelectorAll('.adj-opt').forEach(o => o.addEventListener('click', () => selectAdjOpt(o)));
+      $('#cancelAdjust')?.addEventListener('click', () => hide(adjOvr));
+      $('#confirmAdjust')?.addEventListener('click', () => {
+        const sel = document.querySelector('.adj-opt.sel');
+        const estrategia = sel ? sel.dataset.estrategia : 'reescalar';
+        if (estrategia === 'regenerar' &&
+            !confirm('Regenerar apaga TODOS os apontamentos e evidências deste KR. Continuar?')) return;
+        hide(adjOvr);
+        doSubmit(lastJust, estrategia);
+      });
+
+      $('#confirmJust')?.addEventListener('click', () => {
+        const just = ($('#justificativa_edicao')?.value || '').trim();
+        if (!just) { alert('A justificativa de edição é obrigatória.'); return; }
+        lastJust = just;
+        hide(justOvr);
+        doSubmit(just, '');
       });
     });
   </script>

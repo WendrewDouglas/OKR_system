@@ -131,8 +131,14 @@ if (!function_exists('krp_calc_pontual')) {
     usort($milestones, fn($a, $b) => ((int)($a['num_ordem'] ?? 0)) <=> ((int)($b['num_ordem'] ?? 0)));
     $first = $milestones[0];
     $last  = $milestones[count($milestones) - 1];
-    $base = isset($first['valor_esperado']) ? (float)$first['valor_esperado'] : null;
-    $meta = isset($last['valor_esperado'])  ? (float)$last['valor_esperado']  : null;
+    // Âncora da barra: baseline/meta do PRÓPRIO KR (imune a edição manual de
+    // milestones). Fallback para os extremos da série quando o KR não os tem —
+    // antes a base era o 1º milestone (B + Δ/N), o que distorcia o denominador
+    // e quebraria com milestones editados.
+    $base = is_numeric($kr['baseline'] ?? null) ? (float)$kr['baseline']
+          : (isset($first['valor_esperado']) ? (float)$first['valor_esperado'] : null);
+    $meta = is_numeric($kr['meta'] ?? null) ? (float)$kr['meta']
+          : (isset($last['valor_esperado']) ? (float)$last['valor_esperado'] : null);
 
     // milestone vencido mais recente + último real consolidado vencido
     $lastDue = null; $lastRealMs = null;

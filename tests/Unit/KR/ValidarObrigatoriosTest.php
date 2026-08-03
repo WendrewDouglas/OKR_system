@@ -17,6 +17,7 @@ class ValidarObrigatoriosTest extends TestCase
         return [
             'id_objetivo'                => '1',
             'descricao'                  => 'Aumentar receita em 20%',
+            'tipo_kr'                    => '1',
             'ciclo_tipo'                 => 'anual',
             'ciclo_anual_ano'            => '2025',
             'baseline'                   => '0',
