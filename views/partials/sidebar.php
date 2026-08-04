@@ -50,6 +50,53 @@ if (!defined('PB_NOME_JS_EMITTED')) {
 HTML;
 }
 
+/* ==== Helper JS global de número pt-BR ("." milhar, "," decimal) ==== */
+/* Espelho PHP: auth/helpers/num_format.php (num_br / num_br_pct). */
+if (!defined('PB_NUM_JS_EMITTED')) {
+  define('PB_NUM_JS_EMITTED', true);
+  echo <<<'HTML'
+<script>
+(function(){
+  if (window.fmtNum) return;
+  function toNumber(v){
+    if (typeof v === 'number') return v;
+    if (v === null || v === undefined) return NaN;
+    var s = String(v).trim();
+    if (!s) return NaN;
+    var n = Number(s);
+    if (isFinite(n)) return n;
+    // tolera "1.234,56" / "10,5"
+    n = Number(s.replace(/\./g,'').replace(',','.'));
+    return n;
+  }
+  /* fmtNum(v[, dec]) -> "1.234.567" | "1.234,5". dec omitido = auto (até 2, sem zeros à direita). */
+  window.fmtNum = function(v, dec){
+    if (v === null || v === undefined || v === '') return '—';
+    var n = toNumber(v);
+    if (!isFinite(n)) return String(v);
+    var opts = (dec === undefined || dec === null)
+      ? { minimumFractionDigits: 0, maximumFractionDigits: 2 }
+      : { minimumFractionDigits: dec, maximumFractionDigits: dec };
+    return n.toLocaleString('pt-BR', opts);
+  };
+  /* fmtPct(v[, dec=1]) -> "87,5%" (auto remove zeros à direita). */
+  window.fmtPct = function(v, dec){
+    if (v === null || v === undefined || v === '') return '—';
+    var n = toNumber(v);
+    if (!isFinite(n)) return String(v);
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: (dec === undefined ? 1 : dec) }) + '%';
+  };
+  /* fmtMoneyBR(v) -> "R$ 1.234,56" */
+  window.fmtMoneyBR = function(v){
+    var n = toNumber(v);
+    if (!isFinite(n)) n = 0;
+    return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  };
+})();
+</script>
+HTML;
+}
+
 /* ===================== ROTAS ATIVAS ===================== */
 $currentPath        = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $isDashboard        = ($currentPath === '/OKR_system/dashboard');

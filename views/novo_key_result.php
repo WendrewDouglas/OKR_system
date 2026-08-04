@@ -1037,8 +1037,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     }
 
     const isInt = unidadeRequerInteiro(unidade);
-    const nf = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
-    const fmt = v => isInt ? Math.round(v) : Number(nf.format(Number(v))).toString().replace('.', ',');
+    const fmt = v => isInt ? window.fmtNum(Math.round(v), 0) : window.fmtNum(v);
 
     tbody.innerHTML = '';
 
@@ -1089,7 +1088,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
         tr.innerHTML = `
           <td>${i+1}</td>
           <td>${fmtBR(d)}</td>
-          <td class="right">${String(esperados[i])}</td>
+          <td class="right">${fmt(esperados[i])}</td>
         `;
         tbody.appendChild(tr);
       });

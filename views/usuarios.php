@@ -1235,7 +1235,7 @@ async function loadList(){
       arr = [];
     }
 
-    $('#pillUsers').innerHTML = `<i class="fa-regular fa-address-card"></i> Usuários: ${j.total ?? j.data?.total ?? arr.length}`;
+    $('#pillUsers').innerHTML = `<i class="fa-regular fa-address-card"></i> Usuários: ${window.fmtNum(j.total ?? j.data?.total ?? arr.length, 0)}`;
 
     // ======== ENRIQUECIMENTO (Dep/Fun) + preenchimento de caches ========
     try{
@@ -1325,7 +1325,7 @@ async function askDelete(btn){
       detail.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> <strong>Este é o único usuário da empresa "${esc(j.company_name || '?')}".</strong><br>A empresa e <strong>TODOS</strong> os dados OKR serão excluídos permanentemente.`;
     } else {
       if (j.item_count > 0){
-        detail.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left" style="color:#60a5fa;"></i> Este usuário possui <strong>${parseInt(j.item_count,10)||0}</strong> item(ns) OKR que serão reatribuídos para <strong>${esc(j.reassign_to_name || '?')}</strong>.`;
+        detail.innerHTML = `<i class="fa-solid fa-arrow-right-arrow-left" style="color:#60a5fa;"></i> Este usuário possui <strong>${window.fmtNum(parseInt(j.item_count,10)||0, 0)}</strong> item(ns) OKR que serão reatribuídos para <strong>${esc(j.reassign_to_name || '?')}</strong>.`;
       } else {
         detail.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> Este usuário não possui itens OKR vinculados. A exclusão é direta.`;
       }

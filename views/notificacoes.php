@@ -87,7 +87,7 @@ async function loadAll(){
     fetch(API+'?action=count').then(r=>r.json()),
     fetch(API+'?action=list').then(r=>r.json())
   ]);
-  document.getElementById('counter').textContent = cnt?.count ?? 0;
+  document.getElementById('counter').textContent = window.fmtNum(cnt?.count ?? 0, 0);
   const list = document.getElementById('list');
   if (!lst?.items?.length){
     list.innerHTML = `<div class="empty"><i class="fa-regular fa-folder-open"></i> Sem notificações.</div>`;

@@ -9,6 +9,7 @@ declare(strict_types=1);
 session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/helpers/nome_format.php';
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 
@@ -338,21 +339,21 @@ function roleBadge(string $role): string {
       <div class="ac-kpi">
         <div class="ac-kpi-icon blue"><i class="fas fa-building"></i></div>
         <div>
-          <div class="ac-kpi-value"><?= $totalCompanies ?></div>
+          <div class="ac-kpi-value"><?= num_br($totalCompanies, 0) ?></div>
           <div class="ac-kpi-label">Empresas</div>
         </div>
       </div>
       <div class="ac-kpi">
         <div class="ac-kpi-icon green"><i class="fas fa-users"></i></div>
         <div>
-          <div class="ac-kpi-value"><?= $totalUsers ?></div>
+          <div class="ac-kpi-value"><?= num_br($totalUsers, 0) ?></div>
           <div class="ac-kpi-label">Usuarios</div>
         </div>
       </div>
       <div class="ac-kpi">
         <div class="ac-kpi-icon amber"><i class="fas fa-crosshairs"></i></div>
         <div>
-          <div class="ac-kpi-value"><?= array_sum(array_column($companies, 'total_objetivos')) ?></div>
+          <div class="ac-kpi-value"><?= num_br(array_sum(array_column($companies, 'total_objetivos')), 0) ?></div>
           <div class="ac-kpi-label">Objetivos (total)</div>
         </div>
       </div>
@@ -360,7 +361,7 @@ function roleBadge(string $role): string {
       <div class="ac-kpi">
         <div class="ac-kpi-icon red"><i class="fas fa-user-slash"></i></div>
         <div>
-          <div class="ac-kpi-value"><?= $totalOrphans ?></div>
+          <div class="ac-kpi-value"><?= num_br($totalOrphans, 0) ?></div>
           <div class="ac-kpi-label">Sem empresa</div>
         </div>
       </div>
@@ -409,8 +410,8 @@ function roleBadge(string $role): string {
             </div>
           </div>
           <div class="ac-company-stats">
-            <div class="ac-stat"><i class="fas fa-users"></i> <strong><?= (int)$c['total_usuarios'] ?></strong> usuarios</div>
-            <div class="ac-stat"><i class="fas fa-crosshairs"></i> <strong><?= (int)$c['total_objetivos'] ?></strong> OKRs</div>
+            <div class="ac-stat"><i class="fas fa-users"></i> <strong><?= num_br((int)$c['total_usuarios'], 0) ?></strong> usuarios</div>
+            <div class="ac-stat"><i class="fas fa-crosshairs"></i> <strong><?= num_br((int)$c['total_objetivos'], 0) ?></strong> OKRs</div>
           </div>
           <i class="fas fa-chevron-down ac-chevron"></i>
         </div>
@@ -472,7 +473,7 @@ function roleBadge(string $role): string {
     <?php if (!empty($orphanUsers)): ?>
     <div class="ac-section" style="margin-top:1.5rem">
       <i class="fas fa-user-slash"></i> Usuarios sem empresa
-      <span class="ac-count">(<?= $totalOrphans ?>)</span>
+      <span class="ac-count">(<?= num_br($totalOrphans, 0) ?>)</span>
     </div>
     <div class="ac-orphan-card">
       <div class="ac-orphan-title">

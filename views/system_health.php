@@ -516,8 +516,8 @@ function parseSummary(text, el) {
   if (m) {
     el.className = 'sh-test-summary pass';
     el.innerHTML =
-      '<span class="sh-test-stat ok"><i class="fas fa-check-circle"></i> ' + m[1] + ' testes passaram</span>' +
-      '<span class="sh-test-stat total"><i class="fas fa-list"></i> ' + m[2] + ' assertions</span>';
+      '<span class="sh-test-stat ok"><i class="fas fa-check-circle"></i> ' + window.fmtNum(m[1], 0) + ' testes passaram</span>' +
+      '<span class="sh-test-stat total"><i class="fas fa-list"></i> ' + window.fmtNum(m[2], 0) + ' assertions</span>';
     return;
   }
 
@@ -531,11 +531,11 @@ function parseSummary(text, el) {
 
     const hasFail = parseInt(failures) > 0 || parseInt(errors) > 0;
     el.className = 'sh-test-summary ' + (hasFail ? 'fail' : 'pass');
-    let html = '<span class="sh-test-stat total"><i class="fas fa-list"></i> ' + tests + ' testes</span>';
-    html += '<span class="sh-test-stat total"><i class="fas fa-check-double"></i> ' + assertions + ' assertions</span>';
-    if (parseInt(failures) > 0) html += '<span class="sh-test-stat fail"><i class="fas fa-times-circle"></i> ' + failures + ' falhas</span>';
-    if (parseInt(errors) > 0) html += '<span class="sh-test-stat fail"><i class="fas fa-bug"></i> ' + errors + ' erros</span>';
-    if (parseInt(skipped) > 0) html += '<span class="sh-test-stat skip"><i class="fas fa-forward"></i> ' + skipped + ' pulados</span>';
+    let html = '<span class="sh-test-stat total"><i class="fas fa-list"></i> ' + window.fmtNum(tests, 0) + ' testes</span>';
+    html += '<span class="sh-test-stat total"><i class="fas fa-check-double"></i> ' + window.fmtNum(assertions, 0) + ' assertions</span>';
+    if (parseInt(failures) > 0) html += '<span class="sh-test-stat fail"><i class="fas fa-times-circle"></i> ' + window.fmtNum(failures, 0) + ' falhas</span>';
+    if (parseInt(errors) > 0) html += '<span class="sh-test-stat fail"><i class="fas fa-bug"></i> ' + window.fmtNum(errors, 0) + ' erros</span>';
+    if (parseInt(skipped) > 0) html += '<span class="sh-test-stat skip"><i class="fas fa-forward"></i> ' + window.fmtNum(skipped, 0) + ' pulados</span>';
     el.innerHTML = html;
     return;
   }

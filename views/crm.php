@@ -1032,7 +1032,7 @@ body {
               <tbody>
               <?php foreach ($importRows as $row): ?>
                 <tr>
-                  <td>#<?= crm_number((int)$row['id_import_batch']) ?></td>
+                  <td>#<?= (int)$row['id_import_batch'] ?></td>
                   <td><strong><?= crm_h($row['original_filename'] ?: $row['source_name']) ?></strong><div class="crm-muted"><?= crm_h($row['source_type']) ?></div></td>
                   <td><span class="crm-pill teal"><?= crm_h($row['status']) ?></span></td>
                   <td><?= crm_number((int)$row['processed_rows']) ?> / <?= crm_number((int)$row['total_rows']) ?></td>

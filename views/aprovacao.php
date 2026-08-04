@@ -340,11 +340,17 @@ function renderDiffs(row){
   if ((row.mov_tipo||'')!=='alteracao') return '';
   const diffs = Array.isArray(row.mov_diffs) ? row.mov_diffs : [];
   if (!diffs.length && !row.mov_just) return '';
+  // Campos numéricos canonizados pelo backend com ponto decimal (auth/diff_helpers.php) → exibir em pt-BR
+  const NUM_FIELDS = ['valor','baseline','meta','margem_confianca'];
+  const fmtDiffVal = (campo, v) => {
+    if (v === null || v === undefined || v === '') return '—';
+    return NUM_FIELDS.includes(String(campo)) ? window.fmtNum(v) : String(v);
+  };
   const trs = diffs.map(d=>`
     <tr>
       <td><code>${esc((d.campo||'').toString())}</code></td>
-      <td>${esc(d.antes ?? '—')}</td>
-      <td><strong>${esc(d.depois ?? '—')}</strong></td>
+      <td>${esc(fmtDiffVal(d.campo, d.antes))}</td>
+      <td><strong>${esc(fmtDiffVal(d.campo, d.depois))}</strong></td>
     </tr>
   `).join('');
   return `

@@ -817,7 +817,8 @@ window.AVATAR_DATA = {
 
     const from = total ? (startIdx + 1) : 0;
     const to   = Math.min(startIdx + slice.length, total);
-    pgMeta.textContent = `Mostrando ${from}–${to} de ${total} (página ${page}/${Math.max(1, Math.ceil(total/pageSize))})`;
+    const nbr = n => Number(n||0).toLocaleString('pt-BR');
+    pgMeta.textContent = `Mostrando ${nbr(from)}–${nbr(to)} de ${nbr(total)} (página ${page}/${Math.max(1, Math.ceil(total/pageSize))})`;
 
     pgPrev.disabled = (page <= 1);
     pgNext.disabled = (page >= Math.ceil(total / pageSize));

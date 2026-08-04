@@ -681,7 +681,7 @@ function pill_text_color(string $hex): string {
                 <div class="node-sub">
                   ${avatarHtml(kr.responsavel)}
                   <span class="tag" style="margin-left:2px">${h(kr.responsavel?.nome || '—')}</span>
-                  <span class="tag"><i class="fa-solid fa-crosshairs"></i> Meta: ${h(kr.meta??'—')} ${h(kr.unidade||'')}</span>
+                  <span class="tag"><i class="fa-solid fa-crosshairs"></i> Meta: ${h(window.fmtNum(kr.meta))} ${h(kr.unidade||'')}</span>
                   <span class="tag"><i class="fa-regular fa-calendar"></i> ${fmtDate(kr.data_fim)}</span>
                   <span class="pill-status ${statusClass(kr.status)}">${h(kr.status || '—')}</span>
                 </div>

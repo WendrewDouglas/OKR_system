@@ -75,7 +75,7 @@ if (!empty($allowedModules)) {
     $params = $isMaster ? [] : [$cid];
     $stOrc = $pdo->prepare("
       SELECT 'orcamento' AS modulo, orc.id_orcamento AS id_ref,
-             CONCAT('R$ ', FORMAT(orc.valor, 2, 'pt_BR'), ' - ', i.descricao) AS descricao,
+             orc.valor AS orc_valor, i.descricao AS ini_descricao,
              orc.status_aprovacao, orc.dt_criacao,
              u.primeiro_nome AS criador_nome
         FROM orcamentos orc
@@ -87,7 +87,14 @@ if (!empty($allowedModules)) {
        ORDER BY orc.dt_criacao DESC
     ");
     $stOrc->execute($params);
-    $paraAprovar = array_merge($paraAprovar, $stOrc->fetchAll());
+    $rowsOrc = $stOrc->fetchAll();
+    // Formata em PHP: o FORMAT(..., 'pt_BR') do MySQL do servidor não aplica separador de milhar
+    foreach ($rowsOrc as &$r) {
+      $r['descricao'] = 'R$ ' . number_format((float)$r['orc_valor'], 2, ',', '.') . ' - ' . $r['ini_descricao'];
+      unset($r['orc_valor'], $r['ini_descricao']);
+    }
+    unset($r);
+    $paraAprovar = array_merge($paraAprovar, $rowsOrc);
   }
 }
 

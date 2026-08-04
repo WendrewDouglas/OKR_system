@@ -3304,8 +3304,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
       $('#ap_kr_titulo').textContent = 'KR';
       $('#ap_kr_sub').textContent    = data.kr?.descricao || '—';
-      $('#ap_kr_meta').textContent   = 'Meta: ' + (data.kr?.meta ?? '—');
-      $('#ap_kr_base').textContent   = 'Baseline: ' + (data.kr?.baseline ?? '—');
+      $('#ap_kr_meta').textContent   = 'Meta: ' + fmtNum(data.kr?.meta);
+      $('#ap_kr_base').textContent   = 'Baseline: ' + fmtNum(data.kr?.baseline);
       $('#ap_kr_um').textContent     = 'Unidade: ' + (data.kr?.unidade_medida ?? '—');
 
       // ===== monta tabela =====
@@ -3667,8 +3667,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           n++;
         }
 
-        // % com 1 casa decimal (sem ".0" desnecessário: 50 -> "50%", 38.3 -> "38.3%")
-        const fmtPct1 = v => (v === null) ? '—' : `${(Math.round(v*10)/10).toString()}%`;
+        // % com 1 casa decimal pt-BR (sem ",0" desnecessário: 50 -> "50%", 38.3 -> "38,3%")
+        const fmtPct1 = v => (v === null) ? '—' : `${(Math.round(v*10)/10).toLocaleString('pt-BR')}%`;
 
         // Progresso e Prog. ideal (esperado no último milestone <= hoje) em 1 casa decimal
         const pctAtual1 = toNum(kr?.progress?.pct_atual_1d);
@@ -3680,10 +3680,10 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
         // Variação = Progresso − Prog. ideal (1 casa decimal). Atrás => negativo/vermelho; adiante => positivo/verde.
         const variacaoNum  = (pctAtual1 !== null && pctEsper1 !== null) ? (Math.round((pctAtual1 - pctEsper1)*10)/10) : null;
-        const variacaoLabel= variacaoNum === null ? '—' : `${variacaoNum > 0 ? '+' : ''}${variacaoNum.toString()}%`;
+        const variacaoLabel= variacaoNum === null ? '—' : `${variacaoNum > 0 ? '+' : ''}${variacaoNum.toLocaleString('pt-BR')}%`;
         const variacaoCls  = variacaoNum === null ? 'white' : (variacaoNum >= 0 ? 'prog-ok' : 'prog-bad');
         const margemNum    = toNum(kr?.margem_confianca_pct);
-        const margemLabel  = margemNum !== null ? `${margemNum}%` : '—';
+        const margemLabel  = margemNum !== null ? `${margemNum.toLocaleString('pt-BR')}%` : '—';
 
         // === NOVO: farol baseado na lógica do backend (farol_auto) com fallback ===
         const farolAuto      = (kr.farol_auto || kr.farol || 'neutro').toLowerCase();
@@ -3699,8 +3699,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         // tooltip do farol (mostra MS de referência, s e m se existirem)
         const sVal   = kr?.farol_calc?.s;
         const mVal   = kr?.farol_calc?.m;
-        const sTxt   = (typeof sVal === 'number' && isFinite(sVal)) ? sVal.toFixed(3) : '—';
-        const mTxt   = (typeof mVal === 'number' && isFinite(mVal)) ? mVal.toFixed(3) : '—';
+        const sTxt   = (typeof sVal === 'number' && isFinite(sVal)) ? sVal.toFixed(3).replace('.', ',') : '—';
+        const mTxt   = (typeof mVal === 'number' && isFinite(mVal)) ? mVal.toFixed(3).replace('.', ',') : '—';
         const refDt  = kr?.ref_milestone?.data ? toDDMMYYYY(kr.ref_milestone.data) : '—';
         const refAp  = kr?.ref_milestone?.tem_apontamento ? 'com apontamento' : 'sem apontamento';
         const farolTitle = `Ref: ${refDt} · ${refAp} · s=${sTxt} · m=${mTxt}`;

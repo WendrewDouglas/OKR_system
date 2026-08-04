@@ -8,6 +8,7 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 
@@ -541,8 +542,8 @@ function statusBadge(string $s): string {
               <td><strong><?=h($c['nome_interno'])?></strong><br><small style="color:var(--text-secondary,#aaa)"><?=h($c['titulo'])?></small></td>
               <td><?=h($c['canal'])?></td>
               <td><?=statusBadge($c['status'])?></td>
-              <td><?=(int)($c['audience_estimate']??0)?></td>
-              <td><?=(int)($c['total_sent']??0)?> / <?=(int)($c['total_recipients']??0)?></td>
+              <td><?=num_br((int)($c['audience_estimate']??0), 0)?></td>
+              <td><?=num_br((int)($c['total_sent']??0), 0)?> / <?=num_br((int)($c['total_recipients']??0), 0)?></td>
               <td><small><?=$c['created_at']?date('d/m/y H:i',strtotime($c['created_at'])):'-'?></small></td>
               <td class="actions">
                 <?php if($c['status']==='draft'):?><button onclick="editCampaign(<?=$c['id_campaign']?>)" title="Editar"><i class="fas fa-pen"></i></button><?php endif;?>
@@ -682,7 +683,7 @@ async function previewAudience() {
     const d = await r.json();
     if (d.ok) {
       document.getElementById('audienceCount').style.display = 'flex';
-      document.getElementById('audienceNum').textContent = d.count;
+      document.getElementById('audienceNum').textContent = window.fmtNum(d.count, 0);
     } else { showFormStatus(d.message || 'Erro', 'err'); }
   } catch(e) { showFormStatus('Erro: '+e.message, 'err'); }
 }

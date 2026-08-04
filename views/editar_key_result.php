@@ -1037,9 +1037,7 @@ $HOJE         = date('Y-m-d');
       let sugestoes = null; // payload do 422 (reescalar/residuo)
 
       function fmt(v){
-        if (v === null || v === undefined || v === '') return '—';
-        const n = parseFloat(v);
-        return Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',');
+        return window.fmtNum(v); // pt-BR: "." milhar, "," decimal (helper global do sidebar)
       }
 
       // Coleta apenas os valores alterados vs original (data-orig)

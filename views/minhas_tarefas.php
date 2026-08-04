@@ -3,6 +3,7 @@
 session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/helpers/nome_format.php';
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/../auth/avatar_helpers.php';
@@ -440,19 +441,19 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
       <!-- ========== STAT CARDS ========== -->
       <div class="mt-stats">
         <div class="mt-stat total">
-          <div class="stat-value"><?= $total ?></div>
+          <div class="stat-value"><?= num_br($total, 0) ?></div>
           <div class="stat-label"><i class="fas fa-layer-group"></i> Total</div>
         </div>
         <div class="mt-stat atrasado">
-          <div class="stat-value"><?= $atrasados ?></div>
+          <div class="stat-value"><?= num_br($atrasados, 0) ?></div>
           <div class="stat-label"><i class="fas fa-clock"></i> Atrasados</div>
         </div>
         <div class="mt-stat no-prazo">
-          <div class="stat-value"><?= $noPrazo ?></div>
+          <div class="stat-value"><?= num_br($noPrazo, 0) ?></div>
           <div class="stat-label"><i class="fas fa-check-circle"></i> No Prazo</div>
         </div>
         <div class="mt-stat conclusao">
-          <div class="stat-value"><?= $pctConclusao ?>%</div>
+          <div class="stat-value"><?= num_br($pctConclusao) ?>%</div>
           <div class="stat-label"><i class="fas fa-trophy"></i> Conclusão</div>
         </div>
       </div>
@@ -460,16 +461,16 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
       <!-- ========== FILTER PILLS ========== -->
       <div class="mt-filters">
         <span class="mt-pill active" data-filter="todos" onclick="filterTasks(this)">
-          Todos <span class="pill-count"><?= $total ?></span>
+          Todos <span class="pill-count"><?= num_br($total, 0) ?></span>
         </span>
         <span class="mt-pill" data-filter="atrasado" onclick="filterTasks(this)">
-          Atrasados <span class="pill-count"><?= $atrasados ?></span>
+          Atrasados <span class="pill-count"><?= num_br($atrasados, 0) ?></span>
         </span>
         <span class="mt-pill" data-filter="no_prazo" onclick="filterTasks(this)">
-          No Prazo <span class="pill-count"><?= $noPrazo ?></span>
+          No Prazo <span class="pill-count"><?= num_br($noPrazo, 0) ?></span>
         </span>
         <span class="mt-pill" data-filter="concluido" onclick="filterTasks(this)">
-          Concluídos <span class="pill-count"><?= $concluidos ?></span>
+          Concluídos <span class="pill-count"><?= num_br($concluidos, 0) ?></span>
         </span>
       </div>
 

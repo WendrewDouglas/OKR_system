@@ -1005,7 +1005,7 @@ function setObjCardProgress(card, pct){
   const label = card.querySelector('.obj-foot > span strong');
   const v = (pct==null || isNaN(pct)) ? null : Math.max(0, Math.min(100, Number(pct)));
   if (bar) bar.style.width = (v==null ? '0%' : (v + '%'));
-  if (label) label.textContent = (v==null ? '—' : (v + '%'));
+  if (label) label.textContent = (v==null ? '—' : (window.fmtNum(v) + '%'));
 
   // [NOVO] persistir no DOM e reagendar recálculo do BSC
   card.dataset.pct = (v==null ? '' : String(v));
@@ -1077,7 +1077,7 @@ function renderKPIs(itemsOrdered, data){
     </div>`;
 
   const mediaPct = (data.kpi?.media ?? null);
-  const mediaTxt = (mediaPct===null || isNaN(mediaPct)) ? '—' : `${mediaPct}%`;
+  const mediaTxt = (mediaPct===null || isNaN(mediaPct)) ? '—' : `${window.fmtNum(mediaPct)}%`;
   $('#kpi_media').innerHTML = `<span class="kpi-big">${mediaTxt}</span>`;
   const bar = $('#kpi_media_bar > span');
   if (bar){
@@ -1106,7 +1106,7 @@ function renderKPIs(itemsOrdered, data){
       <div class="kpi-obj">
         <i class="${iconB}" style="color:${colorB}"></i>
         <span class="obj-no">OBJ ${objNoB}</span>
-        <span style="margin-left:auto; font-weight:900">${best.pct}%</span>
+        <span style="margin-left:auto; font-weight:900">${window.fmtNum(best.pct)}%</span>
       </div>
       <div class="kpi-desc" title="${esc(best.nome||'—')}">${esc(best.nome||'—')}</div>`;
 
@@ -1114,7 +1114,7 @@ function renderKPIs(itemsOrdered, data){
       <div class="kpi-obj">
         <i class="${iconW}" style="color:${colorW}"></i>
         <span class="obj-no">OBJ ${objNoW}</span>
-        <span style="margin-left:auto; font-weight:900">${worst.pct}%</span>
+        <span style="margin-left:auto; font-weight:900">${window.fmtNum(worst.pct)}%</span>
       </div>
       <div class="kpi-desc" title="${esc(worst.nome||'—')}">${esc(worst.nome||'—')}</div>`;
   } else {
@@ -1212,7 +1212,7 @@ function applyBSCValues(avgs){
   const mean = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
   const kpiEl = $('#kpi_media');
   const barEl = $('#kpi_media_bar > span');
-  if (kpiEl) kpiEl.innerHTML = (mean==null ? '—%' : `<span class="kpi-big">${mean}%</span>`);
+  if (kpiEl) kpiEl.innerHTML = (mean==null ? '—%' : `<span class="kpi-big">${window.fmtNum(mean)}%</span>`);
   if (barEl)  barEl.style.width = (mean==null ? '0' : mean) + '%';
 }
 
@@ -1264,7 +1264,7 @@ function drawRanking(){
           <span class="crit">Críticos: <strong>${krred}</strong></span>
         </div>
       </div>
-      <div class="val" title="${esc(nome)}">${media}%</div>`;
+      <div class="val" title="${esc(nome)}">${window.fmtNum(media)}%</div>`;
     box.appendChild(row);
   });
   requestAnimationFrame(()=> syncRankHeight());
@@ -1304,7 +1304,7 @@ function renderObjetivos(items){
       </div>
       <div class="obj-prog"><span style="width:0%"></span></div>
       <div class="obj-foot">
-        <span><strong>${(o.pct==null?'—':(o.pct+'%'))}</strong></span>
+        <span><strong>${(o.pct==null?'—':(window.fmtNum(o.pct)+'%'))}</strong></span>
         <span class="tiny-dots" title="KRs: 🟢 No trilho | 🟡 Atenção | 🔴 Crítico | ⚪ Sem apontamento">
           <span class="dot g"></span> ${counts.verde||0}
           <span class="dot y" style="margin-left:6px"></span> ${counts.amarelo||0}
@@ -1493,7 +1493,7 @@ function setObjCardProgress(card, pct){
   const label = card.querySelector('.obj-foot > span strong');
   const v = (pct==null || isNaN(pct)) ? null : Math.max(0, Math.min(100, Number(pct)));
   if (bar) bar.style.width = (v==null ? '0%' : (v + '%'));
-  if (label) label.textContent = (v==null ? '—' : (v + '%'));
+  if (label) label.textContent = (v==null ? '—' : (window.fmtNum(v) + '%'));
 
   // [NOVO] persistir no DOM e reagendar recálculo do BSC
   card.dataset.pct = (v==null ? '' : String(v));
@@ -1550,7 +1550,7 @@ function renderKPIs(itemsOrdered, data){
      </div>`;
 
   const mediaPct = (data.kpi?.media ?? null);
-  const mediaTxt = (mediaPct===null || isNaN(mediaPct)) ? '—' : `${mediaPct}%`;
+  const mediaTxt = (mediaPct===null || isNaN(mediaPct)) ? '—' : `${window.fmtNum(mediaPct)}%`;
   $('#kpi_media').innerHTML = `<span class="kpi-big">${mediaTxt}</span>`;
   const bar = $('#kpi_media_bar > span');
   if (bar){
@@ -1580,7 +1580,7 @@ function renderKPIs(itemsOrdered, data){
       `<div class="kpi-obj">
          <i class="${iconB}" style="color:${colorB}"></i>
          <span class="obj-no">OBJ ${objNoB}</span>
-         <span style="margin-left:auto; font-weight:900">${best.pct}%</span>
+         <span style="margin-left:auto; font-weight:900">${window.fmtNum(best.pct)}%</span>
        </div>
        <div class="kpi-desc" title="${esc(best.nome||'—')}">${esc(best.nome||'—')}</div>`;
 
@@ -1588,7 +1588,7 @@ function renderKPIs(itemsOrdered, data){
       `<div class="kpi-obj">
          <i class="${iconW}" style="color:${colorW}"></i>
          <span class="obj-no">OBJ ${objNoW}</span>
-         <span style="margin-left:auto; font-weight:900">${worst.pct}%</span>
+         <span style="margin-left:auto; font-weight:900">${window.fmtNum(worst.pct)}%</span>
        </div>
        <div class="kpi-desc" title="${esc(worst.nome||'—')}">${esc(worst.nome||'—')}</div>`;
   } else {
@@ -1685,7 +1685,7 @@ function applyBSCValues(avgs){
   const mean = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
   const kpiEl = $('#kpi_media');
   const barEl = $('#kpi_media_bar > span');
-  if (kpiEl) kpiEl.innerHTML = (mean==null ? '—%' : `<span class="kpi-big">${mean}%</span>`);
+  if (kpiEl) kpiEl.innerHTML = (mean==null ? '—%' : `<span class="kpi-big">${window.fmtNum(mean)}%</span>`);
   if (barEl)  barEl.style.width = (mean==null ? '0' : mean) + '%';
 }
 
@@ -1736,7 +1736,7 @@ function drawRanking(){
            <span class="crit">Críticos: <strong>${krred}</strong></span>
          </div>
        </div>
-       <div class="val" title="${esc(nome)}">${media}%</div>`;
+       <div class="val" title="${esc(nome)}">${window.fmtNum(media)}%</div>`;
     box.appendChild(row);
   });
   requestAnimationFrame(()=> syncRankHeight());
@@ -1793,7 +1793,7 @@ function renderObjetivos(items){
          </div>
          <div class="obj-prog"><span style="width:0%"></span></div>
          <div class="obj-foot">
-           <span><strong>${(o.pct==null?'—':(o.pct+'%'))}</strong></span>
+           <span><strong>${(o.pct==null?'—':(window.fmtNum(o.pct)+'%'))}</strong></span>
            <span class="tiny-dots" title="KRs: 🟢 No trilho | 🟡 Atenção | 🔴 Crítico | ⚪ Sem apontamento">
              <span class="dot g"></span> ${counts.verde||0}
              <span class="dot y" style="margin-left:6px"></span> ${counts.amarelo||0}
@@ -1859,8 +1859,8 @@ function renderBudget(b){
   $('#b_aprov').textContent = brl(ap);
   $('#b_real').textContent  = brl(re);
   $('#b_saldo').textContent = brl(sa);
-  $('#b_real_pct').textContent  = `${pRe}%`;
-  $('#b_saldo_pct').textContent = `${pSa}%`;
+  $('#b_real_pct').textContent  = `${window.fmtNum(pRe)}%`;
+  $('#b_saldo_pct').textContent = `${window.fmtNum(pSa)}%`;
 
   const svg = $('#b_spark');
   while(svg.firstChild) svg.removeChild(svg.firstChild);
