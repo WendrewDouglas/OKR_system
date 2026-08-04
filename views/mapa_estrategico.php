@@ -8,6 +8,7 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__.'/../auth/acl.php';
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 if (($_GET['mode'] ?? '') === 'edit') {
   require_cap('W:objetivo@ORG');
 }
@@ -744,9 +745,9 @@ $totalPil = count($pilares);
           </div>
         </div>
         <div class="head-meta">
-          <span class="pill"><i class="fa-solid fa-layer-group"></i> Perspectivas: <?= (int)$totalPil ?></span>
-          <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= (int)$totalObj ?></span>
-          <span class="pill"><i class="fa-solid fa-list-check"></i> Key Results: <?= (int)$totalKR ?></span>
+          <span class="pill"><i class="fa-solid fa-layer-group"></i> Perspectivas: <?= num_br((int)$totalPil, 0) ?></span>
+          <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= num_br((int)$totalObj, 0) ?></span>
+          <span class="pill"><i class="fa-solid fa-list-check"></i> Key Results: <?= num_br((int)$totalKR, 0) ?></span>
         </div>
       </section>
 
@@ -796,7 +797,7 @@ $totalPil = count($pilares);
                   </span>
                 </div>
                 <div class="pilar-badges">
-                  <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= count($objs) ?></span>
+                  <span class="pill"><i class="fa-solid fa-bullseye"></i> Objetivos: <?= num_br(count($objs), 0) ?></span>
                 </div>
               </div>
             </aside>
@@ -841,7 +842,7 @@ $totalPil = count($pilares);
                   <div class="more">
                     <div class="badges">
                       <span class="badge owner"><i class="fa-regular fa-user"></i> <?= h($dono) ?></span>
-                      <span class="badge b-gray"><i class="fa-solid fa-list-check"></i> KR: <strong><?= (int)$m['qtd_kr'] ?></strong></span>
+                      <span class="badge b-gray"><i class="fa-solid fa-list-check"></i> KR: <strong><?= num_br((int)$m['qtd_kr'], 0) ?></strong></span>
                       <?php if(!empty($obj['tipo'])): ?><span class="badge b-type"><?= h(normalizeText($obj['tipo'])) ?></span><?php endif; ?>
                       <?php if(!empty($obj['dt_prazo'])):
                         try{ $prazo=(new DateTime($obj['dt_prazo']))->format('d/m/Y'); }catch(Throwable){ $prazo='Data inválida'; }

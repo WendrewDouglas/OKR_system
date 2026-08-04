@@ -427,9 +427,9 @@ function render(){
   const sPend = Number.isFinite(DATA?.stats?.pendentes) ? parseInt(DATA.stats.pendentes,10) : '—';
   const sRep  = Number.isFinite(DATA?.stats?.reprovados) ? parseInt(DATA.stats.reprovados,10) : '—';
   const sApr  = Number.isFinite(DATA?.stats?.aprovados30) ? parseInt(DATA.stats.aprovados30,10) : '—';
-  $('#pillPendente').innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pendentes: ${sPend}`;
-  $('#pillReprovado').innerHTML = `<i class="fa-solid fa-xmark"></i> Reprovados: ${sRep}`;
-  $('#pillAprovado').innerHTML = `<i class="fa-solid fa-check"></i> Aprovados (últimos 30d): ${sApr}`;
+  $('#pillPendente').innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pendentes: ${window.fmtNum(sPend, 0)}`;
+  $('#pillReprovado').innerHTML = `<i class="fa-solid fa-xmark"></i> Reprovados: ${window.fmtNum(sRep, 0)}`;
+  $('#pillAprovado').innerHTML = `<i class="fa-solid fa-check"></i> Aprovados (últimos 30d): ${window.fmtNum(sApr, 0)}`;
 
   const mod = $('#fModulo').value;
   const sts = $('#fStatus').value;
@@ -640,7 +640,7 @@ function updateBulkBar(){
   const count = $('#bulkCount');
   if(checked.length > 0){
     bar.classList.add('show');
-    count.textContent = checked.length;
+    count.textContent = window.fmtNum(checked.length, 0);
   } else {
     bar.classList.remove('show');
   }
@@ -686,7 +686,7 @@ $('#bulkApprove')?.addEventListener('click', async ()=>{
 
   if(successCount > 0) await loadData();
   if(successCount < checked.length){
-    alert(`${successCount} de ${checked.length} itens aprovados. Alguns falharam.`);
+    alert(`${window.fmtNum(successCount, 0)} de ${window.fmtNum(checked.length, 0)} itens aprovados. Alguns falharam.`);
   }
 });
 </script>

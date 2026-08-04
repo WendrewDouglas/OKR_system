@@ -1069,10 +1069,10 @@ function renderKPIs(itemsOrdered, data){
 
   $('#kpi_obj').innerHTML = `
     <div class="kpi-counts">
-      <span class="kpi-big" id="kpi_obj_n">${objN}</span>
-      <span class="chip-mini"><i class="fa-solid fa-list-check"></i> <span id="kpi_krs_total">${krN}</span> KRs</span>
+      <span class="kpi-big" id="kpi_obj_n">${window.fmtNum(objN, 0)}</span>
+      <span class="chip-mini"><i class="fa-solid fa-list-check"></i> <span id="kpi_krs_total">${window.fmtNum(krN, 0)}</span> KRs</span>
       <span class="chip-mini chip-danger" title="KRs críticos (vermelho)">
-        <i class="fa-solid fa-triangle-exclamation"></i> <span id="kpi_krs_crit">${krCritN}</span>
+        <i class="fa-solid fa-triangle-exclamation"></i> <span id="kpi_krs_crit">${window.fmtNum(krCritN, 0)}</span>
       </span>
     </div>`;
 
@@ -1148,7 +1148,7 @@ function renderBSC(pilares){
     lab.className='bsc-label';
     lab.setAttribute('data-pilar', key);
     lab.id = `bsc_lab_${key}`;
-    lab.innerHTML = `<div>${labelPillar(key)}</div><div class="bsc-sub">${(p.count_obj||0)}-Objs</div>`;
+    lab.innerHTML = `<div>${labelPillar(key)}</div><div class="bsc-sub">${window.fmtNum(p.count_obj||0, 0)}-Objs</div>`;
     labels.appendChild(lab);
 
     requestAnimationFrame(()=>{
@@ -1259,9 +1259,9 @@ function drawRanking(){
         <div class="name">${esc(firstLast)}</div>
         <div class="bar"><span style="width:${media}%"></span></div>
         <div class="meta">
-          <span>Obj: <strong>${obj}</strong></span>
-          <span>KRs: <strong>${krt}</strong></span>
-          <span class="crit">Críticos: <strong>${krred}</strong></span>
+          <span>Obj: <strong>${window.fmtNum(obj, 0)}</strong></span>
+          <span>KRs: <strong>${window.fmtNum(krt, 0)}</strong></span>
+          <span class="crit">Críticos: <strong>${window.fmtNum(krred, 0)}</strong></span>
         </div>
       </div>
       <div class="val" title="${esc(nome)}">${window.fmtNum(media)}%</div>`;
@@ -1306,10 +1306,10 @@ function renderObjetivos(items){
       <div class="obj-foot">
         <span><strong>${(o.pct==null?'—':(window.fmtNum(o.pct)+'%'))}</strong></span>
         <span class="tiny-dots" title="KRs: 🟢 No trilho | 🟡 Atenção | 🔴 Crítico | ⚪ Sem apontamento">
-          <span class="dot g"></span> ${counts.verde||0}
-          <span class="dot y" style="margin-left:6px"></span> ${counts.amarelo||0}
-          <span class="dot r" style="margin-left:6px"></span> ${counts.vermelho||0}
-          <span class="dot c" style="margin-left:6px"></span> ${counts.cinza||0}
+          <span class="dot g"></span> ${window.fmtNum(counts.verde||0, 0)}
+          <span class="dot y" style="margin-left:6px"></span> ${window.fmtNum(counts.amarelo||0, 0)}
+          <span class="dot r" style="margin-left:6px"></span> ${window.fmtNum(counts.vermelho||0, 0)}
+          <span class="dot c" style="margin-left:6px"></span> ${window.fmtNum(counts.cinza||0, 0)}
         </span>
       </div>
       <div class="obj-more"></div>`;
@@ -1523,7 +1523,7 @@ function recomputeAggregates(){
   });
   __krCritByOwner = ownerRed;
   const n = document.getElementById('kpi_krs_crit');
-  if(n) n.textContent = String(totalRed);
+  if(n) n.textContent = window.fmtNum(totalRed, 0);
 
   if(Array.isArray(__rankData) && __rankData.length){
     __rankData = __rankData.map(r=>{
@@ -1621,7 +1621,7 @@ function renderBSC(pilares){
     const lab = document.createElement('div');
     lab.className='bsc-label';
     lab.id = `bsc_lab_${key}`;
-    lab.innerHTML = `<div>${labelPillar(key)}</div><div class="bsc-sub">${(p.count_obj||0)}-Objs</div>`;
+    lab.innerHTML = `<div>${labelPillar(key)}</div><div class="bsc-sub">${window.fmtNum(p.count_obj||0, 0)}-Objs</div>`;
     labels.appendChild(lab);
 
     requestAnimationFrame(()=>{
@@ -1731,9 +1731,9 @@ function drawRanking(){
          <div class="name">${esc(firstLast)}</div>
          <div class="bar"><span style="width:${Math.max(0,Math.min(100,media))}%"></span></div>
          <div class="meta">
-           <span>Obj: <strong>${obj}</strong></span>
-           <span>KRs: <strong>${krt}</strong></span>
-           <span class="crit">Críticos: <strong>${krred}</strong></span>
+           <span>Obj: <strong>${window.fmtNum(obj, 0)}</strong></span>
+           <span>KRs: <strong>${window.fmtNum(krt, 0)}</strong></span>
+           <span class="crit">Críticos: <strong>${window.fmtNum(krred, 0)}</strong></span>
          </div>
        </div>
        <div class="val" title="${esc(nome)}">${window.fmtNum(media)}%</div>`;
@@ -1795,10 +1795,10 @@ function renderObjetivos(items){
          <div class="obj-foot">
            <span><strong>${(o.pct==null?'—':(window.fmtNum(o.pct)+'%'))}</strong></span>
            <span class="tiny-dots" title="KRs: 🟢 No trilho | 🟡 Atenção | 🔴 Crítico | ⚪ Sem apontamento">
-             <span class="dot g"></span> ${counts.verde||0}
-             <span class="dot y" style="margin-left:6px"></span> ${counts.amarelo||0}
-             <span class="dot r" style="margin-left:6px"></span> ${counts.vermelho||0}
-             <span class="dot c" style="margin-left:6px"></span> ${counts.cinza||0}
+             <span class="dot g"></span> ${window.fmtNum(counts.verde||0, 0)}
+             <span class="dot y" style="margin-left:6px"></span> ${window.fmtNum(counts.amarelo||0, 0)}
+             <span class="dot r" style="margin-left:6px"></span> ${window.fmtNum(counts.vermelho||0, 0)}
+             <span class="dot c" style="margin-left:6px"></span> ${window.fmtNum(counts.cinza||0, 0)}
            </span>
          </div>
          <div class="obj-more"></div>`;
@@ -1832,7 +1832,7 @@ function updateKRListFromDetalhe(card, krs){
   for (const kr of krs) {
     const label = kr?.descricao || kr?.label || 'KR';
     const pa = kr?.progress?.pct_atual;
-    const pctTxt = (Number.isFinite(pa) ? (Math.round(Math.max(0,Math.min(100,pa)))+'%') : '—');
+    const pctTxt = (Number.isFinite(pa) ? (window.fmtNum(Math.round(Math.max(0,Math.min(100,pa))), 0)+'%') : '—');
     list.push({label, pctTxt, order: Number.isFinite(pa)? -pa : 9999});
   }
   const moreBox = card.querySelector('.obj-more');

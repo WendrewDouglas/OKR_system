@@ -10,6 +10,7 @@ session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 
 // Gate automático via dom_paginas
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
@@ -70,7 +71,7 @@ if (isset($pdo)) {
     $badCollCount = (int)$collStmt->fetchColumn();
     $checks['collation'] = $badCollCount === 0
         ? ['status' => 'PASS', 'label' => 'Collation UTF8MB4']
-        : ['status' => 'WARN', 'label' => 'Collation UTF8MB4', 'detail' => $badCollCount . ' colunas com collation diferente'];
+        : ['status' => 'WARN', 'label' => 'Collation UTF8MB4', 'detail' => num_br($badCollCount, 0) . ' colunas com collation diferente'];
 
     // Orphan KRs
     $orphanKrs = (int)$pdo->query("
@@ -362,12 +363,12 @@ $phpunitInstalled = is_file(dirname(__DIR__) . '/vendor/bin/phpunit');
       <i class="fas <?= $overall === 'PASS' ? 'fa-check-circle' : ($overall === 'FAIL' ? 'fa-times-circle' : 'fa-exclamation-triangle') ?>"></i>
       <span>Status Geral: <?= $overall ?></span>
       <div class="sh-overall-counts">
-        <span><i class="fas fa-check-circle" style="color:#27ae60"></i> <?= $passCount ?> OK</span>
+        <span><i class="fas fa-check-circle" style="color:#27ae60"></i> <?= num_br($passCount, 0) ?> OK</span>
         <?php if ($warnCount > 0): ?>
-        <span><i class="fas fa-exclamation-triangle" style="color:#f1c40f"></i> <?= $warnCount ?> Avisos</span>
+        <span><i class="fas fa-exclamation-triangle" style="color:#f1c40f"></i> <?= num_br($warnCount, 0) ?> Avisos</span>
         <?php endif; ?>
         <?php if ($failCount > 0): ?>
-        <span><i class="fas fa-times-circle" style="color:#e74c3c"></i> <?= $failCount ?> Falhas</span>
+        <span><i class="fas fa-times-circle" style="color:#e74c3c"></i> <?= num_br($failCount, 0) ?> Falhas</span>
         <?php endif; ?>
       </div>
     </div>

@@ -12,6 +12,7 @@ if (isset($_GET['ajax'])) {
   require_once __DIR__ . '/../auth/functions.php';
   require_once __DIR__.'/../auth/acl.php';
   require_once __DIR__.'/../auth/helpers/nome_format.php';
+  require_once __DIR__.'/../auth/helpers/num_format.php';
 
   // Gate automático pela tabela dom_paginas.requires_cap
   gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
@@ -2679,13 +2680,13 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       <section class="kpi-grid">
         <div class="kpi">
           <div class="kpi-head"><span>KRs</span><div class="kpi-icon"><i class="fa-solid fa-list-check"></i></div></div>
-          <div class="kpi-value" id="kpiTotalKrs"><?= (int)$kpi['total_krs'] ?></div>
-          <div class="kpi-sub">Críticos: <strong id="kpiCriticos"><?= (int)$kpi['criticos'] ?></strong> · Em risco: <strong id="kpiRisco"><?= (int)$kpi['em_risco'] ?></strong></div>
+          <div class="kpi-value" id="kpiTotalKrs"><?= num_br((int)$kpi['total_krs'], 0) ?></div>
+          <div class="kpi-sub">Críticos: <strong id="kpiCriticos"><?= num_br((int)$kpi['criticos'], 0) ?></strong> · Em risco: <strong id="kpiRisco"><?= num_br((int)$kpi['em_risco'], 0) ?></strong></div>
         </div>
         <div class="kpi">
           <div class="kpi-head"><span>Iniciativas</span><div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div></div>
-          <div class="kpi-value"><?= (int)$tIni ?></div>
-          <div class="kpi-sub">Com orçamento: <strong><?= (int)$comOrc ?></strong></div>
+          <div class="kpi-value"><?= num_br((int)$tIni, 0) ?></div>
+          <div class="kpi-sub">Com orçamento: <strong><?= num_br((int)$comOrc, 0) ?></strong></div>
         </div>
         <div class="kpi">
           <div class="kpi-head"><span>Orçamento aprovado</span><div class="kpi-icon money"><i class="fa-solid fa-coins"></i></div></div>
@@ -3778,8 +3779,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       const objPctEsper = n > 0 ? Math.round(sumEsper / n) : null;
       const objOk       = (objPctAtual !== null && objPctEsper !== null) ? (objPctAtual >= objPctEsper) : null;
 
-      const objPctLabel = objPctAtual !== null ? `${objPctAtual}%` : '—';
-      const objExpLabel = objPctEsper !== null ? `${objPctEsper}%` : '—';
+      const objPctLabel = objPctAtual !== null ? `${objPctAtual.toLocaleString('pt-BR')}%` : '—';
+      const objExpLabel = objPctEsper !== null ? `${objPctEsper.toLocaleString('pt-BR')}%` : '—';
       const objCls      = objOk === null ? 'white' : (objOk ? 'prog-ok' : 'prog-bad');
 
       const metaBar = document.querySelector('.obj-meta-pills');
@@ -3834,9 +3835,9 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         const ativos  = data.krs.filter(k => !((k.status || '').toLowerCase().includes('cancel')));
         const criticos = ativos.filter(k => farolDe(k) === 'vermelho').length;
         const emRisco  = ativos.filter(k => farolDe(k) === 'amarelo').length;
-        if (elTot) elTot.textContent = data.krs.length;
-        if (elCri) elCri.textContent = criticos;
-        if (elRis) elRis.textContent = emRisco;
+        if (elTot) elTot.textContent = window.fmtNum(data.krs.length, 0);
+        if (elCri) elCri.textContent = window.fmtNum(criticos, 0);
+        if (elRis) elRis.textContent = window.fmtNum(emRisco, 0);
       }
 
     }
@@ -4370,7 +4371,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }
 
       // KPIs e agregados
-      setText(`kpi_ini_${id}`,     data.agregados.iniciativas ?? '—');
+      setText(`kpi_ini_${id}`,     fmtNum(data.agregados.iniciativas));
       setText(`orc_aprov_${id}`,   fmtBRL(data.agregados.orcamento.aprovado ?? 0));
       setText(`orc_real_${id}`,    fmtBRL(data.agregados.orcamento.realizado ?? 0));
       setText(`orc_saldo_${id}`,   fmtBRL(data.agregados.orcamento.saldo ?? 0));

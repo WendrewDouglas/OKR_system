@@ -440,7 +440,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     if (pt && pb){ pt.textContent = `Período: ${fmtBR(startISO)} → ${fmtBR(endISO)}`; pb.style.display='inline-flex'; }
     const ids = ($('#responsavel')?.value || '').split(',').filter(Boolean);
     const ob = $('#ownersBadge'), ot = $('#ownersText');
-    if (ids.length>0 && ob && ot){ ot.textContent = `Responsáveis: ${ids.length}`; ob.style.display='inline-flex'; }
+    if (ids.length>0 && ob && ot){ ot.textContent = `Responsáveis: ${window.fmtNum(ids.length, 0)}`; ob.style.display='inline-flex'; }
     else if (ob){ ob.style.display='none'; }
   }
 

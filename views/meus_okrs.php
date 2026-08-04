@@ -529,7 +529,7 @@ function pill_text_color(string $hex): string {
       function farolStyle(f){ return farolStyles[(f||'cinza').toLowerCase()] || farolStyles.cinza; }
       function miniCardHtml(farol, progress, href){
         const [bg,fg] = farolStyle(farol);
-        const pct = (progress===null || progress===undefined || progress==='') ? '\u2014' : `${Math.round(progress)}%`;
+        const pct = (progress===null || progress===undefined || progress==='') ? '\u2014' : `${window.fmtNum(Math.round(progress), 0)}%`;
         const fLabel = farol ? String(farol).charAt(0).toUpperCase()+String(farol).slice(1) : '\u2014';
         const style = `background:${bg};color:${fg}`;
         const title = `Progresso: ${pct} \u00b7 Farol: ${fLabel}`;
@@ -586,7 +586,7 @@ function pill_text_color(string $hex): string {
                 </div>
                 <div class="orc-bar">
                   <div class="orc-track"><div class="orc-fill ${barClass}" style="width:${pct}%"></div></div>
-                  <span class="orc-pct">${pct}%</span>
+                  <span class="orc-pct">${window.fmtNum(pct, 0)}%</span>
                   <span style="font-size:.68rem;color:var(--muted)">Gasto: ${fmtMoney(orc.total_despesas)}</span>
                 </div>
               </div>
@@ -631,7 +631,7 @@ function pill_text_color(string $hex): string {
               </div>
               <div class="node-badges">
                 ${orcAprov > 0 ? `<span class="count-badge" title="Orçamento aprovado"><i class="fa-solid fa-coins"></i> ${fmtMoney(orcAprov)}</span>` : ''}
-                ${childCount > 0 ? `<span class="count-badge"><i class="fa-solid fa-coins"></i> ${childCount}</span>` : ''}
+                ${childCount > 0 ? `<span class="count-badge"><i class="fa-solid fa-coins"></i> ${window.fmtNum(childCount, 0)}</span>` : ''}
               </div>
             </div>
             <div class="tree-children">${orcsHtml}</div>
@@ -688,7 +688,7 @@ function pill_text_color(string $hex): string {
               </div>
               <div class="node-badges">
                 ${sociosHtml(kr.socios)}
-                ${childCount > 0 ? `<span class="count-badge" title="${childCount} iniciativas"><i class="fa-solid fa-list-check"></i> ${childCount}</span>` : ''}
+                ${childCount > 0 ? `<span class="count-badge" title="${childCount} iniciativas"><i class="fa-solid fa-list-check"></i> ${window.fmtNum(childCount, 0)}</span>` : ''}
               </div>
               ${miniCardHtml(kr.farol, kr.progress)}
             </div>
@@ -727,7 +727,7 @@ function pill_text_color(string $hex): string {
               </div>
               <div class="node-badges">
                 ${sociosHtml(obj.socios)}
-                ${childCount > 0 ? `<span class="count-badge" title="${childCount} Key Results"><i class="fa-solid fa-key"></i> ${childCount}</span>` : ''}
+                ${childCount > 0 ? `<span class="count-badge" title="${childCount} Key Results"><i class="fa-solid fa-key"></i> ${window.fmtNum(childCount, 0)}</span>` : ''}
               </div>
               ${miniCardHtml(obj.farol, obj.progress, `/OKR_system/views/detalhe_okr.php?id=${obj.id_objetivo}`)}
             </div>
@@ -770,7 +770,7 @@ function pill_text_color(string $hex): string {
       function updateChipCounts() {
         const counts = statusCounts();
         document.querySelectorAll('#status-filter-bar .status-chip').forEach(chip => {
-          chip.querySelector('.chip-count').textContent = counts[chip.dataset.status] ?? 0;
+          chip.querySelector('.chip-count').textContent = window.fmtNum(counts[chip.dataset.status] ?? 0, 0);
         });
       }
 
