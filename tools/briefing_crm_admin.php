@@ -16,6 +16,10 @@ declare(strict_types=1);
 //   php tools/briefing_crm_admin.php resend <id|token>
 //        reenvia o aviso por e-mail (útil se o SMTP falhou na hora)
 //
+//   php tools/briefing_crm_admin.php mailtest
+//        mostra o roteamento de cada destino e manda uma mensagem de
+//        teste para todos — sem precisar preencher o formulário
+//
 // Runner PHP/PDO de propósito: o cliente `mysql` da CLI não tem grant.
 // =============================================================
 
@@ -140,7 +144,48 @@ switch ($cmd) {
         echo $ok ? "Aviso reenviado.\n" : "Falhou o reenvio — ver ERROR_LOG_PATH.\n";
         break;
 
+    case 'mailtest':
+        $recipients = bc_owner_recipients();
+        echo "Destinos configurados: " . implode(', ', $recipients) . "\n\n";
+
+        // Como o exim local roteia cada um. `deliver_local*` -> 127.0.0.1
+        // significa que a mensagem é entregue no próprio servidor e nunca
+        // chega ao provedor real do domínio.
+        foreach ($recipients as $to) {
+            $out = [];
+            @exec('exim -bt ' . escapeshellarg($to) . ' 2>&1', $out);
+            $rota = '';
+            foreach ($out as $line) {
+                if (stripos($line, 'router') !== false || stripos($line, 'undeliverable') !== false) {
+                    $rota = trim($line);
+                    break;
+                }
+            }
+            $local = stripos($rota, 'deliver_local') !== false;
+            printf("  %-38s %s\n", $to, $rota === '' ? '(sem info)' : $rota);
+            if ($local) {
+                echo "  " . str_repeat(' ', 38) . "^^ ENTREGA LOCAL: não sai do servidor\n";
+            }
+        }
+
+        echo "\nEnviando teste...\n";
+        $html = bc_email_shell('Teste de entrega do Briefing CRM',
+            '<h1 style="margin:0 0 10px;font:650 22px/1.2 Segoe UI,Arial,sans-serif;color:#101F28;">'
+            . 'Teste de entrega</h1>'
+            . '<p style="margin:0;font:400 15px/1.6 Georgia,serif;color:#344A54;">'
+            . 'Se esta mensagem chegou, este endereço recebe o relatório do briefing. '
+            . 'Enviada em ' . date('d/m/Y H:i:s') . '.</p>');
+
+        foreach ($recipients as $to) {
+            $ok = sendTransactionalMail($to, 'Teste de entrega — Briefing CRM', $html,
+                BC_CONTACT_EMAIL, BC_OWNER_NAME);
+            printf("  %-38s %s\n", $to, $ok ? 'aceito' : 'FALHOU');
+        }
+        echo "\nConfira as caixas (inclusive spam). 'aceito' só quer dizer que\n"
+           . "o servidor recebeu a mensagem — não que ela foi entregue.\n";
+        break;
+
     default:
-        fwrite(STDERR, "Comando desconhecido: {$cmd}\nUse: list | show <ref> | delete <ref> | resend <ref>\n");
+        fwrite(STDERR, "Comando desconhecido: {$cmd}\nUse: list | show <ref> | delete <ref> | resend <ref> | mailtest\n");
         exit(1);
 }

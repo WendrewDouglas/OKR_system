@@ -40,10 +40,27 @@ if (!defined('BC_BOOTSTRAPPED')) {
     if (!defined('BC_CONSENT_VERSION')) {
         define('BC_CONSENT_VERSION', '1.0');
     }
-    // Destino das respostas. Mesmo domínio do remetente SMTP
-    // (contato@planningbi.com.br) para não cair em spam.
-    if (!defined('BC_OWNER_EMAIL')) {
-        define('BC_OWNER_EMAIL', 'wendrew.gomes@planningbi.com.br');
+    // Destinos do relatório, em ordem de preferência (lista separada por
+    // vírgula, sobrescrevível pelo .env).
+    //
+    // O primeiro é EXTERNO de propósito: o exim da HostGator trata
+    // planningbi.com.br como domínio local (`exim -bt` mostra
+    // deliver_local_outside_jail -> 127.0.0.1), então tudo que o servidor
+    // manda para lá é entregue nele mesmo e nunca chega ao Titan. O
+    // @planningbi segue na lista para voltar a funcionar sozinho quando a
+    // autenticação SMTP do Titan for corrigida — aí o envio passa pelo
+    // Titan e não encosta mais no exim local.
+    if (!defined('BC_OWNER_EMAILS')) {
+        define('BC_OWNER_EMAILS', (string) env(
+            'BRIEFING_OWNER_EMAILS',
+            'wendrew.douglas@gmail.com,wendrew.gomes@planningbi.com.br'
+        ));
+    }
+    // Endereço institucional mostrado a quem responde (Reply-To da cópia).
+    // Responder para cá funciona normalmente: o problema de roteamento só
+    // afeta o que o servidor ENVIA, não o que entra pelo MX do Titan.
+    if (!defined('BC_CONTACT_EMAIL')) {
+        define('BC_CONTACT_EMAIL', 'wendrew.gomes@planningbi.com.br');
     }
     if (!defined('BC_OWNER_NAME')) {
         define('BC_OWNER_NAME', 'Wendrew');

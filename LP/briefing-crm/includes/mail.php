@@ -78,8 +78,27 @@ function bc_email_shell(string $preheader, string $inner): string
 }
 
 /**
+ * Destinos do relatório, já validados e sem duplicata.
+ */
+function bc_owner_recipients(): array
+{
+    $out = [];
+    foreach (explode(',', BC_OWNER_EMAILS) as $raw) {
+        $addr = mb_strtolower(trim($raw));
+        if ($addr !== '' && bc_valid_email($addr) && !in_array($addr, $out, true)) {
+            $out[] = $addr;
+        }
+    }
+    return $out;
+}
+
+/**
  * Aviso para o dono do projeto, com o briefing inteiro.
  * Reply-To aponta para a respondente — responder o e-mail fala com ela.
+ *
+ * Envia para TODOS os destinos configurados e retorna true se ao menos um
+ * foi aceito: um endereço engolido pelo roteamento local não pode fazer o
+ * briefing inteiro parecer perdido.
  */
 function bc_send_owner_notification(array $sess, array $answers): bool
 {
@@ -120,15 +139,25 @@ function bc_send_owner_notification(array $sess, array $answers): bool
         . 'Concluído em ' . date('d/m/Y \à\s H:i') . '. '
         . 'Responder este e-mail fala direto com ' . htmlspecialchars($nome, ENT_QUOTES, 'UTF-8') . '.</p>';
 
-    $replyTo = bc_valid_email($email) ? $email : BC_OWNER_EMAIL;
+    $replyTo = bc_valid_email($email) ? $email : BC_CONTACT_EMAIL;
+    $subject = 'Briefing CRM respondido — ' . $nome . ($esc !== '' ? ' (' . $esc . ')' : '');
+    $html    = bc_email_shell('Briefing do CRM preenchido por ' . $nome, $inner);
 
-    return sendTransactionalMail(
-        BC_OWNER_EMAIL,
-        'Briefing CRM respondido — ' . $nome . ($esc !== '' ? ' (' . $esc . ')' : ''),
-        bc_email_shell('Briefing do CRM preenchido por ' . $nome, $inner),
-        $replyTo,
-        $nome !== '' ? $nome : 'Briefing CRM'
-    );
+    $anyOk = false;
+    foreach (bc_owner_recipients() as $to) {
+        $ok = sendTransactionalMail(
+            $to,
+            $subject,
+            $html,
+            $replyTo,
+            $nome !== '' ? $nome : 'Briefing CRM'
+        );
+        $anyOk = $anyOk || $ok;
+        if (!$ok) {
+            error_log('[BC] relatório não aceito para ' . $to);
+        }
+    }
+    return $anyOk;
 }
 
 /**
@@ -161,7 +190,7 @@ function bc_send_respondent_copy(array $sess, array $answers): bool
         $email,
         'Sua cópia do briefing do CRM',
         bc_email_shell('Cópia das suas respostas do briefing', $inner),
-        BC_OWNER_EMAIL,
+        BC_CONTACT_EMAIL,
         BC_OWNER_NAME
     );
 }
