@@ -164,7 +164,11 @@ switch ($cmd) {
             $local = stripos($rota, 'deliver_local') !== false;
             printf("  %-38s %s\n", $to, $rota === '' ? '(sem info)' : $rota);
             if ($local) {
-                echo "  " . str_repeat(' ', 38) . "^^ ENTREGA LOCAL: não sai do servidor\n";
+                echo '  ' . str_repeat(' ', 38) . "^^ ENTREGA LOCAL: não sai do servidor\n";
+            } elseif (stripos($rota, 'undeliverable') !== false) {
+                // `exim -bt` sem root não resolve destino remoto; para domínio
+                // externo esse "undeliverable" é esperado e não significa nada.
+                echo '  ' . str_repeat(' ', 38) . "^^ domínio externo: teste inconclusivo aqui, confira a caixa\n";
             }
         }
 
