@@ -36,6 +36,16 @@ function e(string $v): string
 // isto vira "/briefing_kauana", que é onde a ponte expõe tudo.
 $urlBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\');
 $apiBase = $urlBase . '/api';
+
+// Open Graph exige URL absoluta — caminho relativo é ignorado pelos
+// leitores de preview (WhatsApp, Telegram, LinkedIn).
+$scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+$host    = (string) ($_SERVER['HTTP_HOST'] ?? 'planningbi.com.br');
+$absBase = $scheme . '://' . $host . $urlBase;
+
+$ogTitle = 'Briefing — sistema de CRM';
+$ogDesc  = 'Um retrato da operação de vocês e um briefing rápido para eu desenhar o CRM do escritório. Dá para responder em partes.';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -44,8 +54,34 @@ $apiBase = $urlBase . '/api';
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="theme-color" content="#0B6B60">
-<title>Briefing — sistema de CRM</title>
-<link rel="icon" href="<?= e($urlBase) ?>/assets/img/logo-planningbi.png">
+<title><?= e($ogTitle) ?></title>
+<meta name="description" content="<?= e($ogDesc) ?>">
+
+<!-- Ícones quadrados: o logo horizontal ficava esmagado na aba e no
+     atalho de tela inicial. -->
+<link rel="icon" type="image/png" sizes="32x32" href="<?= e($urlBase) ?>/assets/img/icon-32.png">
+<link rel="apple-touch-icon" href="<?= e($urlBase) ?>/assets/img/icon-180.png">
+
+<!-- Preview de compartilhamento (WhatsApp, Telegram, LinkedIn).
+     Imagem QUADRADA: no card pequeno do WhatsApp a miniatura é recortada
+     em quadrado, e uma imagem retangular perde as laterais. og:image
+     precisa de URL absoluta — caminho relativo é ignorado. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PlanningBI">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="<?= e($absBase) ?>/">
+<meta property="og:title" content="<?= e($ogTitle) ?>">
+<meta property="og:description" content="<?= e($ogDesc) ?>">
+<meta property="og:image" content="<?= e($absBase) ?>/assets/img/og-planningbi.png">
+<meta property="og:image:secure_url" content="<?= e($absBase) ?>/assets/img/og-planningbi.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="PlanningBI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= e($ogTitle) ?>">
+<meta name="twitter:description" content="<?= e($ogDesc) ?>">
+<meta name="twitter:image" content="<?= e($absBase) ?>/assets/img/og-planningbi.png">
 <style>
 :root{
   --paper:#F1F5F6; --surface:#FBFDFD; --surface-2:#E7EEEF;
