@@ -6,6 +6,9 @@ declare(strict_types=1);
 // Conteúdo (leitura da operação + possibilidades) e formulário em
 // blocos, renderizado a partir do catálogo em includes/questions.php —
 // front e back leem a MESMA fonte de verdade.
+//
+// Layout: grades editoriais largas no conteúdo, formulário focado com
+// trilha de progresso fixa no desktop e barra compacta no mobile.
 // =============================================================
 
 require_once dirname(__DIR__) . '/includes/bootstrap.php';
@@ -28,19 +31,21 @@ function e(string $v): string
     return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
 }
 
-// Base da API relativa ao diretório servido pela URL — não ao caminho do
-// arquivo no disco. Servido pela ponte /briefing_kauana/index.php isto vira
-// "/briefing_kauana/api", que é onde a ponte expõe os endpoints.
-$apiBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\') . '/api';
+// Base da API e dos assets relativa ao diretório servido pela URL — não
+// ao caminho do arquivo em disco. Pela ponte /briefing_kauana/index.php
+// isto vira "/briefing_kauana", que é onde a ponte expõe tudo.
+$urlBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\');
+$apiBase = $urlBase . '/api';
 ?>
 <!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="theme-color" content="#0B6B60">
 <title>Briefing — sistema de CRM</title>
+<link rel="icon" href="<?= e($urlBase) ?>/assets/img/logo-planningbi.png">
 <style>
 :root{
   --paper:#F1F5F6; --surface:#FBFDFD; --surface-2:#E7EEEF;
@@ -48,9 +53,13 @@ $apiBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\') . '/api';
   --rule:#CFDBDE; --rule-soft:#DFE8EA;
   --accent:#0B6B60; --accent-ink:#075049; --accent-wash:#DDECE9;
   --flag:#A9531F; --flag-wash:#F3E4D9;
+  --gold:#B8912F;
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
   --sans:"Segoe UI Variable Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+  --maxw:1140px;
+  --prose:66ch;
+  --pad:clamp(1.1rem,4vw,2.5rem);
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -59,338 +68,445 @@ $apiBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\') . '/api';
     --rule:#24373E; --rule-soft:#1B2B32;
     --accent:#4FAFA2; --accent-ink:#7CCBC0; --accent-wash:#12312E;
     --flag:#DB9160; --flag-wash:#2E2018;
+    --gold:#D9B45A;
   }
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%; scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:var(--serif); font-size:17px; line-height:1.62;
-  padding:clamp(1.5rem,5vw,4.5rem) clamp(1rem,4vw,2rem) 4rem;
   -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
 }
-.doc{max-width:66ch; margin:0 auto; display:flex; flex-direction:column; gap:3rem}
-h1,h2,h3{font-family:var(--sans); margin:0; line-height:1.18; letter-spacing:-.015em; text-wrap:balance}
-h1{font-size:clamp(1.9rem,1.3rem+2.5vw,2.75rem); font-weight:650}
-h2{font-size:clamp(1.25rem,1.1rem+.7vw,1.55rem); font-weight:620}
-h3{font-size:1.05rem; font-weight:640; letter-spacing:-.005em}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 var(--pad)}
+h1,h2,h3{font-family:var(--sans); margin:0; line-height:1.16; letter-spacing:-.018em; text-wrap:balance}
+h1{font-size:clamp(1.85rem,1.15rem+2.9vw,3.15rem); font-weight:660}
+h2{font-size:clamp(1.3rem,1.05rem+1.1vw,1.85rem); font-weight:630}
+h3{font-size:clamp(1rem,.97rem+.16vw,1.1rem); font-weight:645; letter-spacing:-.008em}
 p{margin:0}
 .eyebrow{font-family:var(--mono); font-size:.6875rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0}
+.prose{max-width:var(--prose)}
 
-/* ---------- masthead ---------- */
-.masthead{display:flex; flex-direction:column; gap:1rem; border-bottom:2px solid var(--ink); padding-bottom:1.4rem}
-.standfirst{font-size:1.15rem; line-height:1.55; color:var(--ink-soft)}
+/* ---------------- topbar ---------------- */
+.topbar{border-bottom:1px solid var(--rule); background:var(--surface)}
+.topbar .wrap{display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-block:clamp(.8rem,2vw,1.15rem)}
+.logo{display:block; height:clamp(26px,4.5vw,38px); width:auto}
+.topbar .tag{font-family:var(--mono); font-size:.625rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); text-align:right}
+@media (max-width:420px){ .topbar .tag{display:none} }
+
+/* ---------------- hero ---------------- */
+.hero{padding-block:clamp(2.25rem,7vw,4.5rem); border-bottom:2px solid var(--ink)}
+.hero-grid{display:grid; gap:1.25rem}
+.hero h1{margin-top:.55rem}
+.standfirst{font-size:clamp(1.05rem,.98rem+.35vw,1.22rem); line-height:1.55; color:var(--ink-soft); max-width:54ch}
 .standfirst strong{color:var(--ink); font-weight:600}
+@media (min-width:900px){
+  .hero-grid{grid-template-columns:1.1fr .9fr; gap:3.5rem; align-items:end}
+  .standfirst{padding-bottom:.35rem}
+}
 
-section{display:flex; flex-direction:column; gap:1.1rem}
-.sec-head{display:flex; flex-direction:column; gap:.4rem}
-.lede{color:var(--ink-soft)}
+/* ---------------- seções ---------------- */
+section.band{padding-block:clamp(2.25rem,6vw,4rem); border-bottom:1px solid var(--rule-soft)}
+.sec-head{display:flex; flex-direction:column; gap:.45rem; margin-bottom:1rem}
+.lede{color:var(--ink-soft); max-width:var(--prose)}
 
-/* ---------- leitura da operação ---------- */
-.reading{display:flex; flex-direction:column; gap:0}
-.reading .item{padding:1.1rem 0; border-top:1px solid var(--rule-soft); display:flex; flex-direction:column; gap:.4rem}
-.reading .item:first-child{border-top:1px solid var(--rule)}
-.reading p{color:var(--ink-soft)}
+/* grade editorial: cards separados por fio, colunas automáticas */
+.cards{display:grid; gap:clamp(1.4rem,3vw,2.25rem) clamp(1.75rem,3.5vw,3rem); margin-top:clamp(1.5rem,3vw,2.25rem)}
+@media (min-width:720px){ .cards{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (min-width:1080px){ .cards.three{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.card{display:flex; flex-direction:column; gap:.5rem; padding-top:.95rem; border-top:2px solid var(--rule)}
+.card p{color:var(--ink-soft); font-size:1rem; line-height:1.58}
+.card.acc{border-top-color:var(--accent)}
+.card .n{font-family:var(--mono); font-size:.6875rem; letter-spacing:.12em; color:var(--accent); font-variant-numeric:tabular-nums}
 
-/* ---------- possibilidades ---------- */
-.opts{display:flex; flex-direction:column; gap:0}
-.opt{display:grid; grid-template-columns:2.4rem 1fr; padding:1.25rem 0; border-top:1px solid var(--rule-soft)}
-.opt:first-child{border-top:1px solid var(--rule)}
-.opt .n{font-family:var(--mono); font-size:.8125rem; color:var(--accent); padding-top:.2rem; font-variant-numeric:tabular-nums}
-.opt .b{display:flex; flex-direction:column; gap:.5rem}
-.opt p{color:var(--ink-soft)}
-.note{background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--flag); padding:1.25rem 1.4rem; display:flex; flex-direction:column; gap:.7rem}
-.note p{color:var(--ink-soft)}
+.note{margin-top:clamp(1.75rem,4vw,2.5rem); background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--flag); padding:clamp(1.1rem,3vw,1.6rem); display:flex; flex-direction:column; gap:.75rem}
+.note p{color:var(--ink-soft); max-width:var(--prose)}
 .note strong{color:var(--ink)}
 
-/* ---------- formulário ---------- */
-.form-wrap{background:var(--surface); border:1px solid var(--rule); border-radius:3px; padding:clamp(1.25rem,4vw,2rem); display:flex; flex-direction:column; gap:1.4rem; scroll-margin-top:1rem}
-.progress{display:flex; flex-wrap:wrap; gap:.35rem; align-items:center}
-.pip{font-family:var(--mono); font-size:.625rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border:1px solid var(--rule); border-radius:999px; padding:.25rem .6rem; background:transparent}
-.pip[data-state="current"]{color:var(--surface); background:var(--accent); border-color:var(--accent)}
-.pip[data-state="done"]{color:var(--accent-ink); border-color:var(--accent); background:var(--accent-wash)}
-.step{display:none; flex-direction:column; gap:1.4rem}
+/* ---------------- formulário ---------------- */
+.s-form{padding-block:clamp(2.25rem,6vw,4rem)}
+.form-body{display:grid; gap:1.5rem; margin-top:clamp(1.5rem,3vw,2.25rem)}
+@media (min-width:980px){
+  .form-body{grid-template-columns:200px minmax(0,760px); gap:3rem; align-items:start; justify-content:start}
+}
+
+/* trilha vertical (desktop) */
+.rail{display:none}
+@media (min-width:980px){
+  .rail{display:block; position:sticky; top:1.75rem}
+  .rail ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+  .rail li{display:flex; gap:.65rem; align-items:flex-start; padding:.5rem 0 .5rem .1rem; font-family:var(--sans); font-size:.875rem; line-height:1.35; color:var(--muted); border-left:2px solid var(--rule-soft); padding-left:.85rem; transition:color .2s,border-color .2s}
+  .rail li .dot{font-family:var(--mono); font-size:.6875rem; font-variant-numeric:tabular-nums; padding-top:.08rem}
+  .rail li[data-state="current"]{color:var(--ink); border-left-color:var(--accent); font-weight:600}
+  .rail li[data-state="done"]{color:var(--accent-ink); border-left-color:var(--accent)}
+}
+
+.panel{background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:clamp(1.1rem,3.5vw,2rem); display:flex; flex-direction:column; gap:1.5rem; scroll-margin-top:1rem; min-width:0}
+
+/* barra de progresso compacta (mobile) */
+.pbar{display:flex; flex-direction:column; gap:.5rem}
+@media (min-width:980px){ .pbar{display:none} }
+.pbar-track{height:3px; background:var(--surface-2); border-radius:999px; overflow:hidden}
+.pbar-fill{height:100%; width:0; background:var(--accent); border-radius:999px; transition:width .35s ease}
+.pbar-label{font-family:var(--mono); font-size:.625rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; gap:.75rem}
+.pbar-label b{color:var(--accent); font-weight:400}
+
+.formmsg{font-family:var(--sans); font-size:.9375rem; line-height:1.45; padding:.75rem .9rem; border-radius:3px; display:none}
+.formmsg.show{display:block}
+.formmsg.error{background:var(--flag-wash); color:var(--flag)}
+
+.step{display:none; flex-direction:column; gap:1.5rem; min-width:0}
 .step.is-active{display:flex}
 .step-head{display:flex; flex-direction:column; gap:.35rem}
-.field{display:flex; flex-direction:column; gap:.45rem}
-.field > label, .q-label{font-family:var(--sans); font-size:1rem; font-weight:560; line-height:1.4; color:var(--ink)}
-.req{color:var(--flag); font-weight:400}
-.help{font-size:.9375rem; line-height:1.5; color:var(--muted); font-style:italic}
-input[type=text], input[type=email], input[type=tel], textarea, select{
-  font-family:var(--sans); font-size:1rem; color:var(--ink);
-  background:var(--paper); border:1px solid var(--rule); border-radius:2px;
-  padding:.65rem .75rem; width:100%; line-height:1.5;
+.step-head .help{max-width:60ch}
+
+/* grade de campos: 2 colunas no desktop, 1 no mobile */
+.fields{display:grid; gap:1.35rem; min-width:0}
+@media (min-width:760px){
+  .fields{grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.5rem 1.75rem}
+  .fields > .span{grid-column:1/-1}
 }
-textarea{font-family:var(--serif); font-size:1.0625rem; min-height:6.5rem; resize:vertical}
-input:focus-visible, textarea:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
-.choices{display:flex; flex-direction:column; gap:.15rem}
-.choice{display:flex; gap:.6rem; align-items:flex-start; padding:.5rem .6rem; border-radius:2px; cursor:pointer; font-family:var(--sans); font-size:.9688rem; line-height:1.45}
+.field{display:flex; flex-direction:column; gap:.45rem; min-width:0}
+.field > label,.q-label{font-family:var(--sans); font-size:.9688rem; font-weight:570; line-height:1.4; color:var(--ink)}
+.req{color:var(--flag); font-weight:400}
+.help{font-size:.9063rem; line-height:1.5; color:var(--muted); font-style:italic}
+input[type=text],input[type=email],input[type=tel],textarea,select{
+  font-family:var(--sans); font-size:16px; color:var(--ink);
+  background:var(--paper); border:1px solid var(--rule); border-radius:3px;
+  padding:.7rem .8rem; width:100%; max-width:100%; line-height:1.5;
+}
+textarea{font-family:var(--serif); font-size:1.0313rem; min-height:6rem; resize:vertical}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+.choices{display:grid; gap:.1rem}
+@media (min-width:760px){ .choices.wide{grid-template-columns:repeat(2,minmax(0,1fr)); gap:.1rem .75rem} }
+.choice{display:flex; gap:.65rem; align-items:flex-start; padding:.6rem .6rem; min-height:44px; border-radius:3px; cursor:pointer; font-family:var(--sans); font-size:.9375rem; line-height:1.4}
 .choice:hover{background:var(--surface-2)}
-.choice input{margin:.25rem 0 0; accent-color:var(--accent); flex:none; width:1rem; height:1rem}
+.choice input{margin:.15rem 0 0; accent-color:var(--accent); flex:none; width:1.05rem; height:1.05rem}
 .choice span{color:var(--ink-soft)}
-.choice input:checked + span{color:var(--ink); font-weight:560}
+.choice input:checked+span{color:var(--ink); font-weight:560}
 .err{font-family:var(--sans); font-size:.875rem; color:var(--flag); display:none}
 .field.has-error .err{display:block}
-.field.has-error input, .field.has-error textarea{border-color:var(--flag)}
+.field.has-error input,.field.has-error textarea{border-color:var(--flag)}
 .hp{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden}
-.actions{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; padding-top:.4rem; border-top:1px solid var(--rule-soft)}
-button{font-family:var(--sans); font-size:.9375rem; font-weight:580; border-radius:2px; padding:.7rem 1.15rem; cursor:pointer; border:1px solid transparent; line-height:1.3}
+
+.actions{display:flex; flex-wrap:wrap; gap:.65rem; align-items:center; padding-top:1rem; border-top:1px solid var(--rule-soft)}
+button{font-family:var(--sans); font-size:.9375rem; font-weight:585; border-radius:3px; padding:.75rem 1.25rem; min-height:44px; cursor:pointer; border:1px solid transparent; line-height:1.3}
 .btn-primary{background:var(--accent); color:#FBFDFD; border-color:var(--accent)}
 .btn-primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
 .btn-ghost{background:transparent; color:var(--muted); border-color:var(--rule)}
 .btn-ghost:hover{color:var(--ink); border-color:var(--muted)}
 button:disabled{opacity:.55; cursor:progress}
 button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-.saved{font-family:var(--mono); font-size:.6875rem; letter-spacing:.06em; color:var(--muted); margin-left:auto; opacity:0; transition:opacity .25s}
+.saved{font-family:var(--mono); font-size:.625rem; letter-spacing:.08em; color:var(--muted); margin-left:auto; opacity:0; transition:opacity .25s}
 .saved.show{opacity:1}
-.formmsg{font-family:var(--sans); font-size:.9375rem; padding:.7rem .85rem; border-radius:2px; display:none}
-.formmsg.show{display:block}
-.formmsg.error{background:var(--flag-wash); color:var(--flag)}
-.consent{display:flex; gap:.6rem; align-items:flex-start; font-family:var(--sans); font-size:.9063rem; line-height:1.5; color:var(--ink-soft)}
-.consent input{margin:.2rem 0 0; accent-color:var(--accent); flex:none; width:1rem; height:1rem}
-.done{display:none; flex-direction:column; gap:1rem; text-align:left}
+@media (max-width:600px){
+  .actions{flex-direction:column-reverse; align-items:stretch}
+  .actions button{width:100%}
+  .saved{margin:0 auto; text-align:center}
+}
+
+.consent{display:flex; gap:.65rem; align-items:flex-start; font-family:var(--sans); font-size:.9063rem; line-height:1.5; color:var(--ink-soft); cursor:pointer}
+.consent input{margin:.2rem 0 0; accent-color:var(--accent); flex:none; width:1.05rem; height:1.05rem}
+
+.done{display:none; flex-direction:column; gap:1rem}
 .done.is-active{display:flex}
 .done .check{font-family:var(--mono); font-size:.6875rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent)}
-footer{font-family:var(--mono); font-size:.6875rem; letter-spacing:.05em; color:var(--muted); border-top:1px solid var(--rule); padding-top:1rem}
+
+footer{border-top:1px solid var(--rule); background:var(--surface)}
+footer .wrap{display:flex; flex-wrap:wrap; gap:.75rem 2rem; align-items:center; justify-content:space-between; padding-block:1.35rem}
+footer p{font-family:var(--mono); font-size:.625rem; letter-spacing:.06em; color:var(--muted); line-height:1.7}
+.logo-foot{height:22px; width:auto; opacity:.75}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
-@media (max-width:480px){
-  .opt{grid-template-columns:1.9rem 1fr}
-  .actions button{flex:1 1 auto}
-}
 </style>
 </head>
 <body>
-<div class="doc">
 
-  <header class="masthead">
-    <p class="eyebrow">Sistema de CRM &middot; documento de trabalho</p>
-    <h1>Antes de construir, eu preciso entender o de vocês</h1>
+<header class="topbar">
+  <div class="wrap">
+    <picture>
+      <source srcset="<?= e($urlBase) ?>/assets/img/logo-planningbi-dark.png" media="(prefers-color-scheme: dark)">
+      <img class="logo" src="<?= e($urlBase) ?>/assets/img/logo-planningbi.png"
+           alt="PlanningBI" width="760" height="186">
+    </picture>
+    <p class="tag">Briefing<br>Sistema de CRM</p>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Documento de trabalho</p>
+      <h1>Antes de construir, eu preciso entender o de vocês</h1>
+    </div>
     <p class="standfirst">Coloquei aqui <strong>o que eu entendi da operação de vocês</strong> e algumas possibilidades que eu acho que valem a pena considerar. No fim tem um briefing para você preencher — pode responder em partes, ele salva sozinho e você volta quando puder.</p>
-  </header>
+  </div>
+</div>
 
-  <section>
-    <div class="sec-head">
-      <p class="eyebrow">Ponto de partida</p>
-      <h2>O que eu entendi da operação de vocês</h2>
+<main>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Ponto de partida</p>
+        <h2>O que eu entendi da operação de vocês</h2>
+      </div>
+      <p class="lede">Se algo aqui estiver torto, me corrige — é justamente para isso que serve o briefing lá embaixo.</p>
+
+      <div class="cards">
+        <div class="card">
+          <h3>São duas operações diferentes, não uma</h3>
+          <p>Cuidar de quem já é cliente e conquistar cliente novo parecem a mesma coisa, mas se comportam de maneiras opostas. Uma é rotina de relacionamento que não pode esfriar; a outra é um processo com começo, meio e fim. Misturar as duas na mesma tela é o que faz a maioria dos CRMs ficar confuso e acabar abandonado.</p>
+        </div>
+        <div class="card">
+          <h3>O histórico precisa estar à mão antes da ligação</h3>
+          <p>Voltar num cliente meses depois só funciona se der para lembrar, em segundos, do que já foi conversado e do que ele demonstrou interesse. Esse é o coração da parte de relacionamento: não é registrar por registrar, é ter contexto na hora da ligação.</p>
+        </div>
+        <div class="card">
+          <h3>O retorno combinado não pode depender da memória</h3>
+          <p>Quando o cliente pede para voltar daqui a dois meses, esse compromisso precisa reaparecer sozinho na data certa, com o contexto junto. É simples de descrever e é onde mais se perde negócio.</p>
+        </div>
+        <div class="card">
+          <h3>Você precisa enxergar o time sem ter que perguntar</h3>
+          <p>Quem coordena precisa ver em que ponto cada negociação está sem depender de reunião de status ou de mensagem no grupo. Percebi que essa é a sua posição na história: você olha o conjunto, o time opera o dia a dia.</p>
+        </div>
+        <div class="card">
+          <h3>Um mesmo cliente atravessa produtos diferentes</h3>
+          <p>Investimentos, consórcio, seguros e internacional convivem na mesma pessoa, em momentos diferentes. O sistema precisa tratar isso como uma relação com várias frentes — não como quatro cadastros soltos da mesma pessoa.</p>
+        </div>
+      </div>
     </div>
-    <p class="lede">Se algo aqui estiver torto, me corrige — é justamente para isso que serve o briefing lá embaixo.</p>
-    <div class="reading">
-      <div class="item">
-        <h3>São duas operações diferentes, não uma</h3>
-        <p>Cuidar de quem já é cliente e conquistar cliente novo parecem a mesma coisa, mas se comportam de maneiras opostas. Uma é rotina de relacionamento que não pode esfriar; a outra é um processo com começo, meio e fim. Misturar as duas na mesma tela é o que faz a maioria dos CRMs ficar confuso e acabar abandonado.</p>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Possibilidades</p>
+        <h2>Onde eu acho que dá para ir além</h2>
       </div>
-      <div class="item">
-        <h3>O histórico precisa estar à mão antes da ligação</h3>
-        <p>Voltar num cliente meses depois só funciona se der para lembrar, em segundos, do que já foi conversado e do que ele demonstrou interesse. Esse é o coração da parte de relacionamento: não é registrar por registrar, é ter contexto na hora da ligação.</p>
+      <p class="lede">Nada disso é obrigatório, e não precisa entrar tudo de uma vez. Estou colocando porque são coisas que custam pouco se forem pensadas agora, e caro se forem lembradas depois. Marque no briefing o que fizer sentido para vocês.</p>
+
+      <div class="cards three">
+        <div class="card acc">
+          <p class="n">01</p>
+          <h3>Saber quanto vale cada negociação em aberto</h3>
+          <p>Se cada negociação carregar o valor que pode ser captado, o painel deixa de mostrar "quantas reuniões" e passa a mostrar "quanto dinheiro". Muda a forma de priorizar o dia: uma conversa inicial com potencial grande passa a aparecer na frente de uma negociação adiantada de valor pequeno.</p>
+        </div>
+        <div class="card acc">
+          <p class="n">02</p>
+          <h3>O dinheiro do cliente que ainda não está com vocês</h3>
+          <p>Quase todo cliente mantém parte do patrimônio em outra instituição. Se o cadastro registrar essa diferença, o sistema monta sozinho uma lista de oportunidades dentro da própria base — sem prospecção, sem custo de aquisição, com quem já confia em vocês.</p>
+        </div>
+        <div class="card acc">
+          <p class="n">03</p>
+          <h3>O sistema lembrando no lugar de vocês</h3>
+          <p>Boa parte dos bons motivos para ligar já está no dado: aplicação vencendo, consórcio perto da contemplação, seguro renovando, aniversário de aporte, cliente sem contato há muito tempo, saldo caindo. Cada um pode virar uma tarefa que aparece sozinha para a pessoa certa, no dia certo — em vez de depender de alguém ter anotado.</p>
+        </div>
+        <div class="card acc">
+          <p class="n">04</p>
+          <h3>Saber de onde vêm os clientes que realmente fecham</h3>
+          <p>Registrar a origem de cada cliente novo é uma informação pequena que responde uma pergunta cara: onde vale a pena colocar tempo e dinheiro no semestre que vem. Sem ela, essa decisão continua sendo por impressão.</p>
+        </div>
+        <div class="card acc">
+          <p class="n">05</p>
+          <h3>Enxergar onde o processo trava</h3>
+          <p>Contar reuniões mostra atividade, mas não mostra onde as coisas emperram. Uma observação: abrir conta e efetivamente receber o aporte são momentos diferentes, e a distância entre os dois costuma ser onde mais se perde — sem que ninguém veja, porque no quadro os dois viram "fechado".</p>
+        </div>
+        <div class="card acc">
+          <p class="n">06</p>
+          <h3>O que fica com o escritório quando alguém sai</h3>
+          <p>Com o histórico centralizado, o relacionamento e o contexto ficam com a casa, e não na cabeça de quem saiu. No mesmo movimento resolve o lado formal: registro de quem falou o quê e quando, que é o tipo de coisa que ninguém quer estar montando às pressas quando for solicitado.</p>
+        </div>
       </div>
-      <div class="item">
-        <h3>O retorno combinado não pode depender da memória</h3>
-        <p>Quando o cliente pede para voltar daqui a dois meses, esse compromisso precisa reaparecer sozinho na data certa, com o contexto junto. É simples de descrever e é onde mais se perde negócio.</p>
-      </div>
-      <div class="item">
-        <h3>Você precisa enxergar o time sem ter que perguntar</h3>
-        <p>Quem coordena precisa ver em que ponto cada negociação está sem depender de reunião de status ou de mensagem no grupo. Percebi que essa é a sua posição na história: você olha o conjunto, o time opera o dia a dia.</p>
-      </div>
-      <div class="item">
-        <h3>Um mesmo cliente atravessa produtos diferentes</h3>
-        <p>Investimentos, consórcio, seguros e internacional convivem na mesma pessoa, em momentos diferentes. O sistema precisa tratar isso como uma relação com várias frentes — não como quatro cadastros soltos da mesma pessoa.</p>
+
+      <div class="note">
+        <p><strong>Uma ressalva que eu faço questão de dizer antes:</strong> o maior risco de um projeto desses não é técnico, é de uso. Se registrar der trabalho, o time para de registrar em algumas semanas — e aí o painel que você olha passa a mostrar uma realidade que não existe, o que é pior do que não ter painel nenhum.</p>
+        <p>Por isso, se em algum momento eu insistir em cortar funcionalidade para deixar mais simples no celular, é por causa disso. Registrar tem que custar segundos, não minutos.</p>
       </div>
     </div>
   </section>
 
-  <section>
-    <div class="sec-head">
-      <p class="eyebrow">Possibilidades</p>
-      <h2>Onde eu acho que dá para ir além</h2>
-    </div>
-    <p class="lede">Nada disso é obrigatório, e não precisa entrar tudo de uma vez. Estou colocando porque são coisas que custam pouco se forem pensadas agora, e caro se forem lembradas depois. Marque no briefing o que fizer sentido para vocês.</p>
-
-    <div class="opts">
-      <div class="opt"><div class="n">01</div><div class="b">
-        <h3>Saber quanto vale cada negociação em aberto</h3>
-        <p>Se cada negociação carregar o valor que pode ser captado, o painel deixa de mostrar "quantas reuniões" e passa a mostrar "quanto dinheiro". Muda a forma de priorizar o dia: uma conversa inicial com potencial grande passa a aparecer na frente de uma negociação adiantada de valor pequeno.</p>
-      </div></div>
-
-      <div class="opt"><div class="n">02</div><div class="b">
-        <h3>O dinheiro do cliente que ainda não está com vocês</h3>
-        <p>Quase todo cliente mantém parte do patrimônio em outra instituição. Se o cadastro registrar essa diferença, o sistema monta sozinho uma lista de oportunidades dentro da própria base — sem prospecção, sem custo de aquisição, com quem já confia em vocês.</p>
-      </div></div>
-
-      <div class="opt"><div class="n">03</div><div class="b">
-        <h3>O sistema lembrando no lugar de vocês</h3>
-        <p>Boa parte dos bons motivos para ligar já está no dado: aplicação vencendo, consórcio perto da contemplação, seguro renovando, aniversário de aporte, cliente sem contato há muito tempo, saldo caindo. Cada um desses pode virar uma tarefa que aparece sozinha para a pessoa certa, no dia certo — em vez de depender de alguém ter anotado.</p>
-      </div></div>
-
-      <div class="opt"><div class="n">04</div><div class="b">
-        <h3>Saber de onde vêm os clientes que realmente fecham</h3>
-        <p>Registrar a origem de cada cliente novo é uma informação pequena que responde uma pergunta cara: onde vale a pena colocar tempo e dinheiro no semestre que vem. Sem ela, essa decisão continua sendo por impressão.</p>
-      </div></div>
-
-      <div class="opt"><div class="n">05</div><div class="b">
-        <h3>Enxergar onde o processo trava</h3>
-        <p>Contar reuniões mostra atividade, mas não mostra onde as coisas emperram. Uma observação: abrir conta e efetivamente receber o aporte são momentos diferentes, e a distância entre os dois costuma ser onde mais se perde — sem que ninguém veja, porque no quadro os dois viram "fechado".</p>
-      </div></div>
-
-      <div class="opt"><div class="n">06</div><div class="b">
-        <h3>O que fica com o escritório quando alguém sai</h3>
-        <p>Com o histórico centralizado, o relacionamento e o contexto ficam com a casa, e não na cabeça de quem saiu. No mesmo movimento resolve o lado formal: registro de quem falou o quê e quando, que é o tipo de coisa que ninguém quer estar montando às pressas quando for solicitado.</p>
-      </div></div>
-    </div>
-
-    <div class="note">
-      <p><strong>Uma ressalva que eu faço questão de dizer antes:</strong> o maior risco de um projeto desses não é técnico, é de uso. Se registrar der trabalho, o time para de registrar em algumas semanas — e aí o painel que você olha passa a mostrar uma realidade que não existe, o que é pior do que não ter painel nenhum.</p>
-      <p>Por isso, se em algum momento eu insistir em cortar funcionalidade para deixar mais simples no celular, é por causa disso. Registrar tem que custar segundos, não minutos.</p>
-    </div>
-  </section>
-
-  <section id="briefing">
-    <div class="sec-head">
-      <p class="eyebrow">Briefing</p>
-      <h2>Agora me conta como é aí</h2>
-    </div>
-    <p class="lede">São cinco blocos curtos. Cada bloco salva quando você avança, então dá para parar no meio, fechar, e continuar depois neste mesmo link e neste mesmo aparelho. Onde não souber, pode pular — "não sei" também me diz muita coisa.</p>
-
-    <div class="form-wrap" id="formWrap">
-
-      <div class="progress" id="progress" aria-label="Progresso do briefing">
-        <span class="pip" data-step="ident" data-state="current">Você</span>
-        <?php foreach ($blocks as $i => $b): ?>
-          <span class="pip" data-step="<?= e($b) ?>"><?= e($blockMeta[$b]['title']) ?></span>
-        <?php endforeach; ?>
+  <section class="s-form" id="briefing">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Briefing</p>
+        <h2>Agora me conta como é aí</h2>
       </div>
+      <p class="lede">São cinco blocos curtos. Cada bloco salva quando você avança, então dá para parar no meio, fechar, e continuar depois neste mesmo link e neste mesmo aparelho. Onde não souber, pode pular — "não sei" também me diz muita coisa.</p>
 
-      <div class="formmsg error" id="formMsg" role="alert"></div>
+      <div class="form-body">
 
-      <!-- ---------- passo de identificação ---------- -->
-      <div class="step is-active" data-step="ident">
-        <div class="step-head">
-          <h3>Primeiro, só para eu saber com quem estou falando</h3>
-          <p class="help">Seu e-mail é só para te mandar a cópia das respostas.</p>
-        </div>
+        <nav class="rail" aria-label="Progresso do briefing">
+          <ol>
+            <li data-step="ident" data-state="current"><span class="dot">00</span><span>Você</span></li>
+            <?php foreach ($blocks as $i => $b): ?>
+              <li data-step="<?= e($b) ?>"><span class="dot"><?= sprintf('%02d', $i + 1) ?></span><span><?= e($blockMeta[$b]['title']) ?></span></li>
+            <?php endforeach; ?>
+          </ol>
+        </nav>
 
-        <div class="field" data-field="nome">
-          <label for="f_nome">Seu nome <span class="req">*</span></label>
-          <input type="text" id="f_nome" autocomplete="name" maxlength="150">
-          <p class="err"></p>
-        </div>
+        <div class="panel" id="formWrap">
 
-        <div class="field" data-field="email">
-          <label for="f_email">Seu e-mail <span class="req">*</span></label>
-          <input type="email" id="f_email" autocomplete="email" maxlength="150">
-          <p class="err"></p>
-        </div>
-
-        <div class="field" data-field="whatsapp">
-          <label for="f_whats">WhatsApp</label>
-          <input type="tel" id="f_whats" autocomplete="tel" maxlength="40" placeholder="com DDD">
-          <p class="err"></p>
-        </div>
-
-        <div class="field" data-field="escritorio">
-          <label for="f_esc">Nome do escritório</label>
-          <input type="text" id="f_esc" maxlength="150">
-          <p class="err"></p>
-        </div>
-
-        <div class="field" data-field="papel">
-          <label for="f_papel">Seu papel lá</label>
-          <select id="f_papel">
-            <option value="">—</option>
-            <option>Sócia</option>
-            <option>Sócio</option>
-            <option>Assessor(a)</option>
-            <option>Gestor(a)</option>
-            <option>Outro</option>
-          </select>
-          <p class="err"></p>
-        </div>
-
-        <div class="hp" aria-hidden="true">
-          <label for="f_site">Não preencha este campo</label>
-          <input type="text" id="f_site" tabindex="-1" autocomplete="off">
-        </div>
-
-        <div class="field" data-field="consent">
-          <label class="consent" for="f_consent">
-            <input type="checkbox" id="f_consent">
-            <span><?= e(bc_consent_text()) ?></span>
-          </label>
-          <p class="err"></p>
-        </div>
-
-        <div class="actions">
-          <button type="button" class="btn-primary" data-action="start">Começar</button>
-        </div>
-      </div>
-
-      <!-- ---------- blocos de perguntas ---------- -->
-      <?php foreach ($blocks as $bi => $block): ?>
-        <div class="step" data-step="<?= e($block) ?>">
-          <div class="step-head">
-            <p class="eyebrow">Bloco <?= $bi + 1 ?> de <?= count($blocks) ?></p>
-            <h3><?= e($blockMeta[$block]['title']) ?></h3>
-            <?php if (!empty($blockMeta[$block]['intro'])): ?>
-              <p class="help"><?= e($blockMeta[$block]['intro']) ?></p>
-            <?php endif; ?>
+          <div class="pbar">
+            <div class="pbar-label">
+              <span id="pbarLabel">Identificação</span>
+              <b id="pbarCount">0 / <?= count($blocks) ?></b>
+            </div>
+            <div class="pbar-track"><div class="pbar-fill" id="pbarFill"></div></div>
           </div>
 
-          <?php foreach (bc_block_question_keys($block) as $qkey):
-              $q    = $questions[$qkey];
-              $req  = (bool) ($q['required'] ?? false);
-              $type = $q['answer_type'];
-              $id   = 'q_' . preg_replace('/[^a-z0-9_]/i', '', $qkey);
-          ?>
-            <div class="field" data-field="<?= e($qkey) ?>" data-qkey="<?= e($qkey) ?>" data-type="<?= e($type) ?>">
-              <?php if (in_array($type, ['single', 'multi'], true)): ?>
-                <p class="q-label" id="<?= e($id) ?>_lbl"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></p>
-                <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
-                <div class="choices" role="group" aria-labelledby="<?= e($id) ?>_lbl">
-                  <?php foreach ($q['options'] as $oi => $opt): ?>
-                    <label class="choice">
-                      <input type="<?= $type === 'multi' ? 'checkbox' : 'radio' ?>"
-                             name="<?= e($qkey) ?>"
-                             value="<?= e($opt) ?>">
-                      <span><?= e($opt) ?></span>
-                    </label>
-                  <?php endforeach; ?>
+          <div class="formmsg error" id="formMsg" role="alert"></div>
+
+          <!-- ---------- passo de identificação ---------- -->
+          <div class="step is-active" data-step="ident">
+            <div class="step-head">
+              <h3>Primeiro, só para eu saber com quem estou falando</h3>
+              <p class="help">Seu e-mail é só para te mandar a cópia das respostas.</p>
+            </div>
+
+            <div class="fields">
+              <div class="field" data-field="nome">
+                <label for="f_nome">Seu nome <span class="req">*</span></label>
+                <input type="text" id="f_nome" autocomplete="name" maxlength="150">
+                <p class="err"></p>
+              </div>
+
+              <div class="field" data-field="email">
+                <label for="f_email">Seu e-mail <span class="req">*</span></label>
+                <input type="email" id="f_email" autocomplete="email" inputmode="email" maxlength="150">
+                <p class="err"></p>
+              </div>
+
+              <div class="field" data-field="whatsapp">
+                <label for="f_whats">WhatsApp</label>
+                <input type="tel" id="f_whats" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="com DDD">
+                <p class="err"></p>
+              </div>
+
+              <div class="field" data-field="escritorio">
+                <label for="f_esc">Nome do escritório</label>
+                <input type="text" id="f_esc" maxlength="150">
+                <p class="err"></p>
+              </div>
+
+              <div class="field span" data-field="papel">
+                <label for="f_papel">Seu papel lá</label>
+                <select id="f_papel">
+                  <option value="">—</option>
+                  <option>Sócia</option>
+                  <option>Sócio</option>
+                  <option>Assessor(a)</option>
+                  <option>Gestor(a)</option>
+                  <option>Outro</option>
+                </select>
+                <p class="err"></p>
+              </div>
+
+              <div class="hp" aria-hidden="true">
+                <label for="f_site">Não preencha este campo</label>
+                <input type="text" id="f_site" tabindex="-1" autocomplete="off">
+              </div>
+
+              <div class="field span" data-field="consent">
+                <label class="consent" for="f_consent">
+                  <input type="checkbox" id="f_consent">
+                  <span><?= e(bc_consent_text()) ?></span>
+                </label>
+                <p class="err"></p>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn-primary" data-action="start">Começar</button>
+            </div>
+          </div>
+
+          <!-- ---------- blocos de perguntas ---------- -->
+          <?php foreach ($blocks as $bi => $block): ?>
+            <div class="step" data-step="<?= e($block) ?>">
+              <div class="step-head">
+                <p class="eyebrow">Bloco <?= $bi + 1 ?> de <?= count($blocks) ?></p>
+                <h3><?= e($blockMeta[$block]['title']) ?></h3>
+                <?php if (!empty($blockMeta[$block]['intro'])): ?>
+                  <p class="help"><?= e($blockMeta[$block]['intro']) ?></p>
+                <?php endif; ?>
+              </div>
+
+              <div class="fields">
+              <?php foreach (bc_block_question_keys($block) as $qkey):
+                  $q     = $questions[$qkey];
+                  $req   = (bool) ($q['required'] ?? false);
+                  $type  = $q['answer_type'];
+                  $id    = 'q_' . preg_replace('/[^a-z0-9_]/i', '', $qkey);
+                  // Texto longo e múltipla escolha ocupam a linha inteira;
+                  // escolha única e texto curto dividem a linha no desktop.
+                  $span  = in_array($type, ['open', 'multi'], true) ? ' span' : '';
+                  $wide  = $type === 'multi' && count($q['options'] ?? []) > 5 ? ' wide' : '';
+              ?>
+                <div class="field<?= $span ?>" data-field="<?= e($qkey) ?>" data-qkey="<?= e($qkey) ?>" data-type="<?= e($type) ?>">
+                  <?php if (in_array($type, ['single', 'multi'], true)): ?>
+                    <p class="q-label" id="<?= e($id) ?>_lbl"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></p>
+                    <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
+                    <div class="choices<?= $wide ?>" role="group" aria-labelledby="<?= e($id) ?>_lbl">
+                      <?php foreach ($q['options'] as $opt): ?>
+                        <label class="choice">
+                          <input type="<?= $type === 'multi' ? 'checkbox' : 'radio' ?>"
+                                 name="<?= e($qkey) ?>"
+                                 value="<?= e($opt) ?>">
+                          <span><?= e($opt) ?></span>
+                        </label>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php elseif ($type === 'short'): ?>
+                    <label for="<?= e($id) ?>"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></label>
+                    <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
+                    <input type="text" id="<?= e($id) ?>" maxlength="200">
+                  <?php else: ?>
+                    <label for="<?= e($id) ?>"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></label>
+                    <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
+                    <textarea id="<?= e($id) ?>" maxlength="4000" rows="4"></textarea>
+                  <?php endif; ?>
+                  <p class="err"></p>
                 </div>
-              <?php elseif ($type === 'short'): ?>
-                <label for="<?= e($id) ?>"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></label>
-                <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
-                <input type="text" id="<?= e($id) ?>" maxlength="200">
-              <?php else: ?>
-                <label for="<?= e($id) ?>"><?= e($q['question_text']) ?><?= $req ? ' <span class="req">*</span>' : '' ?></label>
-                <?php if (!empty($q['help'])): ?><p class="help"><?= e($q['help']) ?></p><?php endif; ?>
-                <textarea id="<?= e($id) ?>" maxlength="4000" rows="4"></textarea>
-              <?php endif; ?>
-              <p class="err"></p>
+              <?php endforeach; ?>
+              </div>
+
+              <div class="actions">
+                <button type="button" class="btn-ghost" data-action="back">Voltar</button>
+                <button type="button" class="btn-primary" data-action="next" data-block="<?= e($block) ?>">
+                  <?= bc_is_last_block($block) ? 'Enviar briefing' : 'Salvar e continuar' ?>
+                </button>
+                <span class="saved" data-saved>salvo</span>
+              </div>
             </div>
           <?php endforeach; ?>
 
-          <div class="actions">
-            <button type="button" class="btn-ghost" data-action="back">Voltar</button>
-            <button type="button" class="btn-primary" data-action="next" data-block="<?= e($block) ?>">
-              <?= bc_is_last_block($block) ? 'Enviar briefing' : 'Salvar e continuar' ?>
-            </button>
-            <span class="saved" data-saved>salvo</span>
+          <!-- ---------- conclusão ---------- -->
+          <div class="done" id="doneStep">
+            <p class="check">Recebido</p>
+            <h3 id="doneTitle">Prontinho, obrigado!</h3>
+            <p class="lede">Acabei de te mandar por e-mail uma cópia de tudo o que você respondeu — dá para levar direto para a conversa com os sócios. Vou ler com calma e te procuro com o desenho da primeira versão.</p>
+            <p class="help">Se lembrar de algo depois, é só me chamar que eu complemento aqui.</p>
           </div>
+
         </div>
-      <?php endforeach; ?>
-
-      <!-- ---------- conclusão ---------- -->
-      <div class="done" id="doneStep">
-        <p class="check">Recebido</p>
-        <h3 id="doneTitle">Prontinho, obrigado!</h3>
-        <p class="lede">Acabei de te mandar por e-mail uma cópia de tudo o que você respondeu — dá para levar direto para a conversa com os sócios. Vou ler com calma e te procuro com o desenho da primeira versão.</p>
-        <p class="help">Se lembrar de algo depois, é só me chamar que eu complemento aqui.</p>
       </div>
-
     </div>
   </section>
 
-  <footer>Este link é privado e não é indexado em buscadores &middot; suas respostas ficam salvas para você continuar depois</footer>
+</main>
 
-</div>
+<footer>
+  <div class="wrap">
+    <p>Este link é privado e não é indexado em buscadores<br>Suas respostas ficam salvas para você continuar depois</p>
+    <picture>
+      <source srcset="<?= e($urlBase) ?>/assets/img/logo-planningbi-dark.png" media="(prefers-color-scheme: dark)">
+      <img class="logo-foot" src="<?= e($urlBase) ?>/assets/img/logo-planningbi.png"
+           alt="PlanningBI" width="760" height="186">
+    </picture>
+  </div>
+</footer>
 
 <script>
 (function () {
@@ -399,12 +515,20 @@ footer{font-family:var(--mono); font-size:.6875rem; letter-spacing:.05em; color:
   var API   = <?= json_encode($apiBase, JSON_UNESCAPED_SLASHES) ?>;
   var CSRF  = <?= json_encode($csrf) ?>;
   var STEPS = <?= json_encode(array_merge(['ident'], $blocks), JSON_UNESCAPED_UNICODE) ?>;
+  var TITLES = <?= json_encode(array_merge(
+      ['ident' => 'Identificação'],
+      array_map(static fn(array $m): string => $m['title'], $blockMeta)
+  ), JSON_UNESCAPED_UNICODE) ?>;
   var LSKEY = 'bc_token_<?= e(BC_FORM_SLUG) ?>';
+  var NBLOCKS = STEPS.length - 1;
 
   var wrap    = document.getElementById('formWrap');
   var msgEl   = document.getElementById('formMsg');
   var doneEl  = document.getElementById('doneStep');
-  var pips    = Array.prototype.slice.call(document.querySelectorAll('.pip'));
+  var railLis = Array.prototype.slice.call(document.querySelectorAll('.rail li'));
+  var pFill   = document.getElementById('pbarFill');
+  var pLabel  = document.getElementById('pbarLabel');
+  var pCount  = document.getElementById('pbarCount');
   var token   = null;
   var current = 'ident';
   var busy    = false;
@@ -461,25 +585,34 @@ footer{font-family:var(--mono); font-size:.6875rem; letter-spacing:.05em; color:
 
     if (name === 'done') {
       doneEl.classList.add('is-active');
-      pips.forEach(function (p) { p.dataset.state = 'done'; });
+      railLis.forEach(function (li) { li.dataset.state = 'done'; });
+      pFill.style.width = '100%';
+      pLabel.textContent = 'Concluído';
+      pCount.textContent = NBLOCKS + ' / ' + NBLOCKS;
     } else {
       var el = stepEl(name);
       if (!el) return;
       el.classList.add('is-active');
       current = name;
-      paintPips();
+      paintProgress();
     }
     document.getElementById('briefing').scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 
-  function paintPips(doneList) {
+  function paintProgress(doneList) {
     var idx = STEPS.indexOf(current);
-    pips.forEach(function (p) {
-      var i = STEPS.indexOf(p.dataset.step);
-      if (p.dataset.step === current) p.dataset.state = 'current';
-      else if ((doneList && doneList.indexOf(p.dataset.step) >= 0) || i < idx) p.dataset.state = 'done';
-      else p.removeAttribute('data-state');
+
+    railLis.forEach(function (li) {
+      var i = STEPS.indexOf(li.dataset.step);
+      if (li.dataset.step === current) li.dataset.state = 'current';
+      else if ((doneList && doneList.indexOf(li.dataset.step) >= 0) || i < idx) li.dataset.state = 'done';
+      else li.removeAttribute('data-state');
     });
+
+    var feitos = doneList ? doneList.length : Math.max(0, idx - 1);
+    pFill.style.width = Math.round((feitos / NBLOCKS) * 100) + '%';
+    pLabel.textContent = TITLES[current] || '';
+    pCount.textContent = feitos + ' / ' + NBLOCKS;
   }
 
   /* ---------------- leitura / escrita do DOM ---------------- */
@@ -618,8 +751,10 @@ footer{font-family:var(--mono); font-size:.6875rem; letter-spacing:.05em; color:
       }
       var d = r.body.data;
       if (d.is_last) return finishBriefing(btn);
-      paintPips(d.completed_blocks);
+      // go() repinta sem a lista; repinta de novo COM ela para os blocos
+      // já concluídos ficarem marcados mesmo se ela voltou e pulou etapas.
       go(d.current_block);
+      paintProgress(d.completed_blocks);
     }).catch(function () {
       showMsg('Sem conexão com o servidor. Suas respostas continuam aqui na tela — tenta de novo.');
     }).finally(function () {
@@ -679,10 +814,11 @@ footer{font-family:var(--mono); font-size:.6875rem; letter-spacing:.05em; color:
       token = d.session_token;
       hydrate(d.answers);
       go(d.current_block || STEPS[1]);
-      paintPips(d.completed_blocks);
+      paintProgress(d.completed_blocks);
     }).catch(function () { /* falha na retomada: começa do zero, sem alarde */ });
   })();
 
+  paintProgress();
 })();
 </script>
 </body>
