@@ -11,7 +11,20 @@ api_require_fields($in, ['email']);
 $email = strtolower(api_str($in['email']));
 
 $pdo = api_db();
-$st = $pdo->prepare("SELECT id_user, primeiro_nome FROM usuarios WHERE email_corporativo = ? LIMIT 1");
+// Mesmas duas guardas do views/password_reset_request.php — este caminho estava
+// sem nenhuma das duas:
+//  1) conta inativa (desligamento) não pede reset;
+//  2) lead vindo de formulário público (LP/perspectivas) sem credencial não é
+//     elegível, senão qualquer um transformaria um lead em conta autenticada.
+$st = $pdo->prepare(
+  "SELECT u.id_user, u.primeiro_nome
+     FROM usuarios u
+     LEFT JOIN usuarios_credenciais c ON c.id_user = u.id_user
+    WHERE LOWER(TRIM(u.email_corporativo)) = LOWER(TRIM(?))
+      AND u.ativo = 1
+      AND NOT (u.origem_cadastro = 'form_perspectivas' AND c.id_user IS NULL)
+    LIMIT 1"
+);
 $st->execute([$email]);
 $user = $st->fetch();
 
