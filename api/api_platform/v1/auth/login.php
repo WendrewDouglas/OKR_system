@@ -30,6 +30,7 @@ $sql = "
     u.email_corporativo,
     u.id_company,
     u.empresa,
+    u.ativo,
     c.senha_hash
   FROM usuarios u
   INNER JOIN usuarios_credenciais c ON c.id_user = u.id_user
@@ -43,6 +44,11 @@ $user = $st->fetch();
 if (!$user || empty($user['senha_hash']) || !password_verify($pass, (string)$user['senha_hash'])) {
   login_throttle_record($pdo, $ip, $email, false);
   api_error('E_AUTH', 'E-mail ou senha incorretos.', 401);
+}
+// Conta inativa (desligamento): só verifica depois da senha, para não revelar
+// a existência do cadastro a quem não tem a credencial. Espelha auth_login.php.
+if (!(int)($user['ativo'] ?? 1)) {
+  api_error('E_INACTIVE', 'Conta inativa. Contate o administrador.', 403);
 }
 login_throttle_record($pdo, $ip, $email, true);
 

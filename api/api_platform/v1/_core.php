@@ -307,6 +307,19 @@ function api_require_auth(): array {
   $p = api_verify_token($t);
   if (!$p) api_error('E_AUTH', 'Token inválido ou expirado.', 401);
 
+  // O token é stateless (HMAC, TTL de 24h) e por si só não sabe de desligamento.
+  // Sem esta checagem, um usuário inativado seguiria com acesso total até o token
+  // expirar. Custo: um lookup por PK a cada request autenticado.
+  $uid = (int)($p['sub'] ?? 0);
+  if ($uid <= 0) api_error('E_AUTH', 'Token inválido ou expirado.', 401);
+
+  $st = api_db()->prepare("SELECT ativo FROM usuarios WHERE id_user = ? LIMIT 1");
+  $st->execute([$uid]);
+  $ativo = $st->fetchColumn();
+
+  if ($ativo === false) api_error('E_AUTH', 'Token inválido ou expirado.', 401); // usuário removido
+  if (!(int)$ativo)     api_error('E_INACTIVE', 'Conta inativa. Contate o administrador.', 403);
+
   return $p;
 }
 

@@ -62,11 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // Segurança: leads criados por formulário público (LP/perspectivas, sem
   // credencial) NÃO são elegíveis a reset — senão qualquer um transformaria
   // um lead em conta autenticada pedindo "esqueci a senha".
+  // Contas inativas (desligamento) também não são elegíveis: sem isto o
+  // desligado criaria uma senha nova e só então bateria no bloqueio do login.
   $stmt = $pdo->prepare(
     "SELECT u.id_user
        FROM usuarios u
        LEFT JOIN usuarios_credenciais c ON c.id_user = u.id_user
       WHERE LOWER(TRIM(u.email_corporativo)) = LOWER(TRIM(:email))
+        AND u.ativo = 1
         AND NOT (u.origem_cadastro = 'form_perspectivas' AND c.id_user IS NULL)
       LIMIT 1"
   );
