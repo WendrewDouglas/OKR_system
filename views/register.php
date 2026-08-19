@@ -1,6 +1,13 @@
     <?php
     // views/register.php
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // CAPTCHA_PROVIDER / CAPTCHA_SITE_KEY sao definidas aqui. Sem este require
+    // o render morre com "Undefined constant CAPTCHA_PROVIDER" logo antes do
+    // botao Cadastrar, e o formulario chega ao usuario sem como ser enviado.
+    require_once __DIR__ . '/../auth/config.php';
 
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
