@@ -2257,6 +2257,10 @@ error_reporting(E_ALL);
 session_start();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../auth/functions.php';
+// num_br() é usado no render dos KPIs (linha ~2683). O require do topo deste
+// arquivo fica dentro do branch AJAX, que dá exit antes de chegar aqui — sem
+// esta linha o render normal morre com "Call to undefined function num_br()".
+require_once __DIR__ . '/../auth/helpers/num_format.php';
 
 if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.php'); exit; }
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
