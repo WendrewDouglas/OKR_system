@@ -299,3 +299,57 @@ if (!function_exists('gerarMilestonesParaKR')) {
     }
 
 }
+
+if (!function_exists('krh_formatar_id_kr')) {
+
+    /** id_kr canônico: NNN-OO (objetivo com 2 dígitos quando < 100). */
+    function krh_formatar_id_kr(int $num, int $id_objetivo): string
+    {
+        $objFmt = ($id_objetivo < 100)
+            ? str_pad((string)$id_objetivo, 2, '0', STR_PAD_LEFT)
+            : (string)$id_objetivo;
+
+        return sprintf('%03d-%s', $num, $objFmt);
+    }
+
+}
+
+if (!function_exists('krh_proximo_id_kr')) {
+
+    /**
+     * Próximo par (key_result_num, id_kr) livre para um objetivo.
+     *
+     * O id_kr é DERIVADO do key_result_num, então MAX(key_result_num)+1 sozinho não
+     * basta: se a numeração tiver ficado defasada do prefixo do id (exclusões
+     * antigas, migrações manuais), o id calculado pode já existir e o INSERT
+     * estoura com duplicate key. Aqui avançamos até achar um id realmente livre.
+     *
+     * Deve ser chamado DENTRO da transação — o SELECT usa FOR UPDATE para
+     * serializar criações concorrentes no mesmo objetivo.
+     *
+     * @return array{0:int,1:string} [key_result_num, id_kr]
+     */
+    function krh_proximo_id_kr(PDO $pdo, int $id_objetivo): array
+    {
+        $st = $pdo->prepare(
+            "SELECT COALESCE(MAX(key_result_num), 0) FROM key_results WHERE id_objetivo = ? FOR UPDATE"
+        );
+        $st->execute([$id_objetivo]);
+        $num = (int)$st->fetchColumn() + 1;
+
+        $existe = $pdo->prepare("SELECT 1 FROM key_results WHERE id_kr = ? LIMIT 1");
+
+        // %03d comporta no máximo 999 KRs por objetivo
+        while ($num <= 999) {
+            $id_kr = krh_formatar_id_kr($num, $id_objetivo);
+            $existe->execute([$id_kr]);
+            if ($existe->fetchColumn() === false) {
+                return [$num, $id_kr];
+            }
+            $num++;
+        }
+
+        throw new RuntimeException("Não há id_kr livre para o objetivo {$id_objetivo} (limite de 999 KRs).");
+    }
+
+}

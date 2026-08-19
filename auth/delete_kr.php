@@ -317,32 +317,18 @@ try {
         throw new RuntimeException('Nenhum registro de KR apagado (KR inexistente?)');
     }
 
-    // 6) Renumeração de key_result_num dentro do mesmo objetivo
-    if ($id_objetivo > 0 && $colExists($pdo, 'key_results', 'key_result_num')) {
-        $stIds = $pdo->prepare("
-            SELECT `id_kr`
-            FROM `key_results`
-            WHERE `id_objetivo` = :obj
-            ORDER BY `key_result_num` ASC, `id_kr` ASC
-        ");
-        $stIds->execute(['obj' => $id_objetivo]);
-        $ids = $stIds->fetchAll(PDO::FETCH_COLUMN);
-
-        if (!empty($ids)) {
-            $upd = $pdo->prepare("
-                UPDATE `key_results`
-                SET `key_result_num` = :n
-                WHERE `id_kr` = :id
-            ");
-            $n = 1;
-            foreach ($ids as $kid) {
-                $upd->execute([
-                    'n'  => $n++,
-                    'id' => $kid,
-                ]);
-            }
-        }
-    }
+    // 6) NÃO renumerar os KRs restantes.
+    //
+    // O id_kr é DERIVADO do key_result_num (NNN-OO, ver krh_proximo_id_kr()).
+    // Renumerar os sobreviventes para 1..N sem renomear o id_kr desincroniza os
+    // dois e faz o próximo KR criado gerar um id que já existe → duplicate key.
+    // Renomear o id_kr junto também não serve: recicla identificadores
+    // aposentados, e o histórico (aprovacao_movimentos.id_referencia,
+    // fluxo_aprovacoes.id_referencia) referencia KR por string — o rastro
+    // grudaria no KR errado.
+    //
+    // Portanto a numeração fica com buraco após uma exclusão. É cosmético: o
+    // id_kr permanece estável e único para sempre.
 
     $pdo->commit();
 

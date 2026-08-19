@@ -552,15 +552,9 @@ try {
     app_log('info', 'Iniciando transação para salvar KR');
     $pdo->beginTransaction();
 
-    // Sequencial do KR por objetivo (lock)
-    $stmt = $pdo->prepare("SELECT COALESCE(MAX(key_result_num), 0) AS maxnum FROM key_results WHERE id_objetivo = ? FOR UPDATE");
-    $stmt->execute([$id_objetivo]);
-    $maxnum = (int)$stmt->fetchColumn();
-    $key_result_num = $maxnum + 1;
-
-    // id_kr NNN-OO
-    $objFmt = ((int)$id_objetivo < 100) ? str_pad((string)$id_objetivo, 2, '0', STR_PAD_LEFT) : (string)$id_objetivo;
-    $id_kr = sprintf('%03d-%s', $key_result_num, $objFmt);
+    // Sequencial + id_kr (NNN-OO) por objetivo, com lock. O helper pula ids já
+    // ocupados — ver krh_proximo_id_kr().
+    [$key_result_num, $id_kr] = krh_proximo_id_kr($pdo, (int)$id_objetivo);
     app_log('info', 'Gerado id_kr', ['id_kr'=>$id_kr, 'key_result_num'=>$key_result_num]);
 
     // IA (opcional) -> qualidade

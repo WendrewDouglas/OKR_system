@@ -90,15 +90,9 @@ $creatorName = (string)($stNome->fetchColumn() ?: $uid);
 
 $pdo->beginTransaction();
 try {
-  // Sequential number
-  $stN = $pdo->prepare("SELECT COALESCE(MAX(key_result_num), 0) + 1 FROM key_results WHERE id_objetivo = ? FOR UPDATE");
-  $stN->execute([$idObj]);
-  $num = (int)$stN->fetchColumn();
-
-  // id_kr no MESMO formato do web (salvar_kr.php): NNN-OO — num com 3 dígitos,
-  // objetivo com 2 dígitos quando < 100. Ex.: '006-35'.
-  $objFmt = ((int)$idObj < 100) ? str_pad((string)$idObj, 2, '0', STR_PAD_LEFT) : (string)$idObj;
-  $idKr = sprintf('%03d-%s', $num, $objFmt);
+  // Sequencial + id_kr no MESMO formato do web (NNN-OO), pelo helper compartilhado:
+  // ele segura o lock e pula ids já ocupados. Ex.: '006-35'.
+  [$num, $idKr] = krh_proximo_id_kr($pdo, (int)$idObj);
 
   $stIns = $pdo->prepare("
     INSERT INTO key_results
