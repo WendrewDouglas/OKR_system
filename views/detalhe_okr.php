@@ -2750,6 +2750,30 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .resp-box input[type=checkbox]{ width:16px; height:16px; accent-color:var(--gold); flex:0 0 auto; }
     .resp-box .resp-empty{ color:#9aa4b2; font-size:.88rem; }
     .resp-box .resp-main{ margin-left:auto; font-size:.7rem; font-weight:800; color:var(--gold); letter-spacing:.03em; }
+
+    /* Kanban de iniciativas (dentro da aba Iniciativas do KR) */
+    .kb-board{ display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; align-items:flex-start; }
+    .kb-col{ flex:0 0 264px; background:#0b101a; border:1px solid var(--border); border-radius:14px; display:flex; flex-direction:column; max-height:60vh; }
+    .kb-col-head{ padding:10px 12px; border-bottom:1px solid #1f2a3a; display:flex; align-items:center; gap:8px; font-weight:800; font-size:.86rem; }
+    .kb-col-head .kb-count{ margin-left:auto; background:#141b26; border:1px solid var(--border); border-radius:999px; padding:1px 8px; font-size:.76rem; color:#a6adbb; }
+    .kb-col-body{ padding:8px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:70px; }
+    .kb-col.kb-over{ border-color:var(--gold); }
+    .kb-col.kb-over .kb-col-body{ background:#12181f; }
+    .kb-empty{ color:#6b7280; font-size:.8rem; text-align:center; padding:12px 4px; border:1px dashed #1f2a3a; border-radius:10px; }
+    .kb-card{ background:#0f1420; border:1px solid #223047; border-left-width:3px; border-radius:12px; padding:9px 10px; cursor:grab; }
+    .kb-card:active{ cursor:grabbing; }
+    .kb-card.kb-dragging{ opacity:.45; }
+    .kb-card-top{ display:flex; align-items:center; gap:6px; font-size:.74rem; color:#9aa4b2; font-weight:800; }
+    .kb-card-desc{ color:#e5e7eb; font-size:.88rem; margin:5px 0 7px; line-height:1.3; }
+    .kb-card-meta{ display:flex; flex-wrap:wrap; gap:5px; font-size:.72rem; color:#a6adbb; }
+    .kb-card-meta span{ background:#0b101a; border:1px solid var(--border); border-radius:999px; padding:2px 7px; display:inline-flex; align-items:center; gap:4px; }
+    .kb-card-meta span.kb-late{ color:#f87171; border-color:#3b0d13; background:#1a0b0e; }
+    .kb-card-acts{ display:flex; gap:5px; justify-content:flex-end; margin-top:8px; }
+    .kb-card.st-andamento{ border-left-color:#60a5fa; }
+    .kb-card.st-naoiniciado{ border-left-color:#6b7280; }
+    .kb-card.st-concluido{ border-left-color:#22c55e; }
+    .kb-card.st-cancelado{ border-left-color:#f87171; }
+    .kb-card.st-pausado{ border-left-color:#fbbf24; }
     /* Drawers */
     .drawer{ position:fixed; top:0; right:-560px; width:520px; max-width:92vw; height:100%; background:#0f1420; border-left:1px solid #223047; box-shadow:-10px 0 40px rgba(0,0,0,.35); transition:right .25s ease; z-index:2000; color:#e5e7eb; display:flex; flex-direction:column; }
     .drawer.show{ right:0; }
@@ -4241,24 +4265,31 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
         <div class="tabpane" id="ini-${id}">
           <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
-            <button class="btn btn-outline"><i class="fa-solid fa-table-columns"></i> Ver Kanban</button>
+            <button class="btn btn-outline" id="btn_ini_view_${id}" data-act="ini-view" data-id="${id}">
+              <i class="fa-solid fa-table-columns"></i> Ver Kanban
+            </button>
           </div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th><i class="th-ico fa-solid fa-hashtag"></i>#</th>
-                <th><i class="th-ico fa-regular fa-rectangle-list"></i>Descrição</th>
-                <th><i class="th-ico fa-regular fa-user"></i>Responsável</th>
-                <th><i class="th-ico fa-solid fa-clipboard-check"></i>Status</th>
-                <th><i class="th-ico fa-regular fa-calendar-days"></i>Prazo</th>
-                <th style="text-align:right"><i class="th-ico fa-solid fa-sack-dollar"></i>Aprovado</th>
-                <th style="text-align:right"><i class="th-ico fa-solid fa-wallet"></i>Realizado</th>
-                <th style="text-align:right"><i class="th-ico fa-solid fa-scale-balanced"></i>Saldo</th>
-                <th style="text-align:right"><i class="th-ico fa-solid fa-wrench"></i>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tb_ini_${id}"><tr><td colspan="9">Carregando...</td></tr></tbody>
-          </table>
+
+          <div id="ini_tbl_${id}">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th><i class="th-ico fa-solid fa-hashtag"></i>#</th>
+                  <th><i class="th-ico fa-regular fa-rectangle-list"></i>Descrição</th>
+                  <th><i class="th-ico fa-regular fa-user"></i>Responsável</th>
+                  <th><i class="th-ico fa-solid fa-clipboard-check"></i>Status</th>
+                  <th><i class="th-ico fa-regular fa-calendar-days"></i>Prazo</th>
+                  <th style="text-align:right"><i class="th-ico fa-solid fa-sack-dollar"></i>Aprovado</th>
+                  <th style="text-align:right"><i class="th-ico fa-solid fa-wallet"></i>Realizado</th>
+                  <th style="text-align:right"><i class="th-ico fa-solid fa-scale-balanced"></i>Saldo</th>
+                  <th style="text-align:right"><i class="th-ico fa-solid fa-wrench"></i>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tb_ini_${id}"><tr><td colspan="9">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+
+          <div id="ini_kb_${id}" class="kb-board" style="display:none"></div>
         </div>
 
         <div class="tabpane" id="orc-${id}">
@@ -4374,6 +4405,13 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       if (btnIniStatus) {
         const idIni = btnIniStatus.getAttribute('data-id');
         await openIniStatusDrawer(idIni);
+        return;
+      }
+
+      // Alternar tabela <-> kanban na aba Iniciativas
+      const btnIniView = e.target.closest('button[data-act="ini-view"]');
+      if (btnIniView) {
+        await toggleIniView(btnIniView.getAttribute('data-id'));
         return;
       }
 
@@ -4866,14 +4904,25 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     function setText(id, txt){ const el=document.getElementById(id); if(el) el.textContent=txt; }
 
     // Iniciativas
+    // Guarda o último payload por KR para o kanban desenhar sem refazer o fetch.
+    const iniCache = {};
+
+    // Redesenha o kanban só se ele for a visão ativa daquele KR.
+    function refreshIniKanbanSeVisivel(id){
+      const kb = document.getElementById(`ini_kb_${id}`);
+      if (kb && kb.style.display !== 'none') renderIniKanban(id);
+    }
+
     async function loadIniciativas(id){
       const res  = await fetch(`${SCRIPT}?ajax=iniciativas_list&id_kr=${encodeURIComponent(id)}`);
       const data = await res.json();
+      iniCache[id] = (data.success ? (data.iniciativas || []) : []);
       const tb   = document.getElementById(`tb_ini_${id}`);
       if(!tb) return;
       tb.innerHTML = '';
       if(!data.success || !data.iniciativas?.length){
         tb.innerHTML = `<tr><td colspan="9" style="color:#9aa4b2">Sem iniciativas.</td></tr>`;
+        refreshIniKanbanSeVisivel(id);
         return;
       }
       data.iniciativas.forEach(ini=>{
@@ -4926,7 +4975,196 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           </tr>
         `);
       });
+
+      refreshIniKanbanSeVisivel(id);
     }
+
+    // ====== Kanban de iniciativas ======
+    // Colunas = domínio dom_status_kr, na ordem canônica do auth/helpers/kr_status.php
+    // (a tabela não tem coluna de ordenação, por isso o rank fica no código).
+    function krStatusRank(raw){
+      const s = String(raw||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      if (s.includes('nao inici')) return 0;
+      if (s.includes('andament') || s.includes('progress')) return 1;
+      if (s.includes('pausad')) return 2;
+      if (s.includes('conclu') || s.includes('finaliz')) return 3;
+      if (s.includes('cancel')) return 4;
+      return 5;
+    }
+
+    let __statusIniCache = null;
+    async function fetchStatusIniciativa(){
+      if (__statusIniCache) return __statusIniCache;
+      const res  = await fetch(`${SCRIPT}?ajax=list_status_iniciativa`);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Falha ao listar status');
+      __statusIniCache = (data.items || []).slice()
+        .sort((a,b)=> krStatusRank(a.id || a.label) - krStatusRank(b.id || b.label));
+      return __statusIniCache;
+    }
+
+    function kbCard(ini, hoje){
+      const resp  = (ini.responsaveis || []).map(r=>r.nome);
+      const prazo = ini.dt_prazo ? toDDMMYYYY(ini.dt_prazo,'/') : '';
+      const aprov = Number(ini.orcamento?.aprovado || 0);
+
+      // Só marca atraso no que ainda está em aberto (não concluído/cancelado)
+      let late = false;
+      if (ini.dt_prazo && krStatusRank(ini.status) < 3){
+        const d = new Date(`${onlyDate(ini.dt_prazo)}T00:00:00`);
+        late = !isNaN(d) && d < hoje;
+      }
+
+      const despBtn = ini.orcamento?.id_orcamento
+        ? `<button class="btn btn-outline btn-sm" title="Lançar despesa" data-act="despesa" data-id="${ini.orcamento.id_orcamento}"><i class="fa-solid fa-sack-dollar"></i></button>`
+        : '';
+
+      return `
+        <div class="kb-card ${krStatusClass(ini.status)}" draggable="true"
+             data-id-ini="${escapeHtml(ini.id_iniciativa)}" data-status="${escapeHtml(String(ini.status||''))}">
+          <div class="kb-card-top"><i class="fa-solid fa-hashtag"></i>${ini.num_iniciativa}</div>
+          <div class="kb-card-desc">${escapeHtml(ini.descricao||'')}</div>
+          <div class="kb-card-meta">
+            ${resp.length ? `<span><i class="fa-regular fa-user"></i>${escapeHtml(resp.join(', '))}</span>` : ''}
+            ${prazo ? `<span class="${late ? 'kb-late' : ''}"><i class="fa-regular fa-calendar-days"></i>${prazo}</span>` : ''}
+            ${aprov > 0 ? `<span><i class="fa-solid fa-sack-dollar"></i>${fmtBRL(aprov)}</span>` : ''}
+          </div>
+          <div class="kb-card-acts" draggable="false">
+            ${despBtn}
+            <button class="btn btn-outline btn-sm" title="Alterar status" data-act="ini-status" data-id="${escapeHtml(ini.id_iniciativa)}"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button class="btn btn-outline btn-sm" title="Editar iniciativa" data-act="ini-edit" data-id="${escapeHtml(ini.id_iniciativa)}"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button class="btn btn-outline btn-sm" title="Excluir iniciativa" data-act="ini-del" data-id="${escapeHtml(ini.id_iniciativa)}" data-num="${ini.num_iniciativa}"><i class="fa-solid fa-trash-can" style="color:#f87171"></i></button>
+          </div>
+        </div>`;
+    }
+
+    async function renderIniKanban(idKr){
+      const board = document.getElementById(`ini_kb_${idKr}`);
+      if (!board) return;
+
+      let cols;
+      try { cols = await fetchStatusIniciativa(); }
+      catch(err){ board.innerHTML = `<div class="kb-empty">${escapeHtml(err.message)}</div>`; return; }
+      if (!cols.length){ board.innerHTML = `<div class="kb-empty">Nenhum status cadastrado.</div>`; return; }
+
+      const hoje = new Date(); hoje.setHours(0,0,0,0);
+      const inis = iniCache[idKr] || [];
+
+      // Agrupa por status. Se o valor gravado não bate exatamente com o id do
+      // domínio, casa pelo rank; se nem isso, cai na primeira coluna.
+      const bucket = new Map(cols.map(c=>[String(c.id), []]));
+      inis.forEach(ini=>{
+        const key = String(ini.status ?? '');
+        if (bucket.has(key)) { bucket.get(key).push(ini); return; }
+        const alvo = cols.find(c => krStatusRank(c.id || c.label) === krStatusRank(key));
+        bucket.get(String((alvo || cols[0]).id)).push(ini);
+      });
+
+      board.innerHTML = cols.map(c=>{
+        const key   = String(c.id);
+        const label = c.label || key;
+        const lista = bucket.get(key) || [];
+        return `
+          <div class="kb-col" data-status="${escapeHtml(key)}" data-label="${escapeHtml(label)}" data-id-kr="${escapeHtml(idKr)}">
+            <div class="kb-col-head">
+              <span class="meta-pill ${krStatusClass(key || label)}"><i class="fa-solid fa-circle" style="font-size:.5rem"></i></span>
+              ${escapeHtml(label)}
+              <span class="kb-count">${lista.length}</span>
+            </div>
+            <div class="kb-col-body">
+              ${lista.length ? lista.map(ini=>kbCard(ini, hoje)).join('') : `<div class="kb-empty">—</div>`}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function toggleIniView(idKr){
+      const tbl = document.getElementById(`ini_tbl_${idKr}`);
+      const kb  = document.getElementById(`ini_kb_${idKr}`);
+      const btn = document.getElementById(`btn_ini_view_${idKr}`);
+      if (!tbl || !kb) return;
+
+      const paraKanban  = (kb.style.display === 'none');
+      kb.style.display  = paraKanban ? 'flex' : 'none';
+      tbl.style.display = paraKanban ? 'none' : '';
+      if (btn) btn.innerHTML = paraKanban
+        ? '<i class="fa-solid fa-table-list"></i> Ver Tabela'
+        : '<i class="fa-solid fa-table-columns"></i> Ver Kanban';
+
+      if (paraKanban) await renderIniKanban(idKr);
+    }
+
+    // Drag & drop: soltar o cartão em outra coluna grava o status na hora.
+    // Reaproveita ?ajax=update_iniciativa_status (que exige observação), com
+    // uma observação gerada automaticamente para não perder o rastro.
+    let __kbDrag = null;
+
+    document.addEventListener('dragstart', (e)=>{
+      const card = e.target.closest?.('.kb-card');
+      if (!card) return;
+      __kbDrag = {
+        idIni: card.getAttribute('data-id-ini'),
+        de:    card.getAttribute('data-status') || '',
+        idKr:  card.closest('.kb-col')?.getAttribute('data-id-kr') || ''
+      };
+      card.classList.add('kb-dragging');
+      if (e.dataTransfer){
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', __kbDrag.idIni || ''); } catch(_){}
+      }
+    });
+
+    document.addEventListener('dragend', ()=>{
+      document.querySelectorAll('.kb-card.kb-dragging').forEach(c=>c.classList.remove('kb-dragging'));
+      document.querySelectorAll('.kb-col.kb-over').forEach(c=>c.classList.remove('kb-over'));
+      __kbDrag = null;
+    });
+
+    document.addEventListener('dragover', (e)=>{
+      if (!__kbDrag) return;
+      const col = e.target.closest?.('.kb-col');
+      if (!col) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      col.classList.add('kb-over');
+    });
+
+    document.addEventListener('dragleave', (e)=>{
+      const col = e.target.closest?.('.kb-col');
+      if (col && !col.contains(e.relatedTarget)) col.classList.remove('kb-over');
+    });
+
+    document.addEventListener('drop', async (e)=>{
+      if (!__kbDrag) return;
+      const col = e.target.closest?.('.kb-col');
+      if (!col) return;
+      e.preventDefault();
+      col.classList.remove('kb-over');
+
+      const destino = col.getAttribute('data-status') || '';
+      const label   = col.getAttribute('data-label') || destino;
+      const { idIni, de, idKr } = __kbDrag;
+      __kbDrag = null;
+
+      if (!idIni || !destino || destino === de) return;
+
+      const fd = new FormData();
+      fd.append('csrf_token', csrfToken);
+      fd.append('id_iniciativa', idIni);
+      fd.append('novo_status', destino);
+      fd.append('observacao', `Status alterado para "${label}" ao mover o cartão no kanban.`);
+
+      const res  = await fetch(`${SCRIPT}?ajax=update_iniciativa_status`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (!data.success){ toast(data.error || 'Falha ao alterar status', false); return; }
+
+      toast(`Iniciativa movida para "${label}".`);
+      const alvo = idKr || document.querySelector('.kr-card.open')?.getAttribute('data-id');
+      if (alvo){
+        await loadIniciativas(alvo);
+        await loadKrDetail(alvo);
+      }
+    });
 
     function mesLabel(ym){
       const [y,m] = (ym||'').split('-');
