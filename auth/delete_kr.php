@@ -9,10 +9,10 @@ declare(strict_types=1);
  * - Verifica sessão/autorização.
  * - Apaga, em ordem:
  *   1) Despesas (orcamentos_detalhes) e orçamentos das iniciativas do KR
- *   2) Iniciativas do KR
- *      - Importante: para a tabela apontamentos_status_iniciativas,
- *        deve existir uma FK fk_apont_status_iniciativa com
- *        ON DELETE CASCADE para evitar erro 1451.
+ *   2) Histórico de status das iniciativas e as iniciativas do KR
+ *      - A FK fk_apont_status_iniciativa (apontamentos_status_iniciativas)
+ *        é RESTRICT, não CASCADE: o histórico é apagado explicitamente
+ *        antes das iniciativas para evitar o erro 1451.
  *   3) Milestones do KR
  *   4) Apontamentos do KR
  *   5) Comentários do KR
@@ -255,6 +255,16 @@ try {
                                  WHERE `id_iniciativa` IN ($placeholders)";
                 $stDelOrc     = $pdo->prepare($sql);
                 $stDelOrc->execute($inis);
+            }
+
+            // Histórico de status — FK fk_apont_status_iniciativa é RESTRICT
+            // (não tem ON DELETE CASCADE), então precisa sair antes das iniciativas.
+            if ($tableExists($pdo, 'apontamentos_status_iniciativas')) {
+                $placeholders = implode(',', array_fill(0, count($inis), '?'));
+                $sql          = "DELETE FROM `apontamentos_status_iniciativas`
+                                 WHERE `id_iniciativa` IN ($placeholders)";
+                $stDelApo     = $pdo->prepare($sql);
+                $stDelApo->execute($inis);
             }
 
             // Iniciativas

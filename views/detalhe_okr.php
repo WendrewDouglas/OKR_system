@@ -13,6 +13,7 @@ if (isset($_GET['ajax'])) {
   require_once __DIR__.'/../auth/acl.php';
   require_once __DIR__.'/../auth/helpers/nome_format.php';
   require_once __DIR__.'/../auth/helpers/num_format.php';
+  require_once __DIR__.'/../auth/helpers/iniciativa_envolvidos.php';
 
   // Gate automático pela tabela dom_paginas.requires_cap
   gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
@@ -179,6 +180,20 @@ if (isset($_GET['ajax'])) {
     if ($co === null || (int)$co !== $my) {
       http_response_code(403);
       echo json_encode(['success'=>false,'error'=>'Acesso negado.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+  };
+
+  /* Checagem de capability em endpoints AJAX.
+   * Não usa require_cap() porque deny_with_modal() só devolve JSON quando o
+   * Accept da request contém application/json — o fetch() desta página manda
+   * Accept: * / *, o que faria a resposta virar HTML e quebrar o .json() no client.
+   */
+  $assertCap = static function(string $capKey, array $ctx = []) use ($pdo, $isMasterUser): void {
+    if ($isMasterUser($pdo)) return;
+    if (!has_cap($capKey, $ctx)) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Sem permissão para esta ação.'], JSON_UNESCAPED_UNICODE);
       exit;
     }
   };
@@ -1009,13 +1024,26 @@ foreach ($milestones as $m) {
         $real = (float)($stmR2->fetch()['realizado'] ?? 0);
       }
 
+      // Responsáveis: junction iniciativas_envolvidos; se vazia, cai no denormalizado
+      $envolvidos = get_iniciativa_envolvidos($pdo, $id_ini);
+      if (!$envolvidos && $ini['id_user_responsavel'] && $ini['responsavel_nome']) {
+        $envolvidos = [['id_user'=>(int)$ini['id_user_responsavel'], 'nome'=>$ini['responsavel_nome']]];
+      }
+      $respList = [];
+      foreach ($envolvidos as $e) {
+        $curto = nome_exibicao_str((string)$e['nome']);
+        if ($curto === '') continue;
+        $respList[] = ['id_user'=>(int)$e['id_user'], 'nome'=>$curto];
+      }
+
       $resp[] = [
         'id_iniciativa'=>$id_ini,
         'num_iniciativa'=>(int)$ini['num_iniciativa'],
         'descricao'=>$ini['descricao'],
         'status'=>$ini['status'],
         'dt_prazo'=>$ini['dt_prazo'],
-        'responsavel'=>($ini['responsavel_nome'] ? nome_exibicao_str($ini['responsavel_nome']) : '') ?: '—',
+        'responsaveis'=>$respList,
+        'responsavel'=>$respList ? implode(', ', array_column($respList,'nome')) : '—',
         'orcamento'=>[
           'aprovado'=>$aprov,'realizado'=>$real,'saldo'=>max(0,$aprov-$real),
           'id_orcamento'=>$id_orc
@@ -1027,6 +1055,187 @@ foreach ($milestones as $m) {
     exit;
   }
 
+  /* ---------- OBTER UMA INICIATIVA (alimenta o drawer de edição) ---------- */
+  if ($action === 'iniciativa_get') {
+    $id_ini = $_GET['id_iniciativa'] ?? '';
+    if (!$id_ini) { echo json_encode(['success'=>false,'error'=>'id_iniciativa inválido']); exit; }
+    $assertTenant('iniciativa', ['id_iniciativa'=>$id_ini]);
+
+    $st = $pdo->prepare("
+      SELECT i.`id_iniciativa`, i.`id_kr`, i.`num_iniciativa`, i.`descricao`, i.`status`,
+             i.`dt_prazo`, i.`observacoes`, i.`id_user_responsavel`,
+             CONCAT(u.`primeiro_nome`,' ',COALESCE(u.`ultimo_nome`,'')) AS responsavel_nome
+        FROM `iniciativas` i
+        LEFT JOIN `usuarios` u ON u.`id_user` = i.`id_user_responsavel`
+       WHERE i.`id_iniciativa` = :id
+       LIMIT 1
+    ");
+    $st->execute(['id'=>$id_ini]);
+    $ini = $st->fetch();
+    if (!$ini) { echo json_encode(['success'=>false,'error'=>'Iniciativa não encontrada']); exit; }
+
+    // Junction; fallback ao denormalizado para iniciativas antigas
+    $envolvidos = get_iniciativa_envolvidos($pdo, (string)$id_ini);
+    if (!$envolvidos && $ini['id_user_responsavel']) {
+      $envolvidos = [['id_user'=>(int)$ini['id_user_responsavel'], 'nome'=>(string)$ini['responsavel_nome']]];
+    }
+
+    echo json_encode(['success'=>true, 'iniciativa'=>[
+      'id_iniciativa'  => $ini['id_iniciativa'],
+      'id_kr'          => $ini['id_kr'],
+      'num_iniciativa' => (int)$ini['num_iniciativa'],
+      'descricao'      => $ini['descricao'],
+      'status'         => $ini['status'],
+      'dt_prazo'       => $ini['dt_prazo'],
+      'observacoes'    => $ini['observacoes'] ?? '',
+      'responsaveis'   => array_map(fn($e)=>(int)$e['id_user'], $envolvidos),
+    ]], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  /* ---------- EDITAR INICIATIVA ----------
+   * Status NÃO é editado aqui: continua no drawer próprio
+   * (?ajax=update_iniciativa_status), que exige observação obrigatória.
+   */
+  if ($action === 'editar_iniciativa') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+    }
+
+    $id_ini   = $_POST['id_iniciativa'] ?? '';
+    $desc     = trim((string)($_POST['descricao'] ?? ''));
+    $dt_prazo = trim((string)($_POST['dt_prazo'] ?? ''));
+
+    $respIds = json_decode((string)($_POST['responsaveis_json'] ?? '[]'), true);
+    if (!is_array($respIds)) $respIds = [];
+    $respIds = array_values(array_unique(array_filter(array_map('intval', $respIds), fn($v)=>$v>0)));
+
+    if (!$id_ini)     { echo json_encode(['success'=>false,'error'=>'id_iniciativa inválido']); exit; }
+    if ($desc === '') { echo json_encode(['success'=>false,'error'=>'A descrição é obrigatória.']); exit; }
+    if (!$respIds)    { echo json_encode(['success'=>false,'error'=>'Informe ao menos um responsável.']); exit; }
+
+    $assertTenant('iniciativa', ['id_iniciativa'=>$id_ini]);
+    $assertCap('W:iniciativa@ORG', ['id_iniciativa'=>$id_ini]);
+
+    // Normaliza o prazo (aceita vazio => NULL)
+    if ($dt_prazo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt_prazo)) {
+      $ts = strtotime($dt_prazo);
+      $dt_prazo = $ts ? date('Y-m-d', $ts) : '';
+    }
+
+    // Os responsáveis precisam pertencer à empresa DA INICIATIVA (vale também p/ admin_master)
+    $stC = $pdo->prepare("
+      SELECT o.`id_company`
+        FROM `iniciativas` i
+        JOIN `key_results` kr ON kr.`id_kr` = i.`id_kr`
+        JOIN `objetivos` o    ON o.`id_objetivo` = kr.`id_objetivo`
+       WHERE i.`id_iniciativa` = :id
+       LIMIT 1
+    ");
+    $stC->execute(['id'=>$id_ini]);
+    $iniCompany = (int)($stC->fetchColumn() ?: 0);
+
+    $ph  = implode(',', array_fill(0, count($respIds), '?'));
+    $stU = $pdo->prepare("SELECT COUNT(*) FROM `usuarios` WHERE `id_user` IN ($ph) AND `id_company` = ?");
+    $stU->execute(array_merge($respIds, [$iniCompany]));
+    if ((int)$stU->fetchColumn() !== count($respIds)) {
+      echo json_encode(['success'=>false,'error'=>'Responsável inválido para esta empresa.']); exit;
+    }
+
+    try {
+      $pdo->beginTransaction();
+
+      $sets  = ['`descricao` = :d'];
+      $binds = [':d'=>$desc, ':id'=>$id_ini];
+
+      if ($colExists($pdo,'iniciativas','dt_prazo')) {
+        $sets[] = '`dt_prazo` = :p';
+        $binds[':p'] = $dt_prazo !== '' ? $dt_prazo : null;
+      }
+      if ($colExists($pdo,'iniciativas','id_user_ult_alteracao')) {
+        $sets[] = '`id_user_ult_alteracao` = :u';
+        $binds[':u'] = (int)$_SESSION['user_id'];
+      }
+      if ($colExists($pdo,'iniciativas','dt_ultima_atualizacao')) {
+        $sets[] = '`dt_ultima_atualizacao` = NOW()';
+      }
+
+      $st = $pdo->prepare("UPDATE `iniciativas` SET ".implode(', ', $sets)." WHERE `id_iniciativa` = :id");
+      $st->execute($binds);
+
+      // Junction + denormalizado (id_user_responsavel = 1º da lista)
+      sync_iniciativa_envolvidos($pdo, (string)$id_ini, $respIds);
+
+      $pdo->commit();
+      echo json_encode(['success'=>true]); exit;
+
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      error_log('editar_iniciativa: '.$e->getMessage());
+      echo json_encode(['success'=>false,'error'=>'Falha ao salvar a iniciativa.']); exit;
+    }
+  }
+
+  /* ---------- EXCLUIR INICIATIVA (permanente) ---------- */
+  if ($action === 'excluir_iniciativa') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+    }
+
+    $id_ini = $_POST['id_iniciativa'] ?? '';
+    if (!$id_ini) { echo json_encode(['success'=>false,'error'=>'id_iniciativa inválido']); exit; }
+
+    $assertTenant('iniciativa', ['id_iniciativa'=>$id_ini]);
+    $assertCap('W:iniciativa@ORG', ['id_iniciativa'=>$id_ini]);
+
+    $st = $pdo->prepare("SELECT `id_kr` FROM `iniciativas` WHERE `id_iniciativa` = :id LIMIT 1");
+    $st->execute(['id'=>$id_ini]);
+    $id_kr = (string)($st->fetchColumn() ?: '');
+    if ($id_kr === '') { echo json_encode(['success'=>false,'error'=>'Iniciativa não encontrada']); exit; }
+
+    try {
+      $pdo->beginTransaction();
+
+      // Cascata manual (espelha api/api_platform/v1/iniciativas/delete.php)
+      if ($tableExists($pdo,'orcamentos')) {
+        if ($tableExists($pdo,'orcamentos_detalhes')) {
+          $st = $pdo->prepare("DELETE od FROM `orcamentos_detalhes` od
+                               INNER JOIN `orcamentos` o ON o.`id_orcamento` = od.`id_orcamento`
+                               WHERE o.`id_iniciativa` = :id");
+          $st->execute(['id'=>$id_ini]);
+        }
+        $pdo->prepare("DELETE FROM `orcamentos` WHERE `id_iniciativa` = :id")->execute(['id'=>$id_ini]);
+      }
+      // FK RESTRICT: precisa sair antes da iniciativa
+      if ($tableExists($pdo,'apontamentos_status_iniciativas')) {
+        $pdo->prepare("DELETE FROM `apontamentos_status_iniciativas` WHERE `id_iniciativa` = :id")->execute(['id'=>$id_ini]);
+      }
+      if ($tableExists($pdo,'iniciativas_envolvidos')) {
+        $pdo->prepare("DELETE FROM `iniciativas_envolvidos` WHERE `id_iniciativa` = :id")->execute(['id'=>$id_ini]);
+      }
+      $pdo->prepare("DELETE FROM `iniciativas` WHERE `id_iniciativa` = :id")->execute(['id'=>$id_ini]);
+
+      // Renumera as remanescentes do KR para não deixar buraco na sequência
+      if ($colExists($pdo,'iniciativas','num_iniciativa')) {
+        $st = $pdo->prepare("SELECT `id_iniciativa` FROM `iniciativas` WHERE `id_kr` = :k
+                             ORDER BY `num_iniciativa` ASC, `dt_criacao` ASC");
+        $st->execute(['k'=>$id_kr]);
+        $ids = $st->fetchAll(PDO::FETCH_COLUMN);
+        $upd = $pdo->prepare("UPDATE `iniciativas` SET `num_iniciativa` = :n WHERE `id_iniciativa` = :i");
+        foreach ($ids as $i => $iid) { $upd->execute(['n'=>$i+1, 'i'=>$iid]); }
+      }
+
+      $pdo->commit();
+      echo json_encode(['success'=>true,'id_kr'=>$id_kr]); exit;
+
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      error_log('excluir_iniciativa: '.$e->getMessage());
+      echo json_encode(['success'=>false,'error'=>'Falha ao excluir a iniciativa.']); exit;
+    }
+  }
 
 
     /* ---------- NOVA INICIATIVA (+ orçamento opcional) ---------- */
@@ -1041,6 +1250,12 @@ foreach ($milestones as $m) {
       $resp    = (int)($_POST['id_user_responsavel'] ?? 0);
       $status  = trim((string)($_POST['status_iniciativa'] ?? ''));
       $dt_prazo= $_POST['dt_prazo'] ?? null;
+
+      // Múltiplos responsáveis (junction iniciativas_envolvidos)
+      $respIds = json_decode((string)($_POST['responsaveis_json'] ?? '[]'), true);
+      if (!is_array($respIds)) $respIds = [];
+      $respIds = array_values(array_unique(array_filter(array_map('intval', $respIds), fn($v)=>$v>0)));
+      if ($respIds) $resp = $respIds[0];
 
       $inclOrc = !empty($_POST['incluir_orcamento']);
       $valorTot= (float)($_POST['valor_orcamento'] ?? 0);
@@ -1076,6 +1291,12 @@ foreach ($milestones as $m) {
         $mI = implode(',', array_map(fn($k)=>":$k", array_keys($colsI)));
         $st = $pdo->prepare("INSERT INTO iniciativas ($fI) VALUES ($mI)");
         $st->execute($colsI);
+
+        // Junction de responsáveis (fallback: o responsável único do formulário)
+        $envIds = $respIds ?: array_filter([$resp ?: (int)$_SESSION['user_id']]);
+        if ($envIds && $tableExists($pdo,'iniciativas_envolvidos')) {
+          sync_iniciativa_envolvidos($pdo, $id_ini, $envIds);
+        }
 
         // Orçamento opcional: 1 linha por competência em "orcamentos"
         $createdOrc = 0;
@@ -1571,6 +1792,12 @@ foreach ($milestones as $m) {
               $st->execute($inis);
             }
             $st = $pdo->prepare("DELETE FROM `orcamentos` WHERE `id_iniciativa` IN (" . implode(',', array_fill(0,count($inis),'?')) . ")");
+            $st->execute($inis);
+          }
+          // FK RESTRICT (fk_apont_status_iniciativa): o histórico de status precisa
+          // sair antes das iniciativas, senão o DELETE abaixo estoura.
+          if ($tableExists($pdo,'apontamentos_status_iniciativas')) {
+            $st = $pdo->prepare("DELETE FROM `apontamentos_status_iniciativas` WHERE `id_iniciativa` IN (" . implode(',', array_fill(0,count($inis),'?')) . ")");
             $st->execute($inis);
           }
           $st = $pdo->prepare("DELETE FROM `iniciativas` WHERE `id_iniciativa` IN (" . implode(',', array_fill(0,count($inis),'?')) . ")");
@@ -2515,6 +2742,14 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .ni-right{ text-align:right; }
     .ni-ok{ color:#22c55e; font-weight:800; }
     .ni-err{ color:#f87171; font-weight:800; }
+
+    /* Seleção múltipla de responsáveis (iniciativas) */
+    .resp-box{ max-height:190px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px 10px; background:#0b101a; }
+    .resp-box .resp-item{ display:flex; align-items:center; gap:8px; padding:4px 0; color:#cbd5e1; font-size:.92rem; cursor:pointer; }
+    .resp-box .resp-item:hover{ color:#e5e7eb; }
+    .resp-box input[type=checkbox]{ width:16px; height:16px; accent-color:var(--gold); flex:0 0 auto; }
+    .resp-box .resp-empty{ color:#9aa4b2; font-size:.88rem; }
+    .resp-box .resp-main{ margin-left:auto; font-size:.7rem; font-weight:800; color:var(--gold); letter-spacing:.03em; }
     /* Drawers */
     .drawer{ position:fixed; top:0; right:-560px; width:520px; max-width:92vw; height:100%; background:#0f1420; border-left:1px solid #223047; box-shadow:-10px 0 40px rgba(0,0,0,.35); transition:right .25s ease; z-index:2000; color:#e5e7eb; display:flex; flex-direction:column; }
     .drawer.show{ right:0; }
@@ -2736,11 +2971,11 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         </div>
 
         <div class="mb-2">
-          <label><i class="fa-regular fa-user"></i> Responsável</label>
+          <label><i class="fa-regular fa-user"></i> Responsáveis</label>
           <!-- lista só usuários da mesma company -->
-          <select name="id_user_responsavel" id="ni_resp" required>
-            <option value="">Carregando...</option>
-          </select>
+          <div class="resp-box" id="ni_resp"><span class="resp-empty">Carregando...</span></div>
+          <input type="hidden" name="responsaveis_json" id="ni_resp_json">
+          <div class="ni-hint">Pode marcar mais de um. O primeiro selecionado vira o responsável principal.</div>
         </div>
 
         <div class="mb-2">
@@ -2944,6 +3179,62 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
   </div>
 </aside>
 
+  <!-- Drawer: Editar Iniciativa -->
+  <aside id="drawerEditIni" class="drawer" aria-hidden="true">
+    <header>
+      <h3 style="margin:0;font-size:1rem"><i class="fa-solid fa-pen-to-square me-1"></i> Editar iniciativa</h3>
+      <button class="btn btn-outline" type="button" onclick="toggleDrawer('#drawerEditIni',false)">Fechar ✕</button>
+    </header>
+    <div class="body">
+      <div class="kr-banner">
+        <i class="fa-solid fa-rocket"></i>
+        <div>
+          <div class="title" id="ei_titulo">Iniciativa —</div>
+          <div class="sub" id="ei_sub">Carregando...</div>
+        </div>
+      </div>
+
+      <form id="formEditIniciativa">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+        <input type="hidden" name="id_iniciativa" id="ei_id_iniciativa">
+        <input type="hidden" name="responsaveis_json" id="ei_resp_json">
+
+        <div class="mb-2">
+          <label><i class="fa-regular fa-rectangle-list"></i> Descrição</label>
+          <textarea name="descricao" id="ei_descricao" rows="3" required></textarea>
+        </div>
+
+        <div class="mb-2">
+          <label><i class="fa-regular fa-user"></i> Responsáveis</label>
+          <div class="resp-box" id="ei_resp"><span class="resp-empty">Carregando...</span></div>
+          <div class="ni-hint">Pode marcar mais de um. O primeiro selecionado vira o responsável principal.</div>
+        </div>
+
+        <div class="mb-2">
+          <label><i class="fa-regular fa-calendar-days"></i> Prazo</label>
+          <input type="date" name="dt_prazo" id="ei_dt_prazo">
+        </div>
+
+        <div class="mb-2">
+          <label><i class="fa-solid fa-clipboard-check"></i> Status</label>
+          <input type="text" id="ei_status_ro" readonly>
+          <div class="ni-hint">
+            O status é alterado pelo botão <i class="fa-solid fa-arrows-rotate"></i> da lista, que exige observação.
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label><i class="fa-regular fa-note-sticky"></i> Histórico de observações</label>
+          <textarea id="ei_observacoes" rows="5" readonly placeholder="Sem observações registradas."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="actions">
+      <button class="btn btn-outline" type="button" onclick="toggleDrawer('#drawerEditIni',false)">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btnSalvarEditIni"><i class="fa-regular fa-floppy-disk"></i> Salvar</button>
+    </div>
+  </aside>
+
 
   <!-- Drawer: Reativar KR -->
   <aside id="drawerReativar" class="drawer" aria-hidden="true">
@@ -3139,6 +3430,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       const idKR = $('#ni_id_kr')?.value;
 
       if (!idKR) { toast('KR inválido.', false); return; }
+      if (!respOrder.ni.length) { toast('Selecione ao menos um responsável.', false); return; }
 
       if ($('#ni_sw_orc')?.checked) {
         const total = Number($('#ni_valor_total')?.value || 0);
@@ -3194,6 +3486,81 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     });
 
 
+    // ====== Responsáveis (múltiplos) de iniciativa ======
+    // Usado pelos drawers "Nova iniciativa" (ns='ni') e "Editar iniciativa" (ns='ei').
+    let __respCache = null;
+    async function fetchResponsaveis(){
+      if (__respCache) return __respCache;
+      const res  = await fetch(`${SCRIPT}?ajax=list_responsaveis_company`);
+      const data = await res.json();
+      __respCache = (data.items || []);
+      return __respCache;
+    }
+
+    // Guarda a ORDEM DE SELEÇÃO: o 1º marcado vira o responsável principal
+    // (é o que o backend grava em iniciativas.id_user_responsavel).
+    const respOrder = { ni: [], ei: [] };
+
+    function syncRespHidden(ns){
+      const hid = document.getElementById(`${ns}_resp_json`);
+      if (hid) hid.value = JSON.stringify(respOrder[ns]);
+      const box = document.getElementById(`${ns}_resp`);
+      if (!box) return;
+      box.querySelectorAll('.resp-item').forEach(it=>{
+        const tag = it.querySelector('.resp-main');
+        if (!tag) return;
+        tag.style.display = (respOrder[ns][0] === Number(it.getAttribute('data-uid'))) ? '' : 'none';
+      });
+    }
+
+    async function buildRespBox(ns, selectedIds){
+      const box = document.getElementById(`${ns}_resp`);
+      if (!box) return;
+      box.innerHTML = '<span class="resp-empty">Carregando...</span>';
+      respOrder[ns] = (selectedIds || []).map(Number).filter(v=>v>0);
+
+      let items = [];
+      try { items = await fetchResponsaveis(); }
+      catch(e){ box.innerHTML = '<span class="resp-empty">Falha ao carregar usuários.</span>'; return; }
+
+      if (!items.length){
+        box.innerHTML = '<span class="resp-empty">— sem usuários —</span>';
+        syncRespHidden(ns);
+        return;
+      }
+
+      box.innerHTML = '';
+      items.forEach(u=>{
+        const uid  = Number(u.id_user);
+        const ln   = (u.ultimo_nome || '').trim();
+        const nome = (window.nomeExibicao ? window.nomeExibicao(u.primeiro_nome, ln)
+                       : (ln ? `${u.primeiro_nome} ${ln}` : u.primeiro_nome)) || String(uid);
+        box.insertAdjacentHTML('beforeend', `
+          <label class="resp-item" data-uid="${uid}">
+            <input type="checkbox" value="${uid}" ${respOrder[ns].includes(uid) ? 'checked' : ''}>
+            <span>${escapeHtml(nome)}</span>
+            <span class="resp-main" style="display:none">PRINCIPAL</span>
+          </label>
+        `);
+      });
+
+      // listener uma única vez por caixa (buildRespBox é chamado a cada abertura)
+      if (box.dataset.wired !== '1'){
+        box.addEventListener('change', (ev)=>{
+          const cb = ev.target.closest('input[type=checkbox]');
+          if (!cb) return;
+          const uid = Number(cb.value);
+          const i   = respOrder[ns].indexOf(uid);
+          if (cb.checked){ if (i < 0) respOrder[ns].push(uid); }
+          else if (i >= 0){ respOrder[ns].splice(i, 1); }
+          syncRespHidden(ns);
+        });
+        box.dataset.wired = '1';
+      }
+
+      syncRespHidden(ns);
+    }
+
     // ====== KRs ======
     async function openNovaIniciativaDrawer(id){
       // reset
@@ -3214,29 +3581,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         }
       } catch(e){ /* silencioso */ }
 
-      // 2) responsáveis (mesma company)
-      try{
-        const res  = await fetch(`${SCRIPT}?ajax=list_responsaveis_company`);
-        const data = await res.json();
-        const sel  = $('#ni_resp');
-        sel.innerHTML = '';
-        (data.items||[]).forEach(u=>{
-          const opt = document.createElement('option');
-          opt.value = u.id_user;
-          const ln  = (u.ultimo_nome || '').trim();
-          opt.textContent = (window.nomeExibicao ? window.nomeExibicao(u.primeiro_nome, ln)
-                              : (ln ? `${u.primeiro_nome} ${ln}` : u.primeiro_nome)) || u.id_user;
-          sel.appendChild(opt);
-        });
-        if (sel.options.length) {
-          sel.value = String(currentUserId);
-          if (sel.value !== String(currentUserId)) sel.selectedIndex = 0;
-        } else {
-          sel.innerHTML = '<option value="">— sem usuários —</option>';
-        }
-      } catch(e){
-        $('#ni_resp').innerHTML = '<option value="">Falha ao carregar</option>';
-      }
+      // 2) responsáveis (mesma company) — múltipla escolha, começa no usuário logado
+      await buildRespBox('ni', [Number(currentUserId)]);
 
       // 3) status (carrega de dom_status_kr via list_status_iniciativa)
       try {
@@ -4031,8 +4377,88 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         return;
       }
 
+      // Abrir drawer "Editar iniciativa"
+      const btnIniEdit = e.target.closest('button[data-act="ini-edit"]');
+      if (btnIniEdit) {
+        await openEditIniDrawer(btnIniEdit.getAttribute('data-id'));
+        return;
+      }
 
-      async function openIniStatusDrawer(idIni){
+      // Excluir iniciativa (permanente)
+      const btnIniDel = e.target.closest('button[data-act="ini-del"]');
+      if (btnIniDel) {
+        const idIni = btnIniDel.getAttribute('data-id');
+        const num   = btnIniDel.getAttribute('data-num') || '';
+        const msg = `⚠️ ATENÇÃO!\n\nExcluir a iniciativa ${num} é PERMANENTE e remove junto o orçamento, as despesas já lançadas e o histórico de status dela.\n\nEsta ação NÃO poderá ser desfeita.\n\nDeseja EXCLUIR mesmo assim?`;
+        if (!confirm(msg)) return;
+
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('id_iniciativa', idIni);
+        const res  = await fetch(`${SCRIPT}?ajax=excluir_iniciativa`, { method:'POST', body:fd });
+        const data = await res.json();
+        if (!data.success){ toast(data.error || 'Falha ao excluir iniciativa', false); return; }
+
+        toast('Iniciativa excluída definitivamente.');
+        const idKR = data.id_kr;
+        await loadIniciativas(idKR);
+        await loadKrDetail(idKR);
+        const selAno = document.getElementById(`orc_ano_${idKR}`);
+        await loadOrcDashboard(idKR, selAno?.value);
+        return;
+      }
+
+
+
+      // Cancelar KR
+      const btnCancel = e.target.closest('button[data-act="cancel-kr"]');
+      if (btnCancel){
+        const id = btnCancel.getAttribute('data-id');
+        const justificativa = prompt('Confirme a justificativa do cancelamento do KR:');
+        if (!justificativa || justificativa.trim().length < 3) { toast('Cancelamento abortado: informe uma justificativa.', false); return; }
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('id_kr', id);
+        fd.append('justificativa', justificativa.trim());
+        const res  = await fetch(`${SCRIPT}?ajax=cancel_kr`, { method:'POST', body:fd });
+        const data = await res.json();
+        if (!data.success){ toast(data.error||'Falha ao cancelar KR', false); return; }
+        toast('KR cancelado com sucesso.');
+        await loadKrDetail(id);
+        await loadIniciativas(id);
+        return;
+      }
+
+      // Reativar KR
+      const btnReativar = e.target.closest('button[data-act="reactivate-kr"]');
+      if (btnReativar){
+        const id = btnReativar.getAttribute('data-id');
+        await openReactivateDrawer(id);
+        return;
+      }
+
+      // Excluir KR
+      const btnExcluir = e.target.closest('button[data-act="delete-kr"]');
+      if (btnExcluir){
+        const id = btnExcluir.getAttribute('data-id');
+        const msg = '⚠️ ATENÇÃO!\n\nVocê pode CANCELAR este KR em vez de EXCLUIR.\n\n'
+          + 'Excluir é permanente e removerá milestones, apontamentos, iniciativas e orçamentos ligados a este KR.\n'
+          + 'Esta ação NÃO poderá ser desfeita.\n\nDeseja EXCLUIR mesmo assim?';
+        if (!confirm(msg)) return;
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('id_kr', id);
+        const res  = await fetch(`${SCRIPT}?ajax=delete_kr`, { method:'POST', body:fd });
+        const data = await res.json();
+        if (!data.success){ toast(data.error||'Falha ao excluir KR', false); return; }
+        toast('KR excluído definitivamente.');
+        await loadKRs();
+        return;
+      }
+    });
+
+    // ====== Alterar status da iniciativa ======
+    async function openIniStatusDrawer(idIni){
       // Preenche id
       $('#inis_id_iniciativa').value = idIni;
       // Limpa form
@@ -4087,51 +4513,58 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }
     });
 
+    // ====== Editar iniciativa ======
+    async function openEditIniDrawer(idIni){
+      $('#formEditIniciativa')?.reset();
+      $('#ei_id_iniciativa').value = idIni;
+      $('#ei_titulo').textContent  = 'Iniciativa —';
+      $('#ei_sub').textContent     = 'Carregando...';
+      $('#ei_descricao').value     = '';
+      $('#ei_dt_prazo').value      = '';
+      $('#ei_status_ro').value     = '';
+      $('#ei_observacoes').value   = '';
 
-      // Cancelar KR
-      const btnCancel = e.target.closest('button[data-act="cancel-kr"]');
-      if (btnCancel){
-        const id = btnCancel.getAttribute('data-id');
-        const justificativa = prompt('Confirme a justificativa do cancelamento do KR:');
-        if (!justificativa || justificativa.trim().length < 3) { toast('Cancelamento abortado: informe uma justificativa.', false); return; }
-        const fd = new FormData();
-        fd.append('csrf_token', csrfToken);
-        fd.append('id_kr', id);
-        fd.append('justificativa', justificativa.trim());
-        const res  = await fetch(`${SCRIPT}?ajax=cancel_kr`, { method:'POST', body:fd });
+      toggleDrawer('#drawerEditIni', true);
+
+      try{
+        const res  = await fetch(`${SCRIPT}?ajax=iniciativa_get&id_iniciativa=${encodeURIComponent(idIni)}`);
         const data = await res.json();
-        if (!data.success){ toast(data.error||'Falha ao cancelar KR', false); return; }
-        toast('KR cancelado com sucesso.');
-        await loadKrDetail(id);
-        await loadIniciativas(id);
-        return;
-      }
+        if (!data.success) throw new Error(data.error || 'Falha ao carregar iniciativa');
 
-      // Reativar KR
-      const btnReativar = e.target.closest('button[data-act="reactivate-kr"]');
-      if (btnReativar){
-        const id = btnReativar.getAttribute('data-id');
-        await openReactivateDrawer(id);
-        return;
-      }
+        const ini = data.iniciativa || {};
+        $('#ei_titulo').textContent = `Iniciativa ${ini.num_iniciativa ?? ''}`.trim();
+        $('#ei_sub').textContent    = ini.descricao || '—';
+        $('#ei_descricao').value    = ini.descricao || '';
+        $('#ei_dt_prazo').value     = onlyDate(ini.dt_prazo || '');
+        $('#ei_status_ro').value    = ini.status || '—';
+        $('#ei_observacoes').value  = (ini.observacoes || '').trim();
 
-      // Excluir KR
-      const btnExcluir = e.target.closest('button[data-act="delete-kr"]');
-      if (btnExcluir){
-        const id = btnExcluir.getAttribute('data-id');
-        const msg = '⚠️ ATENÇÃO!\n\nVocê pode CANCELAR este KR em vez de EXCLUIR.\n\n'
-          + 'Excluir é permanente e removerá milestones, apontamentos, iniciativas e orçamentos ligados a este KR.\n'
-          + 'Esta ação NÃO poderá ser desfeita.\n\nDeseja EXCLUIR mesmo assim?';
-        if (!confirm(msg)) return;
-        const fd = new FormData();
-        fd.append('csrf_token', csrfToken);
-        fd.append('id_kr', id);
-        const res  = await fetch(`${SCRIPT}?ajax=delete_kr`, { method:'POST', body:fd });
-        const data = await res.json();
-        if (!data.success){ toast(data.error||'Falha ao excluir KR', false); return; }
-        toast('KR excluído definitivamente.');
-        await loadKRs();
-        return;
+        await buildRespBox('ei', ini.responsaveis || []);
+      } catch(err){
+        toast(err.message, false);
+        toggleDrawer('#drawerEditIni', false);
+      }
+    }
+
+    $('#btnSalvarEditIni')?.addEventListener('click', async ()=>{
+      const idIni = $('#ei_id_iniciativa')?.value;
+      const desc  = ($('#ei_descricao')?.value || '').trim();
+
+      if (!idIni){ toast('Iniciativa inválida.', false); return; }
+      if (!desc) { toast('A descrição é obrigatória.', false); return; }
+      if (!respOrder.ei.length){ toast('Selecione ao menos um responsável.', false); return; }
+
+      const fd   = new FormData($('#formEditIniciativa'));
+      const res  = await fetch(`${SCRIPT}?ajax=editar_iniciativa`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (!data.success){ toast(data.error || 'Falha ao salvar', false); return; }
+
+      toast('Iniciativa atualizada!');
+      toggleDrawer('#drawerEditIni', false);
+
+      const open = document.querySelector('.kr-card.open');
+      if (open){
+        await loadIniciativas(open.getAttribute('data-id'));
       }
     });
 
@@ -4460,9 +4893,23 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                             <i class="fa-solid fa-arrows-rotate"></i>
                           </button>`;
 
+        // Editar iniciativa (descrição, responsáveis e prazo)
+        const editBtn = `<button class="btn btn-outline btn-sm" title="Editar iniciativa"
+                            data-act="ini-edit" data-id="${ini.id_iniciativa}">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>`;
+
+        // Excluir iniciativa (permanente)
+        const delBtn = `<button class="btn btn-outline btn-sm" title="Excluir iniciativa"
+                            data-act="ini-del" data-id="${ini.id_iniciativa}" data-num="${ini.num_iniciativa}">
+                            <i class="fa-solid fa-trash-can" style="color:#f87171"></i>
+                          </button>`;
+
         const actions = `<div style="display:flex; gap:6px; justify-content:flex-end;">
                           ${moneyBtn}
                           ${statusBtn}
+                          ${editBtn}
+                          ${delBtn}
                         </div>`;
 
         tb.insertAdjacentHTML('beforeend', `

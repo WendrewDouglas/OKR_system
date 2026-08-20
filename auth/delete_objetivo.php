@@ -10,7 +10,7 @@ declare(strict_types=1);
  * - Apaga, em ordem:
  *   1) Para cada KR do objetivo:
  *      1.1) Despesas (orcamentos_detalhes) e orçamentos das iniciativas do KR
- *      1.2) Iniciativas do KR
+ *      1.2) Histórico de status das iniciativas (FK RESTRICT) e as iniciativas do KR
  *      1.3) Milestones do KR
  *      1.4) Apontamentos do KR
  *      1.5) Comentários do KR
@@ -257,6 +257,16 @@ function delete_kr_cascade(PDO $pdo, string $id_kr, callable $tableExists, calla
                                  WHERE `id_iniciativa` IN ($placeholders)";
                 $stDelOrc     = $pdo->prepare($sql);
                 $stDelOrc->execute($inis);
+            }
+
+            // Histórico de status — FK fk_apont_status_iniciativa é RESTRICT
+            // (não tem ON DELETE CASCADE), então precisa sair antes das iniciativas.
+            if ($tableExists($pdo, 'apontamentos_status_iniciativas')) {
+                $placeholders = implode(',', array_fill(0, count($inis), '?'));
+                $sql          = "DELETE FROM `apontamentos_status_iniciativas`
+                                 WHERE `id_iniciativa` IN ($placeholders)";
+                $stDelApo     = $pdo->prepare($sql);
+                $stDelApo->execute($inis);
             }
 
             // Iniciativas
