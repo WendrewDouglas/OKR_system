@@ -220,6 +220,16 @@ function pill_text_color(string $hex): string {
     .node-chevron.leaf{
       visibility:hidden;
     }
+    /* Chevron acionável: no card do KR só ele expande — o resto navega */
+    .node-chevron.act{
+      cursor:pointer;
+    }
+    .node-chevron.act:hover{
+      border-color:var(--gold); color:var(--gold); background:rgba(246,195,67,.10);
+    }
+    .node-chevron.act:focus-visible{
+      outline:2px solid var(--gold); outline-offset:2px;
+    }
 
     /* Ícone do tipo do nó */
     .node-icon{
@@ -594,17 +604,10 @@ function pill_text_color(string $hex): string {
           </div>`;
       }
 
+      // A iniciativa é o último nível da cascata: não expande para o orçamento.
+      // O valor aprovado continua visível como badge, apenas não abre as parcelas.
       function buildIniNode(ini) {
-        const hasOrc = ini.orcamento && ini.orcamento.items && ini.orcamento.items.length > 0;
-        const childCount = hasOrc ? ini.orcamento.items.length : 0;
-        const isLeaf = childCount === 0;
         const orcAprov = ini.orcamento ? ini.orcamento.aprovado : 0;
-        const orcReal = ini.orcamento ? ini.orcamento.realizado : 0;
-
-        let orcsHtml = '';
-        if (hasOrc) {
-          orcsHtml = ini.orcamento.items.map(buildOrcNode).join('');
-        }
 
         const envolvidos = ini.envolvidos || [];
         const avatars = envolvidos.length > 0
@@ -617,8 +620,8 @@ function pill_text_color(string $hex): string {
 
         return `
           <div class="tree-node${mine?' mine':''}${dimmed?' dimmed':''}">
-            <div class="node-header" onclick="this.parentElement.classList.toggle('open')">
-              <span class="node-chevron ${isLeaf?'leaf':''}"><i class="fa-solid fa-chevron-right"></i></span>
+            <div class="node-header" style="cursor:default">
+              <span class="node-chevron leaf"><i class="fa-solid fa-chevron-right"></i></span>
               <span class="node-icon ini"><i class="fa-solid fa-list-check"></i></span>
               <div class="node-info">
                 <div class="node-title"><span style="color:var(--green);font-weight:700">I${ini.num||''}</span> ${h(ini.descricao)}</div>
@@ -631,10 +634,8 @@ function pill_text_color(string $hex): string {
               </div>
               <div class="node-badges">
                 ${orcAprov > 0 ? `<span class="count-badge" title="Orçamento aprovado"><i class="fa-solid fa-coins"></i> ${fmtMoney(orcAprov)}</span>` : ''}
-                ${childCount > 0 ? `<span class="count-badge"><i class="fa-solid fa-coins"></i> ${window.fmtNum(childCount, 0)}</span>` : ''}
               </div>
             </div>
-            <div class="tree-children">${orcsHtml}</div>
           </div>`;
       }
 
@@ -664,17 +665,28 @@ function pill_text_color(string $hex): string {
       }
 
       function buildKrNode(kr, objId) {
-        const childCount = (kr.iniciativas||[]).length;
+        const inis = kr.iniciativas || [];
+        const childCount = inis.length;
+        const isLeaf = childCount === 0;
         const isMeus = currentScope === 'meus';
         const mine = isMeus && userInKr(kr);
         const dimmed = isMeus && !mine;
-        // Clique no KR leva ao objetivo com este KR já expandido.
+        // Clique no corpo do card leva ao objetivo com este KR já expandido;
+        // só o chevron expande a lista de iniciativas (stopPropagation).
         const krHref = `/OKR_system/views/detalhe_okr.php?id=${objId}&kr=${encodeURIComponent(kr.id_kr)}`;
+        const inisHtml = inis.map(buildIniNode).join('');
+
+        const chevron = isLeaf
+          ? `<span class="node-chevron leaf"><i class="fa-solid fa-chevron-right"></i></span>`
+          : `<span class="node-chevron act" role="button" tabindex="0"
+                   title="${childCount} iniciativa${childCount>1?'s':''}"
+                   onclick="event.stopPropagation(); this.closest('.tree-node').classList.toggle('open')"
+                   onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();this.closest('.tree-node').classList.toggle('open');}"><i class="fa-solid fa-chevron-right"></i></span>`;
 
         return `
           <div class="tree-node${mine?' mine':''}${dimmed?' dimmed':''}">
             <div class="node-header node-nav" title="Abrir no objetivo" onclick="location.href='${krHref}'">
-              <span class="node-chevron"><i class="fa-solid fa-arrow-right"></i></span>
+              ${chevron}
               <span class="node-icon kr"><i class="fa-solid fa-key"></i></span>
               <div class="node-info">
                 <div class="node-title"><span style="color:var(--blue);font-weight:700">KR${kr.num||''}</span> ${h(kr.descricao)}</div>
@@ -692,6 +704,7 @@ function pill_text_color(string $hex): string {
               </div>
               ${miniCardHtml(kr.farol, kr.progress)}
             </div>
+            <div class="tree-children">${inisHtml}</div>
           </div>`;
       }
 
