@@ -12,15 +12,17 @@ require_once __DIR__.'/../auth/acl.php';
 
 // Gate automático pela tabela dom_paginas.requires_cap
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
-if (($_GET['mode'] ?? '') === 'edit') {
-  require_cap('W:objetivo@ORG');
-}
-//require_cap('W:objetivo@ORG');
 
 if (empty($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');
   exit;
 }
+
+// A rota limpa (/OKR_system/novo_objetivo) passa pelo index.php, então o
+// gate_page_by_path acima procura por '/OKR_system/index.php' e não acha nada
+// em dom_paginas. Enforça aqui, depois do redirect de login (antes dele, o
+// visitante anônimo receberia o modal de permissão em vez da tela de login).
+require_cap('W:objetivo@ORG');
 
 // Conexão
 try {

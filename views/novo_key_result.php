@@ -19,10 +19,8 @@ require_once __DIR__ . '/../auth/logger.php'; // << logger que grava em views/er
 require_once __DIR__.'/../auth/acl.php';
 
 // Gate automático pela tabela dom_paginas.requires_cap
+// (a capability é enforçada logo após o bloco de autenticação, abaixo)
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
-if (($_GET['mode'] ?? '') === 'edit') {
-  require_cap('W:objetivo@ORG');
-}
 
 // ===== Correlação de requisição =====
 $REQ_ID = $_GET['req_id'] ?? ($_SERVER['HTTP_X_REQUEST_ID'] ?? bin2hex(random_bytes(8)));
@@ -70,6 +68,13 @@ if (!isset($_SESSION['user_id'])) {
   header('Location: /OKR_system/views/login.php');
   exit;
 }
+
+// ===== Autorização =====
+// A rota limpa (/OKR_system/novo_key_result) passa pelo index.php, então o
+// gate_page_by_path lá em cima procura por '/OKR_system/index.php' e não acha
+// nada em dom_paginas. Enforça aqui, depois do redirect de login (antes dele, o
+// visitante anônimo receberia o modal de permissão em vez da tela de login).
+require_cap('W:objetivo@ORG');
 
 // ===== CSRF =====
 if (empty($_SESSION['csrf_token'])) {
