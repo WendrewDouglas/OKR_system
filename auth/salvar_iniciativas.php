@@ -55,6 +55,12 @@ if ($id_kr === '' || $desc === '' || $status === '') {
 // por segurança, adequa ao tamanho do campo (iniciativas.status = varchar(20))
 if (mb_strlen($status) > 20) $status = mb_substr($status, 0, 20);
 
+$stStatus = $pdo->prepare("SELECT 1 FROM dom_status_kr WHERE id_status = :status LIMIT 1");
+$stStatus->execute(['status' => $status]);
+if (!$stStatus->fetchColumn()) {
+  echo json_encode(['success'=>false,'error'=>'Status de iniciativa inválido.']); exit;
+}
+
 // normaliza dt_prazo (ou deixa NULL)
 if ($dt_prazo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt_prazo)) {
   // tenta converter formatos comuns

@@ -47,6 +47,24 @@ function handle_nova_iniciativa(PDO $pdo, callable $tableExists, callable $colEx
         exit;
     }
 
+    if ($status === '') {
+        $stDefault = $pdo->query("
+            SELECT `id_status`
+              FROM `dom_status_kr`
+             WHERE LOWER(`id_status`) = 'nao iniciado'
+                OR LOWER(`descricao_exibicao`) LIKE '%iniciado%'
+             ORDER BY `id_status`
+             LIMIT 1
+        ");
+        $status = (string)($stDefault->fetchColumn() ?: '');
+    }
+    $stStatus = $pdo->prepare("SELECT 1 FROM `dom_status_kr` WHERE `id_status` = ? LIMIT 1");
+    $stStatus->execute([$status]);
+    if (!$stStatus->fetchColumn()) {
+        echo json_encode(['success'=>false,'error'=>'Status de iniciativa invalido.']);
+        exit;
+    }
+
     try {
         $pdo->beginTransaction();
 

@@ -198,13 +198,40 @@ if (isset($_GET['ajax'])) {
     }
   };
 
+  $statusIniciativaValido = static function(PDO $pdo, string $status): bool {
+    if ($status === '') return false;
+    $st = $pdo->prepare("SELECT 1 FROM `dom_status_kr` WHERE `id_status` = ? LIMIT 1");
+    $st->execute([$status]);
+    return (bool)$st->fetchColumn();
+  };
+
+  $registrarStatusIniciativa = static function(PDO $pdo, string $idIni, string $status, string $obs, int $uid) use ($tableExists): void {
+    if (!$tableExists($pdo, 'apontamentos_status_iniciativas')) return;
+    try {
+      $st = $pdo->prepare("
+        INSERT INTO `apontamentos_status_iniciativas`
+          (`id_iniciativa`, `status`, `data_hora`, `id_user`, `observacao`, `origem_apontamento`)
+        VALUES
+          (:id, :status, NOW(), :uid, :obs, 'web')
+      ");
+      $st->execute([
+        'id'     => $idIni,
+        'status' => $status,
+        'uid'    => (string)$uid,
+        'obs'    => $obs,
+      ]);
+    } catch (Throwable $e) {
+      error_log('registrarStatusIniciativa: '.$e->getMessage());
+    }
+  };
+
   $action = $_GET['ajax'];
 
   /* ---------- LISTAR STATUS DE INICIATIVA (NOVO) ---------- */
   if ($action === 'list_status_iniciativa') {
     try {
       // tenta variações comuns primeiro
-      $candidatas = ['dom_status_iniciativa','dom_status_iniciativas','dom_status_ini','dom_status_kr'];
+      $candidatas = ['dom_status_kr','dom_status_iniciativa','dom_status_iniciativas','dom_status_ini'];
       $tabela = null;
       foreach ($candidatas as $t) {
         try { $pdo->query("SHOW COLUMNS FROM `$t`"); $tabela = $t; break; } catch(Throwable $e){}
@@ -245,6 +272,11 @@ if (isset($_GET['ajax'])) {
     if (!$id_ini || $novo==='') { echo json_encode(['success'=>false,'error'=>'Dados inválidos']); exit; }
     if ($obs==='')              { echo json_encode(['success'=>false,'error'=>'Observação é obrigatória.']); exit; }
     $assertTenant('iniciativa', ['id_iniciativa'=>$id_ini]);
+    $assertCap('W:iniciativa@ORG', ['id_iniciativa'=>$id_ini]);
+    if (!$statusIniciativaValido($pdo, $novo)) {
+      echo json_encode(['success'=>false,'error'=>'Status de iniciativa invalido.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
 
     try {
       $pdo->beginTransaction();
@@ -276,6 +308,8 @@ if (isset($_GET['ajax'])) {
       $sql = "UPDATE iniciativas SET ".implode(', ', $sets)." WHERE id_iniciativa = :id";
       $st  = $pdo->prepare($sql);
       $st->execute($binds);
+
+      $registrarStatusIniciativa($pdo, (string)$id_ini, $novo, $obs, (int)$_SESSION['user_id']);
 
       $pdo->commit();
       echo json_encode(['success'=>true]);
@@ -1106,6 +1140,8 @@ foreach ($milestones as $m) {
     $id_ini   = $_POST['id_iniciativa'] ?? '';
     $desc     = trim((string)($_POST['descricao'] ?? ''));
     $dt_prazo = trim((string)($_POST['dt_prazo'] ?? ''));
+    $statusNovo = trim((string)($_POST['status_iniciativa'] ?? ''));
+    $obsStatus  = trim((string)($_POST['observacao_status'] ?? ''));
 
     $respIds = json_decode((string)($_POST['responsaveis_json'] ?? '[]'), true);
     if (!is_array($respIds)) $respIds = [];
@@ -1126,7 +1162,7 @@ foreach ($milestones as $m) {
 
     // Os responsáveis precisam pertencer à empresa DA INICIATIVA (vale também p/ admin_master)
     $stC = $pdo->prepare("
-      SELECT o.`id_company`
+      SELECT o.`id_company`, i.`status` AS status_atual
         FROM `iniciativas` i
         JOIN `key_results` kr ON kr.`id_kr` = i.`id_kr`
         JOIN `objetivos` o    ON o.`id_objetivo` = kr.`id_objetivo`
@@ -1134,7 +1170,20 @@ foreach ($milestones as $m) {
        LIMIT 1
     ");
     $stC->execute(['id'=>$id_ini]);
-    $iniCompany = (int)($stC->fetchColumn() ?: 0);
+    $iniScope = $stC->fetch() ?: null;
+    if (!$iniScope) { echo json_encode(['success'=>false,'error'=>'Iniciativa nao encontrada.']); exit; }
+    $iniCompany = (int)($iniScope['id_company'] ?? 0);
+    $statusAtual = trim((string)($iniScope['status_atual'] ?? ''));
+    $statusMudou = ($statusNovo !== '' && $statusNovo !== $statusAtual);
+
+    if ($statusMudou && !$statusIniciativaValido($pdo, $statusNovo)) {
+      echo json_encode(['success'=>false,'error'=>'Status de iniciativa invalido.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    if ($statusMudou && $obsStatus === '') {
+      echo json_encode(['success'=>false,'error'=>'Observacao obrigatoria para alterar o status.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
 
     $ph  = implode(',', array_fill(0, count($respIds), '?'));
     $stU = $pdo->prepare("SELECT COUNT(*) FROM `usuarios` WHERE `id_user` IN ($ph) AND `id_company` = ?");
@@ -1153,6 +1202,18 @@ foreach ($milestones as $m) {
         $sets[] = '`dt_prazo` = :p';
         $binds[':p'] = $dt_prazo !== '' ? $dt_prazo : null;
       }
+      if ($statusMudou) {
+        $sets[] = '`status` = :st';
+        $binds[':st'] = $statusNovo;
+
+        if ($colExists($pdo,'iniciativas','observacoes')) {
+          $sep = PHP_EOL.'['.date('Y-m-d H:i').'] ';
+          $linha = "Status alterado de \"{$statusAtual}\" para \"{$statusNovo}\" por usuario ".(int)$_SESSION['user_id'].". Obs: {$obsStatus}";
+          $sets[] = "`observacoes` = CONCAT(COALESCE(`observacoes`,''), :sep_status, :linha_status)";
+          $binds[':sep_status'] = $sep;
+          $binds[':linha_status'] = $linha;
+        }
+      }
       if ($colExists($pdo,'iniciativas','id_user_ult_alteracao')) {
         $sets[] = '`id_user_ult_alteracao` = :u';
         $binds[':u'] = (int)$_SESSION['user_id'];
@@ -1166,6 +1227,10 @@ foreach ($milestones as $m) {
 
       // Junction + denormalizado (id_user_responsavel = 1º da lista)
       sync_iniciativa_envolvidos($pdo, (string)$id_ini, $respIds);
+
+      if ($statusMudou) {
+        $registrarStatusIniciativa($pdo, (string)$id_ini, $statusNovo, $obsStatus, (int)$_SESSION['user_id']);
+      }
 
       $pdo->commit();
       echo json_encode(['success'=>true]); exit;
@@ -1266,6 +1331,22 @@ foreach ($milestones as $m) {
         echo json_encode(['success'=>false,'error'=>'Dados obrigatórios ausentes']); exit;
       }
       $assertTenant('kr', ['id_kr'=>$id_kr]);
+      $assertCap('W:iniciativa@ORG');
+      if ($status === '') {
+        $stDefault = $pdo->query("
+          SELECT `id_status`
+            FROM `dom_status_kr`
+           WHERE LOWER(`id_status`) = 'nao iniciado'
+              OR LOWER(`descricao_exibicao`) LIKE '%iniciado%'
+           ORDER BY `id_status`
+           LIMIT 1
+        ");
+        $status = (string)($stDefault->fetchColumn() ?: '');
+      }
+      if (!$statusIniciativaValido($pdo, $status)) {
+        echo json_encode(['success'=>false,'error'=>'Status de iniciativa invalido.'], JSON_UNESCAPED_UNICODE);
+        exit;
+      }
 
       try {
         $pdo->beginTransaction();
@@ -1291,6 +1372,8 @@ foreach ($milestones as $m) {
         $mI = implode(',', array_map(fn($k)=>":$k", array_keys($colsI)));
         $st = $pdo->prepare("INSERT INTO iniciativas ($fI) VALUES ($mI)");
         $st->execute($colsI);
+
+        $registrarStatusIniciativa($pdo, $id_ini, $status, 'Status inicial ao criar a iniciativa.', (int)$_SESSION['user_id']);
 
         // Junction de responsáveis (fallback: o responsável único do formulário)
         $envIds = $respIds ?: array_filter([$resp ?: (int)$_SESSION['user_id']]);
@@ -3241,10 +3324,18 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
         <div class="mb-2">
           <label><i class="fa-solid fa-clipboard-check"></i> Status</label>
-          <input type="text" id="ei_status_ro" readonly>
+          <input type="hidden" id="ei_status_atual">
+          <select name="status_iniciativa" id="ei_status" required>
+            <option value="">Carregando...</option>
+          </select>
           <div class="ni-hint">
-            O status é alterado pelo botão <i class="fa-solid fa-arrows-rotate"></i> da lista, que exige observação.
+            Informe uma observacao abaixo quando mudar o status.
           </div>
+        </div>
+
+        <div class="mb-2" id="ei_status_obs_wrap" style="display:none">
+          <label><i class="fa-regular fa-note-sticky"></i> Observacao da mudanca de status</label>
+          <textarea name="observacao_status" id="ei_status_obs" rows="3" placeholder="Explique o motivo da mudanca..."></textarea>
         </div>
 
         <div class="mb-2">
@@ -4551,6 +4642,55 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       }
     });
 
+    function updateEditStatusObsState(){
+      const atual = ($('#ei_status_atual')?.value || '').trim();
+      const novo  = ($('#ei_status')?.value || '').trim();
+      const mudou = novo !== '' && novo !== atual;
+      const wrap  = $('#ei_status_obs_wrap');
+      const obs   = $('#ei_status_obs');
+      if (wrap) wrap.style.display = mudou ? 'block' : 'none';
+      if (obs) {
+        obs.required = mudou;
+        if (!mudou) obs.value = '';
+      }
+    }
+
+    async function fillEditStatusSelect(selected){
+      const sel = $('#ei_status');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Carregando...</option>';
+      try {
+        const items = await fetchStatusIniciativa();
+        sel.innerHTML = '';
+        let found = false;
+        (items || []).forEach(s => {
+          const value = String(s.id || '');
+          if (value === selected) found = true;
+          const opt = document.createElement('option');
+          opt.value = value;
+          opt.textContent = s.label || value;
+          sel.appendChild(opt);
+        });
+        if (selected && !found) {
+          const opt = document.createElement('option');
+          opt.value = selected;
+          opt.textContent = selected;
+          sel.appendChild(opt);
+        }
+        sel.value = selected || (sel.options[0]?.value || '');
+      } catch (err) {
+        sel.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = selected || '';
+        opt.textContent = selected || 'Status indisponivel';
+        sel.appendChild(opt);
+        sel.value = selected || '';
+        toast(err.message || 'Falha ao listar status', false);
+      }
+    }
+
+    $('#ei_status')?.addEventListener('change', updateEditStatusObsState);
+
     // ====== Editar iniciativa ======
     async function openEditIniDrawer(idIni){
       $('#formEditIniciativa')?.reset();
@@ -4559,7 +4699,11 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       $('#ei_sub').textContent     = 'Carregando...';
       $('#ei_descricao').value     = '';
       $('#ei_dt_prazo').value      = '';
-      $('#ei_status_ro').value     = '';
+      $('#ei_status_atual').value  = '';
+      $('#ei_status').innerHTML    = '<option value="">Carregando...</option>';
+      $('#ei_status_obs').value    = '';
+      $('#ei_status_obs').required = false;
+      $('#ei_status_obs_wrap').style.display = 'none';
       $('#ei_observacoes').value   = '';
 
       toggleDrawer('#drawerEditIni', true);
@@ -4574,7 +4718,9 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         $('#ei_sub').textContent    = ini.descricao || '—';
         $('#ei_descricao').value    = ini.descricao || '';
         $('#ei_dt_prazo').value     = onlyDate(ini.dt_prazo || '');
-        $('#ei_status_ro').value    = ini.status || '—';
+        $('#ei_status_atual').value = ini.status || '';
+        await fillEditStatusSelect(ini.status || '');
+        updateEditStatusObsState();
         $('#ei_observacoes').value  = (ini.observacoes || '').trim();
 
         await buildRespBox('ei', ini.responsaveis || []);
@@ -4591,6 +4737,16 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       if (!idIni){ toast('Iniciativa inválida.', false); return; }
       if (!desc) { toast('A descrição é obrigatória.', false); return; }
       if (!respOrder.ei.length){ toast('Selecione ao menos um responsável.', false); return; }
+      const statusAtual = ($('#ei_status_atual')?.value || '').trim();
+      const statusNovo  = ($('#ei_status')?.value || '').trim();
+      const obsStatus   = ($('#ei_status_obs')?.value || '').trim();
+      if (!statusNovo){ toast('Selecione o status da iniciativa.', false); return; }
+      if (statusNovo !== statusAtual && !obsStatus){
+        toast('Informe a observacao para alterar o status.', false);
+        updateEditStatusObsState();
+        $('#ei_status_obs')?.focus();
+        return;
+      }
 
       const fd   = new FormData($('#formEditIniciativa'));
       const res  = await fetch(`${SCRIPT}?ajax=editar_iniciativa`, { method:'POST', body:fd });
