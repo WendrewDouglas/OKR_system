@@ -112,6 +112,10 @@ try {
 .header .left .logo-link img { height: 36px; width: auto; max-width: 240px; object-fit: contain; transition: transform 0.2s ease-in-out; }
 .header .left .logo-link:hover img { transform: scale(1.1); }
 .header .right { display: flex; align-items: center; position: relative; gap: 16px; }
+.header .header-quick-actions { display: flex; gap: 6px; align-items: center; }
+.header .header-qa-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--bg2, #F1C40F); color: var(--bg2-contrast, #111111); font-size: .8rem; font-weight: 700; text-decoration: none; border: none; cursor: pointer; transition: transform .15s, filter .15s; white-space: nowrap; line-height: 1.2; box-sizing: border-box; }
+.header .header-qa-btn:hover { filter: brightness(.92); transform: translateY(-1px); color: var(--bg2-contrast, #111111); text-decoration: none; }
+.header .header-qa-btn i { font-size: .75rem; color: inherit; }
 .notif-link { position: relative; display: inline-block; line-height: 1; color: #2C3E50; }
 .notif-link i { font-size: 1.2rem; }
 .notif-link .badge { position: absolute; top: -6px; right: -8px; display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #fff; }
@@ -126,6 +130,10 @@ try {
 .profile-menu a i { margin-right: 0.5rem; color: #222222; }
 .content { margin-left: var(--sidebar-width); transition: margin-left var(--transition-speed); }
 body.collapsed .content { margin-left: var(--sidebar-collapsed); }
+@media (max-width: 768px) {
+  .header .header-qa-btn { padding: 6px 8px; }
+  .header .header-qa-btn .qa-label { display: none; }
+}
 </style>
 
 <header class="header">
@@ -136,23 +144,39 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
     </a>
   </div>
   <div class="right">
-    <!-- Quick Actions: + Objetivo / + KR -->
+    <!-- Quick Actions: + Objetivo / + KR (saíram do submenu "Meus OKRs" da sidebar) -->
     <?php
-      // Load ACL if not yet loaded (safe to require_once)
-      $aclPath = dirname(__DIR__, 2) . '/auth/acl.php';
-      if (is_file($aclPath)) { require_once $aclPath; }
-      $canWrite = function_exists('has_cap') && has_cap('W:objetivo@ORG');
+      // Mesma regra de visibilidade que a sidebar usava: dom_paginas.requires_cap.
+      // acl.php exige as constantes de config; carrega ambos de forma idempotente.
+      $__root    = dirname(__DIR__, 2);
+      $__cfgPath = $__root . '/auth/config.php';
+      $__aclPath = $__root . '/auth/acl.php';
+      if (!defined('DB_HOST') && is_file($__cfgPath)) { require_once $__cfgPath; }
+      if (is_file($__aclPath)) { require_once $__aclPath; }
+
+      $__qaCan = static function (string $path): bool {
+        if (!function_exists('can_open_path')) { return false; }
+        try { return can_open_path($path); } catch (Throwable $e) { return false; }
+      };
+      $canNewObjective = $__qaCan('/OKR_system/views/novo_objetivo.php');
+      $canNewKR        = $__qaCan('/OKR_system/views/novo_key_result.php');
     ?>
-    <?php if ($canWrite): ?>
+    <?php if ($canNewObjective || $canNewKR): ?>
     <div class="header-quick-actions">
-      <a href="/OKR_system/views/novo_objetivo.php" class="header-qa-btn" title="Novo Objetivo">
+      <?php if ($canNewObjective): ?>
+      <a href="/OKR_system/views/novo_objetivo.php" class="header-qa-btn"
+         title="Novo Objetivo" aria-label="Novo Objetivo">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
         <span class="qa-label">Objetivo</span>
       </a>
-      <a href="/OKR_system/views/novo_key_result.php" class="header-qa-btn" title="Novo Key Result">
+      <?php endif; ?>
+      <?php if ($canNewKR): ?>
+      <a href="/OKR_system/views/novo_key_result.php" class="header-qa-btn"
+         title="Novo Key Result" aria-label="Novo Key Result">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
         <span class="qa-label">KR</span>
       </a>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
 

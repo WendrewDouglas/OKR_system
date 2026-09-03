@@ -102,12 +102,9 @@ $currentPath        = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $isDashboard        = ($currentPath === '/OKR_system/dashboard');
 $isMapaEstrategico  = in_array($currentPath, ['/OKR_system/mapa_estrategico','/OKR_system/views/mapa_estrategico.php']);
 $isMyOKRs           = ($currentPath === '/OKR_system/meus_okrs');
-$isNewObjective     = ($currentPath === '/OKR_system/novo_objetivo');
-$isNewKR            = ($currentPath === '/OKR_system/novo_key_result');
 $isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
 $isOrcamento        = ($currentPath === '/OKR_system/orcamento');
 $isAprovacao        = ($currentPath === '/OKR_system/aprovacao');
-$isOKRGroup         = ($isMyOKRs || $isNewObjective || $isNewKR);
 $isConfigStyle      = in_array($currentPath, ['/OKR_system/views/config_style.php','/OKR_system/config_style']);
 $isOrgConfig        = in_array($currentPath, ['/OKR_system/views/organizacao.php','/OKR_system/organizacao','/OKR_system/views/configuracoes.php']);
 $isUsersMgmt        = in_array($currentPath, ['/OKR_system/views/usuarios.php','/OKR_system/usuarios']);
@@ -397,31 +394,12 @@ body.collapsed .sidebar-footer .org { display: none; }
       </div>
       <?php endif; ?>
     </li>
-    <li class="<?= $isOKRGroup ? 'open' : '' ?>">
-      <div class="menu-item <?= $isOKRGroup ? 'active' : '' ?>"
+    <li>
+      <div class="menu-item <?= $isMyOKRs ? 'active' : '' ?>"
            data-href="https://planningbi.com.br/OKR_system/meus_okrs"
            onclick="onMenuClick(this, event)">
         <i class="fas fa-crosshairs icon-main"></i><span>Meus OKRs</span>
-        <i class="fas fa-chevron-down icon-chevron"
-           title="Abrir/Fechar"
-           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
       </div>
-      <ul class="submenu">
-        <?php if (can_open_path('/OKR_system/views/novo_objetivo.php')): ?>
-        <li class="<?= $isNewObjective ? 'active' : '' ?>"
-            data-href="https://planningbi.com.br/OKR_system/novo_objetivo"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-bullseye mr-2"></i><span>Novo Objetivo</span>
-        </li>
-        <?php endif; ?>
-        <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
-        <li class="<?= $isNewKR ? 'active' : '' ?>"
-            data-href="https://planningbi.com.br/OKR_system/novo_key_result"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-clipboard-check mr-2"></i><span>Novo Key Result</span>
-        </li>
-        <?php endif; ?>
-      </ul>
     </li>
     <li>
       <?php if (can_open_path('/OKR_system/views/novo_key_result.php')): ?>
