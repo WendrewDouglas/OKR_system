@@ -11,7 +11,7 @@ declare(strict_types=1);
  *   - marco do KR            milestones_kr.data_ref
  *   - prazo da iniciativa    iniciativas.dt_prazo
  *
- * Armadilhas tratadas aqui (ver [[rbac-gate-rotas-bonitas]] não, ver comentários):
+ * Armadilhas tratadas aqui:
  *   - milestones_kr.id_company é varchar e está NULL na maioria das linhas:
  *     o vínculo com a empresa SEMPRE vai por milestone -> KR -> objetivo.
  *   - vários id_user_* são varchar apontando para usuarios.id_user (int): casteamos em PHP.
@@ -19,6 +19,18 @@ declare(strict_types=1);
  *     tudo passa por krs_normalize_status().
  *
  * Isolado de views/agenda.php de propósito, para o app mobile poder reusar.
+ *
+ * O payload é NORMALIZADO: o evento carrega só ids e o que é dele (data, estado,
+ * meta). Título, contexto e pessoas saem dos catálogos `objetivos`/`krs`/
+ * `iniciativas`, cruzados pelo id. Sem isso a descrição de um KR se repetia nos
+ * seus ~11 marcos e o JSON da FMX passava de 190 KB.
+ *
+ * Como resolver as pessoas de um evento:
+ *   objetivo, inicio_objetivo -> objetivos[id_objetivo].pessoas
+ *   kr, marco                 -> krs[id_kr].pessoas
+ *   iniciativa                -> iniciativas[id_iniciativa].pessoas
+ *
+ * A URL também é derivável: detalhe_okr.php?id=<id_objetivo>.
  */
 
 require_once __DIR__ . '/nome_format.php';
@@ -47,7 +59,7 @@ if (!function_exists('agenda_build_events')) {
    * @return array{
    *   eventos: list<array>,
    *   pessoas: array<int, array>,
-   *   objetivos: array<int, string>,
+   *   objetivos: array<int, array>,
    *   krs: array<string, array>,
    *   iniciativas: array<string, array>,
    *   hoje: string
@@ -61,8 +73,6 @@ if (!function_exists('agenda_build_events')) {
     $krs         = [];
     $iniciativas = [];
     $pessoasIds  = [];
-
-    $urlObj = static fn(int $idObj): string => '/OKR_system/views/detalhe_okr.php?id=' . $idObj;
 
     /* ---------- catálogo de corresponsáveis ---------- */
 
@@ -126,44 +136,35 @@ if (!function_exists('agenda_build_events')) {
         'dt_inicio' => $o['dt_inicio'],
         'dt_prazo'  => $o['dt_prazo'],
         'ciclo'     => $o['ciclo'],
+        'pessoas'   => $dono > 0 ? [['id' => $dono, 'papel' => 'responsavel']] : [],
       ];
       if ($dono > 0) $pessoasIds[$dono] = true;
 
-      $pessoasObj = $dono > 0 ? [['id' => $dono, 'papel' => 'responsavel']] : [];
-
       if (!empty($o['dt_prazo'])) {
         $eventos[] = [
-          'id'             => 'obj:' . $idObj,
-          'tipo'           => 'objetivo',
-          'data'           => $o['dt_prazo'],
-          'titulo'         => $desc,
-          'contexto'       => null,
-          'estado'         => agenda_estado($o['dt_prazo'], $sNorm, !empty($o['dt_conclusao']), $today),
-          'status'         => $sNorm,
-          'id_objetivo'    => $idObj,
-          'id_kr'          => null,
-          'id_iniciativa'  => null,
-          'pessoas'        => $pessoasObj,
-          'meta'           => null,
-          'url'            => $urlObj($idObj),
+          'id'            => 'obj:' . $idObj,
+          'tipo'          => 'objetivo',
+          'data'          => $o['dt_prazo'],
+          'estado'        => agenda_estado($o['dt_prazo'], $sNorm, !empty($o['dt_conclusao']), $today),
+          'status'        => $sNorm,
+          'id_objetivo'   => $idObj,
+          'id_kr'         => null,
+          'id_iniciativa' => null,
+          'meta'          => null,
         ];
       }
       if (!empty($o['dt_inicio'])) {
         $eventos[] = [
-          'id'             => 'obji:' . $idObj,
-          'tipo'           => 'inicio_objetivo',
-          'data'           => $o['dt_inicio'],
-          'titulo'         => $desc,
-          'contexto'       => null,
-          // O início não vence: ou já passou (marco cumprido no tempo) ou está por vir.
-          'estado'         => $o['dt_inicio'] <= $today ? 'concluido' : 'futuro',
-          'status'         => $sNorm,
-          'id_objetivo'    => $idObj,
-          'id_kr'          => null,
-          'id_iniciativa'  => null,
-          'pessoas'        => $pessoasObj,
-          'meta'           => null,
-          'url'            => $urlObj($idObj),
+          'id'            => 'obji:' . $idObj,
+          'tipo'          => 'inicio_objetivo',
+          'data'          => $o['dt_inicio'],
+          // O início não vence: ou já passou ou está por vir.
+          'estado'        => $o['dt_inicio'] <= $today ? 'concluido' : 'futuro',
+          'status'        => $sNorm,
+          'id_objetivo'   => $idObj,
+          'id_kr'         => null,
+          'id_iniciativa' => null,
+          'meta'          => null,
         ];
       }
     }
@@ -202,28 +203,25 @@ if (!function_exists('agenda_build_events')) {
         'num'         => (int)$k['key_result_num'],
         'responsavel' => $resp,
         'farol'       => $k['farol'],
+        'unidade'     => $k['unidade_medida'],
+        'meta_valor'  => $k['meta'] !== null ? (float)$k['meta'] : null,
         'pessoas'     => $pessoasKr,
       ];
 
       if (!empty($prazo)) {
         $eventos[] = [
-          'id'             => 'kr:' . $idKr,
-          'tipo'           => 'kr',
-          'data'           => $prazo,
-          'titulo'         => $desc,
-          'contexto'       => trim((string)$k['obj_descricao']),
-          'estado'         => agenda_estado($prazo, $sNorm, !empty($k['dt_conclusao']), $today),
-          'status'         => $sNorm,
-          'id_objetivo'    => $idObj,
-          'id_kr'          => $idKr,
-          'id_iniciativa'  => null,
-          'pessoas'        => $pessoasKr,
-          'meta'           => [
+          'id'            => 'kr:' . $idKr,
+          'tipo'          => 'kr',
+          'data'          => $prazo,
+          'estado'        => agenda_estado($prazo, $sNorm, !empty($k['dt_conclusao']), $today),
+          'status'        => $sNorm,
+          'id_objetivo'   => $idObj,
+          'id_kr'         => $idKr,
+          'id_iniciativa' => null,
+          'meta'          => [
             'prorrogado' => !empty($k['dt_novo_prazo']),
             'prazo_orig' => $k['data_fim'],
-            'farol'      => $k['farol'],
           ],
-          'url'            => $urlObj($idObj),
         ];
       }
     }
@@ -253,28 +251,22 @@ if (!function_exists('agenda_build_events')) {
       $data   = $m['data_ref'];
 
       $eventos[] = [
-        'id'             => 'ms:' . (int)$m['id_milestone'],
-        'tipo'           => 'marco',
-        'data'           => $data,
-        'titulo'         => trim((string)$m['kr_descricao']),
-        'contexto'       => trim((string)$m['obj_descricao']),
+        'id'            => 'ms:' . (int)$m['id_milestone'],
+        'tipo'          => 'marco',
+        'data'          => $data,
         // Marco não tem status próprio: vale o apontamento, e o status do KR
         // (um marco de KR cancelado não deve aparecer como cobrança).
-        'estado'         => agenda_estado($data, $sNorm, $apont, $today),
-        'status'         => $sNorm,
-        'id_objetivo'    => $idObj,
-        'id_kr'          => $idKr,
-        'id_iniciativa'  => null,
-        'pessoas'        => $krs[$idKr]['pessoas'] ?? [],
-        'meta'           => [
-          'num_ordem'       => (int)$m['num_ordem'],
-          'valor_esperado'  => $m['valor_esperado'] !== null ? (float)$m['valor_esperado'] : null,
-          'valor_real'      => $m['valor_real_consolidado'] !== null ? (float)$m['valor_real_consolidado'] : null,
-          'unidade'         => $m['unidade_medida'],
-          'apontado'        => $apont,
-          'qtde_apont'      => (int)$m['qtde_apontamentos'],
+        'estado'        => agenda_estado($data, $sNorm, $apont, $today),
+        'status'        => $sNorm,
+        'id_objetivo'   => $idObj,
+        'id_kr'         => $idKr,
+        'id_iniciativa' => null,
+        'meta'          => [
+          'num_ordem'      => (int)$m['num_ordem'],
+          'valor_esperado' => $m['valor_esperado'] !== null ? (float)$m['valor_esperado'] : null,
+          'valor_real'     => $m['valor_real_consolidado'] !== null ? (float)$m['valor_real_consolidado'] : null,
+          'apontado'       => $apont,
         ],
-        'url'            => $urlObj($idObj),
       ];
     }
 
@@ -324,19 +316,15 @@ if (!function_exists('agenda_build_events')) {
 
       if (!empty($i['dt_prazo'])) {
         $eventos[] = [
-          'id'             => 'ini:' . $idIni,
-          'tipo'           => 'iniciativa',
-          'data'           => $i['dt_prazo'],
-          'titulo'         => $desc,
-          'contexto'       => trim((string)$i['kr_descricao']),
-          'estado'         => agenda_estado($i['dt_prazo'], $sNorm, false, $today),
-          'status'         => $sNorm,
-          'id_objetivo'    => $idObj,
-          'id_kr'          => $idKr,
-          'id_iniciativa'  => $idIni,
-          'pessoas'        => $pessoasIni,
-          'meta'           => ['num' => (int)$i['num_iniciativa']],
-          'url'            => $urlObj($idObj),
+          'id'            => 'ini:' . $idIni,
+          'tipo'          => 'iniciativa',
+          'data'          => $i['dt_prazo'],
+          'estado'        => agenda_estado($i['dt_prazo'], $sNorm, false, $today),
+          'status'        => $sNorm,
+          'id_objetivo'   => $idObj,
+          'id_kr'         => $idKr,
+          'id_iniciativa' => $idIni,
+          'meta'          => ['num' => (int)$i['num_iniciativa']],
         ];
       }
     }
@@ -368,7 +356,7 @@ if (!function_exists('agenda_build_events')) {
     }
 
     usort($eventos, static function (array $a, array $b): int {
-      return [$a['data'], $a['tipo'], $a['titulo']] <=> [$b['data'], $b['tipo'], $b['titulo']];
+      return [$a['data'], $a['tipo'], $a['id']] <=> [$b['data'], $b['tipo'], $b['id']];
     });
 
     return [
