@@ -5,6 +5,10 @@ declare(strict_types=1);
 
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
+// Este servidor está com serialize_precision=17: sem isso um progresso de 43,4
+// vira "43.39999999999999857891..." dentro do JSON da página. -1 é o valor
+// recomendado pelo PHP (usa a menor representação que faz roundtrip).
+ini_set('serialize_precision', '-1');
 
 session_start();
 
