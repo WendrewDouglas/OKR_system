@@ -204,6 +204,31 @@ $MEU_ID = (int)$_SESSION['user_id'];
 $pdo    = pdo();
 $IS_MASTER = is_master($pdo, $MEU_ID);
 
+/* ---- Autorização real (RBAC + tenant) ----
+   $IS_MASTER vem da tabela `aprovadores`, que NÃO é RBAC e não tem recorte de
+   empresa: hoje ela habilita 3 contas, duas delas de outras organizações, que
+   por isso alcançavam usuários da FMX. O que está abaixo é o que vale. */
+$CAN_MANAGE_USERS = has_cap('M:user@ORG');
+$MINHA_COMPANY    = (int)(get_my_company($pdo, $MEU_ID) ?: 0);
+
+$SOU_ADMIN_MASTER = (static function (PDO $pdo, int $uid): bool {
+  $st = $pdo->prepare("SELECT 1 FROM rbac_user_role ur
+                        JOIN rbac_roles r ON r.role_id = ur.role_id
+                       WHERE ur.user_id = ? AND r.role_key = 'admin_master' AND r.is_active = 1
+                       LIMIT 1");
+  $st->execute([$uid]);
+  return (bool)$st->fetchColumn();
+})($pdo, $MEU_ID);
+
+/** O usuário-alvo é de outra organização? (0 = novo usuário, logo não) */
+$foraDaMinhaEmpresa = static function (int $targetId) use ($pdo, $MINHA_COMPANY): bool {
+  if ($targetId <= 0) return false;
+  $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ? LIMIT 1");
+  $st->execute([$targetId]);
+  $c = (int)($st->fetchColumn() ?: 0);
+  return $c > 0 && $MINHA_COMPANY > 0 && $c !== $MINHA_COMPANY;
+};
+
 /* ----------------------- Router ----------------------- */
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? ($_POST['action'] ?? 'list');
@@ -634,6 +659,16 @@ if ($method==='POST' && $action==='save') {
   $id         = (int)($_POST['id_user'] ?? 0);
   $isNewUser  = ($id <= 0); // <<< ADICIONADO: flag para saber se é INSERT
 
+  // Criar usuário ou editar outra pessoa exige gestão de usuários. Editar a si
+  // mesmo continua liberado (é o caminho do próprio perfil). Antes daqui,
+  // QUALQUER autenticado criava usuário — e o INSERT ainda gravava papéis.
+  if (($isNewUser || $id !== $MEU_ID) && !$CAN_MANAGE_USERS) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão para criar ou editar usuários.']);
+  }
+  if (!$SOU_ADMIN_MASTER && $foraDaMinhaEmpresa($id)) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão para editar usuário de outra organização.']);
+  }
+
   $primeiro   = trim((string)($_POST['primeiro_nome'] ?? ''));
   $ultimo     = trim((string)($_POST['ultimo_nome'] ?? ''));
   $email      = trim((string)($_POST['email'] ?? $_POST['email_corporativo'] ?? ''));
@@ -656,11 +691,13 @@ if ($method==='POST' && $action==='save') {
   $id_company = (int)($rawCompany ?? 0);
   $id_company = $id_company > 0 ? $id_company : null;
 
-  if (!$IS_MASTER) {
-    $myCompanyId = get_my_company($pdo, $MEU_ID);
+  // Só admin_master escolhe a empresa e concede admin_master. Antes isso valia
+  // para $IS_MASTER, que inclui contas de OUTRAS organizações.
+  if (!$SOU_ADMIN_MASTER) {
+    $myCompanyId = $MINHA_COMPANY;
     if ($myCompanyId > 0) $id_company = $myCompanyId;
     else jexit(422, ['success'=>false,'error'=>'Seu usuário não está vinculado a nenhuma organização.']);
-    // não-master não concede admin_master (bloqueia por chave OU por role_id numérico)
+    // não concede admin_master (bloqueia por chave OU por role_id numérico)
     if (is_array($rolesAny)) {
       $amId = (int)($pdo->query("SELECT role_id FROM rbac_roles WHERE role_key='admin_master' LIMIT 1")->fetchColumn() ?: 0);
       $rolesAny = array_values(array_filter($rolesAny, function($r) use ($amId){
@@ -711,7 +748,9 @@ if ($method==='POST' && $action==='save') {
 
       // Só master altera papéis/capabilities. Antes "|| $id===$MEU_ID" permitia
       // que qualquer usuário se auto-promovesse editando o próprio registro.
-      $canChangeAcl = $IS_MASTER;
+      // Mantida a mesma força (não afrouxar para M:user@ORG, que hoje 18 dos 20
+      // usuários possuem), somando o recorte de organização.
+      $canChangeAcl = $IS_MASTER && ($SOU_ADMIN_MASTER || !$foraDaMinhaEmpresa($id));
 
       // UPDATE dinâmico com campos opcionais
       $sets = [
@@ -769,13 +808,18 @@ if ($method==='POST' && $action==='save') {
       $st->execute($params);
       $id = (int)$pdo->lastInsertId();
 
-      if (table_exists($pdo,'rbac_user_role') && $roleIds) {
-        $ins = $pdo->prepare("INSERT INTO rbac_user_role (user_id, role_id, valid_from) VALUES (?,?,NOW())");
-        foreach ($roleIds as $rid) $ins->execute([$id, (int)$rid]);
-      }
-      if (table_exists($pdo,'rbac_user_capability') && $over) {
-        $ins = $pdo->prepare("INSERT INTO rbac_user_capability (user_id, capability_id, effect) VALUES (?,?,?)");
-        foreach ($over as $capId=>$eff) $ins->execute([$id, (int)$capId, $eff]);
+      // ESCALAÇÃO DE PRIVILÉGIO: este caminho gravava papéis sem nenhum guard,
+      // enquanto o UPDATE exigia $canChangeAcl. Qualquer autenticado criava uma
+      // conta gestor_master e recebia o e-mail de definição de senha.
+      if ($IS_MASTER) {
+        if (table_exists($pdo,'rbac_user_role') && $roleIds) {
+          $ins = $pdo->prepare("INSERT INTO rbac_user_role (user_id, role_id, valid_from) VALUES (?,?,NOW())");
+          foreach ($roleIds as $rid) $ins->execute([$id, (int)$rid]);
+        }
+        if (table_exists($pdo,'rbac_user_capability') && $over) {
+          $ins = $pdo->prepare("INSERT INTO rbac_user_capability (user_id, capability_id, effect) VALUES (?,?,?)");
+          foreach ($over as $capId=>$eff) $ins->execute([$id, (int)$capId, $eff]);
+        }
       }
     }
 
@@ -837,6 +881,9 @@ if ($method==='POST' && $action==='save_permissions') {
   if ($id<=0) jexit(422, ['success'=>false,'error'=>'ID inválido']);
 
   if (!$IS_MASTER) jexit(403, ['success'=>false,'error'=>'Apenas admin master pode alterar papéis/overrides.']);
+  if (!$SOU_ADMIN_MASTER && $foraDaMinhaEmpresa($id)) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão sobre usuário de outra organização.']);
+  }
 
 
   $rolesAny  = $_POST['roles'] ?? [];
@@ -890,6 +937,9 @@ if ($method==='POST' && $action==='delete') {
   if (!$IS_MASTER) jexit(403, ['success'=>false,'error'=>'Apenas admin master pode excluir usuários.']);
   $id = (int)($_POST['id_user'] ?? 0);
   if ($id<=0) jexit(422, ['success'=>false,'error'=>'ID inválido']);
+  if (!$SOU_ADMIN_MASTER && $foraDaMinhaEmpresa($id)) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão para excluir usuário de outra organização.']);
+  }
   if ($id === $MEU_ID) jexit(422, ['success'=>false,'error'=>'Você não pode excluir a si mesmo.']);
   if ($id === 1) jexit(422, ['success'=>false,'error'=>'Usuário #1 não pode ser excluído.']);
 
