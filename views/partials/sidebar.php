@@ -102,6 +102,7 @@ $currentPath        = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $isDashboard        = ($currentPath === '/OKR_system/dashboard');
 $isMapaEstrategico  = in_array($currentPath, ['/OKR_system/mapa_estrategico','/OKR_system/views/mapa_estrategico.php']);
 $isMyOKRs           = ($currentPath === '/OKR_system/meus_okrs');
+$isAgenda           = in_array($currentPath, ['/OKR_system/agenda','/OKR_system/views/agenda.php']);
 $isMatrizPrioridade = ($currentPath === '/OKR_system/matriz_prioridade');
 $isOrcamento        = ($currentPath === '/OKR_system/orcamento');
 $isAprovacao        = ($currentPath === '/OKR_system/aprovacao');
@@ -384,6 +385,15 @@ body.collapsed .sidebar-footer .org { display: none; }
            onclick="onMenuClick(this, event)">
         <i class="fas fa-list-check icon-main"></i><span>Minhas Tarefas</span>
       </div>
+    </li>
+    <li>
+      <?php if (can_open_path('/OKR_system/views/agenda.php')): ?>
+      <div class="menu-item <?= $isAgenda ? 'active' : '' ?>"
+           data-href="/OKR_system/views/agenda.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-calendar-days icon-main"></i><span>Agenda</span>
+      </div>
+      <?php endif; ?>
     </li>
     <li>
       <?php if (can_open_path('/OKR_system/views/mapa_estrategico.php')): ?>

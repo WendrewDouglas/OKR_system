@@ -25,6 +25,12 @@ if (empty($_SESSION['user_id'])) {
   exit;
 }
 
+// A rota limpa (/OKR_system/agenda) passa pelo index.php, então o
+// gate_page_by_path acima procura por '/OKR_system/index.php' e não acha nada
+// em dom_paginas. Enforça aqui, depois do redirect de login (antes dele, o
+// visitante anônimo receberia o modal de permissão em vez da tela de login).
+require_cap('R:objetivo@ORG');
+
 // Conexão
 try {
   $pdo = new PDO(
