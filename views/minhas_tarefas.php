@@ -123,6 +123,7 @@ $pessoasDoEvento = static function (array $e) use ($agenda): array {
 };
 
 $tarefas = [];
+$marcosPend = [];   // marcos pendentes agrupados por KR
 foreach ($agenda['eventos'] as $e) {
   // Início de objetivo é marco de calendário, não obrigação de ninguém.
   if ($e['tipo'] === 'inicio_objetivo') continue;
@@ -135,11 +136,19 @@ foreach ($agenda['eventos'] as $e) {
   if (!$meu) continue;
 
   // Marco só entra quando pede ação: sem apontamento e vencido ou vencendo.
-  // Sem esse recorte, um responsável por muitos KRs receberia dezenas de
-  // marcos futuros e as tarefas de verdade sumiriam no meio.
+  // E entra AGRUPADO por KR (montado depois deste laço): o Cid responde por 8
+  // KRs e teria 20 cartões de marco atrasado no topo, empurrando objetivo, KRs
+  // e iniciativas para fora da primeira tela. Um cartão por KR resolve.
   if ($e['tipo'] === 'marco') {
     if (!empty($e['meta']['apontado'])) continue;
     if (!in_array($e['estado'], ['vencido', 'hoje', 'proximo'], true)) continue;
+    $k = (string)$e['id_kr'];
+    if (!isset($marcosPend[$k])) {
+      $marcosPend[$k] = ['n' => 0, 'primeira' => $e['data'], 'status' => $e['status'], 'id_objetivo' => $e['id_objetivo']];
+    }
+    $marcosPend[$k]['n']++;
+    if ($e['data'] < $marcosPend[$k]['primeira']) $marcosPend[$k]['primeira'] = $e['data'];
+    continue;
   }
 
   $obj = $agenda['objetivos'][$e['id_objetivo']] ?? null;
@@ -158,10 +167,8 @@ foreach ($agenda['eventos'] as $e) {
     $descricao = $ini['descricao'] ?? '';
     $ctxObj = $obj['descricao'] ?? null; $ctxKr = $kr['descricao'] ?? null;
     $idItem = (string)$e['id_iniciativa'];
-  } else { // marco
-    $descricao = 'Marco ' . (int)($e['meta']['num_ordem'] ?? 0) . ' — apontar resultado';
-    $ctxObj = $obj['descricao'] ?? null; $ctxKr = $kr['descricao'] ?? null;
-    $idItem = substr((string)$e['id'], 3); // tira o prefixo "ms:"
+  } else {
+    continue; // marco já foi acumulado acima
   }
 
   $tarefas[] = [
@@ -174,6 +181,24 @@ foreach ($agenda['eventos'] as $e) {
     'status_raw'  => (string)$e['status'],
     'nav_id'      => (int)$e['id_objetivo'],
     'papel'       => $papel,
+  ];
+}
+
+// Um cartão por KR: "N marcos sem apontamento", datado pelo mais antigo — que
+// é o que define há quanto tempo aquele KR está sem alimentação.
+foreach ($marcosPend as $idKr => $mp) {
+  $kr  = $agenda['krs'][$idKr] ?? null;
+  $obj = $agenda['objetivos'][$mp['id_objetivo']] ?? null;
+  $tarefas[] = [
+    'tipo'        => 'marco',
+    'id_item'     => (string)$idKr,
+    'descricao'   => $mp['n'] . ($mp['n'] > 1 ? ' marcos sem apontamento' : ' marco sem apontamento'),
+    'contexto_kr' => $kr['descricao'] ?? null,
+    'contexto_obj'=> $obj['descricao'] ?? null,
+    'dt_prazo'    => $mp['primeira'],
+    'status_raw'  => (string)$mp['status'],
+    'nav_id'      => (int)$mp['id_objetivo'],
+    'papel'       => 'responsavel',
   ];
 }
 
