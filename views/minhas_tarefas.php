@@ -7,6 +7,7 @@ require_once __DIR__ . '/../auth/helpers/num_format.php';
 require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/../auth/avatar_helpers.php';
+require_once __DIR__ . '/../auth/helpers/agenda_events.php';
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 
 if (!isset($_SESSION['user_id'])) {
@@ -94,63 +95,87 @@ if ($isAdmin) {
   $userList = $stUsers->fetchAll();
 }
 
-// ===================== QUERIES DE TAREFAS =====================
+// ===================== TAREFAS =====================
+// Fonte única com a Agenda: as duas telas respondem "o que tem prazo" e
+// divergiam por serem dois códigos diferentes. Aqui é o mesmo motor
+// (auth/helpers/agenda_events.php), recortado para o usuário-alvo.
+//
+// O que isso corrige em relação às 3 queries que existiam antes:
+//   - corresponsável de KR (kr_socios 'aprovado') não aparecia. Hoje não há
+//     nenhum aprovado no banco (os 9 convites estão 'pendente'), então a
+//     divergência ainda não se manifestou — mas apareceria no primeiro aceite.
+//   - a query de KR não filtrava a empresa; agora o recorte é por company.
+//   - status era comparado por strpos em texto livre; agora vem normalizado
+//     por krs_normalize_status().
+//   - marcos de KR não existiam aqui (259 no banco).
+
+$agenda = agenda_build_events($pdo, $targetCompanyId);
+
+/** Pessoas ligadas ao evento, pelo catálogo do tipo. */
+$pessoasDoEvento = static function (array $e) use ($agenda): array {
+  if ($e['tipo'] === 'kr' || $e['tipo'] === 'marco') {
+    return $agenda['krs'][$e['id_kr']]['pessoas'] ?? [];
+  }
+  if ($e['tipo'] === 'iniciativa') {
+    return $agenda['iniciativas'][$e['id_iniciativa']]['pessoas'] ?? [];
+  }
+  return $agenda['objetivos'][$e['id_objetivo']]['pessoas'] ?? [];
+};
+
 $tarefas = [];
+foreach ($agenda['eventos'] as $e) {
+  // Início de objetivo é marco de calendário, não obrigação de ninguém.
+  if ($e['tipo'] === 'inicio_objetivo') continue;
 
-// 1) Objetivos onde o usuário é dono
-$stObj = $pdo->prepare("
-  SELECT
-    'objetivo' AS tipo,
-    o.id_objetivo AS id_item,
-    o.descricao AS descricao,
-    NULL AS contexto_kr,
-    NULL AS contexto_obj,
-    o.dt_prazo AS dt_prazo,
-    COALESCE(o.status,'') AS status_raw,
-    o.id_objetivo AS nav_id
-  FROM objetivos o
-  WHERE o.dono = :uid AND o.id_company = :cid
-");
-$stObj->execute([':uid' => $targetUserId, ':cid' => $targetCompanyId]);
-$tarefas = array_merge($tarefas, $stObj->fetchAll());
+  $meu = false;
+  $papel = '';
+  foreach ($pessoasDoEvento($e) as $pp) {
+    if ((int)$pp['id'] === $targetUserId) { $meu = true; $papel = $pp['papel']; break; }
+  }
+  if (!$meu) continue;
 
-// 2) Key Results onde o usuário é responsável
-$stKR = $pdo->prepare("
-  SELECT
-    'kr' AS tipo,
-    kr.id_kr AS id_item,
-    kr.descricao AS descricao,
-    NULL AS contexto_kr,
-    o.descricao AS contexto_obj,
-    COALESCE(kr.dt_novo_prazo, kr.data_fim) AS dt_prazo,
-    COALESCE(kr.status,'') AS status_raw,
-    o.id_objetivo AS nav_id
-  FROM key_results kr
-  INNER JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
-  WHERE kr.responsavel = :uid
-");
-$stKR->execute([':uid' => $targetUserId]);
-$tarefas = array_merge($tarefas, $stKR->fetchAll());
+  // Marco só entra quando pede ação: sem apontamento e vencido ou vencendo.
+  // Sem esse recorte, um responsável por muitos KRs receberia dezenas de
+  // marcos futuros e as tarefas de verdade sumiriam no meio.
+  if ($e['tipo'] === 'marco') {
+    if (!empty($e['meta']['apontado'])) continue;
+    if (!in_array($e['estado'], ['vencido', 'hoje', 'proximo'], true)) continue;
+  }
 
-// 3) Iniciativas via junction (iniciativas_envolvidos)
-$stIni = $pdo->prepare("
-  SELECT
-    'iniciativa' AS tipo,
-    i.id_iniciativa AS id_item,
-    i.descricao AS descricao,
-    kr.descricao AS contexto_kr,
-    o.descricao AS contexto_obj,
-    i.dt_prazo AS dt_prazo,
-    COALESCE(i.status,'') AS status_raw,
-    o.id_objetivo AS nav_id
-  FROM iniciativas_envolvidos ie
-  INNER JOIN iniciativas i ON i.id_iniciativa = ie.id_iniciativa
-  INNER JOIN key_results kr ON kr.id_kr = i.id_kr
-  INNER JOIN objetivos o ON o.id_objetivo = kr.id_objetivo
-  WHERE ie.id_user = :uid
-");
-$stIni->execute([':uid' => $targetUserId]);
-$tarefas = array_merge($tarefas, $stIni->fetchAll());
+  $obj = $agenda['objetivos'][$e['id_objetivo']] ?? null;
+  $kr  = $e['id_kr'] ? ($agenda['krs'][$e['id_kr']] ?? null) : null;
+
+  if ($e['tipo'] === 'objetivo') {
+    $descricao = $obj['descricao'] ?? '';
+    $ctxObj = null; $ctxKr = null;
+    $idItem = (string)$e['id_objetivo'];
+  } elseif ($e['tipo'] === 'kr') {
+    $descricao = $kr['descricao'] ?? '';
+    $ctxObj = $obj['descricao'] ?? null; $ctxKr = null;
+    $idItem = (string)$e['id_kr'];
+  } elseif ($e['tipo'] === 'iniciativa') {
+    $ini = $agenda['iniciativas'][$e['id_iniciativa']] ?? null;
+    $descricao = $ini['descricao'] ?? '';
+    $ctxObj = $obj['descricao'] ?? null; $ctxKr = $kr['descricao'] ?? null;
+    $idItem = (string)$e['id_iniciativa'];
+  } else { // marco
+    $descricao = 'Marco ' . (int)($e['meta']['num_ordem'] ?? 0) . ' — apontar resultado';
+    $ctxObj = $obj['descricao'] ?? null; $ctxKr = $kr['descricao'] ?? null;
+    $idItem = substr((string)$e['id'], 3); // tira o prefixo "ms:"
+  }
+
+  $tarefas[] = [
+    'tipo'        => $e['tipo'],
+    'id_item'     => $idItem,
+    'descricao'   => $descricao,
+    'contexto_kr' => $ctxKr,
+    'contexto_obj'=> $ctxObj,
+    'dt_prazo'    => $e['data'],
+    'status_raw'  => (string)$e['status'],
+    'nav_id'      => (int)$e['id_objetivo'],
+    'papel'       => $papel,
+  ];
+}
 
 // ===================== CLASSIFICAÇÃO =====================
 $today = date('Y-m-d');
@@ -344,6 +369,7 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
     .mt-type.objetivo   { background: rgba(52, 152, 219, .14); color: #1e6091; }
     .mt-type.kr         { background: color-mix(in srgb, var(--mt-brand) 18%, transparent); color: var(--mt-brand); }
     .mt-type.iniciativa { background: rgba(46, 204, 113, .16); color: var(--mt-success); }
+    .mt-type.marco      { background: rgba(155, 89, 182, .18); color: #b98ee0; }
 
     /* Description */
     .mt-desc h3 {
@@ -487,8 +513,8 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
             $navUrl = '/OKR_system/views/detalhe_okr.php?id=' . urlencode($t['nav_id']);
 
             // Type label & icon
-            $typeLabels = ['objetivo' => 'Objetivo', 'kr' => 'Key Result', 'iniciativa' => 'Iniciativa'];
-            $typeIcons  = ['objetivo' => 'fa-bullseye', 'kr' => 'fa-key', 'iniciativa' => 'fa-rocket'];
+            $typeLabels = ['objetivo' => 'Objetivo', 'kr' => 'Key Result', 'iniciativa' => 'Iniciativa', 'marco' => 'Marco'];
+            $typeIcons  = ['objetivo' => 'fa-bullseye', 'kr' => 'fa-key', 'iniciativa' => 'fa-rocket', 'marco' => 'fa-flag-checkered'];
             $typeLabel = $typeLabels[$t['tipo']] ?? $t['tipo'];
             $typeIcon  = $typeIcons[$t['tipo']] ?? 'fa-circle';
 
@@ -496,7 +522,7 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
             $context = '';
             if ($t['tipo'] === 'kr' && $t['contexto_obj']) {
               $context = 'Objetivo: ' . mb_substr($t['contexto_obj'], 0, 80);
-            } elseif ($t['tipo'] === 'iniciativa') {
+            } elseif ($t['tipo'] === 'iniciativa' || $t['tipo'] === 'marco') {
               $parts = [];
               if ($t['contexto_obj']) $parts[] = mb_substr($t['contexto_obj'], 0, 50);
               if ($t['contexto_kr'])  $parts[] = mb_substr($t['contexto_kr'], 0, 50);
