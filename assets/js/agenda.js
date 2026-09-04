@@ -581,10 +581,7 @@
     if (limpa) {
       filtros[limpa.getAttribute('data-limpa')] = [];
       aplicar();
-      return;
     }
-    // clique dentro do painel não deve fechá-lo
-    if (ev.target.closest('.ag-fpanel')) ev.stopPropagation();
   });
 
   elFiltros.addEventListener('change', function (ev) {
@@ -612,11 +609,18 @@
     if (inp) { inp.focus(); inp.setSelectionRange(pos, pos); }
   });
 
-  document.addEventListener('click', function (ev) {
-    if (abertoEm && !ev.target.closest('.ag-fdrop')) {
-      abertoEm = null;
-      renderFiltros();
-    }
+  // Fechar ao clicar fora exige uma bandeira, não um closest() no document:
+  // quando o clique é interno a barra já se re-renderizou, o ev.target ficou
+  // órfão do DOM e closest() devolve null — o painel se fechava sozinho no
+  // mesmo clique que o abriu. A fase de captura roda antes de tudo.
+  var cliqueNoFiltro = false;
+  elFiltros.addEventListener('click', function () { cliqueNoFiltro = true; }, true);
+  document.addEventListener('click', function () {
+    var interno = cliqueNoFiltro;
+    cliqueNoFiltro = false;
+    if (interno || !abertoEm) return;
+    abertoEm = null;
+    renderFiltros();
   });
 
   elAtivos.addEventListener('click', function (ev) {
