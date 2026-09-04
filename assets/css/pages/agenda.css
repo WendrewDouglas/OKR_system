@@ -235,7 +235,7 @@ body { background: #0b0e13; color: var(--ag-text); }
   margin-right: .3rem;
 }
 .ag-visoes button {
-  background: none; border: 0; color: var(--ag-text-muted);
+  background: transparent; border: 0; color: var(--ag-text-muted);
   padding: .42rem .65rem; font-size: .78rem; font-weight: 700; cursor: pointer;
   border-right: 1px solid var(--ag-border);
 }
