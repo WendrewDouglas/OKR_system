@@ -8,11 +8,17 @@ require_once __DIR__.'/../auth/config.php';
 require_once __DIR__.'/../auth/functions.php';
 require_once __DIR__.'/../auth/acl.php';
 
-// Gate automático pela tabela dom_paginas.requires_cap
-if (($_GET['mode'] ?? '') === 'edit') {
-  require_cap('W:objetivo@ORG');
-}
+// Gate automático pela tabela dom_paginas.requires_cap. Faltava a chamada:
+// a tela de cadastro de usuário ficava aberta a qualquer autenticado.
+gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
+
 if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.php'); exit; }
+
+// Cadastrar ou editar usuário é gestão de usuários, não escrita de objetivo
+// (o require_cap('W:objetivo@ORG') que estava aqui era cópia de outra tela, e
+// só valia no modo edit). Fica depois do redirect de login, senão o visitante
+// anônimo receberia o modal de permissão em vez da tela de login.
+require_cap('M:user@ORG');
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token']=bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf_token'];
 
