@@ -53,6 +53,8 @@ if ($companyId <= 0) {
 }
 
 $dados = agenda_build_events($pdo, $companyId);
+// Quem está olhando: alimenta o preset "Meus prazos".
+$dados['eu'] = $currentUserId;
 
 $totalEventos = count($dados['eventos']);
 $totalPessoas = count($dados['pessoas']);
@@ -93,6 +95,26 @@ $totalPessoas = count($dados['pessoas']);
           <button type="button" id="agHoje" class="ag-hoje-btn">Hoje</button>
         </div>
       </div>
+
+      <div class="ag-barra">
+        <div class="ag-filtros" id="agFiltros"></div>
+        <div class="ag-presets">
+          <label class="ag-busca">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="agBusca" placeholder="Buscar prazo, KR ou pessoa…" aria-label="Buscar">
+          </label>
+          <button type="button" class="ag-preset" id="agPendencias">
+            <i class="fa-solid fa-triangle-exclamation"></i> Só pendências
+          </button>
+          <?php if (!empty($dados['pessoas'][$currentUserId])): ?>
+          <button type="button" class="ag-preset" id="agMeus">
+            <i class="fa-solid fa-user"></i> Meus prazos
+          </button>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="ag-ativos" id="agAtivos"></div>
 
       <div class="ag-resumo" id="agResumo"></div>
 

@@ -1,11 +1,11 @@
-/* Agenda geral — render da grade do mês.
+/* Agenda geral — grade do mês, trilho do dia e filtros em cascata.
  *
  * Consome window.AGENDA (payload normalizado de auth/helpers/agenda_events.php):
- *   { eventos, pessoas, objetivos, krs, iniciativas, hoje }
+ *   { eventos, pessoas, objetivos, krs, iniciativas, hoje, eu }
  * O evento só traz ids; título, contexto e pessoas saem dos catálogos.
  *
- * Todo o volume cabe em memória (pico de 296 eventos numa empresa), então
- * navegar entre meses não faz round-trip.
+ * Todo o volume cabe em memória (pico de 296 eventos numa empresa), então nem
+ * navegar entre meses nem filtrar faz round-trip.
  */
 (function () {
   'use strict';
@@ -14,47 +14,43 @@
   if (!A) return;
 
   var TIPOS = {
-    objetivo:        { icone: 'fa-bullseye',       rotulo: 'Objetivo' },
-    inicio_objetivo: { icone: 'fa-flag',           rotulo: 'Início do objetivo' },
-    kr:              { icone: 'fa-crosshairs',     rotulo: 'Key Result' },
-    iniciativa:      { icone: 'fa-list-check',     rotulo: 'Iniciativa' },
-    marco:           { icone: 'fa-circle',         rotulo: 'Marco' }
+    objetivo:        { icone: 'fa-bullseye',   rotulo: 'Objetivo' },
+    inicio_objetivo: { icone: 'fa-flag',       rotulo: 'Início do objetivo' },
+    kr:              { icone: 'fa-crosshairs', rotulo: 'Key Result' },
+    iniciativa:      { icone: 'fa-list-check', rotulo: 'Iniciativa' },
+    marco:           { icone: 'fa-circle',     rotulo: 'Marco' }
   };
   var ESTADOS = {
-    vencido:   'Vencido',
-    hoje:      'Vence hoje',
-    proximo:   'Vence em 7 dias',
-    futuro:    'Futuro',
-    concluido: 'Concluído',
-    cancelado: 'Cancelado',
-    pausado:   'Pausado',
-    sem_data:  'Sem data'
+    vencido: 'Vencido', hoje: 'Vence hoje', proximo: 'Vence em 7 dias',
+    futuro: 'Futuro', concluido: 'Concluído', cancelado: 'Cancelado',
+    pausado: 'Pausado', sem_data: 'Sem data'
   };
+  var FAROL = { verde: 'No ritmo', amarelo: 'Atenção', vermelho: 'Crítico', cinza: 'Sem leitura' };
+
+  var ORDEM_ESTADO = ['vencido', 'hoje', 'proximo', 'futuro', 'concluido', 'pausado', 'cancelado', 'sem_data'];
+  var ORDEM_TIPO   = ['objetivo', 'kr', 'iniciativa', 'marco', 'inicio_objetivo'];
+
   var MESES = ['janeiro','fevereiro','março','abril','maio','junho',
                'julho','agosto','setembro','outubro','novembro','dezembro'];
   var DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
 
-  var MAX_CHIPS = 3;   // acima disso o dia mostra "+N"
-  var MAX_MARCOS = 2;  // acima disso os marcos do dia colapsam num contador
-
-  /* ---------- utilidades de data (string YYYY-MM-DD, sem Date/fuso) ---------- */
+  var MAX_CHIPS = 3;
+  var MAX_MARCOS = 2;
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function chave(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
-  function hojeStr() { return A.hoje; }
 
-  /* ---------- índice ---------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function num(v) {
+    if (v === null || v === undefined) return '—';
+    return window.fmtNum ? window.fmtNum(v) : String(v);
+  }
 
-  var porData = {};
-  A.eventos.forEach(function (ev) {
-    if (!ev.data) return;
-    (porData[ev.data] = porData[ev.data] || []).push(ev);
-  });
-
-  /**
-   * Resolve o que o evento não carrega: título, contexto e pessoas vêm do
-   * catálogo correspondente ao tipo.
-   */
+  /** Título, contexto e pessoas saem do catálogo do tipo do evento. */
   function resolver(ev) {
     var titulo = '', contexto = null, pessoas = [];
     if (ev.tipo === 'kr' || ev.tipo === 'marco') {
@@ -79,29 +75,247 @@
     };
   }
 
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  // resolver() é chamado muitas vezes por render; o payload é imutável, então cacheia.
+  var _cache = {};
+  function res(ev) {
+    var c = _cache[ev.id];
+    if (!c) { c = _cache[ev.id] = resolver(ev); }
+    return c;
   }
 
-  /* ---------- estado da tela ---------- */
+  /* ===================== FILTROS ===================== */
 
-  var hoje = hojeStr();
-  var partes = hoje.split('-');
-  var ano = parseInt(partes[0], 10);
-  var mes = parseInt(partes[1], 10) - 1;
+  var DIMS = [
+    { k: 'pessoa',     rot: 'Responsável', icone: 'fa-user',        busca: true  },
+    { k: 'objetivo',   rot: 'Objetivo',    icone: 'fa-bullseye',    busca: false },
+    { k: 'kr',         rot: 'Key Result',  icone: 'fa-crosshairs',  busca: true  },
+    { k: 'iniciativa', rot: 'Iniciativa',  icone: 'fa-list-check',  busca: true  },
+    { k: 'tipo',       rot: 'Tipo',        icone: 'fa-shapes',      busca: false },
+    { k: 'estado',     rot: 'Situação',    icone: 'fa-signal',      busca: false }
+  ];
+
+  var filtros = {
+    pessoa: [], objetivo: [], kr: [], iniciativa: [], tipo: [], estado: [],
+    busca: '', soPrincipal: false
+  };
+
+  /** Valores de um evento numa dimensão. Evento sem pessoa cai no balde __sem__. */
+  function chavesDim(ev, dim) {
+    if (dim === 'pessoa') {
+      var ps = res(ev).pessoas;
+      if (filtros.soPrincipal) ps = ps.filter(function (p) { return p.papel === 'responsavel'; });
+      return ps.length ? ps.map(function (p) { return String(p.id); }) : ['__sem__'];
+    }
+    if (dim === 'objetivo')   return ev.id_objetivo   ? [String(ev.id_objetivo)] : [];
+    if (dim === 'kr')         return ev.id_kr         ? [ev.id_kr] : [];
+    if (dim === 'iniciativa') return ev.id_iniciativa ? [ev.id_iniciativa] : [];
+    if (dim === 'tipo')       return [ev.tipo];
+    if (dim === 'estado')     return [ev.estado];
+    return [];
+  }
+
+  function passaDim(ev, dim) {
+    var sel = filtros[dim];
+    if (!sel.length) return true;
+    var ks = chavesDim(ev, dim);
+    for (var i = 0; i < ks.length; i++) {
+      if (sel.indexOf(ks[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function passaBusca(ev) {
+    if (!filtros.busca) return true;
+    var r = res(ev);
+    var alvo = (r.titulo + ' ' + (r.contexto || '') + ' ' +
+      r.pessoas.map(function (p) { return (A.pessoas[p.id] || {}).nome || ''; }).join(' ')).toLowerCase();
+    return alvo.indexOf(filtros.busca) >= 0;
+  }
+
+  /**
+   * Aplica os filtros. `exceto` ignora uma dimensão — é o que faz as opções de
+   * uma dimensão refletirem os filtros das outras (cascata e contadores), sem
+   * precisar de regra especial ligando objetivo -> KR -> iniciativa.
+   */
+  function filtrar(exceto) {
+    return A.eventos.filter(function (ev) {
+      if (!passaBusca(ev)) return false;
+      for (var i = 0; i < DIMS.length; i++) {
+        if (DIMS[i].k === exceto) continue;
+        if (!passaDim(ev, DIMS[i].k)) return false;
+      }
+      return true;
+    });
+  }
+
+  function rotuloOpcao(dim, k) {
+    if (dim === 'pessoa') {
+      return k === '__sem__' ? 'Sem responsável' : ((A.pessoas[k] || {}).nome || ('Usuário ' + k));
+    }
+    if (dim === 'objetivo')   return (A.objetivos[k]   || {}).descricao || k;
+    if (dim === 'kr')         return (A.krs[k]         || {}).descricao || k;
+    if (dim === 'iniciativa') return (A.iniciativas[k] || {}).descricao || k;
+    if (dim === 'tipo')       return (TIPOS[k] || {}).rotulo || k;
+    if (dim === 'estado')     return ESTADOS[k] || k;
+    return k;
+  }
+
+  /** Opções de uma dimensão, com contagem, já dentro do recorte das outras. */
+  function opcoesDe(dim) {
+    var base = filtrar(dim);
+    var cont = {};
+    base.forEach(function (ev) {
+      chavesDim(ev, dim).forEach(function (k) { cont[k] = (cont[k] || 0) + 1; });
+    });
+    // Mantém visível o que está marcado mesmo com contagem zero, senão o
+    // usuário perde o controle de desmarcar.
+    filtros[dim].forEach(function (k) { if (!(k in cont)) cont[k] = 0; });
+
+    var lista = Object.keys(cont).map(function (k) {
+      return { k: k, n: cont[k], rot: rotuloOpcao(dim, k) };
+    });
+    if (dim === 'tipo') {
+      lista.sort(function (a, b) { return ORDEM_TIPO.indexOf(a.k) - ORDEM_TIPO.indexOf(b.k); });
+    } else if (dim === 'estado') {
+      lista.sort(function (a, b) { return ORDEM_ESTADO.indexOf(a.k) - ORDEM_ESTADO.indexOf(b.k); });
+    } else {
+      lista.sort(function (a, b) {
+        if (b.n !== a.n) return b.n - a.n;
+        return a.rot.localeCompare(b.rot, 'pt-BR');
+      });
+    }
+    return lista;
+  }
+
+  function temFiltro() {
+    if (filtros.busca || filtros.soPrincipal) return true;
+    for (var i = 0; i < DIMS.length; i++) {
+      if (filtros[DIMS[i].k].length) return true;
+    }
+    return false;
+  }
+
+  function limparTudo() {
+    DIMS.forEach(function (d) { filtros[d.k] = []; });
+    filtros.busca = '';
+    filtros.soPrincipal = false;
+    var b = document.getElementById('agBusca');
+    if (b) b.value = '';
+    aplicar();
+  }
+
+  /* ===================== ESTADO DA TELA ===================== */
+
+  var hoje = A.hoje;
+  var pHoje = hoje.split('-');
+  var ano = parseInt(pHoje[0], 10);
+  var mes = parseInt(pHoje[1], 10) - 1;
   var diaSel = hoje;
+
+  var eventosVis = A.eventos;
+  var porData = {};
 
   var elGrid    = document.getElementById('agGrid');
   var elPeriodo = document.getElementById('agPeriodo');
   var elDia     = document.getElementById('agDia');
   var elResumo  = document.getElementById('agResumo');
+  var elFiltros = document.getElementById('agFiltros');
+  var elAtivos  = document.getElementById('agAtivos');
 
-  /* ---------- render da grade ---------- */
+  function reindexar() {
+    porData = {};
+    eventosVis.forEach(function (ev) {
+      if (!ev.data) return;
+      (porData[ev.data] = porData[ev.data] || []).push(ev);
+    });
+  }
 
-  // `text-transform: capitalize` no CSS deixaria "Setembro De 2026":
-  // a inicial sobe aqui, só na primeira palavra.
+  function aplicar() {
+    eventosVis = filtrar(null);
+    reindexar();
+    renderFiltros();
+    renderAtivos();
+    renderMes();
+    renderDia();
+  }
+
+  /* ===================== BARRA DE FILTROS ===================== */
+
+  var abertoEm = null; // dimensão com painel aberto
+
+  function renderFiltros() {
+    var html = '';
+    DIMS.forEach(function (d) {
+      var sel = filtros[d.k];
+      var rot = d.rot;
+      if (sel.length === 1) rot = rotuloOpcao(d.k, sel[0]);
+      else if (sel.length > 1) rot = d.rot + ' (' + sel.length + ')';
+      html +=
+        '<div class="ag-fdrop' + (abertoEm === d.k ? ' aberto' : '') + '" data-dim="' + d.k + '">' +
+          '<button type="button" class="ag-fbtn' + (sel.length ? ' ativo' : '') + '" data-toggle="' + d.k + '">' +
+            '<i class="fa-solid ' + d.icone + '"></i>' +
+            '<span class="rot">' + esc(rot) + '</span>' +
+            '<i class="fa-solid fa-chevron-down cv"></i>' +
+          '</button>' +
+          (abertoEm === d.k ? painelHtml(d) : '') +
+        '</div>';
+    });
+    elFiltros.innerHTML = html;
+  }
+
+  function painelHtml(d) {
+    var ops = opcoesDe(d.k);
+    var termo = (painelHtml.termo || '').toLowerCase();
+    var vis = termo ? ops.filter(function (o) { return o.rot.toLowerCase().indexOf(termo) >= 0; }) : ops;
+
+    var h = '<div class="ag-fpanel">';
+    if (d.busca) {
+      h += '<input type="text" class="ag-fbusca" placeholder="Buscar…" value="' + esc(painelHtml.termo || '') + '">';
+    }
+    if (d.k === 'pessoa') {
+      h += '<label class="ag-fopt so-principal">' +
+             '<input type="checkbox" ' + (filtros.soPrincipal ? 'checked' : '') + ' data-principal="1">' +
+             '<span class="t">Só quando é o responsável principal</span>' +
+           '</label><div class="ag-fsep"></div>';
+    }
+    if (!vis.length) {
+      h += '<div class="ag-fvazio">Nada aqui com os filtros atuais.</div>';
+    }
+    vis.forEach(function (o) {
+      var marcado = filtros[d.k].indexOf(o.k) >= 0;
+      h += '<label class="ag-fopt' + (o.n === 0 ? ' zero' : '') + '">' +
+             '<input type="checkbox" data-opt="' + esc(o.k) + '" ' + (marcado ? 'checked' : '') + '>' +
+             '<span class="t">' + esc(o.rot) + '</span>' +
+             '<span class="n">' + o.n + '</span>' +
+           '</label>';
+    });
+    if (filtros[d.k].length) {
+      h += '<div class="ag-fsep"></div><button type="button" class="ag-flimpa" data-limpa="' + d.k + '">Limpar ' + esc(d.rot.toLowerCase()) + '</button>';
+    }
+    return h + '</div>';
+  }
+
+  function renderAtivos() {
+    if (!temFiltro()) { elAtivos.innerHTML = ''; return; }
+    var h = '<span class="lbl">' + eventosVis.length + ' de ' + A.eventos.length + ' prazos</span>';
+    DIMS.forEach(function (d) {
+      filtros[d.k].forEach(function (k) {
+        h += '<button type="button" class="ag-chipf" data-rm="' + d.k + '" data-k="' + esc(k) + '">' +
+               esc(rotuloOpcao(d.k, k)) + ' <i class="fa-solid fa-xmark"></i></button>';
+      });
+    });
+    if (filtros.soPrincipal) {
+      h += '<button type="button" class="ag-chipf" data-rm="__principal__">Só responsável principal <i class="fa-solid fa-xmark"></i></button>';
+    }
+    if (filtros.busca) {
+      h += '<button type="button" class="ag-chipf" data-rm="__busca__">“' + esc(filtros.busca) + '” <i class="fa-solid fa-xmark"></i></button>';
+    }
+    h += '<button type="button" class="ag-flimpatudo" id="agLimpar">Limpar tudo</button>';
+    elAtivos.innerHTML = h;
+  }
+
+  /* ===================== GRADE ===================== */
+
   function mesTitulo(m) { return MESES[m].charAt(0).toUpperCase() + MESES[m].slice(1); }
 
   function renderMes() {
@@ -110,8 +324,7 @@
     var html = '';
     DOW.forEach(function (d) { html += '<div class="ag-dow">' + d + '</div>'; });
 
-    // Começa no domingo da semana que contém o dia 1, e sempre desenha 6
-    // semanas: a grade não "pula" de altura ao trocar de mês.
+    // Sempre 6 semanas: a grade não "pula" de altura ao trocar de mês.
     var primeiro = new Date(ano, mes, 1);
     var inicio = new Date(ano, mes, 1 - primeiro.getDay());
 
@@ -119,9 +332,9 @@
       var d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i);
       var k = chave(d.getFullYear(), d.getMonth(), d.getDate());
       var fora = d.getMonth() !== mes;
+      var n = (porData[k] || []).length;
       var cls = 'ag-cell' + (fora ? ' fora' : '') +
                 (k === hoje ? ' hoje' : '') + (k === diaSel ? ' sel' : '');
-      var n = (porData[k] || []).length;
       html += '<div class="' + cls + '" data-dia="' + k + '" role="gridcell" tabindex="0"' +
                 ' aria-label="' + d.getDate() + ' de ' + MESES[d.getMonth()] +
                 (n ? ', ' + n + (n > 1 ? ' prazos' : ' prazo') : ', sem prazos') + '">' +
@@ -133,10 +346,6 @@
     renderResumo();
   }
 
-  /**
-   * Monta os chips de um dia. Os marcos colapsam num contador quando passam de
-   * MAX_MARCOS: são 60% de todos os eventos e afogariam os prazos.
-   */
   function chipsDoDia(k) {
     var evs = porData[k];
     if (!evs || !evs.length) return '';
@@ -145,9 +354,8 @@
     evs.forEach(function (e) { (e.tipo === 'marco' ? marcos : outros).push(e); });
 
     var chips = [];
-
     outros.forEach(function (e) {
-      var r = resolver(e);
+      var r = res(e);
       chips.push(
         '<div class="ag-chip est-' + e.estado + ' ' + e.estado + '" title="' + esc(TIPOS[e.tipo].rotulo + ' · ' + r.titulo) + '">' +
           '<i class="fa-solid ' + TIPOS[e.tipo].icone + '"></i>' +
@@ -156,15 +364,12 @@
     });
 
     if (marcos.length > MAX_MARCOS) {
-      // O pior estado do grupo comanda a cor: um marco vencido no meio do
-      // bolo não pode ficar invisível.
-      var ordem = ['vencido', 'hoje', 'proximo', 'futuro', 'concluido', 'pausado', 'cancelado', 'sem_data'];
+      // O pior estado do grupo comanda a cor: um marco vencido no meio do bolo
+      // não pode ficar invisível.
       var pior = marcos.reduce(function (acc, e) {
-        return ordem.indexOf(e.estado) < ordem.indexOf(acc) ? e.estado : acc;
+        return ORDEM_ESTADO.indexOf(e.estado) < ORDEM_ESTADO.indexOf(acc) ? e.estado : acc;
       }, 'sem_data');
       chips.push(
-        // A contagem vai num <span> próprio: no mobile o .txt some, e um chip
-        // agrupado sem número não diz nada.
         '<div class="ag-chip grupo est-' + pior + '" title="' + marcos.length + ' marcos neste dia">' +
           '<i class="fa-solid fa-circle"></i>' +
           '<span class="n">' + marcos.length + '</span>' +
@@ -172,7 +377,7 @@
         '</div>');
     } else {
       marcos.forEach(function (e) {
-        var r = resolver(e);
+        var r = res(e);
         chips.push(
           '<div class="ag-chip est-' + e.estado + ' ' + e.estado + '" title="' + esc('Marco · ' + r.titulo) + '">' +
             '<i class="fa-solid fa-circle"></i>' +
@@ -181,26 +386,14 @@
       });
     }
 
-    var visiveis = chips.slice(0, MAX_CHIPS).join('');
+    var out = chips.slice(0, MAX_CHIPS).join('');
     if (chips.length > MAX_CHIPS) {
-      visiveis += '<div class="ag-mais">+' + (chips.length - MAX_CHIPS) + '</div>';
+      out += '<div class="ag-mais">+' + (chips.length - MAX_CHIPS) + '</div>';
     }
-    return visiveis;
+    return out;
   }
 
-  /* ---------- painel do dia ---------- */
-
-  var FAROL = {
-    verde:    'No ritmo',
-    amarelo:  'Atenção',
-    vermelho: 'Crítico',
-    cinza:    'Sem leitura'
-  };
-
-  function num(v) {
-    if (v === null || v === undefined) return '—';
-    return window.fmtNum ? window.fmtNum(v) : String(v);
-  }
+  /* ===================== TRILHO ===================== */
 
   function pessoasHtml(lista) {
     return lista.map(function (pp) {
@@ -213,9 +406,8 @@
     }).join('');
   }
 
-  /** Cartão de um evento no trilho. */
   function itemHtml(e) {
-    var r = resolver(e);
+    var r = res(e);
     var kr = (e.tipo === 'kr' || e.tipo === 'marco') ? A.krs[e.id_kr] : null;
 
     var extra = '';
@@ -226,7 +418,7 @@
     if (e.tipo === 'kr' && e.meta && e.meta.prorrogado) {
       extra += '<span class="ag-tag">Prazo prorrogado</span>';
     }
-    // O farol é de atingimento e só aparece aqui: na grade a cor já é urgência.
+    // Farol é atingimento e só aparece aqui: na grade a cor já é urgência.
     if (kr && kr.farol) {
       extra += '<span class="ag-tag ag-farol f-' + esc(kr.farol) + '">' +
                '<span class="bola"></span>' + esc(FAROL[kr.farol] || kr.farol) + '</span>';
@@ -268,8 +460,6 @@
            '</a>';
   }
 
-  var ORDEM_TIPO = ['objetivo', 'kr', 'iniciativa', 'marco', 'inicio_objetivo'];
-
   function renderDia() {
     var evs = (porData[diaSel] || []).slice();
     var p = diaSel.split('-');
@@ -283,10 +473,11 @@
       evs.sort(function (a, b) { return ORDEM_TIPO.indexOf(a.tipo) - ORDEM_TIPO.indexOf(b.tipo); });
       evs.forEach(function (e) { html += itemHtml(e); });
     } else {
-      // Dia vazio é o caso comum: em vez de um painel morto, mostra o que vem
-      // a seguir a partir dele.
-      html += '<div class="ag-vazio">Nenhum prazo neste dia.</div>';
-      var prox = A.eventos.filter(function (e) {
+      html += '<div class="ag-vazio">' +
+        (temFiltro() ? 'Nenhum prazo neste dia com os filtros atuais.' : 'Nenhum prazo neste dia.') + '</div>';
+      // Dia vazio é o caso comum: em vez de painel morto, mostra o que vem
+      // a seguir — já dentro do filtro ativo.
+      var prox = eventosVis.filter(function (e) {
         return e.data && e.data > diaSel &&
                e.estado !== 'concluido' && e.estado !== 'cancelado' && e.estado !== 'pausado';
       }).slice(0, 5);
@@ -295,16 +486,15 @@
         prox.forEach(function (e) { html += itemHtml(e); });
       }
     }
-
     elDia.innerHTML = html;
   }
 
-  /* ---------- resumo do mês ---------- */
+  /* ===================== RESUMO ===================== */
 
   function renderResumo() {
     var pre = ano + '-' + pad(mes + 1) + '-';
     var c = { total: 0, vencido: 0, proximo: 0, concluido: 0 };
-    A.eventos.forEach(function (e) {
+    eventosVis.forEach(function (e) {
       if (!e.data || e.data.indexOf(pre) !== 0) return;
       c.total++;
       if (e.estado === 'vencido') c.vencido++;
@@ -317,17 +507,15 @@
       kpi('proximo', c.proximo, 'vencendo') +
       kpi('concluido', c.concluido, 'concluídos');
   }
-
-  function kpi(cls, valor, rotulo) {
-    return '<div class="ag-kpi ' + cls + '"><div class="v">' + valor + '</div><div class="l">' + rotulo + '</div></div>';
+  function kpi(cls, v, rot) {
+    return '<div class="ag-kpi ' + cls + '"><div class="v">' + v + '</div><div class="l">' + rot + '</div></div>';
   }
 
-  /* ---------- eventos de UI ---------- */
+  /* ===================== INTERAÇÃO ===================== */
 
   function selecionar(dia, focar) {
     diaSel = dia;
     var d = diaSel.split('-');
-    // Selecionar um dia de outro mês navega para lá, em vez de não fazer nada.
     var y = parseInt(d[0], 10), m = parseInt(d[1], 10) - 1;
     if (y !== ano || m !== mes) { ano = y; mes = m; }
     renderMes();
@@ -336,8 +524,6 @@
       var alvo = elGrid.querySelector('[data-dia="' + diaSel + '"]');
       if (alvo) alvo.focus();
     }
-    // No desktop o trilho é sticky e já está visível; só rola quando ele
-    // desceu para baixo da grade.
     if (window.matchMedia('(max-width: 1100px)').matches) {
       elDia.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -348,7 +534,6 @@
     if (cell) selecionar(cell.getAttribute('data-dia'), false);
   });
 
-  // Navegação por teclado: setas andam pelos dias, PageUp/PageDown trocam o mês.
   var PASSO = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
   elGrid.addEventListener('keydown', function (ev) {
     var cell = ev.target.closest('.ag-cell');
@@ -372,15 +557,111 @@
     else if (mes > 11) { mes = 0; ano++; }
     renderMes();
   }
-
   document.getElementById('agPrev').addEventListener('click', function () { irPara(-1); });
   document.getElementById('agNext').addEventListener('click', function () { irPara(1); });
   document.getElementById('agHoje').addEventListener('click', function () {
-    var p = hoje.split('-');
-    ano = parseInt(p[0], 10); mes = parseInt(p[1], 10) - 1; diaSel = hoje;
-    renderMes(); renderDia();
+    ano = parseInt(pHoje[0], 10); mes = parseInt(pHoje[1], 10) - 1;
+    selecionar(hoje, false);
   });
 
-  renderMes();
-  renderDia();
+  /* --- barra de filtros --- */
+
+  elFiltros.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-toggle]');
+    if (btn) {
+      var dim = btn.getAttribute('data-toggle');
+      abertoEm = (abertoEm === dim) ? null : dim;
+      painelHtml.termo = '';
+      renderFiltros();
+      var inp = elFiltros.querySelector('.ag-fbusca');
+      if (inp) inp.focus();
+      return;
+    }
+    var limpa = ev.target.closest('[data-limpa]');
+    if (limpa) {
+      filtros[limpa.getAttribute('data-limpa')] = [];
+      aplicar();
+      return;
+    }
+    // clique dentro do painel não deve fechá-lo
+    if (ev.target.closest('.ag-fpanel')) ev.stopPropagation();
+  });
+
+  elFiltros.addEventListener('change', function (ev) {
+    var alvo = ev.target;
+    if (alvo.hasAttribute('data-principal')) {
+      filtros.soPrincipal = alvo.checked;
+      aplicar();
+      return;
+    }
+    if (!alvo.hasAttribute('data-opt')) return;
+    var dim = alvo.closest('.ag-fdrop').getAttribute('data-dim');
+    var k = alvo.getAttribute('data-opt');
+    var i = filtros[dim].indexOf(k);
+    if (alvo.checked && i < 0) filtros[dim].push(k);
+    else if (!alvo.checked && i >= 0) filtros[dim].splice(i, 1);
+    aplicar();
+  });
+
+  elFiltros.addEventListener('input', function (ev) {
+    if (!ev.target.classList.contains('ag-fbusca')) return;
+    painelHtml.termo = ev.target.value;
+    var pos = ev.target.selectionStart;
+    renderFiltros();
+    var inp = elFiltros.querySelector('.ag-fbusca');
+    if (inp) { inp.focus(); inp.setSelectionRange(pos, pos); }
+  });
+
+  document.addEventListener('click', function (ev) {
+    if (abertoEm && !ev.target.closest('.ag-fdrop')) {
+      abertoEm = null;
+      renderFiltros();
+    }
+  });
+
+  elAtivos.addEventListener('click', function (ev) {
+    var rm = ev.target.closest('[data-rm]');
+    if (rm) {
+      var dim = rm.getAttribute('data-rm');
+      if (dim === '__busca__') { filtros.busca = ''; document.getElementById('agBusca').value = ''; }
+      else if (dim === '__principal__') { filtros.soPrincipal = false; }
+      else {
+        var k = rm.getAttribute('data-k');
+        var i = filtros[dim].indexOf(k);
+        if (i >= 0) filtros[dim].splice(i, 1);
+      }
+      aplicar();
+      return;
+    }
+    if (ev.target.id === 'agLimpar') limparTudo();
+  });
+
+  var tBusca = null;
+  document.getElementById('agBusca').addEventListener('input', function (ev) {
+    var v = ev.target.value.trim().toLowerCase();
+    clearTimeout(tBusca);
+    tBusca = setTimeout(function () { filtros.busca = v; aplicar(); }, 180);
+  });
+
+  /* --- presets --- */
+
+  document.getElementById('agPendencias').addEventListener('click', function () {
+    var alvo = ['vencido', 'hoje', 'proximo'];
+    var ativo = filtros.estado.length === alvo.length &&
+                alvo.every(function (k) { return filtros.estado.indexOf(k) >= 0; });
+    filtros.estado = ativo ? [] : alvo.slice();
+    aplicar();
+  });
+
+  var btnMeus = document.getElementById('agMeus');
+  if (btnMeus) {
+    btnMeus.addEventListener('click', function () {
+      var eu = String(A.eu);
+      var ativo = filtros.pessoa.length === 1 && filtros.pessoa[0] === eu;
+      filtros.pessoa = ativo ? [] : [eu];
+      aplicar();
+    });
+  }
+
+  aplicar();
 })();
