@@ -278,11 +278,34 @@ function gate_page_by_path(string $path): void {
   }
   $path = parse_url($path, PHP_URL_PATH) ?? $path;
 
+  // As rotas limpas (/OKR_system/agenda, /meus_okrs, ...) passam pelo index.php,
+  // que dá `require` na view. Nesses casos SCRIPT_NAME é '/OKR_system/index.php'
+  // e nunca bate em dom_paginas — o gate simplesmente não disparava, e as linhas
+  // cadastradas no formato limpo só serviam para esconder item de menu.
+  // Por isso tentamos também o caminho realmente pedido.
+  $candidatos = [$path];
+  $uri = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+  if ($uri && $uri !== $path) {
+    $candidatos[] = $uri;
+    // Quando quem executa é o router, resolvemos a view do mesmo jeito que ele:
+    // index.php faz basename($path) e inclui views/$path.php. Assim uma única
+    // linha em dom_paginas (no formato .php) cobre as duas maneiras de chegar,
+    // em vez de exigir uma linha duplicada por rota.
+    if (substr($path, -10) === '/index.php') {
+      $slug = basename(rtrim($uri, '/'));
+      if ($slug !== '' && $slug !== 'index.php' && preg_match('/^[A-Za-z0-9_-]+$/', $slug)) {
+        $candidatos[] = '/OKR_system/views/' . $slug . '.php';
+      }
+    }
+  }
+
   $pdo = pdo_conn();
   $st  = $pdo->prepare("SELECT requires_cap FROM dom_paginas WHERE path = ? LIMIT 1");
-  $st->execute([$path]);
-  $req = $st->fetchColumn();
-  if ($req) require_cap((string)$req);
+  foreach ($candidatos as $c) {
+    $st->execute([$c]);
+    $req = $st->fetchColumn();
+    if ($req) { require_cap((string)$req); return; }
+  }
 }
 
 /* ===================== TENANT RESOLVER ===================== */

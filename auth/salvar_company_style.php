@@ -24,6 +24,17 @@ if (empty($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['cs
   echo json_encode(['success' => false, 'error' => 'CSRF inválido']); exit;
 }
 
+// Alterar dados da organização exige gestão de empresa. Antes daqui a única
+// barreira era "mesma empresa": qualquer autenticado editava nome, CNPJ,
+// missão, visão, logo e cores da própria organização. A guarda legada
+// ($isAdmin via `usuarios_permissoes`) comparava FK inteiro com a string
+// 'admin' e dava sempre falso.
+if (!has_cap('M:company@ORG')) {
+  http_response_code(403);
+  echo json_encode(['success'=>false,'error'=>'Sem permissão para alterar dados da organização.']); exit;
+}
+
+
 // ---- Helpers ----
 function is_hex_color($c){
   return is_string($c) && preg_match('/^#[0-9A-Fa-f]{6}$/', $c);

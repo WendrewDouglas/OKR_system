@@ -221,6 +221,13 @@ $SOU_ADMIN_MASTER = (static function (PDO $pdo, int $uid): bool {
 })($pdo, $MEU_ID);
 
 /** O usuário-alvo é de outra organização? (0 = novo usuário, logo não) */
+/* Quem pode atribuir papéis/capabilities. Une os dois mundos: a tabela
+   `aprovadores` (legado) e o papel admin_master do RBAC — o Willian era
+   admin_master sem estar em `aprovadores` e não conseguia atribuir papel
+   nenhum. NÃO inclui M:user@ORG de propósito: 18 dos 20 usuários ativos a
+   têm, e isso seria afrouxar, não endurecer. */
+$PODE_MEXER_EM_ACL = ($IS_MASTER || $SOU_ADMIN_MASTER);
+
 $foraDaMinhaEmpresa = static function (int $targetId) use ($pdo, $MINHA_COMPANY): bool {
   if ($targetId <= 0) return false;
   $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ? LIMIT 1");
@@ -750,7 +757,7 @@ if ($method==='POST' && $action==='save') {
       // que qualquer usuário se auto-promovesse editando o próprio registro.
       // Mantida a mesma força (não afrouxar para M:user@ORG, que hoje 18 dos 20
       // usuários possuem), somando o recorte de organização.
-      $canChangeAcl = $IS_MASTER && ($SOU_ADMIN_MASTER || !$foraDaMinhaEmpresa($id));
+      $canChangeAcl = $PODE_MEXER_EM_ACL && ($SOU_ADMIN_MASTER || !$foraDaMinhaEmpresa($id));
 
       // UPDATE dinâmico com campos opcionais
       $sets = [
@@ -811,7 +818,7 @@ if ($method==='POST' && $action==='save') {
       // ESCALAÇÃO DE PRIVILÉGIO: este caminho gravava papéis sem nenhum guard,
       // enquanto o UPDATE exigia $canChangeAcl. Qualquer autenticado criava uma
       // conta gestor_master e recebia o e-mail de definição de senha.
-      if ($IS_MASTER) {
+      if ($PODE_MEXER_EM_ACL) {
         if (table_exists($pdo,'rbac_user_role') && $roleIds) {
           $ins = $pdo->prepare("INSERT INTO rbac_user_role (user_id, role_id, valid_from) VALUES (?,?,NOW())");
           foreach ($roleIds as $rid) $ins->execute([$id, (int)$rid]);
@@ -869,7 +876,10 @@ if ($method==='POST' && $action==='save') {
     jexit(200, ['success'=>true,'id_user'=>$id]);
   } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    jexit(400, ['success'=>false,'error'=>$e->getMessage()]);
+    // Não devolver $e->getMessage(): expunha SQLSTATE, nome de tabela, de
+    // coluna e de constraint para qualquer cliente.
+    error_log('usuarios_api save: '.$e->getMessage());
+    jexit(400, ['success'=>false,'error'=>'Não foi possível salvar o usuário.']);
   }
 }
 
