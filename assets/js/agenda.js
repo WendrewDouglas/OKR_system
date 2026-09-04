@@ -121,7 +121,10 @@
       var fora = d.getMonth() !== mes;
       var cls = 'ag-cell' + (fora ? ' fora' : '') +
                 (k === hoje ? ' hoje' : '') + (k === diaSel ? ' sel' : '');
-      html += '<div class="' + cls + '" data-dia="' + k + '">' +
+      var n = (porData[k] || []).length;
+      html += '<div class="' + cls + '" data-dia="' + k + '" role="gridcell" tabindex="0"' +
+                ' aria-label="' + d.getDate() + ' de ' + MESES[d.getMonth()] +
+                (n ? ', ' + n + (n > 1 ? ' prazos' : ' prazo') : ', sem prazos') + '">' +
                 '<div class="ag-daynum">' + d.getDate() + '</div>' +
                 chipsDoDia(k) +
               '</div>';
@@ -187,58 +190,111 @@
 
   /* ---------- painel do dia ---------- */
 
+  var FAROL = {
+    verde:    'No ritmo',
+    amarelo:  'Atenção',
+    vermelho: 'Crítico',
+    cinza:    'Sem leitura'
+  };
+
+  function num(v) {
+    if (v === null || v === undefined) return '—';
+    return window.fmtNum ? window.fmtNum(v) : String(v);
+  }
+
+  function pessoasHtml(lista) {
+    return lista.map(function (pp) {
+      var u = A.pessoas[pp.id];
+      if (!u) return '';
+      var co = pp.papel === 'corresponsavel';
+      var img = u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '';
+      return '<span class="ag-pessoa' + (co ? ' co' : '') + '" title="' +
+             (co ? 'Corresponsável' : 'Responsável') + '">' + img + esc(u.nome) + '</span>';
+    }).join('');
+  }
+
+  /** Cartão de um evento no trilho. */
+  function itemHtml(e) {
+    var r = resolver(e);
+    var kr = (e.tipo === 'kr' || e.tipo === 'marco') ? A.krs[e.id_kr] : null;
+
+    var extra = '';
+    if (e.tipo === 'marco' && e.meta) {
+      extra += '<span class="ag-tag">Marco ' + e.meta.num_ordem + '</span>';
+      extra += '<span class="ag-tag">' + (e.meta.apontado ? 'Apontado' : 'Sem apontamento') + '</span>';
+    }
+    if (e.tipo === 'kr' && e.meta && e.meta.prorrogado) {
+      extra += '<span class="ag-tag">Prazo prorrogado</span>';
+    }
+    // O farol é de atingimento e só aparece aqui: na grade a cor já é urgência.
+    if (kr && kr.farol) {
+      extra += '<span class="ag-tag ag-farol f-' + esc(kr.farol) + '">' +
+               '<span class="bola"></span>' + esc(FAROL[kr.farol] || kr.farol) + '</span>';
+    }
+
+    var detalhe = '';
+    if (e.tipo === 'marco' && e.meta) {
+      detalhe = '<div class="ag-valores">Esperado <b>' + num(e.meta.valor_esperado) + '</b>' +
+                (e.meta.valor_real !== null && e.meta.valor_real !== undefined
+                  ? ' · Realizado <b>' + num(e.meta.valor_real) + '</b>' : '') +
+                (kr && kr.unidade ? ' ' + esc(kr.unidade) : '') + '</div>';
+    }
+    if (e.tipo === 'kr' && kr && kr.progresso !== null && kr.progresso !== undefined) {
+      var p = Math.max(0, Math.min(100, kr.progresso));
+      var esp = (kr.esperado === null || kr.esperado === undefined)
+        ? null : Math.max(0, Math.min(100, kr.esperado));
+      detalhe =
+        '<div class="ag-prog f-' + esc(kr.farol || 'cinza') + '">' +
+          '<div class="barra"><i style="width:' + p + '%"></i>' +
+            (esp !== null ? '<b style="left:' + esp + '%" title="Esperado ' + num(esp) + '%"></b>' : '') +
+          '</div>' +
+          '<div class="rot">' + num(kr.progresso) + '% concluído' +
+            (esp !== null ? ' · esperado ' + num(esp) + '%' : '') + '</div>' +
+        '</div>';
+    }
+
+    return '<a class="ag-item est-' + e.estado + '" href="' + esc(r.url) + '">' +
+             '<div class="marca"><i class="fa-solid ' + TIPOS[e.tipo].icone + '"></i></div>' +
+             '<div class="corpo">' +
+               '<div class="tit">' + esc(r.titulo) + '</div>' +
+               '<div class="ctx">' + esc(TIPOS[e.tipo].rotulo) +
+                 (r.contexto ? ' em: ' + esc(r.contexto) : '') + '</div>' +
+               '<div class="tags">' +
+                 '<span class="ag-tag estado">' + esc(ESTADOS[e.estado] || e.estado) + '</span>' +
+                 extra + pessoasHtml(r.pessoas) +
+               '</div>' +
+               detalhe +
+             '</div>' +
+           '</a>';
+  }
+
+  var ORDEM_TIPO = ['objetivo', 'kr', 'iniciativa', 'marco', 'inicio_objetivo'];
+
   function renderDia() {
     var evs = (porData[diaSel] || []).slice();
     var p = diaSel.split('-');
-    var dt = new Date(+p[0], +p[1] - 1, +p[2]);
-    var titulo = dt.getDate() + ' de ' + MESES[dt.getMonth()] + ' de ' + dt.getFullYear();
+    var titulo = (+p[2]) + ' de ' + MESES[+p[1] - 1] + ' de ' + p[0];
 
     var html = '<h2><i class="fa-regular fa-calendar-check"></i>' + esc(titulo) +
-               '<span class="cnt">' + (evs.length ? evs.length + (evs.length > 1 ? ' eventos' : ' evento') : '') + '</span></h2>';
+               (evs.length ? '<span class="cnt">' + evs.length + (evs.length > 1 ? ' eventos' : ' evento') + '</span>' : '') +
+               '</h2>';
 
-    if (!evs.length) {
+    if (evs.length) {
+      evs.sort(function (a, b) { return ORDEM_TIPO.indexOf(a.tipo) - ORDEM_TIPO.indexOf(b.tipo); });
+      evs.forEach(function (e) { html += itemHtml(e); });
+    } else {
+      // Dia vazio é o caso comum: em vez de um painel morto, mostra o que vem
+      // a seguir a partir dele.
       html += '<div class="ag-vazio">Nenhum prazo neste dia.</div>';
-      elDia.innerHTML = html;
-      return;
+      var prox = A.eventos.filter(function (e) {
+        return e.data && e.data > diaSel &&
+               e.estado !== 'concluido' && e.estado !== 'cancelado' && e.estado !== 'pausado';
+      }).slice(0, 5);
+      if (prox.length) {
+        html += '<div class="ag-prox-tit">Próximos prazos</div>';
+        prox.forEach(function (e) { html += itemHtml(e); });
+      }
     }
-
-    var ordem = ['objetivo', 'kr', 'iniciativa', 'marco', 'inicio_objetivo'];
-    evs.sort(function (a, b) { return ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo); });
-
-    evs.forEach(function (e) {
-      var r = resolver(e);
-      var pessoas = r.pessoas.map(function (pp) {
-        var u = A.pessoas[pp.id];
-        if (!u) return '';
-        var img = u.avatar ? '<img src="' + esc(u.avatar) + '" alt="">' : '';
-        return '<span class="ag-pessoa ' + (pp.papel === 'corresponsavel' ? 'co' : '') + '" title="' +
-               esc(pp.papel === 'corresponsavel' ? 'Corresponsável' : 'Responsável') + '">' +
-               img + esc(u.nome) + '</span>';
-      }).join('');
-
-      var extra = '';
-      if (e.tipo === 'marco' && e.meta) {
-        extra = '<span class="ag-tag">Marco ' + e.meta.num_ordem + '</span>' +
-                '<span class="ag-tag">' + (e.meta.apontado ? 'Apontado' : 'Sem apontamento') + '</span>';
-      }
-      if (e.tipo === 'kr' && e.meta && e.meta.prorrogado) {
-        extra = '<span class="ag-tag">Prazo prorrogado</span>';
-      }
-
-      html +=
-        '<a class="ag-item est-' + e.estado + '" href="' + esc(r.url) + '">' +
-          '<div class="marca"><i class="fa-solid ' + TIPOS[e.tipo].icone + '"></i></div>' +
-          '<div class="corpo">' +
-            '<div class="tit">' + esc(r.titulo) + '</div>' +
-            (r.contexto ? '<div class="ctx">' + esc(TIPOS[e.tipo].rotulo) + ' em: ' + esc(r.contexto) + '</div>'
-                        : '<div class="ctx">' + esc(TIPOS[e.tipo].rotulo) + '</div>') +
-            '<div class="tags">' +
-              '<span class="ag-tag estado">' + esc(ESTADOS[e.estado] || e.estado) + '</span>' +
-              extra + pessoas +
-            '</div>' +
-          '</div>' +
-        '</a>';
-    });
 
     elDia.innerHTML = html;
   }
@@ -268,17 +324,46 @@
 
   /* ---------- eventos de UI ---------- */
 
-  elGrid.addEventListener('click', function (ev) {
-    var cell = ev.target.closest('.ag-cell');
-    if (!cell) return;
-    diaSel = cell.getAttribute('data-dia');
+  function selecionar(dia, focar) {
+    diaSel = dia;
     var d = diaSel.split('-');
-    // Clicar num dia de outro mês navega para lá, em vez de não fazer nada.
+    // Selecionar um dia de outro mês navega para lá, em vez de não fazer nada.
     var y = parseInt(d[0], 10), m = parseInt(d[1], 10) - 1;
     if (y !== ano || m !== mes) { ano = y; mes = m; }
     renderMes();
     renderDia();
-    elDia.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (focar) {
+      var alvo = elGrid.querySelector('[data-dia="' + diaSel + '"]');
+      if (alvo) alvo.focus();
+    }
+    // No desktop o trilho é sticky e já está visível; só rola quando ele
+    // desceu para baixo da grade.
+    if (window.matchMedia('(max-width: 1100px)').matches) {
+      elDia.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  elGrid.addEventListener('click', function (ev) {
+    var cell = ev.target.closest('.ag-cell');
+    if (cell) selecionar(cell.getAttribute('data-dia'), false);
+  });
+
+  // Navegação por teclado: setas andam pelos dias, PageUp/PageDown trocam o mês.
+  var PASSO = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  elGrid.addEventListener('keydown', function (ev) {
+    var cell = ev.target.closest('.ag-cell');
+    if (!cell) return;
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      selecionar(cell.getAttribute('data-dia'), true);
+      return;
+    }
+    var passo = PASSO[ev.key];
+    if (passo === undefined) return;
+    ev.preventDefault();
+    var d = cell.getAttribute('data-dia').split('-');
+    var dt = new Date(+d[0], +d[1] - 1, +d[2] + passo);
+    selecionar(chave(dt.getFullYear(), dt.getMonth(), dt.getDate()), true);
   });
 
   function irPara(delta) {

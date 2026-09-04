@@ -35,6 +35,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/nome_format.php';
 require_once __DIR__ . '/kr_status.php';
+require_once __DIR__ . '/kr_progress.php';
 require_once __DIR__ . '/../avatar_helpers.php';
 
 if (!function_exists('agenda_estado')) {
@@ -326,6 +327,24 @@ if (!function_exists('agenda_build_events')) {
           'id_iniciativa' => $idIni,
           'meta'          => ['num' => (int)$i['num_iniciativa']],
         ];
+      }
+    }
+
+    /* ---------- farol e progresso reais ---------- */
+
+    // key_results.farol está NULL em praticamente todo o banco: o farol que vale
+    // é o calculado a partir dos milestones. Reusa o motor de kr_progress, o
+    // mesmo que alimenta o card do KR e o app — para a agenda não inventar uma
+    // segunda verdade sobre o mesmo KR.
+    if ($objetivos) {
+      foreach (krp_kr_results_for_objetivos($pdo, array_keys($objetivos), $today) as $lista) {
+        foreach ($lista as $r) {
+          $id = (string)$r['id_kr'];
+          if (!isset($krs[$id])) continue;
+          $krs[$id]['farol']     = $r['farol'];
+          $krs[$id]['progresso'] = $r['p_barra']  !== null ? round((float)$r['p_barra'], 1) : null;
+          $krs[$id]['esperado']  = $r['esperado'] !== null ? round((float)$r['esperado'], 1) : null;
+        }
       }
     }
 

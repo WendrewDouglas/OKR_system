@@ -92,6 +92,9 @@ $totalPessoas = count($dados['pessoas']);
 
       <div class="ag-resumo" id="agResumo"></div>
 
+      <div class="ag-main">
+      <div class="ag-cal">
+
       <div class="ag-legenda">
         <span class="item"><i class="fa-solid fa-bullseye"></i>Objetivo</span>
         <span class="item"><i class="fa-solid fa-crosshairs"></i>Key Result</span>
@@ -107,9 +110,12 @@ $totalPessoas = count($dados['pessoas']);
         <span class="item"><span class="dot" style="background:var(--ag-neutro)"></span>Cancelado / pausado</span>
       </div>
 
-      <div class="ag-grid" id="agGrid"></div>
+      <div class="ag-grid" id="agGrid" role="grid" aria-label="Calendário de prazos"></div>
 
-      <section class="ag-dia" id="agDia"></section>
+      </div><!-- /ag-cal -->
+
+      <aside class="ag-rail" id="agDia" aria-live="polite"></aside>
+      </div><!-- /ag-main -->
 
     </main>
   </div>

@@ -134,16 +134,26 @@ body { background: #0b0e13; color: var(--ag-text); }
 .est-concluido { --c: var(--ag-concluido); }
 .est-cancelado, .est-pausado, .est-sem_data { --c: var(--ag-neutro); }
 
-/* ---------- painel do dia ---------- */
-.ag-dia {
-  margin-top: 1rem; background: var(--ag-surface);
+/* ---------- layout: calendário + trilho ---------- */
+.ag-main {
+  display: grid; grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 1rem; align-items: start;
+}
+.ag-cal { min-width: 0; }
+
+/* O trilho acompanha a rolagem: o header do app é sticky com 60px. */
+.ag-rail {
+  position: sticky; top: 74px;
+  max-height: calc(100vh - 92px); overflow-y: auto;
+  background: var(--ag-surface);
   border: 1px solid var(--ag-border); border-radius: 12px; padding: .9rem 1rem 1rem;
 }
-.ag-dia h2 {
-  font-size: .95rem; margin: 0 0 .7rem; display: flex; align-items: center; gap: .5rem;
+.ag-rail h2 {
+  font-size: .92rem; margin: 0 0 .7rem; display: flex; align-items: baseline;
+  gap: .45rem; flex-wrap: wrap;
 }
-.ag-dia h2 .cnt {
-  font-size: .72rem; color: var(--ag-text-muted); text-transform: none; font-weight: 600;
+.ag-rail h2 .cnt {
+  font-size: .72rem; color: var(--ag-text-muted); font-weight: 600;
 }
 .ag-item {
   display: flex; align-items: flex-start; gap: .65rem;
@@ -176,6 +186,44 @@ body { background: #0b0e13; color: var(--ag-text); }
 
 .ag-vazio { color: var(--ag-text-muted); font-size: .82rem; padding: .6rem .3rem; }
 
+/* farol de atingimento: só no trilho, nunca no chip da grade — no chip a cor
+   já significa urgência, e dois significados na mesma cor não se lê. */
+.ag-farol { display: inline-flex; align-items: center; gap: .3rem; }
+.ag-farol .bola { width: 8px; height: 8px; border-radius: 50%; background: var(--f); }
+.ag-farol { border-color: var(--f); color: var(--f); }
+.f-verde    { --f: #2ecc71; }
+.f-amarelo  { --f: #eac00f; }
+.f-vermelho { --f: #e74c3c; }
+.f-cinza    { --f: #6b7280; }
+
+/* progresso do KR */
+.ag-prog { margin-top: .35rem; }
+.ag-prog .barra {
+  height: 5px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden;
+  position: relative;
+}
+.ag-prog .barra > i {
+  display: block; height: 100%; background: var(--f, var(--ag-futuro)); border-radius: 999px;
+}
+/* marca do esperado: mostra se o KR está adiantado ou atrasado no ritmo */
+.ag-prog .barra > b {
+  position: absolute; top: -2px; width: 2px; height: 9px;
+  background: var(--ag-text); opacity: .55;
+}
+.ag-prog .rot { font-size: .66rem; color: var(--ag-text-muted); margin-top: .2rem; }
+
+/* valores do marco */
+.ag-valores { font-size: .7rem; color: var(--ag-text-muted); margin-top: .25rem; }
+.ag-valores b { color: var(--ag-text); font-weight: 700; }
+
+.ag-cell:focus-visible {
+  outline: 2px solid var(--ag-futuro); outline-offset: -2px;
+}
+.ag-rail .ag-prox-tit {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ag-text-muted); font-weight: 700; margin: .9rem 0 .2rem;
+}
+
 /* ---------- resumo ---------- */
 .ag-resumo { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .9rem; }
 .ag-kpi {
@@ -189,6 +237,11 @@ body { background: #0b0e13; color: var(--ag-text); }
 .ag-kpi.concluido .v { color: var(--ag-concluido); }
 
 /* ---------- responsivo ---------- */
+@media (max-width: 1100px) {
+  /* o trilho desce para baixo da grade e para de grudar */
+  .ag-main { grid-template-columns: minmax(0, 1fr); }
+  .ag-rail { position: static; max-height: none; }
+}
 @media (max-width: 900px) {
   .ag-page { padding: 1rem .75rem 2.5rem; }
   .ag-cell { min-height: 84px; }
