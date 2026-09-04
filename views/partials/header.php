@@ -116,6 +116,9 @@ try {
 .header .header-qa-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: var(--bg2, #F1C40F); color: var(--bg2-contrast, #111111); font-size: .8rem; font-weight: 700; text-decoration: none; border: none; cursor: pointer; transition: transform .15s, filter .15s; white-space: nowrap; line-height: 1.2; box-sizing: border-box; }
 .header .header-qa-btn:hover { filter: brightness(.92); transform: translateY(-1px); color: var(--bg2-contrast, #111111); text-decoration: none; }
 .header .header-qa-btn i { font-size: .75rem; color: inherit; }
+/* No desktop o rótulo já distingue os botões; o ícone da entidade só entra
+   quando o rótulo some, senão os dois viram um "+" idêntico ao lado do outro. */
+.header .header-qa-btn .qa-icon { display: none; }
 .notif-link { position: relative; display: inline-block; line-height: 1; color: #2C3E50; }
 .notif-link i { font-size: 1.2rem; }
 .notif-link .badge { position: absolute; top: -6px; right: -8px; display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #fff; }
@@ -133,6 +136,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
 @media (max-width: 768px) {
   .header .header-qa-btn { padding: 6px 8px; }
   .header .header-qa-btn .qa-label { display: none; }
+  .header .header-qa-btn .qa-icon { display: inline; }
 }
 </style>
 
@@ -167,6 +171,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
       <a href="/OKR_system/views/novo_objetivo.php" class="header-qa-btn"
          title="Novo Objetivo" aria-label="Novo Objetivo">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <i class="fa-solid fa-bullseye qa-icon" aria-hidden="true"></i>
         <span class="qa-label">Objetivo</span>
       </a>
       <?php endif; ?>
@@ -174,6 +179,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
       <a href="/OKR_system/views/novo_key_result.php" class="header-qa-btn"
          title="Novo Key Result" aria-label="Novo Key Result">
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <i class="fa-solid fa-crosshairs qa-icon" aria-hidden="true"></i>
         <span class="qa-label">KR</span>
       </a>
       <?php endif; ?>

@@ -100,8 +100,12 @@
 
   /* ---------- render da grade ---------- */
 
+  // `text-transform: capitalize` no CSS deixaria "Setembro De 2026":
+  // a inicial sobe aqui, só na primeira palavra.
+  function mesTitulo(m) { return MESES[m].charAt(0).toUpperCase() + MESES[m].slice(1); }
+
   function renderMes() {
-    elPeriodo.textContent = MESES[mes] + ' de ' + ano;
+    elPeriodo.textContent = mesTitulo(mes) + ' de ' + ano;
 
     var html = '';
     DOW.forEach(function (d) { html += '<div class="ag-dow">' + d + '</div>'; });
@@ -156,9 +160,12 @@
         return ordem.indexOf(e.estado) < ordem.indexOf(acc) ? e.estado : acc;
       }, 'sem_data');
       chips.push(
+        // A contagem vai num <span> próprio: no mobile o .txt some, e um chip
+        // agrupado sem número não diz nada.
         '<div class="ag-chip grupo est-' + pior + '" title="' + marcos.length + ' marcos neste dia">' +
           '<i class="fa-solid fa-circle"></i>' +
-          '<span class="txt">' + marcos.length + ' marcos</span>' +
+          '<span class="n">' + marcos.length + '</span>' +
+          '<span class="txt">marcos</span>' +
         '</div>');
     } else {
       marcos.forEach(function (e) {

@@ -49,7 +49,7 @@ body { background: #0b0e13; color: var(--ag-text); }
 .ag-nav .ag-hoje-btn:hover { filter: brightness(.93); background: var(--ag-brand); }
 .ag-periodo {
   min-width: 190px; text-align: center; font-weight: 700; font-size: 1rem;
-  text-transform: capitalize; letter-spacing: .2px;
+  letter-spacing: .2px;
 }
 
 /* ---------- legenda ---------- */
@@ -67,7 +67,9 @@ body { background: #0b0e13; color: var(--ag-text); }
 
 /* ---------- grade ---------- */
 .ag-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr);
+  /* minmax(0,1fr) e não 1fr: `1fr` é minmax(auto,1fr) e a coluna cresce com o
+     texto do chip, entortando a semana inteira e empurrando dias para fora. */
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px; background: var(--ag-border);
   border: 1px solid var(--ag-border); border-radius: 12px; overflow: hidden;
 }
@@ -86,6 +88,11 @@ body { background: #0b0e13; color: var(--ag-text); }
 .ag-cell.fora .ag-daynum { opacity: .35; }
 .ag-cell.hoje { box-shadow: inset 0 0 0 2px var(--ag-brand); }
 .ag-cell.sel  { box-shadow: inset 0 0 0 2px var(--ag-futuro); }
+/* hoje selecionado: anel da marca por fora, seleção por dentro, para os dois
+   estados continuarem legíveis (é o estado inicial da tela). */
+.ag-cell.hoje.sel {
+  box-shadow: inset 0 0 0 2px var(--ag-brand), inset 0 0 0 4px var(--ag-futuro);
+}
 
 .ag-daynum {
   font-size: .78rem; font-weight: 700; color: var(--ag-text-muted);
@@ -104,14 +111,16 @@ body { background: #0b0e13; color: var(--ag-text); }
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .ag-chip i { font-size: .62rem; color: var(--c); flex: 0 0 auto; }
-.ag-chip .txt { overflow: hidden; text-overflow: ellipsis; }
+/* min-width:0 senão o filho flex se recusa a encolher e o ellipsis nunca entra */
+.ag-chip .txt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ag-chip.concluido { opacity: .62; }
 .ag-chip.concluido .txt { text-decoration: line-through; text-decoration-thickness: 1px; }
 .ag-chip.cancelado, .ag-chip.pausado { opacity: .5; }
 
 /* marcos agrupados: o volume deles não pode afogar os prazos */
-.ag-chip.grupo { background: transparent; border-left-color: var(--ag-neutro); color: var(--ag-text-muted); }
-.ag-chip.grupo i { color: var(--ag-neutro); }
+.ag-chip.grupo { background: transparent; border-left-color: var(--c); color: var(--ag-text-muted); }
+.ag-chip.grupo i { color: var(--c); }
+.ag-chip.grupo .n { font-weight: 800; color: var(--ag-text); flex: 0 0 auto; }
 
 .ag-mais {
   font-size: .66rem; color: var(--ag-text-muted); font-weight: 700;
@@ -132,7 +141,6 @@ body { background: #0b0e13; color: var(--ag-text); }
 }
 .ag-dia h2 {
   font-size: .95rem; margin: 0 0 .7rem; display: flex; align-items: center; gap: .5rem;
-  text-transform: capitalize;
 }
 .ag-dia h2 .cnt {
   font-size: .72rem; color: var(--ag-text-muted); text-transform: none; font-weight: 600;
@@ -186,6 +194,8 @@ body { background: #0b0e13; color: var(--ag-text); }
   .ag-cell { min-height: 84px; }
   .ag-chip .txt { display: none; }
   .ag-chip { justify-content: center; padding: .2rem; }
+  /* o contador do grupo sobrevive: é a única informação do chip */
+  .ag-chip.grupo .n { display: inline; }
   .ag-dow { font-size: .6rem; }
   .ag-nav { width: 100%; margin-left: 0; justify-content: space-between; }
   .ag-periodo { min-width: 0; flex: 1; }
