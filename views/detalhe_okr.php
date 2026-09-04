@@ -1303,6 +1303,58 @@ foreach ($milestones as $m) {
   }
 
 
+  /* ---------- REORDENAR INICIATIVAS (arrastar na lista ou no kanban) ---------- */
+  if ($action === 'reordenar_iniciativas') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']); exit;
+    }
+
+    $id_kr = trim((string)($_POST['id_kr'] ?? ''));
+    $ordem = json_decode((string)($_POST['ordem_json'] ?? '[]'), true);
+    if ($id_kr === '' || !is_array($ordem) || !$ordem) {
+      echo json_encode(['success'=>false,'error'=>'Ordem inválida']); exit;
+    }
+    $ordem = array_values(array_unique(array_map('strval', $ordem)));
+
+    // A ordem recebida precisa ser exatamente o conjunto de iniciativas do KR.
+    // Um cliente desatualizado (outra aba criou/excluiu uma iniciativa) mandaria
+    // um conjunto diferente, e gravar isso deixaria buraco ou número repetido.
+    $st = $pdo->prepare("SELECT `id_iniciativa` FROM `iniciativas` WHERE `id_kr` = :k");
+    $st->execute(['k'=>$id_kr]);
+    $atuais = $st->fetchAll(PDO::FETCH_COLUMN);
+    if (!$atuais) { echo json_encode(['success'=>false,'error'=>'KR sem iniciativas']); exit; }
+
+    $a = $atuais; $b = $ordem; sort($a); sort($b);
+    if ($a !== $b) {
+      echo json_encode([
+        'success' => false,
+        'stale'   => true,
+        'error'   => 'A lista mudou em outra tela. Recarregue as iniciativas e tente de novo.'
+      ]); exit;
+    }
+
+    // Todas são do mesmo KR, então o tenant/capability de qualquer uma vale.
+    $assertTenant('iniciativa', ['id_iniciativa'=>$ordem[0]]);
+    $assertCap('W:iniciativa@ORG', ['id_iniciativa'=>$ordem[0]]);
+
+    try {
+      $pdo->beginTransaction();
+      // Não há índice único em (id_kr, num_iniciativa), então a regravação
+      // sequencial não colide no meio do caminho.
+      $upd = $pdo->prepare("UPDATE `iniciativas` SET `num_iniciativa` = :n WHERE `id_iniciativa` = :i AND `id_kr` = :k");
+      foreach ($ordem as $i => $iid) {
+        $upd->execute(['n'=>$i+1, 'i'=>$iid, 'k'=>$id_kr]);
+      }
+      $pdo->commit();
+      echo json_encode(['success'=>true,'id_kr'=>$id_kr,'total'=>count($ordem)]); exit;
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      error_log('reordenar_iniciativas: '.$e->getMessage());
+      echo json_encode(['success'=>false,'error'=>'Falha ao salvar a nova ordem.']); exit;
+    }
+  }
+
     /* ---------- NOVA INICIATIVA (+ orçamento opcional) ---------- */
     if ($action === 'nova_iniciativa') {
       if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
@@ -2846,6 +2898,13 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .kb-card{ background:#0f1420; border:1px solid #223047; border-left-width:3px; border-radius:12px; padding:9px 10px; cursor:grab; }
     .kb-card:active{ cursor:grabbing; }
     .kb-card.kb-dragging{ opacity:.45; }
+    /* reordenação por arraste na LISTA */
+    .ini-th-drag{ width:26px; padding-left:6px !important; padding-right:0 !important; }
+    .ini-row .ini-drag{ width:26px; color:#5b6676; cursor:grab; text-align:center; padding-left:6px; padding-right:0; }
+    .ini-row .ini-drag:active{ cursor:grabbing; }
+    .ini-row:hover .ini-drag{ color:var(--gold, #F1C40F); }
+    .ini-row.ini-dragging{ opacity:.4; }
+    .ini-row.ini-dragging td{ background:#12181f; }
     .kb-card-top{ display:flex; align-items:center; gap:6px; font-size:.74rem; color:#9aa4b2; font-weight:800; }
     .kb-card-desc{ color:#e5e7eb; font-size:.88rem; margin:5px 0 7px; line-height:1.3; }
     .kb-card-meta{ display:flex; flex-wrap:wrap; gap:5px; font-size:.72rem; color:#a6adbb; }
@@ -4365,6 +4424,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
             <table class="table">
               <thead>
                 <tr>
+                  <th class="ini-th-drag" title="Arraste para reordenar"></th>
                   <th><i class="th-ico fa-solid fa-hashtag"></i>#</th>
                   <th><i class="th-ico fa-regular fa-rectangle-list"></i>Descrição</th>
                   <th><i class="th-ico fa-regular fa-user"></i>Responsável</th>
@@ -4376,7 +4436,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                   <th style="text-align:right"><i class="th-ico fa-solid fa-wrench"></i>Ações</th>
                 </tr>
               </thead>
-              <tbody id="tb_ini_${id}"><tr><td colspan="9">Carregando...</td></tr></tbody>
+              <tbody id="tb_ini_${id}"><tr><td colspan="10">Carregando...</td></tr></tbody>
             </table>
           </div>
 
@@ -5077,7 +5137,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       if(!tb) return;
       tb.innerHTML = '';
       if(!data.success || !data.iniciativas?.length){
-        tb.innerHTML = `<tr><td colspan="9" style="color:#9aa4b2">Sem iniciativas.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="10" style="color:#9aa4b2">Sem iniciativas.</td></tr>`;
         refreshIniKanbanSeVisivel(id);
         return;
       }
@@ -5118,7 +5178,9 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
                         </div>`;
 
         tb.insertAdjacentHTML('beforeend', `
-          <tr>
+          <tr class="ini-row" draggable="false"
+              data-id-ini="${escapeHtml(ini.id_iniciativa)}" data-id-kr="${escapeHtml(id)}">
+            <td class="ini-drag" title="Arraste para reordenar"><i class="fa-solid fa-grip-vertical"></i></td>
             <td>${ini.num_iniciativa}</td>
             <td style="color:#d1d5db">${escapeHtml(ini.descricao||'')}</td>
             <td>${escapeHtml(ini.responsavel||'—')}</td>
@@ -5299,10 +5361,15 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
       const destino = col.getAttribute('data-status') || '';
       const label   = col.getAttribute('data-label') || destino;
+
+      // Soltou na mesma coluna: é reordenação, não troca de status. Sai SEM
+      // zerar __kbDrag, senão o handler de reordenar (mais abaixo) não roda.
+      if (destino === __kbDrag.de) return;
+
       const { idIni, de, idKr } = __kbDrag;
       __kbDrag = null;
 
-      if (!idIni || !destino || destino === de) return;
+      if (!idIni || !destino) return;
 
       const fd = new FormData();
       fd.append('csrf_token', csrfToken);
@@ -5319,6 +5386,145 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
       if (alvo){
         await loadIniciativas(alvo);
         await loadKrDetail(alvo);
+      }
+    });
+
+    /* ==================== REORDENAR INICIATIVAS POR ARRASTE ====================
+       A ordem canônica é `num_iniciativa`, global por KR. A lista mostra essa
+       ordem direto; no kanban, reordenar dentro de uma coluna reposiciona o
+       cartão na sequência global, preservando a posição dos itens dos outros
+       status. `id_iniciativa` é um hash opaco (não deriva do número), então
+       regravar a numeração não toca em PK nem em FK. */
+
+    async function salvarOrdemIniciativas(idKr, ordem){
+      const fd = new FormData();
+      fd.append('csrf_token', csrfToken);
+      fd.append('id_kr', idKr);
+      fd.append('ordem_json', JSON.stringify(ordem));
+      const res  = await fetch(`${SCRIPT}?ajax=reordenar_iniciativas`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (!data.success){
+        toast(data.error || 'Falha ao salvar a nova ordem', false);
+        await loadIniciativas(idKr);   // volta ao que o servidor tem
+        return false;
+      }
+      return true;
+    }
+
+    // Elemento antes do qual o arrastado deve entrar, pelo meio de cada item.
+    function alvoPorY(itens, y){
+      return itens.find(el => {
+        const b = el.getBoundingClientRect();
+        return y < b.top + b.height / 2;
+      }) || null;
+    }
+
+    /* ---------- lista ---------- */
+    let __liDrag = null;
+
+    // Arrasta só pela alça: a linha nasce draggable="false" e só é liberada
+    // quando o mousedown foi na alça. Sem isso qualquer arraste sobre o texto
+    // reordenaria sem querer, e a seleção de texto na tabela morreria.
+    document.addEventListener('mousedown', (e)=>{
+      const tr = e.target.closest?.('tr.ini-row');
+      if (!tr) return;
+      tr.setAttribute('draggable', e.target.closest('.ini-drag') ? 'true' : 'false');
+    });
+
+    document.addEventListener('dragstart', (e)=>{
+      const tr = e.target.closest?.('tr.ini-row');
+      if (!tr) return;
+      __liDrag = { idKr: tr.getAttribute('data-id-kr'), tbody: tr.parentElement };
+      tr.classList.add('ini-dragging');
+      if (e.dataTransfer){
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', tr.getAttribute('data-id-ini') || ''); } catch(_){}
+      }
+    });
+
+    document.addEventListener('dragover', (e)=>{
+      if (!__liDrag) return;
+      const tbody = e.target.closest?.('tbody');
+      if (!tbody || tbody !== __liDrag.tbody) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const arrastada = tbody.querySelector('tr.ini-dragging');
+      if (!arrastada) return;
+      const itens = [...tbody.querySelectorAll('tr.ini-row:not(.ini-dragging)')];
+      const alvo  = alvoPorY(itens, e.clientY);
+      if (alvo) tbody.insertBefore(arrastada, alvo);
+      else tbody.appendChild(arrastada);
+    });
+
+    document.addEventListener('drop', async (e)=>{
+      if (!__liDrag) return;
+      e.preventDefault();
+      const { idKr, tbody } = __liDrag;
+      __liDrag = null;
+      tbody.querySelector('tr.ini-dragging')?.classList.remove('ini-dragging');
+
+      const ordem = [...tbody.querySelectorAll('tr.ini-row')].map(r => r.getAttribute('data-id-ini'));
+      if (!ordem.length) return;
+      if (await salvarOrdemIniciativas(idKr, ordem)){
+        await loadIniciativas(idKr);   // recarrega para renumerar a coluna "#"
+        toast('Ordem das iniciativas atualizada.');
+      }
+    });
+
+    document.addEventListener('dragend', ()=>{
+      document.querySelectorAll('tr.ini-row.ini-dragging').forEach(r => r.classList.remove('ini-dragging'));
+      __liDrag = null;
+    });
+
+    /* ---------- kanban: reordenar dentro da própria coluna ---------- */
+
+    // Aplica a nova sequência de UMA coluna sobre a ordem global, mantendo os
+    // itens dos outros status onde estavam.
+    function mesclarOrdemColuna(global, colIds){
+      const doGrupo = new Set(colIds);
+      let i = 0;
+      return global.map(id => doGrupo.has(id) ? colIds[i++] : id);
+    }
+
+    document.addEventListener('dragover', (e)=>{
+      if (!__kbDrag) return;
+      const body = e.target.closest?.('.kb-col-body');
+      if (!body) return;
+      const col = body.closest('.kb-col');
+      // Só reposiciona quando o cartão paira sobre a coluna de onde saiu;
+      // entre colunas, quem manda é a troca de status já existente.
+      if (!col || (col.getAttribute('data-status') || '') !== __kbDrag.de) return;
+      e.preventDefault();
+      const arrastado = body.querySelector('.kb-card.kb-dragging');
+      if (!arrastado) return;
+      const itens = [...body.querySelectorAll('.kb-card:not(.kb-dragging)')];
+      const alvo  = alvoPorY(itens, e.clientY);
+      if (alvo) body.insertBefore(arrastado, alvo);
+      else body.appendChild(arrastado);
+    });
+
+    document.addEventListener('drop', async (e)=>{
+      if (!__kbDrag) return;
+      const col = e.target.closest?.('.kb-col');
+      if (!col) return;
+      const destino = col.getAttribute('data-status') || '';
+      if (destino !== __kbDrag.de) return;   // troca de status: handler anterior
+      e.preventDefault();
+
+      const idKr = __kbDrag.idKr || col.getAttribute('data-id-kr') || '';
+      __kbDrag = null;
+      col.classList.remove('kb-over');
+      col.querySelector('.kb-card.kb-dragging')?.classList.remove('kb-dragging');
+      if (!idKr) return;
+
+      const colIds = [...col.querySelectorAll('.kb-col-body .kb-card')].map(c => c.getAttribute('data-id-ini'));
+      const global = (iniCache[idKr] || []).map(x => String(x.id_iniciativa));
+      if (!colIds.length || !global.length) return;
+
+      const ordem = mesclarOrdemColuna(global, colIds);
+      if (await salvarOrdemIniciativas(idKr, ordem)){
+        await loadIniciativas(idKr);
+        toast('Ordem das iniciativas atualizada.');
       }
     });
 
