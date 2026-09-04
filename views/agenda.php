@@ -89,9 +89,15 @@ $totalPessoas = count($dados['pessoas']);
           </div>
         </div>
         <div class="ag-nav">
-          <button type="button" id="agPrev" aria-label="Mês anterior"><i class="fa-solid fa-chevron-left"></i></button>
+          <div class="ag-visoes" role="tablist" id="agVisoes">
+            <button type="button" role="tab" data-visao="mes" class="on">Mês</button>
+            <button type="button" role="tab" data-visao="semana">Semana</button>
+            <button type="button" role="tab" data-visao="lista">Lista</button>
+            <button type="button" role="tab" data-visao="ciclo">Ciclo</button>
+          </div>
+          <button type="button" id="agPrev" aria-label="Período anterior"><i class="fa-solid fa-chevron-left"></i></button>
           <div class="ag-periodo" id="agPeriodo">—</div>
-          <button type="button" id="agNext" aria-label="Próximo mês"><i class="fa-solid fa-chevron-right"></i></button>
+          <button type="button" id="agNext" aria-label="Próximo período"><i class="fa-solid fa-chevron-right"></i></button>
           <button type="button" id="agHoje" class="ag-hoje-btn">Hoje</button>
         </div>
       </div>
@@ -118,7 +124,7 @@ $totalPessoas = count($dados['pessoas']);
 
       <div class="ag-resumo" id="agResumo"></div>
 
-      <div class="ag-main">
+      <div class="ag-main" id="agMain">
       <div class="ag-cal">
 
       <div class="ag-legenda">

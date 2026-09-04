@@ -214,8 +214,12 @@
 
   var eventosVis = A.eventos;
   var porData = {};
+  var visao = 'mes'; // mes | semana | lista | ciclo
+  var cicloEixo = null; // {ini, passo} do eixo desenhado, p/ o clique na bolha
 
   var elGrid    = document.getElementById('agGrid');
+  var elMain    = document.getElementById('agMain');
+  var elVisoes  = document.getElementById('agVisoes');
   var elPeriodo = document.getElementById('agPeriodo');
   var elDia     = document.getElementById('agDia');
   var elResumo  = document.getElementById('agResumo');
@@ -235,8 +239,31 @@
     reindexar();
     renderFiltros();
     renderAtivos();
-    renderMes();
-    renderDia();
+    renderVisao();
+  }
+
+  /** Só mês e semana têm trilho: lista e ciclo já mostram o detalhe inteiro. */
+  function temTrilho() { return visao === 'mes' || visao === 'semana'; }
+
+  function renderVisao() {
+    elMain.classList.toggle('sem-trilho', !temTrilho());
+    if (visao === 'mes')         renderMes();
+    else if (visao === 'semana') renderSemana();
+    else if (visao === 'lista')  renderLista();
+    else                         renderCiclo();
+    if (temTrilho()) renderDia();
+    renderResumo();
+    marcarVisao();
+  }
+
+  function marcarVisao() {
+    [].forEach.call(elVisoes.querySelectorAll('[data-visao]'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-visao') === visao);
+    });
+    // Lista e ciclo mostram tudo de uma vez: não há período para navegar.
+    var navegavel = temTrilho();
+    document.getElementById('agPrev').disabled = !navegavel;
+    document.getElementById('agNext').disabled = !navegavel;
   }
 
   /* ===================== BARRA DE FILTROS ===================== */
@@ -318,7 +345,21 @@
 
   function mesTitulo(m) { return MESES[m].charAt(0).toUpperCase() + MESES[m].slice(1); }
 
+  function celulaHtml(d, foraDoFoco, semColapso) {
+    var k = chave(d.getFullYear(), d.getMonth(), d.getDate());
+    var n = (porData[k] || []).length;
+    var cls = 'ag-cell' + (foraDoFoco ? ' fora' : '') +
+              (k === hoje ? ' hoje' : '') + (k === diaSel ? ' sel' : '');
+    return '<div class="' + cls + '" data-dia="' + k + '" role="gridcell" tabindex="0"' +
+             ' aria-label="' + d.getDate() + ' de ' + MESES[d.getMonth()] +
+             (n ? ', ' + n + (n > 1 ? ' prazos' : ' prazo') : ', sem prazos') + '">' +
+             '<div class="ag-daynum">' + d.getDate() + '</div>' +
+             chipsDoDia(k, semColapso) +
+           '</div>';
+  }
+
   function renderMes() {
+    elGrid.className = 'ag-grid';
     elPeriodo.textContent = mesTitulo(mes) + ' de ' + ano;
 
     var html = '';
@@ -327,26 +368,200 @@
     // Sempre 6 semanas: a grade não "pula" de altura ao trocar de mês.
     var primeiro = new Date(ano, mes, 1);
     var inicio = new Date(ano, mes, 1 - primeiro.getDay());
-
     for (var i = 0; i < 42; i++) {
       var d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i);
-      var k = chave(d.getFullYear(), d.getMonth(), d.getDate());
-      var fora = d.getMonth() !== mes;
-      var n = (porData[k] || []).length;
-      var cls = 'ag-cell' + (fora ? ' fora' : '') +
-                (k === hoje ? ' hoje' : '') + (k === diaSel ? ' sel' : '');
-      html += '<div class="' + cls + '" data-dia="' + k + '" role="gridcell" tabindex="0"' +
-                ' aria-label="' + d.getDate() + ' de ' + MESES[d.getMonth()] +
-                (n ? ', ' + n + (n > 1 ? ' prazos' : ' prazo') : ', sem prazos') + '">' +
-                '<div class="ag-daynum">' + d.getDate() + '</div>' +
-                chipsDoDia(k) +
-              '</div>';
+      html += celulaHtml(d, d.getMonth() !== mes, false);
     }
     elGrid.innerHTML = html;
-    renderResumo();
   }
 
-  function chipsDoDia(k) {
+  /** Semana: mesma grade em uma linha só, alta, sem colapsar nada. */
+  function renderSemana() {
+    elGrid.className = 'ag-grid ag-grid-semana';
+
+    var p = diaSel.split('-');
+    var base = new Date(+p[0], +p[1] - 1, +p[2]);
+    var dom = new Date(base.getFullYear(), base.getMonth(), base.getDate() - base.getDay());
+    var sab = new Date(dom.getFullYear(), dom.getMonth(), dom.getDate() + 6);
+
+    elPeriodo.textContent = rotuloIntervalo(dom, sab);
+
+    var html = '';
+    DOW.forEach(function (d) { html += '<div class="ag-dow">' + d + '</div>'; });
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(dom.getFullYear(), dom.getMonth(), dom.getDate() + i);
+      html += celulaHtml(d, false, true);
+    }
+    elGrid.innerHTML = html;
+  }
+
+  function rotuloIntervalo(a, b) {
+    var mesmoMes = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    if (mesmoMes) {
+      return a.getDate() + ' a ' + b.getDate() + ' de ' + MESES[b.getMonth()] + ' de ' + b.getFullYear();
+    }
+    var mesmoAno = a.getFullYear() === b.getFullYear();
+    return a.getDate() + ' de ' + MESES[a.getMonth()] + (mesmoAno ? '' : ' de ' + a.getFullYear()) +
+           ' a ' + b.getDate() + ' de ' + MESES[b.getMonth()] + ' de ' + b.getFullYear();
+  }
+
+  /** Lista: rolagem cronológica, com os atrasados fixados no topo. */
+  function renderLista() {
+    elGrid.className = 'ag-lista';
+    elPeriodo.textContent = eventosVis.length + (eventosVis.length === 1 ? ' prazo' : ' prazos');
+
+    var atrasados = [], futuros = [];
+    eventosVis.forEach(function (e) {
+      if (!e.data) return;
+      (e.estado === 'vencido' ? atrasados : futuros).push(e);
+    });
+    // O mais atrasado primeiro: é a ordem de cobrança.
+    atrasados.sort(function (a, b) { return a.data < b.data ? -1 : (a.data > b.data ? 1 : 0); });
+
+    var html = '';
+    if (!eventosVis.length) {
+      html = '<div class="ag-vazio">Nenhum prazo com os filtros atuais.</div>';
+    }
+    if (atrasados.length) {
+      html += '<div class="ag-lgrupo atraso"><i class="fa-solid fa-triangle-exclamation"></i>' +
+              'Atrasados<span class="n">' + atrasados.length + '</span></div>';
+      html += grupoPorDia(atrasados);
+    }
+    if (futuros.length) {
+      html += '<div class="ag-lgrupo"><i class="fa-regular fa-calendar"></i>A partir de hoje' +
+              '<span class="n">' + futuros.length + '</span></div>';
+      html += grupoPorDia(futuros);
+    }
+    elGrid.innerHTML = html;
+  }
+
+  function grupoPorDia(evs) {
+    var html = '', diaAtual = null;
+    evs.forEach(function (e) {
+      if (e.data !== diaAtual) {
+        diaAtual = e.data;
+        var p = e.data.split('-');
+        html += '<div class="ag-ldia">' + (+p[2]) + ' de ' + MESES[+p[1] - 1] + ' de ' + p[0] +
+                (e.data === hoje ? ' <span class="tag-hoje">hoje</span>' : '') + '</div>';
+      }
+      html += itemHtml(e);
+    });
+    return html;
+  }
+
+  /* --- faixa de ciclo --- */
+
+  function mesesEntre(a, b) {
+    return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+  }
+
+  /**
+   * Faixa de ciclo: uma linha por objetivo, com a janela dt_inicio→dt_prazo e
+   * os prazos agregados por período. Marcador por evento não serve aqui: um
+   * objetivo chega a ter 100+ eventos e eles viram um borrão.
+   */
+  function renderCiclo() {
+    elGrid.className = 'ag-ciclo';
+
+    var objs = Object.keys(A.objetivos).map(function (k) { return A.objetivos[k]; })
+      .filter(function (o) { return o.dt_inicio || o.dt_prazo; });
+
+    if (!objs.length) {
+      elPeriodo.textContent = '—';
+      elGrid.innerHTML = '<div class="ag-vazio">Nenhum objetivo com janela definida.</div>';
+      return;
+    }
+
+    var min = null, max = null;
+    objs.forEach(function (o) {
+      var i = o.dt_inicio || o.dt_prazo, f = o.dt_prazo || o.dt_inicio;
+      if (!min || i < min) min = i;
+      if (!max || f > max) max = f;
+    });
+    eventosVis.forEach(function (e) {
+      if (!e.data) return;
+      if (e.data < min) min = e.data;
+      if (e.data > max) max = e.data;
+    });
+
+    var pi = min.split('-'), pf = max.split('-');
+    var ini = new Date(+pi[0], +pi[1] - 1, 1);
+    var fim = new Date(+pf[0], +pf[1] - 1, 1);
+    var totalMeses = mesesEntre(ini, fim) + 1;
+
+    // Acima de 24 meses o eixo vira trimestral, senão a linha fica ilegível
+    // (a FMX tem objetivo indo de 2026-07 a 2030-12).
+    var porTrim = totalMeses > 24;
+    var passo = porTrim ? 3 : 1;
+    if (porTrim) { ini = new Date(ini.getFullYear(), Math.floor(ini.getMonth() / 3) * 3, 1); }
+    var nCols = Math.floor(mesesEntre(ini, fim) / passo) + 1;
+
+    elPeriodo.textContent = (porTrim ? 'Trimestres' : 'Meses') + ' de ' + ini.getFullYear() + ' a ' + fim.getFullYear();
+    cicloEixo = { ini: ini, passo: passo };
+
+    function colDe(dataStr) {
+      var d = dataStr.split('-');
+      var dt = new Date(+d[0], +d[1] - 1, 1);
+      var i = Math.floor(mesesEntre(ini, dt) / passo);
+      return (i < 0 || i >= nCols) ? -1 : i;
+    }
+
+    // cabeçalho
+    var html = '<div class="ag-ceixo" style="--cols:' + nCols + '">' +
+               '<div class="ag-crot"></div><div class="ag-ctrilha">';
+    for (var c = 0; c < nCols; c++) {
+      var dt = new Date(ini.getFullYear(), ini.getMonth() + c * passo, 1);
+      var rot = porTrim ? ('Q' + (Math.floor(dt.getMonth() / 3) + 1)) : MESES[dt.getMonth()].slice(0, 3);
+      var novoAno = c === 0 || dt.getMonth() < passo;
+      html += '<div class="ag-ccol' + (novoAno ? ' ano' : '') + '">' +
+                (novoAno ? '<span class="a">' + dt.getFullYear() + '</span>' : '') +
+                '<span class="m">' + rot + '</span></div>';
+    }
+    html += '</div></div>';
+
+    objs.sort(function (a, b) { return (a.dt_inicio || '') < (b.dt_inicio || '') ? -1 : 1; });
+
+    objs.forEach(function (o) {
+      var evs = eventosVis.filter(function (e) { return e.id_objetivo === o.id && e.data; });
+      var baldes = {};
+      evs.forEach(function (e) {
+        var c = colDe(e.data);
+        if (c < 0) return;
+        if (!baldes[c]) baldes[c] = { n: 0, pior: 'sem_data' };
+        baldes[c].n++;
+        if (ORDEM_ESTADO.indexOf(e.estado) < ORDEM_ESTADO.indexOf(baldes[c].pior)) {
+          baldes[c].pior = e.estado;
+        }
+      });
+
+      var ci = o.dt_inicio ? colDe(o.dt_inicio) : 0;
+      var cf = o.dt_prazo  ? colDe(o.dt_prazo)  : nCols - 1;
+      if (ci < 0) ci = 0;
+      if (cf < 0) cf = nCols - 1;
+
+      var dono = (o.pessoas && o.pessoas[0]) ? (A.pessoas[o.pessoas[0].id] || {}).nome : null;
+
+      html += '<div class="ag-clinha" style="--cols:' + nCols + '">' +
+                '<div class="ag-crot" title="' + esc(o.descricao) + '">' +
+                  '<span class="t">' + esc(o.descricao) + '</span>' +
+                  (dono ? '<span class="d">' + esc(dono) + '</span>' : '') +
+                '</div>' +
+                '<div class="ag-ctrilha">' +
+                  '<div class="ag-cbanda" style="grid-column:' + (ci + 1) + ' / ' + (cf + 2) + '"></div>';
+      for (var c2 = 0; c2 < nCols; c2++) {
+        var b = baldes[c2];
+        html += '<div class="ag-ccel" style="grid-column:' + (c2 + 1) + '">' +
+                  (b ? '<span class="ag-cbolha est-' + b.pior + '" title="' + b.n +
+                       ' prazos" data-col="' + c2 + '">' + b.n + '</span>' : '') +
+                '</div>';
+      }
+      html += '</div></div>';
+    });
+
+    elGrid.innerHTML = html;
+  }
+
+  function chipsDoDia(k, semColapso) {
     var evs = porData[k];
     if (!evs || !evs.length) return '';
 
@@ -363,7 +578,7 @@
         '</div>');
     });
 
-    if (marcos.length > MAX_MARCOS) {
+    if (marcos.length > MAX_MARCOS && !semColapso) {
       // O pior estado do grupo comanda a cor: um marco vencido no meio do bolo
       // não pode ficar invisível.
       var pior = marcos.reduce(function (acc, e) {
@@ -386,6 +601,8 @@
       });
     }
 
+    // Na semana o dia é alto e cabe tudo; no mês o excedente vira "+N".
+    if (semColapso) return chips.join('');
     var out = chips.slice(0, MAX_CHIPS).join('');
     if (chips.length > MAX_CHIPS) {
       out += '<div class="ag-mais">+' + (chips.length - MAX_CHIPS) + '</div>';
@@ -492,17 +709,31 @@
   /* ===================== RESUMO ===================== */
 
   function renderResumo() {
-    var pre = ano + '-' + pad(mes + 1) + '-';
+    // Mês e semana resumem o período à vista; lista e ciclo mostram tudo.
+    var pre = (visao === 'mes') ? (ano + '-' + pad(mes + 1) + '-') : null;
+    var ini = null, fim = null;
+    if (visao === 'semana') {
+      var p = diaSel.split('-');
+      var base = new Date(+p[0], +p[1] - 1, +p[2]);
+      var dom = new Date(base.getFullYear(), base.getMonth(), base.getDate() - base.getDay());
+      var sab = new Date(dom.getFullYear(), dom.getMonth(), dom.getDate() + 6);
+      ini = chave(dom.getFullYear(), dom.getMonth(), dom.getDate());
+      fim = chave(sab.getFullYear(), sab.getMonth(), sab.getDate());
+    }
+    var rotulo = visao === 'mes' ? 'no mês' : (visao === 'semana' ? 'na semana' : 'no total');
+
     var c = { total: 0, vencido: 0, proximo: 0, concluido: 0 };
     eventosVis.forEach(function (e) {
-      if (!e.data || e.data.indexOf(pre) !== 0) return;
+      if (!e.data) return;
+      if (pre && e.data.indexOf(pre) !== 0) return;
+      if (ini && (e.data < ini || e.data > fim)) return;
       c.total++;
       if (e.estado === 'vencido') c.vencido++;
       else if (e.estado === 'proximo' || e.estado === 'hoje') c.proximo++;
       else if (e.estado === 'concluido') c.concluido++;
     });
     elResumo.innerHTML =
-      kpi('', c.total, 'no mês') +
+      kpi('', c.total, rotulo) +
       kpi('vencido', c.vencido, 'vencidos') +
       kpi('proximo', c.proximo, 'vencendo') +
       kpi('concluido', c.concluido, 'concluídos');
@@ -518,8 +749,7 @@
     var d = diaSel.split('-');
     var y = parseInt(d[0], 10), m = parseInt(d[1], 10) - 1;
     if (y !== ano || m !== mes) { ano = y; mes = m; }
-    renderMes();
-    renderDia();
+    renderVisao();
     if (focar) {
       var alvo = elGrid.querySelector('[data-dia="' + diaSel + '"]');
       if (alvo) alvo.focus();
@@ -531,7 +761,18 @@
 
   elGrid.addEventListener('click', function (ev) {
     var cell = ev.target.closest('.ag-cell');
-    if (cell) selecionar(cell.getAttribute('data-dia'), false);
+    if (cell) { selecionar(cell.getAttribute('data-dia'), false); return; }
+
+    // Bolha do ciclo: cai no mês daquele período, já na visão de mês.
+    var bolha = ev.target.closest('.ag-cbolha');
+    if (bolha && cicloEixo) {
+      var c = parseInt(bolha.getAttribute('data-col'), 10);
+      var dt = new Date(cicloEixo.ini.getFullYear(), cicloEixo.ini.getMonth() + c * cicloEixo.passo, 1);
+      ano = dt.getFullYear(); mes = dt.getMonth();
+      visao = 'mes';
+      diaSel = chave(ano, mes, 1);
+      renderVisao();
+    }
   });
 
   var PASSO = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
@@ -551,17 +792,31 @@
     selecionar(chave(dt.getFullYear(), dt.getMonth(), dt.getDate()), true);
   });
 
+  /** O passo depende da visão: mês anda mês a mês, semana anda 7 dias. */
   function irPara(delta) {
+    if (visao === 'semana') {
+      var p = diaSel.split('-');
+      var d = new Date(+p[0], +p[1] - 1, +p[2] + delta * 7);
+      selecionar(chave(d.getFullYear(), d.getMonth(), d.getDate()), false);
+      return;
+    }
     mes += delta;
     if (mes < 0) { mes = 11; ano--; }
     else if (mes > 11) { mes = 0; ano++; }
-    renderMes();
+    renderVisao();
   }
   document.getElementById('agPrev').addEventListener('click', function () { irPara(-1); });
   document.getElementById('agNext').addEventListener('click', function () { irPara(1); });
   document.getElementById('agHoje').addEventListener('click', function () {
     ano = parseInt(pHoje[0], 10); mes = parseInt(pHoje[1], 10) - 1;
     selecionar(hoje, false);
+  });
+
+  elVisoes.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-visao]');
+    if (!b) return;
+    visao = b.getAttribute('data-visao');
+    renderVisao();
   });
 
   /* --- barra de filtros --- */
