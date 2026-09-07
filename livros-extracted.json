@@ -1,0 +1,2543 @@
+[
+  {
+    "t": "100 Indicadores da Gestão",
+    "a": "Jorge Caldeira",
+    "c": "Negócios & Gestão",
+    "y": "2013",
+    "s": "Guia prático com os principais KPIs para medir desempenho, produtividade e resultados de uma organização.",
+    "g": [
+      "KPIs e indicadores",
+      "Gestão de desempenho",
+      "Controladoria"
+    ]
+  },
+  {
+    "t": "A Fórmula do Lançamento",
+    "a": "Jeff Walker",
+    "c": "Negócios & Gestão",
+    "y": "2014",
+    "s": "O método Product Launch Formula, passo a passo, para lançar produtos e negócios digitais com grandes picos de venda.",
+    "g": [
+      "Marketing digital",
+      "Lançamento de produtos",
+      "Vendas online"
+    ]
+  },
+  {
+    "t": "A Mentalidade da Inovação",
+    "a": "Lorraine H. Marchand e John Hanc",
+    "c": "Negócios & Gestão",
+    "y": "2022",
+    "s": "Lições práticas de uma executiva do setor de ciências da vida sobre como transformar ideias em inovações viáveis.",
+    "g": [
+      "Inovação",
+      "Estratégia de produto",
+      "Empreendedorismo"
+    ]
+  },
+  {
+    "t": "A Startup Enxuta",
+    "a": "Eric Ries",
+    "c": "Negócios & Gestão",
+    "y": "2011",
+    "b": true,
+    "s": "A metodologia lean para startups: ciclos rápidos de construir-medir-aprender e MVPs para validar ideias antes de escalar.",
+    "g": [
+      "Lean startup",
+      "Validação de ideias",
+      "Empreendedorismo"
+    ]
+  },
+  {
+    "t": "As Armas da Persuasão 2.0",
+    "a": "Robert B. Cialdini",
+    "c": "Negócios & Gestão",
+    "y": "2021",
+    "b": true,
+    "s": "Edição revista e ampliada do clássico sobre os sete princípios psicológicos que levam as pessoas a dizer sim.",
+    "g": [
+      "Persuasão",
+      "Psicologia do consumo",
+      "Negociação"
+    ]
+  },
+  {
+    "t": "Avalie o que Importa",
+    "a": "John Doerr",
+    "c": "Negócios & Gestão",
+    "y": "2018",
+    "b": true,
+    "s": "O investidor que levou os OKRs ao Google mostra como metas ambiciosas e mensuráveis transformam organizações.",
+    "g": [
+      "OKRs",
+      "Definição de metas",
+      "Gestão estratégica"
+    ]
+  },
+  {
+    "t": "Como Fazer Amigos e Influenciar Pessoas",
+    "a": "Dale Carnegie",
+    "c": "Negócios & Gestão",
+    "y": "1936",
+    "b": true,
+    "s": "O clássico atemporal sobre relacionamentos, empatia e influência genuína no trabalho e na vida.",
+    "g": [
+      "Relacionamento interpessoal",
+      "Comunicação",
+      "Influência"
+    ]
+  },
+  {
+    "t": "Data Science para Negócios",
+    "a": "Foster Provost e Tom Fawcett",
+    "c": "Negócios & Gestão",
+    "y": "2013",
+    "s": "Fundamentos de mineração de dados e pensamento analítico aplicados à tomada de decisão empresarial.",
+    "g": [
+      "Data science",
+      "Análise de dados",
+      "Decisão orientada a dados"
+    ]
+  },
+  {
+    "t": "Gestão da Qualidade em Destinos Turísticos",
+    "a": "Elder Lins Teixeira",
+    "c": "Negócios & Gestão",
+    "y": "—",
+    "s": "Conceitos e práticas de gestão da qualidade aplicados a destinos e serviços turísticos.",
+    "g": [
+      "Turismo",
+      "Gestão da qualidade"
+    ]
+  },
+  {
+    "t": "Gestão de Alta Performance (High Output Management)",
+    "a": "Andrew S. Grove",
+    "c": "Negócios & Gestão",
+    "y": "1983",
+    "s": "O lendário CEO da Intel ensina a gerenciar equipes, reuniões e indicadores para maximizar o output da organização.",
+    "g": [
+      "Gestão de equipes",
+      "Produtividade organizacional",
+      "Liderança"
+    ]
+  },
+  {
+    "t": "Hacking Growth",
+    "a": "Sean Ellis e Morgan Brown",
+    "c": "Negócios & Gestão",
+    "y": "2017",
+    "s": "A metodologia de growth hacking usada por Dropbox e Airbnb para acelerar o crescimento com experimentos contínuos.",
+    "g": [
+      "Growth hacking",
+      "Marketing de crescimento",
+      "Experimentação"
+    ]
+  },
+  {
+    "t": "Liderança de Alto Impacto",
+    "a": "Robert Slater",
+    "c": "Negócios & Gestão",
+    "y": "2002",
+    "s": "Os princípios de liderança de Jack Welch, o executivo que revolucionou a General Electric.",
+    "g": [
+      "Liderança",
+      "Gestão executiva"
+    ]
+  },
+  {
+    "t": "Marketing 4.0",
+    "a": "Philip Kotler, Hermawan Kartajaya e Iwan Setiawan",
+    "c": "Negócios & Gestão",
+    "y": "2016",
+    "s": "Do tradicional ao digital: como o marketing se adapta ao consumidor hiperconectado.",
+    "g": [
+      "Marketing digital",
+      "Comportamento do consumidor",
+      "Branding"
+    ]
+  },
+  {
+    "t": "Negocie Como Se Sua Vida Dependesse Disso",
+    "a": "Chris Voss e Tahl Raz",
+    "c": "Negócios & Gestão",
+    "y": "2016",
+    "b": true,
+    "s": "Um ex-negociador de reféns do FBI ensina técnicas de negociação baseadas em empatia tática e perguntas calibradas.",
+    "g": [
+      "Negociação",
+      "Comunicação",
+      "Inteligência emocional"
+    ]
+  },
+  {
+    "t": "Nunca Jogue uma Ideia Fora",
+    "a": "Sauana Alves",
+    "c": "Negócios & Gestão",
+    "y": "—",
+    "n": "Ed. Gente",
+    "s": "Método para capturar, desenvolver e aproveitar ideias criativas no trabalho e nos projetos pessoais.",
+    "g": [
+      "Criatividade",
+      "Geração de ideias"
+    ]
+  },
+  {
+    "t": "O Estilo Startup",
+    "a": "Eric Ries",
+    "c": "Negócios & Gestão",
+    "y": "2017",
+    "s": "Como empresas estabelecidas podem aplicar o empreendedorismo contínuo do movimento lean.",
+    "g": [
+      "Inovação corporativa",
+      "Empreendedorismo",
+      "Gestão ágil"
+    ]
+  },
+  {
+    "t": "O Monge e o Executivo",
+    "a": "James C. Hunter",
+    "c": "Negócios & Gestão",
+    "y": "1998",
+    "b": true,
+    "n": "2 exemplares",
+    "s": "Fábula sobre liderança servidora: um executivo em crise aprende num mosteiro que liderar é servir.",
+    "g": [
+      "Liderança servidora",
+      "Gestão de pessoas",
+      "Autoconhecimento"
+    ]
+  },
+  {
+    "t": "OKR: Foco Total nos Resultados",
+    "a": "Christina Wodtke",
+    "c": "Negócios & Gestão",
+    "y": "2016",
+    "s": "Como usar OKRs para dar foco, ritmo e disciplina de execução a equipes e empresas.",
+    "g": [
+      "OKRs",
+      "Foco e execução",
+      "Gestão de metas"
+    ]
+  },
+  {
+    "t": "Os OKRs e as Métricas Exponenciais",
+    "a": "Emílio Herrero Filho",
+    "c": "Negócios & Gestão",
+    "y": "—",
+    "s": "Guia brasileiro para implantar OKRs e conectar metas a métricas de crescimento exponencial.",
+    "g": [
+      "OKRs",
+      "Métricas de negócio",
+      "Transformação digital"
+    ]
+  },
+  {
+    "t": "Os Segredos dos Casais Inteligentes",
+    "a": "Gustavo Cerbasi",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Como alinhar as finanças a dois, planejar a vida financeira da família e prosperar em casal.",
+    "g": [
+      "Finanças do casal",
+      "Planejamento financeiro",
+      "Relacionamentos"
+    ]
+  },
+  {
+    "t": "Princípios",
+    "a": "Ray Dalio",
+    "c": "Negócios & Gestão",
+    "y": "2017",
+    "b": true,
+    "s": "O fundador da Bridgewater compartilha os princípios de vida e de trabalho por trás de seu sucesso.",
+    "g": [
+      "Tomada de decisão",
+      "Cultura organizacional",
+      "Gestão"
+    ]
+  },
+  {
+    "t": "Princípios e Práticas de Revenue Management",
+    "a": "Ligia Centurión",
+    "c": "Negócios & Gestão",
+    "y": "—",
+    "n": "Ed. Senac",
+    "s": "Gerenciamento de demanda, receita e distribuição aplicado à hotelaria e a serviços.",
+    "g": [
+      "Revenue management",
+      "Precificação",
+      "Hotelaria"
+    ]
+  },
+  {
+    "t": "Scrum: A Arte de Fazer o Dobro do Trabalho na Metade do Tempo",
+    "a": "Jeff Sutherland e J.J. Sutherland",
+    "c": "Negócios & Gestão",
+    "y": "2014",
+    "b": true,
+    "s": "O cocriador do Scrum explica o framework ágil que multiplica a produtividade das equipes.",
+    "g": [
+      "Métodos ágeis",
+      "Scrum",
+      "Produtividade de equipes"
+    ]
+  },
+  {
+    "t": "Tração: Domine os 19 Canais que uma Startup Usa para Atingir seus Clientes",
+    "a": "Gabriel Weinberg e Justin Mares",
+    "c": "Negócios & Gestão",
+    "y": "2015",
+    "s": "Os 19 canais de aquisição de clientes e o método Bullseye para descobrir qual funciona para o seu negócio.",
+    "g": [
+      "Aquisição de clientes",
+      "Marketing de startups",
+      "Growth"
+    ]
+  },
+  {
+    "t": "Turismo em Cidades",
+    "a": "Hayllar, Edwards, Griffin e Aldrigui",
+    "c": "Negócios & Gestão",
+    "y": "2008",
+    "n": "Ed. Campus/Elsevier",
+    "s": "Estudo sobre planejamento e gestão de espaços e experiências turísticas em áreas urbanas.",
+    "g": [
+      "Turismo urbano",
+      "Planejamento de destinos"
+    ]
+  },
+  {
+    "t": "A Chave da Virada",
+    "a": "Marcello Niek e Bruno Raso",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2025",
+    "n": "Casa Publicadora Brasileira",
+    "s": "Guia prático de saúde emocional que une ciência e espiritualidade para enfrentar a ansiedade e as crises.",
+    "g": [
+      "Saúde emocional",
+      "Equilíbrio",
+      "Espiritualidade"
+    ]
+  },
+  {
+    "t": "A Dieta de South Beach Aditivada",
+    "a": "Arthur Agatston",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2008",
+    "s": "Versão turbinada da famosa dieta, com plano alimentar e exercícios para acelerar os resultados.",
+    "g": [
+      "Nutrição",
+      "Saúde e bem-estar"
+    ]
+  },
+  {
+    "t": "A Sutil Arte de Ligar o F*da-se",
+    "a": "Mark Manson",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2016",
+    "b": true,
+    "s": "Abordagem anticonvencional: viver melhor escolhendo com sabedoria aquilo com que realmente vale a pena se importar.",
+    "g": [
+      "Priorização",
+      "Resiliência",
+      "Autoconhecimento"
+    ]
+  },
+  {
+    "t": "As 100 Melhores Ideias para Ter o que Se Quer sem Pedir",
+    "a": "Richard Templar",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2011",
+    "s": "Táticas sutis de influência para conseguir o que se quer sem precisar pedir diretamente.",
+    "g": [
+      "Influência",
+      "Comunicação sutil"
+    ]
+  },
+  {
+    "t": "As 5 Linguagens do Amor",
+    "a": "Gary Chapman",
+    "c": "Filosofia & Pensamento",
+    "y": "1992",
+    "b": true,
+    "s": "Cada pessoa expressa e recebe amor de um jeito; descobrir a linguagem do outro transforma relacionamentos.",
+    "g": [
+      "Relacionamentos",
+      "Comunicação afetiva",
+      "Inteligência emocional"
+    ]
+  },
+  {
+    "t": "Enfodere-se!",
+    "a": "Caio Carneiro",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2017",
+    "b": true,
+    "s": "Provocações diretas de um empreendedor brasileiro para sair da inércia e agir.",
+    "g": [
+      "Atitude",
+      "Motivação",
+      "Empreendedorismo"
+    ]
+  },
+  {
+    "t": "Essencialismo",
+    "a": "Greg McKeown",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2014",
+    "b": true,
+    "s": "A busca disciplinada por menos: eliminar o trivial para investir energia apenas no que é essencial.",
+    "g": [
+      "Foco",
+      "Priorização",
+      "Gestão do tempo"
+    ]
+  },
+  {
+    "t": "Fator de Enriquecimento",
+    "a": "Paulo Vieira",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2017",
+    "b": true,
+    "s": "Método do coach brasileiro para destravar crenças limitantes e construir riqueza com mentalidade e ação.",
+    "g": [
+      "Educação financeira",
+      "Mentalidade de riqueza"
+    ]
+  },
+  {
+    "t": "Foco na Prática",
+    "a": "Paulo Vieira",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Exercícios e ferramentas para aplicar o foco e a alta performance no cotidiano.",
+    "g": [
+      "Foco",
+      "Alta performance",
+      "Hábitos"
+    ]
+  },
+  {
+    "t": "Hábitos Atômicos",
+    "a": "James Clear",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2018",
+    "b": true,
+    "s": "Pequenas melhorias de 1% compostas diariamente: um sistema completo para construir bons hábitos e abandonar os maus.",
+    "g": [
+      "Formação de hábitos",
+      "Melhoria contínua",
+      "Disciplina"
+    ]
+  },
+  {
+    "t": "Mais Esperto que o Diabo",
+    "a": "Napoleon Hill",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "1938",
+    "b": true,
+    "s": "Numa entrevista imaginária com o Diabo, Hill revela como o medo e a procrastinação aprisionam as pessoas.",
+    "g": [
+      "Superação do medo",
+      "Mentalidade",
+      "Autoconfiança"
+    ]
+  },
+  {
+    "t": "Metanoia",
+    "a": "JB Carvalho",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Convite à transformação profunda da mente para mudar os resultados da vida.",
+    "g": [
+      "Mudança de mentalidade",
+      "Desenvolvimento pessoal"
+    ]
+  },
+  {
+    "t": "Mindset: A Nova Psicologia do Sucesso",
+    "a": "Carol S. Dweck",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2006",
+    "b": true,
+    "s": "A psicóloga de Stanford mostra como a mentalidade de crescimento supera a mentalidade fixa.",
+    "g": [
+      "Mentalidade de crescimento",
+      "Psicologia",
+      "Aprendizagem"
+    ]
+  },
+  {
+    "t": "O Milagre da Manhã",
+    "a": "Hal Elrod",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2012",
+    "b": true,
+    "s": "Uma rotina matinal de silêncio, afirmações, exercício, leitura e escrita para transformar a vida antes das 8h.",
+    "g": [
+      "Rotina matinal",
+      "Hábitos",
+      "Produtividade pessoal"
+    ]
+  },
+  {
+    "t": "O Planner do Essencialismo",
+    "a": "Greg McKeown",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Planner de 90 dias para aplicar o essencialismo: realizar mais fazendo menos.",
+    "g": [
+      "Planejamento pessoal",
+      "Foco",
+      "Gestão do tempo"
+    ]
+  },
+  {
+    "t": "O Poder da Ação",
+    "a": "Paulo Vieira",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2015",
+    "b": true,
+    "s": "Best-seller brasileiro sobre sair do discurso, assumir responsabilidade e agir para mudar de vida.",
+    "g": [
+      "Ação",
+      "Responsabilidade pessoal",
+      "Motivação"
+    ]
+  },
+  {
+    "t": "O Poder da Presença",
+    "a": "Amy Cuddy",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2015",
+    "b": true,
+    "s": "A psicóloga de Harvard mostra como a linguagem corporal molda a autoconfiança — e como estar presente nos momentos decisivos.",
+    "g": [
+      "Linguagem corporal",
+      "Autoconfiança",
+      "Comunicação"
+    ]
+  },
+  {
+    "t": "O Poder do Hábito",
+    "a": "Charles Duhigg",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2012",
+    "b": true,
+    "s": "O ciclo deixa-rotina-recompensa e como usá-lo para mudar hábitos pessoais, corporativos e sociais.",
+    "g": [
+      "Hábitos",
+      "Psicologia comportamental",
+      "Mudança pessoal"
+    ]
+  },
+  {
+    "t": "Os 7 Hábitos das Pessoas Altamente Eficazes",
+    "a": "Stephen R. Covey",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "1989",
+    "b": true,
+    "s": "Da vitória privada à vitória pública: os sete hábitos clássicos da eficácia pessoal e interpessoal.",
+    "g": [
+      "Eficácia pessoal",
+      "Liderança pessoal",
+      "Proatividade"
+    ]
+  },
+  {
+    "t": "Os 7 Hábitos das Pessoas Altamente Eficazes — Diário",
+    "a": "Sean Covey",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Diário guiado para praticar os sete hábitos no dia a dia.",
+    "g": [
+      "Prática diária",
+      "Eficácia pessoal"
+    ]
+  },
+  {
+    "t": "Para Além das Telas Digitais",
+    "a": "Lucia Moysés",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Reflexão sobre os impactos da hiperconexão e caminhos para uma relação saudável com a tecnologia.",
+    "g": [
+      "Uso consciente da tecnologia",
+      "Bem-estar digital"
+    ]
+  },
+  {
+    "t": "Passado Resolvido, Futuro Decidido",
+    "a": "Márcio Micheli",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "—",
+    "s": "Proposta de fazer as pazes com o passado para construir deliberadamente o futuro.",
+    "g": [
+      "Autoconhecimento",
+      "Planejamento de vida"
+    ]
+  },
+  {
+    "t": "Pense e Enriqueça",
+    "a": "Napoleon Hill",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "1937",
+    "b": true,
+    "s": "O estudo clássico sobre os princípios mentais comuns aos grandes realizadores, base de toda a literatura de sucesso.",
+    "g": [
+      "Mentalidade de sucesso",
+      "Definição de objetivos",
+      "Persistência"
+    ]
+  },
+  {
+    "t": "Poder e Alta Performance",
+    "a": "Paulo Vieira",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2018",
+    "s": "Ferramentas de coaching para elevar performance, liderança e resultados.",
+    "g": [
+      "Alta performance",
+      "Coaching",
+      "Liderança"
+    ]
+  },
+  {
+    "t": "Rápido e Devagar: Duas Formas de Pensar",
+    "a": "Daniel Kahneman",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2011",
+    "b": true,
+    "s": "O Nobel de Economia expõe os dois sistemas do pensamento e os vieses que distorcem nossas decisões.",
+    "g": [
+      "Vieses cognitivos",
+      "Tomada de decisão",
+      "Psicologia"
+    ]
+  },
+  {
+    "t": "Suba a Escada: 7 Passos para Alcançar o Verdadeiro Sucesso",
+    "a": "Rory Vaden",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2012",
+    "s": "Autodisciplina como atalho: fazer primeiro o difícil para alcançar um sucesso duradouro.",
+    "g": [
+      "Autodisciplina",
+      "Persistência"
+    ]
+  },
+  {
+    "t": "Trabalhe 4 Horas por Semana",
+    "a": "Timothy Ferriss",
+    "c": "Produtividade & Desenvolvimento Pessoal",
+    "y": "2007",
+    "b": true,
+    "s": "Design de estilo de vida: automação, terceirização e miniférias para escapar do expediente 9h-18h.",
+    "g": [
+      "Produtividade",
+      "Automação",
+      "Estilo de vida"
+    ]
+  },
+  {
+    "t": "A Cor dos Dados",
+    "a": "Kate Strachnyi",
+    "c": "Dados, Design & Escrita",
+    "y": "2023",
+    "n": "Ed. Novatec",
+    "s": "Como usar cores com intenção em visualizações de dados para comunicar com clareza e acessibilidade.",
+    "g": [
+      "Visualização de dados",
+      "Teoria das cores",
+      "Comunicação visual"
+    ]
+  },
+  {
+    "t": "Como Escrever Séries",
+    "a": "Sonia Rodrigues",
+    "c": "Dados, Design & Escrita",
+    "y": "2014",
+    "s": "Técnicas de criação de narrativas seriadas: personagens, arcos e estrutura de temporadas.",
+    "g": [
+      "Escrita criativa",
+      "Roteiro",
+      "Narrativa seriada"
+    ]
+  },
+  {
+    "t": "DataStory",
+    "a": "Nancy Duarte",
+    "c": "Dados, Design & Escrita",
+    "y": "2019",
+    "s": "Como transformar dados em narrativas que influenciam decisões executivas.",
+    "g": [
+      "Storytelling com dados",
+      "Comunicação executiva",
+      "Apresentações"
+    ]
+  },
+  {
+    "t": "Design Centrado no Usuário",
+    "a": "Travis Lowdermilk",
+    "c": "Dados, Design & Escrita",
+    "y": "2013",
+    "s": "Guia introdutório para criar aplicações úteis ouvindo e observando usuários reais.",
+    "g": [
+      "UX",
+      "Pesquisa com usuários",
+      "Design de produto"
+    ]
+  },
+  {
+    "t": "Design Thinking",
+    "a": "Tim Brown",
+    "c": "Dados, Design & Escrita",
+    "y": "2009",
+    "s": "O CEO da IDEO apresenta o pensamento de design como motor de inovação nos negócios.",
+    "g": [
+      "Design thinking",
+      "Inovação",
+      "Resolução de problemas"
+    ]
+  },
+  {
+    "t": "Estatística: O que É, para que Serve, como Funciona",
+    "a": "Charles Wheelan",
+    "c": "Dados, Design & Escrita",
+    "y": "2013",
+    "s": "Estatística sem sofrimento: os conceitos essenciais explicados com humor e exemplos do mundo real.",
+    "g": [
+      "Estatística",
+      "Pensamento analítico"
+    ]
+  },
+  {
+    "t": "Manual de Análise de Dados (2ª ed.)",
+    "a": "Luiz Paulo Fávero e Patrícia Belfiore",
+    "c": "Dados, Design & Escrita",
+    "y": "2017",
+    "s": "Referência acadêmica completa de estatística e modelagem multivariada, com aplicações em softwares.",
+    "g": [
+      "Estatística aplicada",
+      "Modelagem multivariada",
+      "Análise de dados"
+    ]
+  },
+  {
+    "t": "Storytelling com Dados",
+    "a": "Cole Nussbaumer Knaflic",
+    "c": "Dados, Design & Escrita",
+    "y": "2015",
+    "b": true,
+    "s": "O guia essencial para transformar gráficos em histórias claras e persuasivas.",
+    "g": [
+      "Visualização de dados",
+      "Storytelling",
+      "Comunicação"
+    ]
+  },
+  {
+    "t": "Storytelling com Dados: Vamos Praticar!",
+    "a": "Cole Nussbaumer Knaflic",
+    "c": "Dados, Design & Escrita",
+    "y": "2019",
+    "s": "Exercícios e soluções comentadas para dominar a comunicação visual de dados na prática.",
+    "g": [
+      "Visualização de dados",
+      "Prática de dataviz"
+    ]
+  },
+  {
+    "t": "38 Estratégias para Vencer Qualquer Debate",
+    "a": "Arthur Schopenhauer",
+    "c": "Filosofia & Pensamento",
+    "y": "c. 1831",
+    "s": "A dialética erística de Schopenhauer: os estratagemas retóricos usados para vencer discussões, expostos com ironia.",
+    "g": [
+      "Retórica",
+      "Argumentação",
+      "Pensamento crítico"
+    ]
+  },
+  {
+    "t": "A Arte da Guerra",
+    "a": "Sun Tzu",
+    "c": "Filosofia & Pensamento",
+    "y": "séc. V a.C.",
+    "b": true,
+    "n": "2 exemplares (um com adapt. de James Clavell)",
+    "s": "O tratado militar chinês cujos princípios de estratégia se aplicam a negócios, política e vida.",
+    "g": [
+      "Estratégia",
+      "Liderança",
+      "Tática"
+    ]
+  },
+  {
+    "t": "A Sabedoria da Natureza",
+    "a": "Roberto Otsu",
+    "c": "Filosofia & Pensamento",
+    "y": "—",
+    "s": "O taoismo e a filosofia oriental como caminho para viver em harmonia com o fluxo da vida.",
+    "g": [
+      "Taoismo",
+      "Filosofia oriental",
+      "Equilíbrio"
+    ]
+  },
+  {
+    "t": "A Teoria das Ideias",
+    "a": "Platão",
+    "c": "Filosofia & Pensamento",
+    "y": "séc. IV a.C.",
+    "s": "Textos sobre a doutrina platônica das Ideias: o mundo inteligível além das aparências sensíveis.",
+    "g": [
+      "Filosofia clássica",
+      "Metafísica"
+    ]
+  },
+  {
+    "t": "Apologia de Sócrates",
+    "a": "Platão",
+    "c": "Filosofia & Pensamento",
+    "y": "c. 395 a.C.",
+    "s": "O discurso de defesa de Sócrates em seu julgamento em Atenas, registrado por Platão.",
+    "g": [
+      "Filosofia clássica",
+      "Ética",
+      "Retórica"
+    ]
+  },
+  {
+    "t": "Cartas de um Estoico — Vol. I",
+    "a": "Sêneca",
+    "c": "Filosofia & Pensamento",
+    "y": "c. 65 d.C.",
+    "s": "As cartas a Lucílio: lições estoicas sobre o tempo, a morte, a riqueza e a serenidade.",
+    "g": [
+      "Estoicismo",
+      "Serenidade",
+      "Filosofia prática"
+    ]
+  },
+  {
+    "t": "Leviatã",
+    "a": "Thomas Hobbes",
+    "c": "Filosofia & Pensamento",
+    "y": "1651",
+    "s": "Obra fundadora da filosofia política moderna: o contrato social e a necessidade do Estado soberano.",
+    "g": [
+      "Filosofia política",
+      "Teoria do Estado"
+    ]
+  },
+  {
+    "t": "Meditações: Lições para a Vida Moderna",
+    "a": "Marco Aurélio",
+    "c": "Filosofia & Pensamento",
+    "y": "c. 170 d.C.",
+    "s": "As anotações privadas do imperador-filósofo romano, pilar do estoicismo prático.",
+    "g": [
+      "Estoicismo",
+      "Autodomínio",
+      "Filosofia prática"
+    ]
+  },
+  {
+    "t": "O Caminho da Paz",
+    "a": "Mahatma Gandhi",
+    "c": "Filosofia & Pensamento",
+    "y": "—",
+    "s": "Pensamentos de Gandhi sobre não violência, verdade e paz interior.",
+    "g": [
+      "Não violência",
+      "Paz interior",
+      "Ética"
+    ]
+  },
+  {
+    "t": "O Livro Vermelho dos Pensamentos de Millôr",
+    "a": "Millôr Fernandes",
+    "c": "Literatura & Clássicos",
+    "y": "1973",
+    "s": "Aforismos afiados do genial humorista brasileiro, numa paródia ao livro vermelho de Mao.",
+    "g": [
+      "Humor brasileiro",
+      "Aforismos",
+      "Sátira"
+    ]
+  },
+  {
+    "t": "O Príncipe",
+    "a": "Nicolau Maquiavel",
+    "c": "Filosofia & Pensamento",
+    "y": "1513",
+    "s": "O manual clássico — e polêmico — sobre conquistar e manter o poder.",
+    "g": [
+      "Poder e política",
+      "Estratégia",
+      "Realismo político"
+    ]
+  },
+  {
+    "t": "Poética e Tópicos I, II, III e IV",
+    "a": "Aristóteles",
+    "c": "Filosofia & Pensamento",
+    "y": "séc. IV a.C.",
+    "s": "A teoria aristotélica da tragédia e os fundamentos da argumentação dialética.",
+    "g": [
+      "Teoria literária",
+      "Lógica",
+      "Argumentação"
+    ]
+  },
+  {
+    "t": "Qual É a Tua Obra?",
+    "a": "Mario Sergio Cortella",
+    "c": "Filosofia & Pensamento",
+    "y": "2007",
+    "s": "Provocações do filósofo brasileiro sobre gestão, liderança e o sentido do trabalho.",
+    "g": [
+      "Propósito",
+      "Ética no trabalho",
+      "Liderança"
+    ]
+  },
+  {
+    "t": "24 Horas no Antigo Egito",
+    "a": "Donald P. Ryan",
+    "c": "História, Biografia & Ciência",
+    "y": "2018",
+    "s": "Um dia no Egito faraônico narrado pela vida de 24 personagens comuns, do padeiro à princesa.",
+    "g": [
+      "Egito Antigo",
+      "História antiga"
+    ]
+  },
+  {
+    "t": "As Bruxas da Noite",
+    "a": "Ritanna Armeni",
+    "c": "História, Biografia & Ciência",
+    "y": "2018",
+    "s": "A história do regimento soviético de aviadoras que aterrorizou os nazistas na Segunda Guerra.",
+    "g": [
+      "Segunda Guerra Mundial",
+      "História das mulheres",
+      "Aviação"
+    ]
+  },
+  {
+    "t": "Cosmos",
+    "a": "Carl Sagan",
+    "c": "História, Biografia & Ciência",
+    "y": "1980",
+    "b": true,
+    "s": "A jornada clássica pela ciência, pela evolução e pelo universo que inspirou gerações.",
+    "g": [
+      "Astronomia",
+      "Ciência",
+      "Pensamento científico"
+    ]
+  },
+  {
+    "t": "Eram os Deuses Astronautas?",
+    "a": "Erich von Däniken",
+    "c": "História, Biografia & Ciência",
+    "y": "1968",
+    "b": true,
+    "s": "O polêmico best-seller que sugere a presença de visitantes extraterrestres nas civilizações antigas.",
+    "g": [
+      "Mistérios antigos",
+      "Arqueologia alternativa"
+    ]
+  },
+  {
+    "t": "Eu Sobrevivi ao Holocausto",
+    "a": "Nanette Blitz Konig",
+    "c": "História, Biografia & Ciência",
+    "y": "2015",
+    "s": "As memórias de uma das últimas amigas vivas de Anne Frank, sobrevivente de Bergen-Belsen radicada no Brasil.",
+    "g": [
+      "Holocausto",
+      "Memória histórica",
+      "Resiliência"
+    ]
+  },
+  {
+    "t": "Guerra Santa",
+    "a": "Nigel Cliff",
+    "c": "História, Biografia & Ciência",
+    "y": "2011",
+    "s": "As viagens de Vasco da Gama e o choque entre cristandade e islã na era das navegações.",
+    "g": [
+      "Grandes navegações",
+      "História de Portugal",
+      "Religião e poder"
+    ]
+  },
+  {
+    "t": "História do Cristianismo",
+    "a": "Alain Corbin (org.)",
+    "c": "História, Biografia & Ciência",
+    "y": "2007",
+    "s": "Panorama da trajetória do cristianismo, das origens ao mundo contemporâneo, por grandes historiadores.",
+    "g": [
+      "História das religiões",
+      "Cristianismo"
+    ]
+  },
+  {
+    "t": "Irmãs em Auschwitz",
+    "a": "Rena Kornreich Gelissen e Heather Dune Macadam",
+    "c": "História, Biografia & Ciência",
+    "y": "1995",
+    "s": "Rena e a irmã Danka sobrevivem juntas a mais de três anos em Auschwitz; ela veio no primeiro transporte feminino.",
+    "g": [
+      "Holocausto",
+      "Memória histórica",
+      "Sobrevivência"
+    ]
+  },
+  {
+    "t": "Mil Milhas",
+    "a": "Tamara Klink",
+    "c": "História, Biografia & Ciência",
+    "y": "2023",
+    "s": "O relato da jovem velejadora brasileira sobre navegar sozinha mil milhas em mares gelados.",
+    "g": [
+      "Vela oceânica",
+      "Aventura",
+      "Superação"
+    ]
+  },
+  {
+    "t": "Minha Luta (Mein Kampf)",
+    "a": "Adolf Hitler",
+    "c": "História, Biografia & Ciência",
+    "y": "1925",
+    "n": "edição histórica/crítica",
+    "s": "O manifesto autobiográfico de Hitler; documento histórico essencial para compreender criticamente o nazismo.",
+    "g": [
+      "História do nazismo",
+      "Pensamento crítico",
+      "Século XX"
+    ]
+  },
+  {
+    "t": "O Diário de Anne Frank",
+    "a": "Anne Frank",
+    "c": "História, Biografia & Ciência",
+    "y": "1947",
+    "b": true,
+    "n": "Ed. Record, capa de tecido",
+    "s": "O diário da adolescente judia escondida em Amsterdã, símbolo mundial das vítimas do Holocausto.",
+    "g": [
+      "Holocausto",
+      "História do século XX",
+      "Empatia"
+    ]
+  },
+  {
+    "t": "O Piloto de Hitler",
+    "a": "C. G. Sweeting",
+    "c": "História, Biografia & Ciência",
+    "y": "2000",
+    "s": "A vida de Hans Baur, piloto pessoal de Hitler, e os bastidores do círculo íntimo nazista.",
+    "g": [
+      "Segunda Guerra Mundial",
+      "História do nazismo"
+    ]
+  },
+  {
+    "t": "Sapiens: Uma Breve História da Humanidade",
+    "a": "Yuval Noah Harari",
+    "c": "História, Biografia & Ciência",
+    "y": "2011",
+    "b": true,
+    "s": "Da savana ao smartphone: a história provocadora de como o Homo sapiens dominou o planeta.",
+    "g": [
+      "História da humanidade",
+      "Antropologia",
+      "Visão sistêmica"
+    ]
+  },
+  {
+    "t": "U2: A Biografia",
+    "a": "Vários autores; prefácio de Andreas Kisser",
+    "c": "História, Biografia & Ciência",
+    "y": "—",
+    "n": "Universo dos Livros",
+    "s": "A trajetória da banda irlandesa, do punk de Dublin aos maiores palcos do mundo.",
+    "g": [
+      "Música",
+      "Biografia",
+      "Cultura pop"
+    ]
+  },
+  {
+    "t": "Uma Breve História do Tempo",
+    "a": "Stephen Hawking",
+    "c": "História, Biografia & Ciência",
+    "y": "1988",
+    "b": true,
+    "s": "Do Big Bang aos buracos negros: a cosmologia explicada ao leitor comum pelo grande físico.",
+    "g": [
+      "Física",
+      "Cosmologia",
+      "Ciência"
+    ]
+  },
+  {
+    "t": "1984",
+    "a": "George Orwell",
+    "c": "Literatura & Clássicos",
+    "y": "1949",
+    "b": true,
+    "n": "Ed. Lafonte",
+    "s": "A distopia definitiva sobre vigilância, totalitarismo e a reescrita da verdade pelo Grande Irmão.",
+    "g": [
+      "Pensamento crítico",
+      "Distopia",
+      "Política e sociedade"
+    ]
+  },
+  {
+    "t": "A Divina Comédia — Inferno",
+    "a": "Dante Alighieri",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1320",
+    "s": "Dante desce aos nove círculos do Inferno guiado pelo poeta Virgílio.",
+    "g": [
+      "Literatura medieval",
+      "Poesia épica",
+      "Teologia"
+    ]
+  },
+  {
+    "t": "A Divina Comédia — Paraíso",
+    "a": "Dante Alighieri",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1320",
+    "s": "A ascensão de Dante pelas esferas celestes até a visão de Deus.",
+    "g": [
+      "Literatura medieval",
+      "Poesia épica",
+      "Teologia"
+    ]
+  },
+  {
+    "t": "A Divina Comédia — Purgatório",
+    "a": "Dante Alighieri",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1320",
+    "s": "A subida da montanha do Purgatório rumo à purificação e ao reencontro com Beatriz.",
+    "g": [
+      "Literatura medieval",
+      "Poesia épica",
+      "Teologia"
+    ]
+  },
+  {
+    "t": "A Morte de Vivek Oji",
+    "a": "Akwaeke Emezi",
+    "c": "Literatura & Clássicos",
+    "y": "2020",
+    "s": "Romance comovente sobre identidade, família e liberdade na Nigéria contemporânea.",
+    "g": [
+      "Identidade",
+      "Literatura africana",
+      "Diversidade"
+    ]
+  },
+  {
+    "t": "A Revolução dos Bichos",
+    "a": "George Orwell",
+    "c": "Literatura & Clássicos",
+    "y": "1945",
+    "b": true,
+    "s": "A fábula satírica em que os animais tomam a fazenda — e a revolução trai a si mesma.",
+    "g": [
+      "Sátira política",
+      "Pensamento crítico"
+    ]
+  },
+  {
+    "t": "A Volta ao Mundo em Oitenta Dias",
+    "a": "Júlio Verne",
+    "c": "Literatura & Clássicos",
+    "y": "1872",
+    "n": "Edição Hetzel, capa dura",
+    "s": "Phileas Fogg aposta sua fortuna que consegue circundar o globo em oitenta dias.",
+    "g": [
+      "Aventura",
+      "Literatura clássica"
+    ]
+  },
+  {
+    "t": "Alice no País das Maravilhas",
+    "a": "Lewis Carroll",
+    "c": "Literatura & Clássicos",
+    "y": "1865",
+    "s": "O clássico nonsense: Alice cai na toca do coelho e encontra um mundo absurdo e genial.",
+    "g": [
+      "Imaginação",
+      "Literatura fantástica",
+      "Nonsense"
+    ]
+  },
+  {
+    "t": "Assassinatos na Rua Morgue",
+    "a": "Edgar Allan Poe",
+    "c": "Literatura & Clássicos",
+    "y": "1841",
+    "n": "L&PM Pocket",
+    "s": "O conto que inaugurou o gênero policial, com o detetive Auguste Dupin.",
+    "g": [
+      "Gênero policial",
+      "Dedução lógica"
+    ]
+  },
+  {
+    "t": "Contos Mal Adormecidos",
+    "a": "Juan Andueza",
+    "c": "Literatura & Clássicos",
+    "y": "—",
+    "s": "Contos breves que transitam entre o cotidiano e o insólito.",
+    "g": [
+      "Contos",
+      "Literatura contemporânea"
+    ]
+  },
+  {
+    "t": "Dom Casmurro",
+    "a": "Machado de Assis",
+    "c": "Literatura & Clássicos",
+    "y": "1899",
+    "s": "Bentinho, Capitu e a dúvida mais famosa da literatura brasileira.",
+    "g": [
+      "Literatura brasileira",
+      "Realismo",
+      "Narrador não confiável"
+    ]
+  },
+  {
+    "t": "Dom Quixote",
+    "a": "Miguel de Cervantes",
+    "c": "Literatura & Clássicos",
+    "y": "1605",
+    "s": "O fidalgo que enlouquece de tanto ler romances de cavalaria e sai pelo mundo com Sancho Pança.",
+    "g": [
+      "Literatura clássica",
+      "Sátira",
+      "Idealismo"
+    ]
+  },
+  {
+    "t": "Fahrenheit 451",
+    "a": "Ray Bradbury",
+    "c": "Literatura & Clássicos",
+    "y": "1953",
+    "s": "Numa sociedade que queima livros, o bombeiro Montag desperta para o pensamento livre.",
+    "g": [
+      "Distopia",
+      "Liberdade de pensamento",
+      "Censura"
+    ]
+  },
+  {
+    "t": "Fernão Capelo Gaivota",
+    "a": "Richard Bach",
+    "c": "Literatura & Clássicos",
+    "y": "1970",
+    "b": true,
+    "s": "A gaivota que voa por prazer, não por sobrevivência: fábula sobre liberdade e superação.",
+    "g": [
+      "Superação",
+      "Propósito",
+      "Fábula"
+    ]
+  },
+  {
+    "t": "Frankenstein",
+    "a": "Mary Shelley",
+    "c": "Literatura & Clássicos",
+    "y": "1818",
+    "s": "Mary Shelley funda a ficção científica com a história do cientista e de sua criatura rejeitada.",
+    "g": [
+      "Ficção científica",
+      "Ética na ciência",
+      "Romantismo gótico"
+    ]
+  },
+  {
+    "t": "Hamlet",
+    "a": "William Shakespeare",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1601",
+    "n": "Ed. Martin Claret",
+    "s": "Ser ou não ser: a tragédia da vingança do príncipe da Dinamarca.",
+    "g": [
+      "Teatro clássico",
+      "Dilemas morais",
+      "Literatura inglesa"
+    ]
+  },
+  {
+    "t": "Ilíada: A Guerra de Troia",
+    "a": "Menelaos Stephanides",
+    "c": "Literatura & Clássicos",
+    "y": "—",
+    "s": "Recontagem acessível da guerra de Troia baseada no poema de Homero.",
+    "g": [
+      "Mitologia grega",
+      "Épico"
+    ]
+  },
+  {
+    "t": "Incidente em Antares",
+    "a": "Erico Verissimo",
+    "c": "Literatura & Clássicos",
+    "y": "1971",
+    "s": "Sete mortos insepultos se levantam para expor a hipocrisia de uma cidade gaúcha.",
+    "g": [
+      "Literatura brasileira",
+      "Crítica social",
+      "Realismo fantástico"
+    ]
+  },
+  {
+    "t": "Lucíola",
+    "a": "José de Alencar",
+    "c": "Literatura & Clássicos",
+    "y": "1862",
+    "s": "Romance urbano de Alencar sobre o amor impossível da cortesã Lúcia.",
+    "g": [
+      "Literatura brasileira",
+      "Romantismo"
+    ]
+  },
+  {
+    "t": "Memórias Póstumas de Brás Cubas",
+    "a": "Machado de Assis",
+    "c": "Literatura & Clássicos",
+    "y": "1881",
+    "n": "Coleção Estadão",
+    "s": "O defunto-autor mais irônico da literatura nacional narra a própria vida sem complacência.",
+    "g": [
+      "Literatura brasileira",
+      "Ironia",
+      "Realismo"
+    ]
+  },
+  {
+    "t": "Moby Dick",
+    "a": "Herman Melville",
+    "c": "Literatura & Clássicos",
+    "y": "1851",
+    "n": "Série Ouro",
+    "s": "A obsessão do capitão Ahab pela baleia branca, epopeia do mar e da alma humana.",
+    "g": [
+      "Literatura clássica",
+      "Obsessão",
+      "Aventura marítima"
+    ]
+  },
+  {
+    "t": "Mogli, o Menino Lobo",
+    "a": "Rudyard Kipling",
+    "c": "Literatura & Clássicos",
+    "y": "1894",
+    "s": "O menino criado por lobos na selva indiana, das páginas de O Livro da Selva.",
+    "g": [
+      "Fábula",
+      "Aventura",
+      "Literatura infantojuvenil"
+    ]
+  },
+  {
+    "t": "O Assassinato e Outras Histórias",
+    "a": "Anton Tchekhov",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1890",
+    "n": "Cosac Naify",
+    "s": "Contos do mestre russo da forma breve, entre o humor e a melancolia.",
+    "g": [
+      "Contos russos",
+      "Natureza humana"
+    ]
+  },
+  {
+    "t": "O Banquete",
+    "a": "Dante Alighieri",
+    "c": "Literatura & Clássicos",
+    "y": "c. 1307",
+    "n": "Ed. Lafonte",
+    "s": "O Convívio: tratado filosófico de Dante em louvor do conhecimento.",
+    "g": [
+      "Filosofia medieval",
+      "Literatura italiana"
+    ]
+  },
+  {
+    "t": "O Chamado de Cthulhu e Outros Contos",
+    "a": "H.P. Lovecraft",
+    "c": "Literatura & Clássicos",
+    "y": "1928",
+    "s": "O horror cósmico fundador do mito de Cthulhu e de todo um gênero.",
+    "g": [
+      "Horror cósmico",
+      "Literatura fantástica"
+    ]
+  },
+  {
+    "t": "O Gato Preto e Outras Histórias Extraordinárias",
+    "a": "Edgar Allan Poe",
+    "c": "Literatura & Clássicos",
+    "y": "1843",
+    "n": "Ed. Pandorga",
+    "s": "Contos macabros de culpa, loucura e morte do mestre do terror gótico.",
+    "g": [
+      "Terror gótico",
+      "Contos",
+      "Psicologia do medo"
+    ]
+  },
+  {
+    "t": "O Jardim de Bronze",
+    "a": "Gustavo Malajovich",
+    "c": "Literatura & Clássicos",
+    "y": "2012",
+    "n": "Ed. TAG",
+    "s": "O desaparecimento de uma menina em Buenos Aires vira a obsessão de uma vida.",
+    "g": [
+      "Suspense",
+      "Literatura argentina"
+    ]
+  },
+  {
+    "t": "O Mapa de Sal e Estrelas",
+    "a": "Zeyn Joukhadar",
+    "c": "Literatura & Clássicos",
+    "y": "2018",
+    "n": "Ed. TAG",
+    "s": "Duas jornadas paralelas: uma menina refugiada da Síria atual e uma aprendiz de cartógrafo no século XII.",
+    "g": [
+      "Refugiados",
+      "Empatia",
+      "Narrativa dupla"
+    ]
+  },
+  {
+    "t": "O Médico e o Monstro",
+    "a": "Robert Louis Stevenson",
+    "c": "Literatura & Clássicos",
+    "y": "1886",
+    "s": "Dr. Jekyll, Mr. Hyde e a eterna dualidade entre o bem e o mal na alma humana.",
+    "g": [
+      "Dualidade humana",
+      "Literatura vitoriana"
+    ]
+  },
+  {
+    "t": "O Pequeno Príncipe",
+    "a": "Antoine de Saint-Exupéry",
+    "c": "Literatura & Clássicos",
+    "y": "1943",
+    "b": true,
+    "n": "2 exemplares",
+    "s": "O essencial é invisível aos olhos: a fábula mais traduzida da literatura mundial.",
+    "g": [
+      "Sensibilidade",
+      "Valores humanos",
+      "Fábula"
+    ]
+  },
+  {
+    "t": "O Sol Mais Brilhante",
+    "a": "Adrienne Benson",
+    "c": "Literatura & Clássicos",
+    "y": "2018",
+    "s": "Três mulheres e uma infância entre os Estados Unidos e o Quênia, em busca de pertencimento.",
+    "g": [
+      "Maternidade",
+      "Choque cultural",
+      "África"
+    ]
+  },
+  {
+    "t": "Obras de Edgar Allan Poe (box: O Escaravelho de Ouro / O Corvo / O Gato Preto)",
+    "a": "Edgar Allan Poe",
+    "c": "Literatura & Clássicos",
+    "y": "séc. XIX",
+    "n": "Ed. Pandorga",
+    "s": "Box em três volumes reunindo os contos e poemas mais célebres de Poe.",
+    "g": [
+      "Terror gótico",
+      "Contos clássicos"
+    ]
+  },
+  {
+    "t": "Odisseia",
+    "a": "Homero",
+    "c": "Literatura & Clássicos",
+    "y": "séc. VIII a.C.",
+    "n": "Ed. Principis",
+    "s": "O longo retorno de Ulisses a Ítaca após a guerra de Troia, entre monstros e deuses.",
+    "g": [
+      "Mitologia grega",
+      "Épico",
+      "Jornada do herói"
+    ]
+  },
+  {
+    "t": "Odisseia (adaptação)",
+    "a": "Homero — adapt. Paulo Sérgio de Vasconcellos",
+    "c": "Literatura & Clássicos",
+    "y": "séc. VIII a.C.",
+    "n": "Ed. Sol/Objetivo",
+    "s": "Adaptação em prosa da epopeia de Homero para novos leitores.",
+    "g": [
+      "Mitologia grega",
+      "Épico",
+      "Jornada do herói"
+    ]
+  },
+  {
+    "t": "Os Contos de Beedle, o Bardo",
+    "a": "J.K. Rowling",
+    "c": "Literatura & Clássicos",
+    "y": "2008",
+    "b": true,
+    "s": "Os contos de fadas do mundo bruxo de Harry Potter, incluindo o Conto dos Três Irmãos.",
+    "g": [
+      "Fantasia",
+      "Contos de fadas"
+    ]
+  },
+  {
+    "t": "Os Irmãos Karamázov — Vol. 1",
+    "a": "Fiódor Dostoiévski",
+    "c": "Literatura & Clássicos",
+    "y": "1880",
+    "s": "Fé, razão e parricídio: o romance máximo de Dostoiévski (volume 1).",
+    "g": [
+      "Literatura russa",
+      "Fé e razão",
+      "Filosofia moral"
+    ]
+  },
+  {
+    "t": "Os Irmãos Karamázov — Vol. 2",
+    "a": "Fiódor Dostoiévski",
+    "c": "Literatura & Clássicos",
+    "y": "1880",
+    "s": "A conclusão: o julgamento de Dmitri e o destino dos irmãos (volume 2).",
+    "g": [
+      "Literatura russa",
+      "Fé e razão",
+      "Filosofia moral"
+    ]
+  },
+  {
+    "t": "Paixão Índia",
+    "a": "Javier Moro",
+    "c": "Literatura & Clássicos",
+    "y": "2005",
+    "s": "A história real de Anita Delgado, a espanhola que se tornou princesa de Kapurthala.",
+    "g": [
+      "Romance histórico",
+      "Índia",
+      "Biografia romanceada"
+    ]
+  },
+  {
+    "t": "Poemas para Ler na Escola",
+    "a": "João Cabral de Melo Neto",
+    "c": "Literatura & Clássicos",
+    "y": "2010",
+    "s": "Antologia acessível do poeta-engenheiro da palavra, de Morte e Vida Severina ao futebol.",
+    "g": [
+      "Poesia brasileira",
+      "Repertório literário"
+    ]
+  },
+  {
+    "t": "Poesias",
+    "a": "Oswaldo Castellari",
+    "c": "Literatura & Clássicos",
+    "y": "—",
+    "s": "Coletânea de poemas do autor.",
+    "g": [
+      "Poesia",
+      "Sensibilidade"
+    ]
+  },
+  {
+    "t": "Querido Edward",
+    "a": "Ann Napolitano",
+    "c": "Literatura & Clássicos",
+    "y": "2020",
+    "b": true,
+    "n": "Ed. TAG",
+    "s": "O único sobrevivente de um desastre aéreo, um menino de 12 anos, aprende a reconstruir a vida.",
+    "g": [
+      "Luto e superação",
+      "Resiliência",
+      "Drama"
+    ]
+  },
+  {
+    "t": "Vinte Mil Léguas Submarinas",
+    "a": "Júlio Verne",
+    "c": "Literatura & Clássicos",
+    "y": "1870",
+    "s": "O enigmático capitão Nemo e o submarino Náutilus nas profundezas dos oceanos.",
+    "g": [
+      "Aventura",
+      "Ficção científica clássica"
+    ]
+  },
+  {
+    "t": "Zanoni: Romance Ocultista",
+    "a": "Edward Bulwer-Lytton",
+    "c": "Literatura & Clássicos",
+    "y": "1842",
+    "s": "Romance rosacruz sobre imortalidade, sabedoria oculta e o preço do amor.",
+    "g": [
+      "Ocultismo",
+      "Romance gótico"
+    ]
+  },
+  {
+    "t": "A Mandíbula de Caim",
+    "a": "Torquemada (Edward Powys Mathers)",
+    "c": "Suspense & Thriller",
+    "y": "1934",
+    "n": "quebra-cabeça literário",
+    "s": "Cem páginas impressas fora de ordem escondem seis assassinatos: o quebra-cabeça literário mais difícil do mundo.",
+    "g": [
+      "Raciocínio lógico",
+      "Enigmas",
+      "Leitura ativa"
+    ]
+  },
+  {
+    "t": "A Vida Secreta dos Escritores",
+    "a": "Guillaume Musso",
+    "c": "Suspense & Thriller",
+    "y": "2019",
+    "b": true,
+    "n": "Ed. TAG",
+    "s": "Um escritor recluso numa ilha do Mediterrâneo e um crime que faz o passado emergir.",
+    "g": [
+      "Suspense psicológico",
+      "Metaliteratura"
+    ]
+  },
+  {
+    "t": "Anjos e Demônios",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2000",
+    "b": true,
+    "s": "Robert Langdon corre contra o tempo para deter os Illuminati no coração do Vaticano.",
+    "g": [
+      "Suspense",
+      "Simbologia",
+      "Ciência vs religião"
+    ]
+  },
+  {
+    "t": "Benefício na Morte",
+    "a": "Robin Cook",
+    "c": "Suspense & Thriller",
+    "y": "2011",
+    "s": "Thriller médico sobre fraudes letais envolvendo seguros e o sistema de saúde.",
+    "g": [
+      "Thriller médico",
+      "Ética médica"
+    ]
+  },
+  {
+    "t": "Carrossel Sombrio e Outras Histórias",
+    "a": "Joe Hill",
+    "c": "Suspense & Thriller",
+    "y": "2018",
+    "n": "Ed. TAG",
+    "s": "Novela de horror em um parque de diversões amaldiçoado, pelo filho de Stephen King.",
+    "g": [
+      "Terror",
+      "Contos de horror"
+    ]
+  },
+  {
+    "t": "Cartada Final",
+    "a": "John Grisham",
+    "c": "Suspense & Thriller",
+    "y": "2017",
+    "n": "Ed. TAG",
+    "s": "Estudantes de direito endividados descobrem uma fraude bilionária no sistema de faculdades.",
+    "g": [
+      "Thriller jurídico",
+      "Direito"
+    ]
+  },
+  {
+    "t": "Cego",
+    "a": "Robin Cook",
+    "c": "Suspense & Thriller",
+    "y": "1992",
+    "s": "A legista Laurie Montgomery investiga uma série de overdoses suspeitas ligadas à máfia.",
+    "g": [
+      "Thriller médico",
+      "Medicina legal"
+    ]
+  },
+  {
+    "t": "Coração Satânico",
+    "a": "William Hjortsberg",
+    "c": "Suspense & Thriller",
+    "y": "1978",
+    "s": "O detetive Harry Angel procura um cantor desaparecido num noir sobrenatural inesquecível.",
+    "g": [
+      "Noir",
+      "Terror ocultista"
+    ]
+  },
+  {
+    "t": "Criança 44",
+    "a": "Tom Rob Smith",
+    "c": "Suspense & Thriller",
+    "y": "2008",
+    "b": true,
+    "s": "Na URSS de Stalin, um agente caça um serial killer de crianças que o Estado insiste que não existe.",
+    "g": [
+      "Thriller histórico",
+      "União Soviética"
+    ]
+  },
+  {
+    "t": "Declarando-se Culpado",
+    "a": "Scott Turow",
+    "c": "Suspense & Thriller",
+    "y": "1993",
+    "s": "Um sócio some com milhões do escritório e um advogado decadente é enviado para encontrá-lo.",
+    "g": [
+      "Thriller jurídico",
+      "Direito"
+    ]
+  },
+  {
+    "t": "Doutor Sono",
+    "a": "Stephen King",
+    "c": "Suspense & Thriller",
+    "y": "2013",
+    "b": true,
+    "s": "A continuação de O Iluminado: Danny Torrance adulto enfrenta o culto do Nó Verdadeiro.",
+    "g": [
+      "Terror",
+      "Vícios e recuperação"
+    ]
+  },
+  {
+    "t": "Ed & Lorraine Warren: Demonologistas — Arquivos Sobrenaturais",
+    "a": "Gerald Brittle",
+    "c": "Suspense & Thriller",
+    "y": "1980",
+    "n": "vários exemplares — aparece em 4 fotos",
+    "s": "Os casos reais do casal de investigadores paranormais que inspirou a franquia Invocação do Mal.",
+    "g": [
+      "Casos paranormais",
+      "Demonologia"
+    ]
+  },
+  {
+    "t": "Febre",
+    "a": "Robin Cook",
+    "c": "Suspense & Thriller",
+    "y": "1982",
+    "s": "Um pesquisador enfrenta a indústria após ligar a leucemia da filha a um encobrimento tóxico.",
+    "g": [
+      "Thriller médico",
+      "Indústria farmacêutica"
+    ]
+  },
+  {
+    "t": "Histórias para Ler às Sextas-feiras",
+    "a": "Alfred Hitchcock (org.)",
+    "c": "Suspense & Thriller",
+    "y": "—",
+    "s": "Antologia de contos de suspense e mistério selecionados pelo mestre do cinema.",
+    "g": [
+      "Contos de suspense",
+      "Mistério"
+    ]
+  },
+  {
+    "t": "Inferno",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2013",
+    "b": true,
+    "s": "Langdon segue pistas escondidas na Divina Comédia para deter uma praga global.",
+    "g": [
+      "Suspense",
+      "Literatura de Dante",
+      "Bioética"
+    ]
+  },
+  {
+    "t": "Médico ou Semideus",
+    "a": "Robin Cook",
+    "c": "Suspense & Thriller",
+    "y": "1983",
+    "s": "Mortes suspeitas em cirurgias cardíacas expõem um médico que se julga acima da lei.",
+    "g": [
+      "Thriller médico",
+      "Ética médica"
+    ]
+  },
+  {
+    "t": "Minha Adorável Esposa",
+    "a": "Samantha Downing",
+    "c": "Suspense & Thriller",
+    "y": "2019",
+    "n": "Ed. TAG",
+    "s": "Um casal aparentemente perfeito guarda um hobby macabro: matar juntos.",
+    "g": [
+      "Suspense psicológico",
+      "Narrador não confiável"
+    ]
+  },
+  {
+    "t": "O Código Da Vinci",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2003",
+    "b": true,
+    "s": "O mega best-seller: símbolos, o Priorado de Sião e o segredo do Santo Graal.",
+    "g": [
+      "Suspense",
+      "Simbologia",
+      "História da arte"
+    ]
+  },
+  {
+    "t": "O Demonologista",
+    "a": "Andrew Pyper",
+    "c": "Suspense & Thriller",
+    "y": "2013",
+    "n": "exemplar de capa artesanal escura",
+    "s": "Um professor especialista em Paraíso Perdido enfrenta um demônio real para salvar a filha.",
+    "g": [
+      "Terror",
+      "Literatura de Milton"
+    ]
+  },
+  {
+    "t": "O Dossiê Odessa",
+    "a": "Frederick Forsyth",
+    "c": "Suspense & Thriller",
+    "y": "1972",
+    "b": true,
+    "s": "Um jornalista alemão se infiltra na organização secreta que protege ex-oficiais da SS.",
+    "g": [
+      "Espionagem",
+      "Pós-guerra",
+      "Jornalismo investigativo"
+    ]
+  },
+  {
+    "t": "O Segredo Final",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2025",
+    "b": true,
+    "s": "Langdon em Praga: o sequestro de Katherine Solomon e um segredo sobre a consciência humana.",
+    "g": [
+      "Suspense",
+      "Consciência humana"
+    ]
+  },
+  {
+    "t": "O Símbolo Perdido",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2009",
+    "b": true,
+    "s": "Maçonaria, ciência noética e uma caçada de 12 horas por Washington.",
+    "g": [
+      "Suspense",
+      "Maçonaria",
+      "Simbologia"
+    ]
+  },
+  {
+    "t": "Órfão X",
+    "a": "Gregg Hurwitz",
+    "c": "Suspense & Thriller",
+    "y": "2016",
+    "s": "Evan Smoak, criado num programa secreto de assassinos, torna-se o justiceiro Homem de Lugar Nenhum.",
+    "g": [
+      "Ação",
+      "Espionagem"
+    ]
+  },
+  {
+    "t": "Origem",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2017",
+    "b": true,
+    "s": "De onde viemos? Para onde vamos? Langdon na Espanha entre arte, tecnologia e fé.",
+    "g": [
+      "Suspense",
+      "Tecnologia e futuro",
+      "Ciência vs religião"
+    ]
+  },
+  {
+    "t": "Os Canhões de Navarone",
+    "a": "Alistair MacLean",
+    "c": "Suspense & Thriller",
+    "y": "1957",
+    "n": "Série Ouro",
+    "s": "Um comando aliado precisa destruir canhões inexpugnáveis numa ilha do Egeu.",
+    "g": [
+      "Aventura de guerra",
+      "Segunda Guerra Mundial"
+    ]
+  },
+  {
+    "t": "Os Condenados",
+    "a": "Andrew Pyper",
+    "c": "Suspense & Thriller",
+    "y": "2015",
+    "n": "Ed. DarkSide",
+    "s": "Um homem que morreu e voltou é assombrado pela irmã gêmea cruel que ficou do outro lado.",
+    "g": [
+      "Terror sobrenatural",
+      "Suspense"
+    ]
+  },
+  {
+    "t": "Ponto de Impacto",
+    "a": "Dan Brown",
+    "c": "Suspense & Thriller",
+    "y": "2001",
+    "b": true,
+    "s": "Uma descoberta da NASA no Ártico esconde uma conspiração que pode decidir a eleição americana.",
+    "g": [
+      "Suspense",
+      "Política e ciência"
+    ]
+  },
+  {
+    "t": "Sherlock Holmes: Mistérios Perdidos",
+    "a": "Sir Arthur Conan Doyle",
+    "c": "Suspense & Thriller",
+    "y": "—",
+    "s": "Casos raros e histórias menos conhecidas do detetive de Baker Street.",
+    "g": [
+      "Dedução lógica",
+      "Mistério clássico"
+    ]
+  },
+  {
+    "t": "Sinais Vitais",
+    "a": "Robin Cook",
+    "c": "Suspense & Thriller",
+    "y": "1991",
+    "s": "Fertilização in vitro e uma conspiração médica internacional em mais um thriller do mestre do gênero.",
+    "g": [
+      "Thriller médico",
+      "Bioética"
+    ]
+  },
+  {
+    "t": "Um Banquete para Hitler",
+    "a": "V.S. Alexander",
+    "c": "Suspense & Thriller",
+    "y": "2018",
+    "s": "A jovem obrigada a provar a comida de Hitler, inspirado na história real de Margot Wölk.",
+    "g": [
+      "Romance histórico",
+      "Segunda Guerra Mundial"
+    ]
+  },
+  {
+    "t": "Um Negócio Mortal",
+    "a": "Lenny Bartulin",
+    "c": "Suspense & Thriller",
+    "y": "2008",
+    "s": "Noir australiano: um livreiro de sebo se envolve com criminosos em Sydney.",
+    "g": [
+      "Noir",
+      "Crime"
+    ]
+  },
+  {
+    "t": "20 Regras de Ouro para Educar Filhos e Alunos",
+    "a": "Augusto Cury",
+    "c": "Religião & Espiritualidade",
+    "y": "2017",
+    "s": "Regras práticas do psiquiatra para formar mentes saudáveis em casa e na escola.",
+    "g": [
+      "Educação de filhos",
+      "Inteligência emocional"
+    ]
+  },
+  {
+    "t": "30 Dias com a Mãe de Jesus",
+    "a": "Santo Afonso Maria de Ligório",
+    "c": "Religião & Espiritualidade",
+    "y": "séc. XVIII",
+    "s": "Meditações marianas do santo doutor da Igreja para um mês de devoção.",
+    "g": [
+      "Devoção mariana",
+      "Oração"
+    ]
+  },
+  {
+    "t": "A Grande Esperança",
+    "a": "Ellen G. White",
+    "c": "Religião & Espiritualidade",
+    "y": "2012",
+    "n": "3 exemplares",
+    "s": "Edição missionária com os capítulos finais de O Grande Conflito, sobre o desfecho da história do mundo.",
+    "g": [
+      "Escatologia",
+      "Fé"
+    ]
+  },
+  {
+    "t": "A Proposta Crística — Moisés e Adolf Hitler",
+    "a": "psicografia de Aparecida Talhari (espírito Simone)",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "n": "mesma médium de 'Estive com Jesus'",
+    "s": "Obra espírita que aborda as trajetórias de Moisés e de Hitler à luz da reencarnação e da lei de causa e efeito.",
+    "g": [
+      "Espiritismo",
+      "Reencarnação"
+    ]
+  },
+  {
+    "t": "A Queda para o Alto",
+    "a": "Herzer",
+    "c": "Religião & Espiritualidade",
+    "y": "1982",
+    "s": "O diário-testemunho da jovem Herzer entre a FEBEM, a poesia e a busca de identidade.",
+    "g": [
+      "Poesia",
+      "Identidade",
+      "Realidade social"
+    ]
+  },
+  {
+    "t": "Ágape",
+    "a": "Padre Marcelo Rossi",
+    "c": "Religião & Espiritualidade",
+    "y": "2010",
+    "b": true,
+    "s": "O fenômeno editorial brasileiro: meditações sobre o amor incondicional de Deus.",
+    "g": [
+      "Espiritualidade",
+      "Amor incondicional",
+      "Meditação"
+    ]
+  },
+  {
+    "t": "Cura e Libertação",
+    "a": "José Carlos De Lucca",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Caminhos espirituais para a cura interior, na visão espírita.",
+    "g": [
+      "Espiritismo",
+      "Cura interior"
+    ]
+  },
+  {
+    "t": "Estive com Jesus",
+    "a": "psicografia de Aparecida D. Talhari",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Relatos psicografados de encontros com Jesus.",
+    "g": [
+      "Espiritismo",
+      "Psicografia"
+    ]
+  },
+  {
+    "t": "Faça Sua Parte",
+    "a": "Ricardo Orestes Forni",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "n": "Ed. EME",
+    "s": "Convite espírita à responsabilidade pessoal na construção do bem.",
+    "g": [
+      "Espiritismo",
+      "Responsabilidade"
+    ]
+  },
+  {
+    "t": "Fazenda Engenho Novo",
+    "a": "Soeli Silva (pelo espírito André)",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "n": "Ed. EME",
+    "s": "Romance espírita ditado pelo espírito André, ambientado numa fazenda e suas vidas entrelaçadas.",
+    "g": [
+      "Romance espírita",
+      "Reencarnação"
+    ]
+  },
+  {
+    "t": "Getúlio Vargas em Dois Mundos",
+    "a": "A. A. Canutti",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "n": "Ed. EME",
+    "s": "Obra espírita sobre a trajetória de Getúlio Vargas na Terra e no plano espiritual.",
+    "g": [
+      "Espiritismo",
+      "História do Brasil"
+    ]
+  },
+  {
+    "t": "Heróis da Fé",
+    "a": "Orlando Boyer",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Biografias de grandes nomes do cristianismo, de Lutero a Hudson Taylor.",
+    "g": [
+      "História do cristianismo",
+      "Biografias",
+      "Fé"
+    ]
+  },
+  {
+    "t": "Jesus: A Preciosa Graça",
+    "a": "William G. Johnsson",
+    "c": "Religião & Espiritualidade",
+    "y": "2012",
+    "n": "meditações diárias 2012",
+    "s": "Meditações diárias adventistas sobre a vida e a graça de Cristo.",
+    "g": [
+      "Devocional",
+      "Graça"
+    ]
+  },
+  {
+    "t": "Jesus, o Maior Psicólogo que Já Existiu",
+    "a": "Mark W. Baker",
+    "c": "Religião & Espiritualidade",
+    "y": "2001",
+    "s": "As lições psicológicas por trás dos ensinamentos de Jesus, por um psicoterapeuta.",
+    "g": [
+      "Psicologia",
+      "Ensinamentos de Jesus",
+      "Relações humanas"
+    ]
+  },
+  {
+    "t": "Jesus: Uma Biografia do Salvador",
+    "a": "Tim LaHaye com David Minasian",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "A vida de Cristo recontada pelo autor da série Deixados para Trás.",
+    "g": [
+      "Vida de Cristo",
+      "Teologia"
+    ]
+  },
+  {
+    "t": "Kairós",
+    "a": "Padre Marcelo Rossi",
+    "c": "Religião & Espiritualidade",
+    "y": "2013",
+    "s": "O tempo de Deus: reflexões para reconhecer e viver o momento certo.",
+    "g": [
+      "Espiritualidade",
+      "Tempo e propósito"
+    ]
+  },
+  {
+    "t": "Minutos com Chico Xavier",
+    "a": "José Carlos De Lucca",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Pensamentos e lições inspirados no maior médium brasileiro.",
+    "g": [
+      "Espiritismo",
+      "Sabedoria prática"
+    ]
+  },
+  {
+    "t": "O Evangelho Segundo o Espiritismo",
+    "a": "Allan Kardec",
+    "c": "Religião & Espiritualidade",
+    "y": "1864",
+    "n": "Ed. FEB",
+    "s": "Obra basilar do espiritismo: as máximas morais do Evangelho explicadas e comentadas.",
+    "g": [
+      "Espiritismo",
+      "Moral cristã",
+      "Doutrina kardecista"
+    ]
+  },
+  {
+    "t": "O Homem e Deus",
+    "a": "Tadeu M. Almeida",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Reflexões sobre a relação do ser humano com o divino.",
+    "g": [
+      "Espiritualidade",
+      "Reflexão"
+    ]
+  },
+  {
+    "t": "O Homem Mais Inteligente da História",
+    "a": "Augusto Cury",
+    "c": "Religião & Espiritualidade",
+    "y": "2016",
+    "b": true,
+    "n": "2 exemplares",
+    "s": "Um ateu brilhante é desafiado a analisar a mente de Jesus — e se surpreende.",
+    "g": [
+      "Inteligência de Cristo",
+      "Psiquiatria",
+      "Fé e razão"
+    ]
+  },
+  {
+    "t": "O Médico Jesus",
+    "a": "José Carlos De Lucca",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "A atuação curadora de Jesus vista pela ótica espírita.",
+    "g": [
+      "Espiritismo",
+      "Cura"
+    ]
+  },
+  {
+    "t": "O Mestre dos Mestres — Análise da Inteligência de Cristo, Vol. 1",
+    "a": "Augusto Cury",
+    "c": "Religião & Espiritualidade",
+    "y": "1999",
+    "b": true,
+    "s": "O primeiro volume da série que analisa a genialidade emocional e intelectual de Jesus.",
+    "g": [
+      "Inteligência de Cristo",
+      "Psicologia",
+      "Liderança"
+    ]
+  },
+  {
+    "t": "O Príncipe do Oriente",
+    "a": "R. K. Tashiro",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Narrativa de fundo espiritual sobre a trajetória de um príncipe no Oriente.",
+    "g": [
+      "Espiritualidade",
+      "Narrativa"
+    ]
+  },
+  {
+    "t": "O Tecido da Fé — Meditação da Mulher",
+    "a": "Ardis D. Stenbakken (org.)",
+    "c": "Religião & Espiritualidade",
+    "y": "2002",
+    "n": "devocional 2002",
+    "s": "Devocional feminino adventista: um ano de meditações escritas por mulheres do mundo todo.",
+    "g": [
+      "Devocional feminino",
+      "Fé"
+    ]
+  },
+  {
+    "t": "Palavras de Sabedoria",
+    "a": "Marcelo Toschi",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "n": "Ed. Vida; 2 exemplares",
+    "s": "Mensagens curtas de inspiração e fé para o dia a dia.",
+    "g": [
+      "Inspiração",
+      "Fé"
+    ]
+  },
+  {
+    "t": "Pão Diário — Vol. 11",
+    "a": "Rádio Trans Mundial",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "O clássico devocional com meditações bíblicas para cada dia do ano.",
+    "g": [
+      "Devocional",
+      "Meditação bíblica"
+    ]
+  },
+  {
+    "t": "Philia",
+    "a": "Padre Marcelo Rossi",
+    "c": "Religião & Espiritualidade",
+    "y": "2011",
+    "s": "A amizade como expressão do amor divino, na sequência de Ágape.",
+    "g": [
+      "Amizade",
+      "Espiritualidade"
+    ]
+  },
+  {
+    "t": "Socorro e Solução",
+    "a": "José Carlos De Lucca",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Respostas espirituais para as aflições do cotidiano.",
+    "g": [
+      "Espiritismo",
+      "Consolo"
+    ]
+  },
+  {
+    "t": "Sussurro: Como Ouvir a Voz de Deus",
+    "a": "Mark Batterson",
+    "c": "Religião & Espiritualidade",
+    "y": "2017",
+    "s": "As sete linguagens pelas quais Deus fala — e como aprender a escutá-las.",
+    "g": [
+      "Espiritualidade",
+      "Discernimento",
+      "Oração"
+    ]
+  },
+  {
+    "t": "Vencendo a Dor da Morte",
+    "a": "Célia Diniz",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Consolo e esperança espírita para atravessar o luto.",
+    "g": [
+      "Luto",
+      "Consolo espiritual"
+    ]
+  },
+  {
+    "t": "Vida Após a Morte",
+    "a": "Rubens Omar Baranowski (pelo espírito José Carlos de A.)",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Relatos psicografados sobre a continuidade da vida no plano espiritual.",
+    "g": [
+      "Espiritismo",
+      "Vida após a morte"
+    ]
+  },
+  {
+    "t": "Vitória!",
+    "a": "Cida Santos",
+    "c": "Religião & Espiritualidade",
+    "y": "—",
+    "s": "Testemunho de fé e superação.",
+    "g": [
+      "Testemunho",
+      "Fé"
+    ]
+  },
+  {
+    "t": "A Bíblia dos Acordes de Guitarra",
+    "a": "Phil Capone",
+    "c": "Hobbies, Guias & Referência",
+    "y": "2010",
+    "s": "Dicionário visual com centenas de acordes e progressões para guitarra e violão.",
+    "g": [
+      "Guitarra e violão",
+      "Harmonia musical",
+      "Música"
+    ]
+  },
+  {
+    "t": "A Mesa do Mestre-Cervejeiro",
+    "a": "Garrett Oliver",
+    "c": "Hobbies, Guias & Referência",
+    "y": "2003",
+    "n": "Ed. Senac",
+    "s": "O mestre-cervejeiro da Brooklyn Brewery ensina a harmonizar cerveja e comida.",
+    "g": [
+      "Cerveja artesanal",
+      "Harmonização",
+      "Gastronomia"
+    ]
+  },
+  {
+    "t": "Chile e Ilha de Páscoa — Guia de Viagem",
+    "a": "Publifolha",
+    "c": "Hobbies, Guias & Referência",
+    "y": "—",
+    "s": "Guia de viagem com roteiros, mapas e dicas do Chile à Ilha de Páscoa.",
+    "g": [
+      "Viagens",
+      "Planejamento de roteiros"
+    ]
+  },
+  {
+    "t": "Português Esquematizado",
+    "a": "Pedro Lenza (coord.) e Agnaldo Martino",
+    "c": "Hobbies, Guias & Referência",
+    "y": "2012",
+    "n": "Ed. Saraiva",
+    "s": "Gramática completa em esquemas visuais, voltada para concursos públicos.",
+    "g": [
+      "Língua portuguesa",
+      "Gramática",
+      "Concursos"
+    ]
+  },
+  {
+    "t": "Reflexões sobre o Podcast",
+    "a": "Lucio Luiz (org.) e vários autores",
+    "c": "Hobbies, Guias & Referência",
+    "y": "2014",
+    "n": "Marsupial Editora",
+    "s": "Dez podcasters pioneiros discutem a mídia no primeiro livro sobre podcast em língua portuguesa.",
+    "g": [
+      "Podcast",
+      "Produção de conteúdo",
+      "Comunicação"
+    ]
+  },
+  {
+    "t": "Xadrez Básico",
+    "a": "Dr. Orfeu Gilberto D'Agostini",
+    "c": "Hobbies, Guias & Referência",
+    "y": "1954",
+    "s": "O manual clássico brasileiro que forma enxadristas há gerações.",
+    "g": [
+      "Xadrez",
+      "Raciocínio estratégico"
+    ]
+  },
+  {
+    "t": "A Guerra dos Tronos — As Crônicas de Gelo e Fogo, Livro 1",
+    "a": "George R.R. Martin",
+    "c": "Ficção Científica & Fantasia",
+    "y": "1996",
+    "b": true,
+    "s": "O início da saga de Westeros: intriga, honra, traição e o inverno que se aproxima.",
+    "g": [
+      "Fantasia épica",
+      "Intriga política"
+    ]
+  },
+  {
+    "t": "A Torre",
+    "a": "Daniel O'Malley",
+    "c": "Ficção Científica & Fantasia",
+    "y": "2012",
+    "s": "Uma agente de organização sobrenatural britânica acorda sem memória, cercada de corpos.",
+    "g": [
+      "Fantasia urbana",
+      "Mistério"
+    ]
+  },
+  {
+    "t": "Star Wars: Kenobi",
+    "a": "John Jackson Miller",
+    "c": "Ficção Científica & Fantasia",
+    "y": "2013",
+    "s": "Obi-Wan no exílio em Tatooine, tentando viver anônimo enquanto protege um segredo.",
+    "g": [
+      "Universo Star Wars",
+      "Ficção científica"
+    ]
+  },
+  {
+    "t": "Star Wars: O Último Comando",
+    "a": "Timothy Zahn",
+    "c": "Ficção Científica & Fantasia",
+    "y": "1993",
+    "n": "Trilogia Thrawn, vol. 3",
+    "s": "O desfecho da trilogia Thrawn: o gênio tático do Grande Almirante contra a Nova República.",
+    "g": [
+      "Universo Star Wars",
+      "Estratégia militar"
+    ]
+  },
+  {
+    "t": "Star Wars: Provação",
+    "a": "Troy Denning",
+    "c": "Ficção Científica & Fantasia",
+    "y": "2013",
+    "s": "Han, Leia e Luke numa aventura que encerra uma era do universo expandido.",
+    "g": [
+      "Universo Star Wars",
+      "Aventura"
+    ]
+  },
+  {
+    "t": "Star Wars: Sombras do Império",
+    "a": "Steve Perry",
+    "c": "Ficção Científica & Fantasia",
+    "y": "1996",
+    "s": "Entre O Império Contra-Ataca e O Retorno de Jedi: o submundo criminoso do príncipe Xizor.",
+    "g": [
+      "Universo Star Wars",
+      "Aventura"
+    ]
+  },
+  {
+    "t": "Star Wars: Um Novo Amanhecer",
+    "a": "John Jackson Miller",
+    "c": "Ficção Científica & Fantasia",
+    "y": "2014",
+    "s": "Como Kanan e Hera se conheceram — o prelúdio da série Rebels.",
+    "g": [
+      "Universo Star Wars",
+      "Ficção científica"
+    ]
+  },
+  {
+    "t": "X-Files Origens: Agente do Caos",
+    "a": "Kami Garcia",
+    "c": "Ficção Científica & Fantasia",
+    "y": "2017",
+    "s": "O jovem Fox Mulder investiga desaparecimentos de crianças em 1979.",
+    "g": [
+      "Investigação",
+      "Mistério",
+      "Ficção científica"
+    ]
+  },
+  {
+    "t": "Coleção Engenhocas — 4 anos (3 volumes)",
+    "a": "Lucas Torres",
+    "c": "Infantil",
+    "y": "—",
+    "n": "coleção didática Nave à Vela, vols. 1, 2 e 3",
+    "s": "Coleção didática maker com projetos e engenhocas para crianças de 4 anos.",
+    "g": [
+      "Educação maker",
+      "Criatividade infantil",
+      "STEM"
+    ]
+  },
+  {
+    "t": "Valores que a Bíblia Ensina",
+    "a": "Paulina M. G. Meisen",
+    "c": "Infantil",
+    "y": "—",
+    "n": "Ediciones Daly",
+    "s": "Histórias bíblicas com atividades e brincadeiras para ensinar valores às crianças.",
+    "g": [
+      "Valores",
+      "Educação infantil",
+      "Histórias bíblicas"
+    ]
+  }
+]
