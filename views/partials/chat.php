@@ -1,5 +1,9 @@
 <?php
 // partials/chat.php — Centralized AI chat component with history + typing indicator
+// Uma única vez por página: algumas views (ex.: relatorios_okrs) incluem o chat em mais de um ponto,
+// o que duplicava o botão e os ids do componente.
+if (!empty($GLOBALS['__okr_chat_incluido'])) return;
+$GLOBALS['__okr_chat_incluido'] = true;
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

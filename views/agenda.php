@@ -156,6 +156,8 @@ $totalPessoas = count($dados['pessoas']);
       </div><!-- /ag-main -->
 
     </main>
+
+    <?php include __DIR__ . '/partials/chat.php'; ?>
   </div>
 
   <script>

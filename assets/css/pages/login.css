@@ -326,6 +326,13 @@ body.login-page .password-reset-link:hover {
 }
 
 /* Mensagem de erro (tema escuro) */
+/* Confirmação de saída (auth/auth_logout.php): mesmo formato do erro, em tom neutro */
+body.login-page .error-message.logout-message {
+  background: rgba(34,197,94,.12);
+  border-color: rgba(34,197,94,.45);
+  color: #bbf7d0;
+}
+
 body.login-page .error-message {
   width: 100%;
   max-width: 320px;

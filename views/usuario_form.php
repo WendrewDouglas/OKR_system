@@ -194,6 +194,8 @@ input[type=text], input[type=email], input[type=tel], select, textarea{
     </form>
   </section>
 </main>
+
+<?php include __DIR__ . '/partials/chat.php'; ?>
 </div>
 
 <!-- Modal Avatar (Canvas) -->

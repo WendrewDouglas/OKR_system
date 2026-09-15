@@ -741,6 +741,8 @@ $maskedEmail = mask_email_local((string)($user['email_corporativo'] ?? ''));
         </section>
       </div>
     </main>
+
+    <?php include __DIR__ . '/partials/chat.php'; ?>
   </div>
 
   <div class="modal-backdrop" id="avatarModal" aria-hidden="true">

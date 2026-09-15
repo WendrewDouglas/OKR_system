@@ -609,6 +609,8 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
       </div>
 
     </main>
+
+    <?php include __DIR__ . '/partials/chat.php'; ?>
   </div>
 
   <script>

@@ -124,6 +124,10 @@ $siteKeyAttr = htmlspecialchars($captchaSiteKey, ENT_QUOTES, 'UTF-8');
               <?= htmlspecialchars($_SESSION['error_message'], ENT_QUOTES, 'UTF-8') ?>
             </div>
             <?php unset($_SESSION['error_message']); ?>
+          <?php elseif (isset($_GET['logout'])): ?>
+            <div class="error-message logout-message">Você saiu do sistema.</div>
+          <?php elseif (isset($_GET['expired'])): ?>
+            <div class="error-message">Sua sessão expirou por inatividade. Entre novamente.</div>
           <?php endif; ?>
         </div>
       </form>

@@ -211,7 +211,7 @@ body.collapsed .content { margin-left: var(--sidebar-collapsed); }
           </a>
         </li>
         <li>
-          <a href="https://planningbi.com.br/">
+          <a href="/OKR_system/auth/auth_logout.php">
             <i class="fas fa-sign-out-alt"></i>Sair
           </a>
         </li>

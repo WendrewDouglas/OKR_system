@@ -54,6 +54,8 @@ $csrf = $_SESSION['csrf_token'];
 
   <section id="list" class="list"></section>
 </main>
+
+<?php include __DIR__ . '/partials/chat.php'; ?>
 </div>
 
 <script>

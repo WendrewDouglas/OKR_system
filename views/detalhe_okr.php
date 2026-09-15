@@ -130,6 +130,8 @@ if (isset($_GET['ajax'])) {
       if (!$idKrCol || !$textCol) continue;
       $cols = [$idKrCol=>$id_kr, $textCol=>$texto];
       if ($userCol) $cols[$userCol] = $id_user;
+      // Registros automáticos (mudança de status/cancelamento) aparecem como evento do sistema no Log & Discussões
+      if ($pdo->query("SHOW COLUMNS FROM `$t` LIKE 'tipo'")->fetch()) $cols['tipo'] = 'sistema';
       $fields = implode(',', array_map(fn($k)=>"`$k`", array_keys($cols)));
       $marks  = implode(',', array_map(fn($k)=>":$k", array_keys($cols)));
       $sql = "INSERT INTO `$t` ($fields" . ($dateCol? ", `$dateCol`":"") . ") VALUES ($marks" . ($dateCol? ", NOW()":"") . ")";
@@ -322,6 +324,310 @@ if (isset($_GET['ajax'])) {
   }
 
 
+
+  /* ---------- LOG & DISCUSSÕES DO KR ----------
+   * Histórico do KR, do mais recente para o mais antigo. Junta os comentários de kr_comentarios
+   * (digitados na aba ou gravados pelo sistema via $addKrComment) com eventos que já ficam
+   * registrados em outras tabelas: criação e aprovação do KR, apontamentos, iniciativas e
+   * mudanças de status de iniciativa. Cada fonte falha sozinha, sem derrubar o histórico.
+   */
+  $krLogPodeComentar = static function(PDO $pdo, string $id_kr) use ($isMasterUser, $tableExists): bool {
+    if (!$tableExists($pdo, 'kr_comentarios')) return false;
+    if ($isMasterUser($pdo)) return true;
+    return has_cap('W:apontamento@ORG', ['id_kr'=>$id_kr]) || has_cap('W:kr@ORG', ['id_kr'=>$id_kr]);
+  };
+
+  if ($action === 'kr_log_list') {
+    $id_kr = trim((string)($_GET['id_kr'] ?? ''));
+    if ($id_kr === '') { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
+
+    $st = $pdo->prepare("SELECT dt_criacao, id_user_criador, unidade_medida, status_aprovacao, dt_aprovacao, id_user_aprovador FROM key_results WHERE id_kr = ? LIMIT 1");
+    $st->execute([$id_kr]);
+    $kr = $st->fetch();
+    if (!$kr) { echo json_encode(['success'=>false,'error'=>'KR não encontrado']); exit; }
+
+    $uid    = (int)$_SESSION['user_id'];
+    $master = $isMasterUser($pdo);
+    $items  = [];
+    $un     = trim((string)($kr['unidade_medida'] ?? ''));
+    $comUn  = static fn($v) => num_br((float)$v) . ($un !== '' ? ' '.$un : '');
+    $dataBR = static fn($d) => $d ? date('d/m/Y', strtotime((string)$d)) : '';
+    $idUser = static fn($v) => ($v !== null && ctype_digit((string)$v) && (int)$v > 0) ? (int)$v : null;
+    $fonte  = static function(string $nome, callable $fn): void {
+      try { $fn(); } catch (Throwable $e) { error_log("kr_log_list[$nome]: ".$e->getMessage()); }
+    };
+
+    if (!empty($kr['dt_criacao'])) {
+      $items[] = ['tipo'=>'criacao', 'quando'=>$kr['dt_criacao'].' 00:00:00', 'so_data'=>true,
+                  'id_user'=>$idUser($kr['id_user_criador']), 'titulo'=>'Criou o KR'];
+    }
+
+    $fonte('comentarios', function() use ($pdo, $id_kr, $uid, $master, $tableExists, $idUser, &$items) {
+      if (!$tableExists($pdo, 'kr_comentarios')) return;
+      $st = $pdo->prepare("SELECT id_comentario, id_user, tipo, texto, dt_criacao FROM kr_comentarios
+                            WHERE id_kr = ? AND dt_exclusao IS NULL ORDER BY dt_criacao DESC LIMIT 300");
+      $st->execute([$id_kr]);
+      foreach ($st as $r) {
+        $sistema = ($r['tipo'] === 'sistema');
+        $items[] = [
+          'tipo'          => $sistema ? 'sistema' : 'comentario',
+          'quando'        => $r['dt_criacao'],
+          'id_user'       => $idUser($r['id_user']),
+          'titulo'        => $sistema ? 'Alterou o status do KR' : '',
+          'texto'         => (string)$r['texto'],
+          'id_comentario' => (int)$r['id_comentario'],
+          'pode_excluir'  => !$sistema && ((int)$r['id_user'] === $uid || $master),
+        ];
+      }
+    });
+
+    $fonte('apontamentos', function() use ($pdo, $id_kr, $tableExists, $comUn, $dataBR, $idUser, &$items) {
+      if (!$tableExists($pdo, 'apontamentos_kr')) return;
+      $anexos = $tableExists($pdo, 'apontamentos_kr_anexos')
+        ? "(SELECT COUNT(*) FROM apontamentos_kr_anexos x WHERE x.id_apontamento = a.id_apontamento AND x.is_deleted = 0)"
+        : "0";
+      $st = $pdo->prepare("
+        SELECT a.valor_real, a.dt_apontamento, a.dt_evidencia, a.usuario_id, a.justificativa, a.observacao,
+               m.data_ref, m.valor_esperado, $anexos AS anexos
+          FROM apontamentos_kr a
+          LEFT JOIN milestones_kr m ON m.id_milestone = a.id_milestone
+         WHERE a.id_kr = ?
+         ORDER BY COALESCE(a.dt_apontamento, a.dt_evidencia) DESC
+         LIMIT 300");
+      $st->execute([$id_kr]);
+      foreach ($st as $r) {
+        $detalhe = [];
+        if ($r['valor_esperado'] !== null) $detalhe[] = 'Esperado: '.$comUn($r['valor_esperado']);
+        $nAnexos = (int)$r['anexos'];
+        if ($nAnexos > 0) $detalhe[] = $nAnexos === 1 ? '1 evidência anexada' : "$nAnexos evidências anexadas";
+        $items[] = [
+          'tipo'    => 'apontamento',
+          'quando'  => $r['dt_apontamento'] ?: $r['dt_evidencia'].' 00:00:00',
+          'so_data' => empty($r['dt_apontamento']),
+          'id_user' => $idUser($r['usuario_id']),
+          'titulo'  => 'Registrou '.($r['valor_real'] === null ? 'um apontamento' : $comUn($r['valor_real']))
+                       .($r['data_ref'] ? ' no marco de '.$dataBR($r['data_ref']) : ''),
+          'detalhe' => implode(' · ', $detalhe),
+          'texto'   => implode("\n", array_filter([trim((string)$r['justificativa']), trim((string)$r['observacao'])])),
+        ];
+      }
+    });
+
+    $fonte('aprovacoes', function() use ($pdo, $id_kr, $kr, $tableExists, $idUser, &$items) {
+      $decisaoRegistrada = false;
+      if ($tableExists($pdo, 'aprovacao_movimentos')) {
+        $st = $pdo->prepare("SELECT tipo_movimento, justificativa, status, id_user_criador, id_user_aprovador, dt_decisao, dt_registro
+                               FROM aprovacao_movimentos
+                              WHERE tipo_estrutura = 'kr' AND id_referencia = ?
+                              ORDER BY dt_registro DESC LIMIT 100");
+        $st->execute([$id_kr]);
+        foreach ($st as $r) {
+          $items[] = [
+            'tipo'    => 'aprovacao',
+            'quando'  => $r['dt_registro'],
+            'id_user' => $idUser($r['id_user_criador']),
+            'titulo'  => $r['tipo_movimento'] === 'alteracao' ? 'Enviou uma alteração do KR para aprovação' : 'Enviou o KR para aprovação',
+            'texto'   => trim((string)$r['justificativa']),
+          ];
+          if (!empty($r['dt_decisao']) && $r['status'] !== 'pendente') {
+            $decisaoRegistrada = true;
+            $items[] = [
+              'tipo'    => 'aprovacao',
+              'quando'  => $r['dt_decisao'],
+              'id_user' => $idUser($r['id_user_aprovador']),
+              'titulo'  => $r['status'] === 'aprovado' ? 'Aprovou o KR' : 'Reprovou o KR',
+            ];
+          }
+        }
+      }
+      // Decisões da Central de Aprovações (auth/aprovacao_api.php grava em fluxo_aprovacoes)
+      if ($tableExists($pdo, 'fluxo_aprovacoes')) {
+        $st = $pdo->prepare("SELECT tipo_operacao, id_user_aprovador, id_user_solicitante, justificativa, data_aprovacao, data_solicitacao
+                               FROM fluxo_aprovacoes
+                              WHERE tipo_estrutura = 'kr' AND id_referencia = ?
+                              ORDER BY COALESCE(data_aprovacao, data_solicitacao) DESC LIMIT 100");
+        $st->execute([$id_kr]);
+        $titulos = ['approve'=>'Aprovou o KR', 'reject'=>'Reprovou o KR', 'reenvio'=>'Reenviou o KR para aprovação'];
+        foreach ($st as $r) {
+          $op = (string)$r['tipo_operacao'];
+          if (!isset($titulos[$op])) continue;
+          if ($op !== 'reenvio') $decisaoRegistrada = true;
+          $items[] = [
+            'tipo'    => 'aprovacao',
+            'quando'  => $r['data_aprovacao'] ?: $r['data_solicitacao'],
+            'id_user' => $idUser($op === 'reenvio' ? $r['id_user_solicitante'] : $r['id_user_aprovador']),
+            'titulo'  => $titulos[$op],
+            'texto'   => trim((string)$r['justificativa']),
+          ];
+        }
+      }
+      // Convites de sócio do KR (auth/helpers/kr_socios.php)
+      if ($tableExists($pdo, 'kr_socios')) {
+        $st = $pdo->prepare("SELECT s.id_user, s.motivo, s.status, s.justificativa_rejeicao, s.id_user_convidou, s.dt_convite, s.dt_decisao,
+                                    u.primeiro_nome, u.ultimo_nome
+                               FROM kr_socios s
+                               LEFT JOIN usuarios u ON u.id_user = s.id_user
+                              WHERE s.id_kr = ?
+                              ORDER BY s.dt_convite DESC LIMIT 50");
+        $st->execute([$id_kr]);
+        foreach ($st as $r) {
+          $convidado = nome_exibicao((string)$r['primeiro_nome'], (string)($r['ultimo_nome'] ?? '')) ?: 'um usuário';
+          $items[] = [
+            'tipo'    => 'aprovacao',
+            'quando'  => $r['dt_convite'],
+            'id_user' => $idUser($r['id_user_convidou']),
+            'titulo'  => "Convidou $convidado como sócio do KR",
+            'texto'   => trim((string)$r['motivo']),
+          ];
+          if (!empty($r['dt_decisao']) && in_array($r['status'], ['aprovado', 'rejeitado'], true)) {
+            $items[] = [
+              'tipo'    => 'aprovacao',
+              'quando'  => $r['dt_decisao'],
+              'id_user' => $idUser($r['id_user']),
+              'titulo'  => $r['status'] === 'aprovado' ? 'Aceitou ser sócio do KR' : 'Recusou ser sócio do KR',
+              'texto'   => trim((string)$r['justificativa_rejeicao']),
+            ];
+          }
+        }
+      }
+      // KR aprovado direto (sem decisão registrada nas tabelas acima): usa a decisão gravada no próprio KR
+      $sa = mb_strtolower((string)$kr['status_aprovacao']);
+      if (!$decisaoRegistrada && !empty($kr['dt_aprovacao']) && in_array($sa, ['aprovado', 'reprovado'], true)) {
+        $items[] = [
+          'tipo'    => 'aprovacao',
+          'quando'  => substr((string)$kr['dt_aprovacao'], 0, 19),
+          'id_user' => $idUser($kr['id_user_aprovador']),
+          'titulo'  => $sa === 'aprovado' ? 'Aprovou o KR' : 'Reprovou o KR',
+        ];
+      }
+    });
+
+    $fonte('iniciativas', function() use ($pdo, $id_kr, $tableExists, $colExists, $idUser, &$items) {
+      $st = $pdo->prepare("SELECT num_iniciativa, descricao, dt_criacao, id_user_criador FROM iniciativas
+                            WHERE id_kr = ? ORDER BY dt_criacao DESC LIMIT 200");
+      $st->execute([$id_kr]);
+      foreach ($st as $r) {
+        $items[] = [
+          'tipo'    => 'iniciativa',
+          'quando'  => $r['dt_criacao'].' 00:00:00',
+          'so_data' => true,
+          'id_user' => $idUser($r['id_user_criador']),
+          'titulo'  => 'Criou a iniciativa #'.(int)$r['num_iniciativa'],
+          'texto'   => (string)$r['descricao'],
+        ];
+      }
+      if (!$tableExists($pdo, 'apontamentos_status_iniciativas')) return;
+      $label = $colExists($pdo, 'dom_status_kr', 'descricao_exibicao') ? 'COALESCE(d.descricao_exibicao, s.status)' : 's.status';
+      $st = $pdo->prepare("
+        SELECT $label AS status_label, s.data_hora, s.id_user, s.observacao, i.num_iniciativa, i.descricao
+          FROM apontamentos_status_iniciativas s
+          JOIN iniciativas i ON i.id_iniciativa = s.id_iniciativa
+          LEFT JOIN dom_status_kr d ON d.id_status = s.status
+         WHERE i.id_kr = ?
+         ORDER BY s.data_hora DESC LIMIT 300");
+      $st->execute([$id_kr]);
+      foreach ($st as $r) {
+        $items[] = [
+          'tipo'    => 'iniciativa',
+          'quando'  => $r['data_hora'],
+          'id_user' => $idUser($r['id_user']),
+          'titulo'  => 'Mudou a iniciativa #'.(int)$r['num_iniciativa'].' para "'.$r['status_label'].'"',
+          'detalhe' => mb_strimwidth((string)$r['descricao'], 0, 120, '…'),
+          'texto'   => trim((string)$r['observacao']),
+        ];
+      }
+    });
+
+    usort($items, static fn($a, $b) => strcmp((string)$b['quando'], (string)$a['quando']));
+    $items = array_slice($items, 0, 300);
+
+    $users = [];
+    $ids = array_values(array_unique(array_filter(array_column($items, 'id_user'))));
+    if ($ids) {
+      require_once __DIR__ . '/../auth/avatar_helpers.php';
+      $st = $pdo->prepare("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios WHERE id_user IN (".implode(',', array_fill(0, count($ids), '?')).")");
+      $st->execute($ids);
+      foreach ($st as $u) {
+        $avatar = null;
+        try { $avatar = avatar_resolve((int)$u['id_user'], $pdo)['url'] ?? null; } catch (Throwable $e) {}
+        $users[(int)$u['id_user']] = [
+          'nome'   => nome_exibicao((string)$u['primeiro_nome'], (string)($u['ultimo_nome'] ?? '')),
+          'avatar' => $avatar,
+        ];
+      }
+    }
+
+    echo json_encode([
+      'success'       => true,
+      'items'         => $items,
+      'users'         => (object)$users,
+      'pode_comentar' => $krLogPodeComentar($pdo, $id_kr),
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  if ($action === 'kr_comment_add') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']);
+      exit;
+    }
+    $id_kr = trim((string)($_POST['id_kr'] ?? ''));
+    $texto = trim((string)($_POST['texto'] ?? ''));
+    if ($id_kr === '') { echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
+    $assertTenant('kr', ['id_kr'=>$id_kr]);
+    if (!$tableExists($pdo, 'kr_comentarios')) {
+      echo json_encode(['success'=>false,'error'=>'O histórico de discussões ainda não está habilitado.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    if (!$krLogPodeComentar($pdo, $id_kr)) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Sem permissão para comentar neste KR.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    if ($texto === '') { echo json_encode(['success'=>false,'error'=>'Escreva o comentário antes de enviar.'], JSON_UNESCAPED_UNICODE); exit; }
+    if (mb_strlen($texto) > 2000) { echo json_encode(['success'=>false,'error'=>'O comentário passa de 2.000 caracteres.'], JSON_UNESCAPED_UNICODE); exit; }
+
+    try {
+      $st = $pdo->prepare("INSERT INTO kr_comentarios (id_kr, id_user, tipo, texto) VALUES (?, ?, 'comentario', ?)");
+      $st->execute([$id_kr, (int)$_SESSION['user_id'], $texto]);
+      echo json_encode(['success'=>true, 'id_comentario'=>(int)$pdo->lastInsertId()]);
+    } catch (Throwable $e) {
+      error_log('kr_comment_add: '.$e->getMessage());
+      echo json_encode(['success'=>false,'error'=>'Falha ao salvar o comentário.'], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+  }
+
+  if ($action === 'kr_comment_delete') {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Token CSRF inválido']);
+      exit;
+    }
+    $idComentario = (int)($_POST['id_comentario'] ?? 0);
+    if ($idComentario <= 0 || !$tableExists($pdo, 'kr_comentarios')) {
+      echo json_encode(['success'=>false,'error'=>'Comentário inválido.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    $st = $pdo->prepare("SELECT id_kr, id_user, tipo FROM kr_comentarios WHERE id_comentario = ? AND dt_exclusao IS NULL LIMIT 1");
+    $st->execute([$idComentario]);
+    $c = $st->fetch();
+    if (!$c) { echo json_encode(['success'=>false,'error'=>'Comentário não encontrado.'], JSON_UNESCAPED_UNICODE); exit; }
+    $assertTenant('kr', ['id_kr'=>$c['id_kr']]);
+    // Registros do sistema não saem do histórico; comentário só sai pelo autor (ou admin master)
+    if ($c['tipo'] !== 'comentario' || ((int)$c['id_user'] !== (int)$_SESSION['user_id'] && !$isMasterUser($pdo))) {
+      http_response_code(403);
+      echo json_encode(['success'=>false,'error'=>'Só quem escreveu pode excluir este comentário.'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    // Exclusão lógica: a linha fica no banco para auditoria, só deixa de aparecer
+    $pdo->prepare("UPDATE kr_comentarios SET dt_exclusao = NOW(), id_user_exclusao = ? WHERE id_comentario = ?")
+        ->execute([(int)$_SESSION['user_id'], $idComentario]);
+    echo json_encode(['success'=>true]);
+    exit;
+  }
 
   /* ---------- LISTAR RESPONSÁVEIS DA MESMA COMPANY ---------- */
   if ($action === 'list_responsaveis_company') {
@@ -2981,6 +3287,40 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     .modal.mini .modal-card{ width:520px; max-width:95vw; }
     .modal.mini textarea{ width:100%; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; padding:10px; }
 
+    /* ===== Log & Discussões do KR ===== */
+    .krlog{ display:grid; gap:12px; }
+    .krlog-form{ display:grid; gap:6px; }
+    .krlog-form[hidden]{ display:none; }
+    .krlog-input{ width:100%; resize:vertical; min-height:72px; background:#0c1118; color:#e5e7eb; border:1px solid #1f2635; border-radius:10px; padding:10px; font:inherit; }
+    .krlog-input:focus{ outline:none; border-color:var(--gold, #f1c40f); }
+    .krlog-form-pe{ display:flex; justify-content:space-between; align-items:center; gap:8px; color:#9aa4b2; font-size:.8rem; }
+    .krlog-enviar{ background:var(--gold, #f1c40f); color:#111; border:0; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer; display:inline-flex; gap:6px; align-items:center; }
+    .krlog-enviar i{ color:#111; }
+    .krlog-enviar:disabled{ opacity:.6; cursor:default; }
+    .krlog-filtros{ display:flex; flex-wrap:wrap; gap:6px; }
+    .krlog-f{ background:#0f1420; color:#cbd5e1; border:1px solid #1f2a3a; border-radius:999px; padding:4px 12px; font-size:.82rem; cursor:pointer; }
+    .krlog-f.active{ background:#3b320a; border-color:#705e14; color:#ffec99; }
+    .krlog-lista{ list-style:none; margin:0; padding:0; max-height:520px; overflow-y:auto; }
+    .krlog-item{ display:grid; grid-template-columns:32px 1fr; gap:10px; padding:10px 4px; border-bottom:1px dashed #1f2a3a; }
+    .krlog-item:last-child{ border-bottom:0; }
+    .krlog-ico{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#111827; color:#9aa4b2; border:1px solid #1f2a3a; font-size:.8rem; }
+    .krlog-item.t-comentario .krlog-ico{ color:#f1c40f; border-color:#705e14; }
+    .krlog-item.t-apontamento .krlog-ico{ color:#60a5fa; }
+    .krlog-item.t-aprovacao .krlog-ico, .krlog-item.t-sistema .krlog-ico, .krlog-item.t-criacao .krlog-ico{ color:#a78bfa; }
+    .krlog-item.t-iniciativa .krlog-ico{ color:#34d399; }
+    .krlog-topo{ display:flex; align-items:center; gap:8px; color:#eaeef6; font-size:.88rem; }
+    .krlog-av{ width:22px; height:22px; border-radius:50%; object-fit:cover; flex:none; }
+    .krlog-av-vazio{ display:inline-flex; align-items:center; justify-content:center; background:#1f2a3a; color:#9aa4b2; font-size:.65rem; }
+    .krlog-quando{ color:#9aa4b2; font-size:.8rem; }
+    .krlog-del{ margin-left:auto; background:none; border:1px solid transparent; color:#9aa4b2; border-radius:8px; padding:2px 8px; cursor:pointer; font-size:.8rem; }
+    .krlog-del:hover{ color:#f87171; border-color:#3a1d1d; }
+    .krlog-del.armado{ color:#fecaca; background:#3a1d1d; border-color:#7f1d1d; }
+    .krlog-titulo{ color:#d1d5db; margin-top:3px; font-size:.9rem; }
+    .krlog-detalhe{ color:#9aa4b2; font-size:.8rem; margin-top:2px; }
+    .krlog-texto{ color:#eaeef6; margin-top:4px; white-space:pre-wrap; word-break:break-word; font-size:.9rem; }
+    .krlog-item.t-comentario .krlog-texto{ background:#0f1420; border:1px solid #1f2a3a; border-radius:10px; padding:8px 10px; }
+    .krlog-vazio{ color:#9aa4b2; font-style:italic; padding:10px 4px; }
+
   </style>
 </head>
 <body>
@@ -3461,6 +3801,157 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     function escapeHtml(s){ return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
     function truncate(s,n){ if(!s)return''; return s.length>n?s.slice(0,n-1)+'…':s; }
     function toast(msg, ok=true){ const t=document.createElement('div'); t.className='toast'+(ok?'':' error'); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+
+    // ================== Log & Discussões do KR ==================
+    // O histórico vem montado do servidor (?ajax=kr_log_list); aqui só filtra e desenha.
+    const krLogState = {}; // id_kr -> { items, users, filtro }
+    const KRLOG_ICONE = {
+      comentario:'fa-regular fa-comment', sistema:'fa-solid fa-arrows-rotate', aprovacao:'fa-solid fa-stamp',
+      apontamento:'fa-solid fa-chart-line', iniciativa:'fa-solid fa-diagram-project', criacao:'fa-solid fa-flag'
+    };
+    const KRLOG_GRUPO = {
+      comentario:'comentario', apontamento:'apontamento', iniciativa:'iniciativa',
+      sistema:'status', aprovacao:'status', criacao:'status'
+    };
+
+    function krLogQuando(s, soData){
+      const d = new Date(String(s||'').replace(' ', 'T'));
+      if (isNaN(d)) return { rel: String(s||''), abs: '' };
+      const p = n => String(n).padStart(2,'0');
+      const data = `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`;
+      const hora = `${p(d.getHours())}:${p(d.getMinutes())}`;
+      const abs  = soData ? data : `${data} às ${hora}`;
+      const hoje = new Date(); hoje.setHours(0,0,0,0);
+      const dia  = new Date(d); dia.setHours(0,0,0,0);
+      const dias = Math.round((hoje - dia) / 86400000);
+      if (soData) return { rel: dias === 0 ? 'hoje' : (dias === 1 ? 'ontem' : data), abs };
+      const min = Math.round((Date.now() - d.getTime()) / 60000);
+      if (min < 1)  return { rel: 'agora', abs };
+      if (min < 60) return { rel: `há ${min} min`, abs };
+      if (dias === 0) return { rel: `hoje às ${hora}`, abs };
+      if (dias === 1) return { rel: `ontem às ${hora}`, abs };
+      return { rel: abs, abs };
+    }
+
+    async function loadKrLog(id){
+      const lista = document.getElementById(`krlog_${id}`);
+      if (!lista) return;
+      if (!krLogState[id]) lista.innerHTML = `<li class="krlog-vazio">Carregando histórico…</li>`;
+      try {
+        const res  = await fetch(`${SCRIPT}?ajax=kr_log_list&id_kr=${encodeURIComponent(id)}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Falha ao carregar o histórico.');
+        krLogState[id] = { items: data.items || [], users: data.users || {}, filtro: krLogState[id]?.filtro || 'todos' };
+        const form = document.querySelector(`.krlog-form[data-kr="${CSS.escape(id)}"]`);
+        if (form) form.hidden = !data.pode_comentar;
+        renderKrLog(id);
+      } catch (err) {
+        lista.innerHTML = `<li class="krlog-vazio">${escapeHtml(err.message)}</li>`;
+      }
+    }
+
+    function renderKrLog(id){
+      const st = krLogState[id];
+      const lista = document.getElementById(`krlog_${id}`);
+      if (!st || !lista) return;
+      document.querySelectorAll(`.krlog-f[data-kr="${CSS.escape(id)}"]`)
+        .forEach(b => b.classList.toggle('active', b.dataset.f === st.filtro));
+      const itens = st.items.filter(it => st.filtro === 'todos' || KRLOG_GRUPO[it.tipo] === st.filtro);
+      if (!itens.length){
+        lista.innerHTML = `<li class="krlog-vazio">${st.filtro === 'todos' ? 'Ainda não há registros neste KR.' : 'Nada registrado neste filtro.'}</li>`;
+        return;
+      }
+      lista.innerHTML = itens.map(it => {
+        const u = (it.id_user != null && st.users[it.id_user]) || null;
+        const avatar = u?.avatar
+          ? `<img class="krlog-av" src="${escapeHtml(u.avatar)}" alt="">`
+          : `<span class="krlog-av krlog-av-vazio"><i class="fa-solid fa-gear"></i></span>`;
+        const q = krLogQuando(it.quando, it.so_data);
+        const del = it.pode_excluir
+          ? `<button type="button" class="krlog-del" data-id="${Number(it.id_comentario)}" data-kr="${escapeHtml(id)}" title="Excluir comentário"><i class="fa-regular fa-trash-can"></i></button>`
+          : '';
+        return `
+          <li class="krlog-item t-${escapeHtml(it.tipo)}">
+            <div class="krlog-ico"><i class="${KRLOG_ICONE[it.tipo] || 'fa-regular fa-circle'}"></i></div>
+            <div>
+              <div class="krlog-topo">${avatar}<strong>${escapeHtml(u ? u.nome : 'Sistema')}</strong><span class="krlog-quando" title="${escapeHtml(q.abs)}">${escapeHtml(q.rel)}</span>${del}</div>
+              ${it.titulo  ? `<div class="krlog-titulo">${escapeHtml(it.titulo)}</div>`   : ''}
+              ${it.detalhe ? `<div class="krlog-detalhe">${escapeHtml(it.detalhe)}</div>` : ''}
+              ${it.texto   ? `<div class="krlog-texto">${escapeHtml(it.texto)}</div>`     : ''}
+            </div>
+          </li>`;
+      }).join('');
+    }
+
+    document.addEventListener('click', (e) => {
+      const filtro = e.target.closest('.krlog-f');
+      if (filtro){
+        const st = krLogState[filtro.dataset.kr];
+        if (st){ st.filtro = filtro.dataset.f; renderKrLog(filtro.dataset.kr); }
+        return;
+      }
+      const del = e.target.closest('.krlog-del');
+      if (!del) return;
+      // Exclusão em dois cliques: o primeiro só arma o botão por 4 segundos
+      if (!del.classList.contains('armado')){
+        del.classList.add('armado');
+        del.textContent = 'Confirmar exclusão';
+        setTimeout(() => {
+          if (!del.isConnected) return;
+          del.classList.remove('armado');
+          del.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+        }, 4000);
+        return;
+      }
+      (async () => {
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('id_comentario', del.dataset.id);
+        const res  = await fetch(`${SCRIPT}?ajax=kr_comment_delete`, { method:'POST', body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!data.success){ toast(data.error || 'Falha ao excluir o comentário.', false); return; }
+        toast('Comentário excluído.');
+        loadKrLog(del.dataset.kr);
+      })();
+    });
+
+    document.addEventListener('input', (e) => {
+      const ta = e.target.closest('.krlog-input');
+      if (!ta) return;
+      const cont = ta.form?.querySelector('.krlog-count');
+      if (cont) cont.textContent = `${ta.value.length}/2000`;
+    });
+
+    document.addEventListener('keydown', (e) => {
+      const ta = e.target.closest?.('.krlog-input');
+      if (ta && e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); ta.form?.requestSubmit(); }
+    });
+
+    document.addEventListener('submit', async (e) => {
+      const form = e.target.closest('.krlog-form');
+      if (!form) return;
+      e.preventDefault();
+      const ta  = form.querySelector('.krlog-input');
+      const btn = form.querySelector('button[type="submit"]');
+      const texto = ta.value.trim();
+      if (!texto){ toast('Escreva o comentário antes de enviar.', false); ta.focus(); return; }
+      btn.disabled = true;
+      try {
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('id_kr', form.dataset.kr);
+        fd.append('texto', texto);
+        const res  = await fetch(`${SCRIPT}?ajax=kr_comment_add`, { method:'POST', body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!data.success){ toast(data.error || 'Falha ao salvar o comentário.', false); return; }
+        ta.value = '';
+        form.querySelector('.krlog-count').textContent = '0/2000';
+        if (krLogState[form.dataset.kr]) krLogState[form.dataset.kr].filtro = 'todos';
+        await loadKrLog(form.dataset.kr);
+      } finally {
+        btn.disabled = false;
+      }
+    });
     // Limita a área visível da tabela do modal de apontamento a N linhas (default 8)
     function capApontRows(maxRows = 8){
       const wrap  = document.querySelector('#modalApont .table-wrap');
@@ -4488,7 +4979,24 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
         </div>
 
         <div class="tabpane" id="log-${id}">
-          <div class="chip"><i class="fa-regular fa-comments"></i> Conecte aqui seu feed/timeline.</div>
+          <div class="krlog">
+            <form class="krlog-form" data-kr="${id}" hidden>
+              <textarea class="krlog-input" maxlength="2000" rows="3"
+                        placeholder="Registre um comentário, uma decisão ou um alinhamento sobre este KR"></textarea>
+              <div class="krlog-form-pe">
+                <span><span class="krlog-count">0/2000</span> · Ctrl+Enter envia</span>
+                <button type="submit" class="krlog-enviar"><i class="fa-regular fa-paper-plane"></i> Comentar</button>
+              </div>
+            </form>
+            <div class="krlog-filtros">
+              <button type="button" class="krlog-f active" data-kr="${id}" data-f="todos">Tudo</button>
+              <button type="button" class="krlog-f" data-kr="${id}" data-f="comentario">Comentários</button>
+              <button type="button" class="krlog-f" data-kr="${id}" data-f="apontamento">Apontamentos</button>
+              <button type="button" class="krlog-f" data-kr="${id}" data-f="status">Status e aprovações</button>
+              <button type="button" class="krlog-f" data-kr="${id}" data-f="iniciativa">Iniciativas</button>
+            </div>
+            <ul class="krlog-lista" id="krlog_${id}"><li class="krlog-vazio">Carregando histórico…</li></ul>
+          </div>
         </div>
       `;
     }
@@ -4526,6 +5034,9 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
           const selAno = document.getElementById(`orc_ano_${id}`);
           const ano = selAno?.value;
           loadOrcDashboard(id, ano);
+        }
+        if (target.startsWith('log-')){
+          loadKrLog(target.replace('log-',''));
         }
         return;
       }
