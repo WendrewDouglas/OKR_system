@@ -142,12 +142,13 @@ function q_para_aprovar(PDO $pdo, array $mods, ?int $companyId = null): array {
              orc.id_user_criador AS usuario_criador_id,
              DATE_FORMAT(orc.dt_criacao,'%d/%m/%Y') AS dt_criacao,
              DATE_FORMAT(orc.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-             orc.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(orc.id_iniciativa,'—')) AS resumo,
+             orc.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(ini.descricao,orc.id_iniciativa,'—')) AS resumo,
              NULL AS objetivo_id, NULL AS objetivo_desc,
-             orc.id_iniciativa, orc.valor, orc.justificativa_orcamento AS justificativa,
+             orc.id_iniciativa, ini.descricao AS iniciativa_desc, orc.valor, orc.justificativa_orcamento AS justificativa,
              mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
       FROM orcamentos orc
       LEFT JOIN usuarios u ON u.id_user=orc.id_user_criador
+      LEFT JOIN iniciativas ini ON ini.id_iniciativa=orc.id_iniciativa
       ".($cFilter ? "LEFT JOIN iniciativas i ON i.id_iniciativa=orc.id_iniciativa
       LEFT JOIN key_results kr ON kr.id_kr=i.id_kr
       LEFT JOIN objetivos obj ON obj.id_objetivo=kr.id_objetivo" : "")."
@@ -202,11 +203,12 @@ function q_minhas(PDO $pdo, string $MEU_ID, string $MEU_NOME): array {
            CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
            DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao,
            DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
-           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(ini.descricao,o.id_iniciativa,'—')) AS resumo,
+           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, ini.descricao AS iniciativa_desc, o.valor, o.justificativa_orcamento AS justificativa,
            mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
     FROM orcamentos o
     LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
+    LEFT JOIN iniciativas ini ON ini.id_iniciativa=o.id_iniciativa
     ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
     WHERE o.id_user_criador=:id
   ");
@@ -255,11 +257,12 @@ function q_reprovados_do_meu_usuario(PDO $pdo, string $MEU_ID, string $MEU_NOME)
            LOWER(COALESCE(o.status_aprovacao,'')) AS status_aprovacao,
            CONCAT(u.primeiro_nome,' ',COALESCE(u.ultimo_nome,'')) AS usuario_criador_nome, o.id_user_criador AS usuario_criador_id,
            DATE_FORMAT(o.dt_criacao,'%d/%m/%Y') AS dt_criacao, DATE_FORMAT(o.dt_aprovacao,'%d/%m/%Y %H:%i') AS dt_aprovacao,
-           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(o.id_iniciativa,'—')) AS resumo,
-           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, o.valor, o.justificativa_orcamento AS justificativa,
+           o.comentarios_aprovacao, CONCAT('Iniciativa: ',COALESCE(ini.descricao,o.id_iniciativa,'—')) AS resumo,
+           NULL AS objetivo_id, NULL AS objetivo_desc, o.id_iniciativa, ini.descricao AS iniciativa_desc, o.valor, o.justificativa_orcamento AS justificativa,
            mov.tipo_movimento AS mov_tipo, mov.justificativa AS mov_just, mov.campos_diff_json AS mov_campos_json
     FROM orcamentos o
     LEFT JOIN usuarios u ON u.id_user=o.id_user_criador
+    LEFT JOIN iniciativas ini ON ini.id_iniciativa=o.id_iniciativa
     ".str_replace('{ID_COL}','o.id_orcamento', mov_join_sql('orcamento'))."
     WHERE LOWER(COALESCE(o.status_aprovacao,''))='reprovado'
       AND o.id_user_criador=:id

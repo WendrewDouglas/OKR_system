@@ -366,7 +366,8 @@ function renderDiffs(row){
   `;
 }
 
-function fmtBRdate(s){ if(!s) return ''; const str=String(s).trim().split(' ')[0]; const m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return `${m[3]}/${m[2]}/${m[1]}`; const d=new Date(str); if(!isNaN(d)) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return str; }
+// A API já manda as datas em dd/mm/aaaa; reprocessar com new Date() lia como mm/dd e trocava dia e mês (01/09 virava 09/01)
+function fmtBRdate(s){ if(!s) return ''; const str=String(s).trim().split(' ')[0]; if(/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str; const m=str.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return `${m[3]}/${m[2]}/${m[1]}`; const d=new Date(str); if(!isNaN(d)) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return str; }
 function card(row){
   const title = row.module==='orcamento'
     ? `Orçamento #${row.id} — ${currencyBR(row.valor||0)}`
@@ -404,7 +405,7 @@ function card(row){
         <div class="details">
           <dl>
             ${row.module==='kr' && row.objetivo_desc ? `<dt>Objetivo</dt><dd>${esc(row.objetivo_desc)}</dd>`:''}
-            ${row.module==='orcamento' ? `<dt>Iniciativa</dt><dd>${esc(row.id_iniciativa||'—')}</dd>`:''}
+            ${row.module==='orcamento' ? `<dt>Iniciativa</dt><dd>${esc(row.iniciativa_desc||row.id_iniciativa||'—')}</dd>`:''}
             ${row.comentarios_aprovacao ? `<dt>Comentários</dt><dd>${esc(row.comentarios_aprovacao)}</dd>`:''}
             ${row.justificativa ? `<dt>Justificativa (orçamento)</dt><dd>${esc(row.justificativa)}</dd>`:''}
           </dl>
@@ -446,7 +447,7 @@ function render(){
   if (q){
     rows = rows.filter(r=>{
       const blob = [
-        r.module, r.id, r.descricao, r.resumo, r.usuario_criador_nome, r.objetivo_desc, r.objetivo_id, r.id_iniciativa,
+        r.module, r.id, r.descricao, r.resumo, r.usuario_criador_nome, r.objetivo_desc, r.objetivo_id, r.id_iniciativa, r.iniciativa_desc,
         (r.mov_tipo||''), (r.mov_just||'')
       ].filter(Boolean).join(' ').toLowerCase();
       return blob.includes(q);
