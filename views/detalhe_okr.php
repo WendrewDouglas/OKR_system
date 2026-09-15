@@ -351,7 +351,13 @@ if (isset($_GET['ajax'])) {
     $master = $isMasterUser($pdo);
     $items  = [];
     $un     = trim((string)($kr['unidade_medida'] ?? ''));
-    $comUn  = static fn($v) => num_br((float)$v) . ($un !== '' ? ' '.$un : '');
+    // Moeda antes do número ("R$ 1.234,56"), % colado ("12,5%"), demais unidades depois ("3 dias")
+    $comUn  = static function($v) use ($un): string {
+      $n = num_br((float)$v);
+      if ($un === '') return $n;
+      if (preg_match('/^(R\$|US\$|\$|€)$/u', $un)) return $un.' '.$n;
+      return $un === '%' ? $n.'%' : $n.' '.$un;
+    };
     $dataBR = static fn($d) => $d ? date('d/m/Y', strtotime((string)$d)) : '';
     $idUser = static fn($v) => ($v !== null && ctype_digit((string)$v) && (int)$v > 0) ? (int)$v : null;
     $fonte  = static function(string $nome, callable $fn): void {
