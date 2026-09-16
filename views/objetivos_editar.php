@@ -353,7 +353,20 @@ if ($nome === '' && !empty($OBJ['descricao'])) {
 }
 $tipoSel       = (string)($OBJ['tipo'] ?? '');
 $pilarSel      = (string)($OBJ['pilar_bsc'] ?? '');
-$statusSel     = (string)($OBJ['status'] ?? ''); // <-- NOVO
+
+// O objetivo novo nasce com o DEFAULT "Não Iniciado", e o domínio usa "nao iniciado":
+// o MySQL aceita pela collation, mas a comparação exata deixava o select vazio.
+$normStatus = static function (string $s): string {
+  $s = mb_strtolower(trim($s), 'UTF-8');
+  return strtr($s, ['ã'=>'a','á'=>'a','â'=>'a','à'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c']);
+};
+$statusSel = '';
+foreach ($statuses as $s) {
+  if ($normStatus((string)$s['id_status']) === $normStatus((string)($OBJ['status'] ?? ''))) {
+    $statusSel = (string)$s['id_status'];
+    break;
+  }
+}
 
 // CSV de responsáveis (pode estar vazio em bases antigas)
 $respCSV       = trim((string)($OBJ['responsavel'] ?? ''));
@@ -367,8 +380,14 @@ $qualidade     = (string)($OBJ['qualidade'] ?? '');
 $periodo_ini   = (string)($OBJ['dt_inicio'] ?? '');
 $periodo_fim   = (string)($OBJ['dt_prazo']  ?? '');
 
-// Heurística de UI
-$cicloDefault  = 'trimestral';
+// Ciclo gravado: tipo + detalhe (ex.: trimestral / Q4/2026). Antes a tela sempre abria como
+// "Personalizado" e, ao salvar, regravava o ciclo do objetivo com as datas.
+$nomesCiclo    = array_column($ciclos, 'nome_ciclo');
+$cicloTipoSel  = (string)($OBJ['tipo_ciclo'] ?? '');
+if (!in_array($cicloTipoSel, $nomesCiclo, true)) {
+  $cicloTipoSel = ($periodo_ini && $periodo_fim) ? 'personalizado' : 'trimestral';
+}
+$cicloDetalhe  = (string)($OBJ['ciclo'] ?? '');
 
 // Tema (uma vez)
 if (!defined('PB_THEME_LINK_EMITTED')) {
@@ -492,13 +511,12 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
           <div class="grid-2 align-center" style="margin-top:12px;">
             <div>
               <label for="ciclo_tipo"><i class="fa-regular fa-calendar-days"></i> Ciclo <span class="helper">(opcional)</span></label>
-              <select id="ciclo_tipo" name="ciclo_tipo">
+              <select id="ciclo_tipo" name="ciclo_tipo" data-detalhe="<?= h($cicloDetalhe) ?>">
                 <?php foreach ($ciclos as $c): ?>
-                  <option value="<?= h($c['nome_ciclo']) ?>" <?= $c['nome_ciclo']===$cicloDefault ? 'selected' : '' ?>>
+                  <option value="<?= h($c['nome_ciclo']) ?>" <?= $c['nome_ciclo']===$cicloTipoSel ? 'selected' : '' ?>>
                     <?= h($c['descricao']) ?>
                   </option>
                 <?php endforeach; ?>
-                <option value="personalizado" <?= ($periodo_ini && $periodo_fim)?'selected':'' ?>>Personalizado</option>
               </select>
             </div>
 
@@ -696,7 +714,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
         }
       } else if (tipo === 'trimestral') {
         const v = $('#ciclo_trimestral')?.value || '';
-        theMatch = v.match(/^Q([1-4])\/(\d{4})$/);
+        const theMatch = v.match(/^Q([1-4])\/(\d{4})$/);
         if (theMatch) {
           const q = parseInt(theMatch[1],10);
           const y = parseInt(theMatch[2],10);
@@ -797,6 +815,29 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
         for(let y=anoAtual; y<=anoAtual+5; y++) sAno.add(new Option(String(y), String(y)));
         if(!sMes.value) sMes.value=String(new Date().getMonth()+1).padStart(2,'0');
         if(!sAno.value) sAno.value=String(anoAtual);
+      }
+    }
+
+    // Marca o detalhe gravado (data-detalhe do #ciclo_tipo) no select do ciclo.
+    // As listas começam no ano atual: ciclo de ano anterior ganha a opção na hora.
+    function applyStoredCycle(){
+      const tipoSel = $('#ciclo_tipo');
+      const det = (tipoSel?.dataset.detalhe || '').trim();
+      if (!det) return;
+      const setVal = (sel, val, label) => {
+        const el = $(sel);
+        if (!el || !val) return;
+        if (![...el.options].some(o => o.value === val)) el.add(new Option(label || val, val));
+        el.value = val;
+      };
+      const tipo = (tipoSel.value || '').toLowerCase();
+      if (tipo === 'anual') setVal('#ciclo_anual_ano', det);
+      else if (tipo === 'semestral') setVal('#ciclo_semestral', det, det.replace(/^S([12])\//, '$1º Sem/'));
+      else if (tipo === 'trimestral') setVal('#ciclo_trimestral', det);
+      else if (tipo === 'bimestral') setVal('#ciclo_bimestral', det);
+      else if (tipo === 'mensal') {
+        const m = det.match(/^(\d{2})\/(\d{4})$/);
+        if (m) { setVal('#ciclo_mensal_mes', m[1]); setVal('#ciclo_mensal_ano', m[2]); }
       }
     }
 
@@ -931,8 +972,7 @@ if (!defined('PB_THEME_LINK_EMITTED')) {
     // Fluxo de Edição
     document.addEventListener('DOMContentLoaded', () => {
       populateCycles();
-
-      // Se já vier com dt_inicio/dt_prazo gravados, marcamos "personalizado"
+      applyStoredCycle();
       toggleCycleDetail();
       setupOwners();
 
