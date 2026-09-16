@@ -69,15 +69,19 @@ $tutoriais = [
     ['06-agenda', 'Agenda de prazos',
      'O calendário com todos os prazos da empresa, com filtros em cascata, busca e as visões de mês, semana, lista e ciclo.',
      'Visões da estratégia', 3, 211],
+    // ordens 5 a 7 reservadas para editar objetivo, cadastrar KR e editar KR
+    ['07-novo-objetivo', 'Cadastro de objetivo',
+     'Do botão Objetivo até o aviso ao aprovador: nome, tipo, pilar, ciclo, dono e a avaliação da inteligência artificial antes de salvar.',
+     'Cadastro de OKRs', 4, 204],
     ['03-detalhe-objetivo', 'Detalhe do objetivo',
      'A tela onde o acompanhamento acontece: cabeçalho do objetivo, cartões de resumo, card do KR e as cinco abas.',
-     'Acompanhamento no dia a dia', 4, 229],
+     'Acompanhamento no dia a dia', 8, 229],
     ['04-apontamento', 'Registrando um apontamento',
      'Como informar o resultado do período em um KR, com justificativa e evidência, e o que muda na tela depois de salvar.',
-     'Acompanhamento no dia a dia', 5, 162],
+     'Acompanhamento no dia a dia', 9, 162],
     ['05-iniciativas', 'Gerenciando iniciativas',
      'Criar iniciativa com orçamento, alterar status, lançar despesa, reordenar e usar as visões de lista e Kanban.',
-     'Acompanhamento no dia a dia', 6, 232],
+     'Acompanhamento no dia a dia', 10, 232],
 ];
 
 $st = $pdo->prepare("
