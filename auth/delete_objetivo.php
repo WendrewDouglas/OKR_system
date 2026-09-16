@@ -316,6 +316,12 @@ function delete_kr_cascade(PDO $pdo, string $id_kr, callable $tableExists, calla
         }
     }
 
+    // 4b) Convites de sócio (kr_socios não tem FK)
+    if ($tableExists($pdo, 'kr_socios')) {
+        $stDelSoc = $pdo->prepare("DELETE FROM `kr_socios` WHERE `id_kr` = :id");
+        $stDelSoc->execute(['id' => $id_kr]);
+    }
+
     // 5) O KR em si
     $stDelKr = $pdo->prepare("DELETE FROM `key_results` WHERE `id_kr` = :id");
     $stDelKr->execute(['id' => $id_kr]);

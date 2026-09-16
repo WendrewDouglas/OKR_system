@@ -131,8 +131,10 @@ try {
 }
 
 try {
-    // Capability de escrita em KR/Objetivo (ajuste se você tiver algo mais específico)
-    require_cap('W:objetivo@ORG', ['id_kr' => $id_kr]);
+    // Escrita em KR, com o próprio KR como contexto (a checagem de tenant de
+    // 'objetivo' só lê id_objetivo e negava para todos exceto admin_master).
+    // Mesma regra do handler usado pela tela (detalhe_okr.php?ajax=delete_kr).
+    require_cap('W:kr@ORG', ['id_kr' => $id_kr]);
 } catch (Throwable $e) {
     log_delete_kr_error('Permissão insuficiente para excluir KR', $e, [
         'user_id' => $_SESSION['user_id'] ?? null,
@@ -316,6 +318,12 @@ try {
             $stDelCom = $pdo->prepare("DELETE FROM `$t` WHERE `id_kr` = :id");
             $stDelCom->execute(['id' => $id_kr]);
         }
+    }
+
+    // 4b) Convites de sócio (kr_socios não tem FK)
+    if ($tableExists($pdo, 'kr_socios')) {
+        $stDelSoc = $pdo->prepare("DELETE FROM `kr_socios` WHERE `id_kr` = :id");
+        $stDelSoc->execute(['id' => $id_kr]);
     }
 
     // 5) O KR em si

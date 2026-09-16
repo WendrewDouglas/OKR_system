@@ -2215,6 +2215,8 @@ foreach ($milestones as $m) {
     $id_kr = $_POST['id_kr'] ?? '';
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
     $assertTenant('kr', ['id_kr'=>$id_kr]);
+    // Exclusão é permanente: exige escrita em KR (colaborador e convidado não têm).
+    $assertCap('W:kr@ORG', ['id_kr'=>$id_kr]);
 
     try {
       $pdo->beginTransaction();
@@ -2223,6 +2225,11 @@ foreach ($milestones as $m) {
       $st = $pdo->prepare("SELECT `id_objetivo` FROM `key_results` WHERE `id_kr`=:id LIMIT 1");
       $st->execute(['id'=>$id_kr]);
       $id_obj = (int)($st->fetchColumn() ?: 0);
+      if ($id_obj === 0) {
+        $pdo->rollBack();
+        echo json_encode(['success'=>false,'error'=>'KR não encontrado.']);
+        exit;
+      }
 
       // 1) Apaga despesas e orçamentos das iniciativas do KR
       if ($tableExists($pdo,'iniciativas')) {
@@ -2282,27 +2289,27 @@ foreach ($milestones as $m) {
         }
       }
 
-      // 5) KR
+      // 5) Convites de sócio: kr_socios não tem FK. Se ficassem, voltariam a valer
+      // quando o id do KR fosse reaproveitado por um KR novo do mesmo objetivo.
+      if ($tableExists($pdo,'kr_socios')) {
+        $st = $pdo->prepare("DELETE FROM `kr_socios` WHERE `id_kr` = :id");
+        $st->execute(['id'=>$id_kr]);
+      }
+
+      // 6) KR
       $st = $pdo->prepare("DELETE FROM `key_results` WHERE `id_kr`=:id");
       $st->execute(['id'=>$id_kr]);
 
-      // 6) Renumeração
-      if ($id_obj > 0 && $colExists($pdo,'key_results','key_result_num')) {
-        $st = $pdo->prepare("SELECT `id_kr` FROM `key_results` WHERE `id_objetivo`=:obj ORDER BY `key_result_num` ASC, `id_kr` ASC");
-        $st->execute(['obj'=>$id_obj]);
-        $ids = $st->fetchAll(PDO::FETCH_COLUMN);
-        if ($ids) {
-          $upd = $pdo->prepare("UPDATE `key_results` SET `key_result_num`=:n WHERE `id_kr`=:id");
-          $n = 1;
-          foreach ($ids as $kid) { $upd->execute(['n'=>$n++, 'id'=>$kid]); }
-        }
-      }
+      // Sem renumerar os KRs restantes: id_kr é derivado de key_result_num
+      // (ver krh_proximo_id_kr). Renumerar sem renomear o id dessincroniza os dois;
+      // a numeração fica com buraco, que é só cosmético. Mesma regra do auth/delete_kr.php.
 
       $pdo->commit();
       echo json_encode(['success'=>true]);
       exit;
     } catch(Throwable $e){
-      $pdo->rollBack();
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      error_log('delete_kr: '.$e->getMessage());
       echo json_encode(['success'=>false,'error'=>'Falha ao excluir KR']);
       exit;
     }
