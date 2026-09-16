@@ -160,6 +160,11 @@ foreach ($agenda['eventos'] as $e) {
   if ($e['tipo'] === 'evento') {
     $ev = $agenda['eventos_empresa'][$e['id_evento']] ?? null;
     if (!$ev || !empty($e['meta']['cancelada'])) continue;
+    // Só a ocorrência próxima vira tarefa, pela mesma razão dos marcos acima:
+    // uma reunião semanal tem ~79 ocorrências na janela de expansão e encheria
+    // a tela com 79 cartões, enterrando objetivos, KRs e iniciativas. Reunião já
+    // realizada também não é pendência, então 'concluido' fica de fora.
+    if (!in_array($e['estado'], ['hoje', 'proximo'], true)) continue;
     $hora = $e['meta']['hora'] ?? null;
     $tarefas[] = [
       'tipo'        => 'evento',
