@@ -119,6 +119,11 @@ $pessoasDoEvento = static function (array $e) use ($agenda): array {
   if ($e['tipo'] === 'iniciativa') {
     return $agenda['iniciativas'][$e['id_iniciativa']]['pessoas'] ?? [];
   }
+  // Evento da empresa: aparece aqui só para quem participa (sem isso cairia no
+  // catálogo de objetivos, voltaria vazio e o evento sumiria silenciosamente).
+  if ($e['tipo'] === 'evento') {
+    return $agenda['eventos_empresa'][$e['id_evento']]['pessoas'] ?? [];
+  }
   return $agenda['objetivos'][$e['id_objetivo']]['pessoas'] ?? [];
 };
 
@@ -148,6 +153,26 @@ foreach ($agenda['eventos'] as $e) {
     }
     $marcosPend[$k]['n']++;
     if ($e['data'] < $marcosPend[$k]['primeira']) $marcosPend[$k]['primeira'] = $e['data'];
+    continue;
+  }
+
+  // Evento da empresa: não tem objetivo nem KR, e o link vai para a Agenda.
+  if ($e['tipo'] === 'evento') {
+    $ev = $agenda['eventos_empresa'][$e['id_evento']] ?? null;
+    if (!$ev || !empty($e['meta']['cancelada'])) continue;
+    $hora = $e['meta']['hora'] ?? null;
+    $tarefas[] = [
+      'tipo'        => 'evento',
+      'id_item'     => (string)$e['id_evento'],
+      'descricao'   => $ev['titulo'] . ($hora ? ' · ' . $hora : ''),
+      'contexto_kr' => null,
+      'contexto_obj'=> $ev['local'] !== '' ? $ev['local'] : null,
+      'dt_prazo'    => $e['data'],
+      'status_raw'  => (string)$e['status'],
+      'nav_id'      => 0,
+      'nav_url'     => '/OKR_system/agenda?d=' . $e['data'],
+      'papel'       => $papel,
+    ];
     continue;
   }
 
@@ -534,12 +559,12 @@ $mtAvatar = avatar_resolve((int)($target['id_user'] ?? 0), $pdo);
           </div>
         <?php else: ?>
           <?php foreach ($tarefas as $t):
-            // Build navigation URL
-            $navUrl = '/OKR_system/views/detalhe_okr.php?id=' . urlencode($t['nav_id']);
+            // Build navigation URL (evento da empresa aponta para a Agenda, não para o detalhe do OKR)
+            $navUrl = $t['nav_url'] ?? ('/OKR_system/views/detalhe_okr.php?id=' . urlencode($t['nav_id']));
 
             // Type label & icon
-            $typeLabels = ['objetivo' => 'Objetivo', 'kr' => 'Key Result', 'iniciativa' => 'Iniciativa', 'marco' => 'Marco'];
-            $typeIcons  = ['objetivo' => 'fa-bullseye', 'kr' => 'fa-key', 'iniciativa' => 'fa-rocket', 'marco' => 'fa-flag-checkered'];
+            $typeLabels = ['objetivo' => 'Objetivo', 'kr' => 'Key Result', 'iniciativa' => 'Iniciativa', 'marco' => 'Marco', 'evento' => 'Evento'];
+            $typeIcons  = ['objetivo' => 'fa-bullseye', 'kr' => 'fa-key', 'iniciativa' => 'fa-rocket', 'marco' => 'fa-flag-checkered', 'evento' => 'fa-calendar-day'];
             $typeLabel = $typeLabels[$t['tipo']] ?? $t['tipo'];
             $typeIcon  = $typeIcons[$t['tipo']] ?? 'fa-circle';
 

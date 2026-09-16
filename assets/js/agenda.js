@@ -18,8 +18,12 @@
     inicio_objetivo: { icone: 'fa-flag',       rotulo: 'Início do objetivo' },
     kr:              { icone: 'fa-crosshairs', rotulo: 'Key Result' },
     iniciativa:      { icone: 'fa-list-check', rotulo: 'Iniciativa' },
-    marco:           { icone: 'fa-circle',     rotulo: 'Marco' }
+    marco:           { icone: 'fa-circle',     rotulo: 'Marco' },
+    // Evento da empresa: única fonte digitada (as outras são derivadas de OKR).
+    evento:          { icone: 'fa-calendar-day', rotulo: 'Evento' }
   };
+  // TIPOS era acessado direto: um tipo desconhecido derrubava o render inteiro.
+  function tipoDe(t) { return TIPOS[t] || { icone: 'fa-circle', rotulo: 'Item' }; }
   var ESTADOS = {
     vencido: 'Vencido', hoje: 'Vence hoje', proximo: 'Vence em 7 dias',
     futuro: 'Futuro', concluido: 'Concluído', cancelado: 'Cancelado',
@@ -28,7 +32,7 @@
   var FAROL = { verde: 'No ritmo', amarelo: 'Atenção', vermelho: 'Crítico', cinza: 'Sem leitura' };
 
   var ORDEM_ESTADO = ['vencido', 'hoje', 'proximo', 'futuro', 'concluido', 'pausado', 'cancelado', 'sem_data'];
-  var ORDEM_TIPO   = ['objetivo', 'kr', 'iniciativa', 'marco', 'inicio_objetivo'];
+  var ORDEM_TIPO   = ['objetivo', 'kr', 'iniciativa', 'marco', 'evento', 'inicio_objetivo'];
 
   var MESES = ['janeiro','fevereiro','março','abril','maio','junho',
                'julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -63,6 +67,17 @@
       if (ini) { titulo = ini.descricao; pessoas = ini.pessoas || []; }
       var kr2 = A.krs[ev.id_kr];
       contexto = kr2 ? kr2.descricao : null;
+    } else if (ev.tipo === 'evento') {
+      // Evento não tem objetivo: título, pessoas e local saem do próprio catálogo,
+      // e ele não navega para o detalhe do OKR (url nula; a tela abre um painel).
+      var evc = (A.eventos_empresa || {})[ev.id_evento];
+      if (evc) { titulo = evc.titulo; pessoas = evc.pessoas || []; contexto = evc.local || null; }
+      return {
+        titulo: titulo || '(evento sem título)',
+        contexto: contexto,
+        pessoas: pessoas,
+        url: null
+      };
     } else {
       var o2 = A.objetivos[ev.id_objetivo];
       if (o2) { titulo = o2.descricao; pessoas = o2.pessoas || []; }
@@ -480,6 +495,9 @@
     });
     eventosVis.forEach(function (e) {
       if (!e.data) return;
+      // Evento da empresa não pertence a objetivo nenhum: se entrasse aqui,
+      // esticaria o eixo do ciclo sem ter linha para aparecer.
+      if (e.tipo === 'evento') return;
       if (e.data < min) min = e.data;
       if (e.data > max) max = e.data;
     });
@@ -571,10 +589,11 @@
     var chips = [];
     outros.forEach(function (e) {
       var r = res(e);
+      var hora = (e.tipo === 'evento' && e.meta && e.meta.hora) ? e.meta.hora + ' ' : '';
       chips.push(
-        '<div class="ag-chip est-' + e.estado + ' ' + e.estado + '" title="' + esc(TIPOS[e.tipo].rotulo + ' · ' + r.titulo) + '">' +
-          '<i class="fa-solid ' + TIPOS[e.tipo].icone + '"></i>' +
-          '<span class="txt">' + esc(r.titulo) + '</span>' +
+        '<div class="ag-chip est-' + e.estado + ' ' + e.estado + '" title="' + esc(tipoDe(e.tipo).rotulo + ' · ' + hora + r.titulo) + '">' +
+          '<i class="fa-solid ' + tipoDe(e.tipo).icone + '"></i>' +
+          '<span class="txt">' + esc(hora + r.titulo) + '</span>' +
         '</div>');
     });
 
@@ -628,6 +647,10 @@
     var kr = (e.tipo === 'kr' || e.tipo === 'marco') ? A.krs[e.id_kr] : null;
 
     var extra = '';
+    if (e.tipo === 'evento' && e.meta) {
+      if (e.meta.hora) extra += '<span class="ag-tag"><i class="fa-regular fa-clock"></i> ' + esc(e.meta.hora) + '</span>';
+      if (e.meta.cancelada) extra += '<span class="ag-tag">Cancelada</span>';
+    }
     if (e.tipo === 'marco' && e.meta) {
       extra += '<span class="ag-tag">Marco ' + e.meta.num_ordem + '</span>';
       extra += '<span class="ag-tag">' + (e.meta.apontado ? 'Apontado' : 'Sem apontamento') + '</span>';
@@ -662,11 +685,19 @@
         '</div>';
     }
 
-    return '<a class="ag-item est-' + e.estado + '" href="' + esc(r.url) + '">' +
-             '<div class="marca"><i class="fa-solid ' + TIPOS[e.tipo].icone + '"></i></div>' +
+    // Prazo navega para o detalhe do OKR; evento não tem essa tela, então abre
+    // um painel na própria Agenda (a tag muda, o miolo é o mesmo).
+    var abre = (e.tipo === 'evento')
+      ? '<button type="button" class="ag-item est-' + e.estado + '" data-agev="' + esc(String(e.id_evento)) +
+        '" data-agev-ref="' + esc((e.meta && e.meta.data_ref) || e.data) + '" data-agev-data="' + esc(e.data) + '">'
+      : '<a class="ag-item est-' + e.estado + '" href="' + esc(r.url) + '">';
+    var fecha = (e.tipo === 'evento') ? '</button>' : '</a>';
+
+    return abre +
+             '<div class="marca"><i class="fa-solid ' + tipoDe(e.tipo).icone + '"></i></div>' +
              '<div class="corpo">' +
                '<div class="tit">' + esc(r.titulo) + '</div>' +
-               '<div class="ctx">' + esc(TIPOS[e.tipo].rotulo) +
+               '<div class="ctx">' + esc(tipoDe(e.tipo).rotulo) +
                  (r.contexto ? ' em: ' + esc(r.contexto) : '') + '</div>' +
                '<div class="tags">' +
                  '<span class="ag-tag estado">' + esc(ESTADOS[e.estado] || e.estado) + '</span>' +
@@ -674,7 +705,7 @@
                '</div>' +
                detalhe +
              '</div>' +
-           '</a>';
+           fecha;
   }
 
   function renderDia() {

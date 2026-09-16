@@ -62,6 +62,25 @@ $dados = agenda_build_events($pdo, $companyId);
 // Quem está olhando: alimenta o preset "Meus prazos".
 $dados['eu'] = $currentUserId;
 
+// Eventos da empresa: quem edita a organização também cadastra evento
+// (admin_master entra pelo bypass do has_cap; gestor_master pela capability).
+$podeGerenciarEventos = has_cap('M:company@ORG');
+$dados['pode_gerenciar_eventos'] = $podeGerenciarEventos;
+
+// Lista de usuários só para o formulário (não vai para quem não gerencia).
+$usuariosEmpresa = [];
+if ($podeGerenciarEventos) {
+  $stU = $pdo->prepare("SELECT id_user, primeiro_nome, ultimo_nome FROM usuarios
+                         WHERE id_company = :cid AND ativo = 1 ORDER BY primeiro_nome, ultimo_nome");
+  $stU->execute([':cid' => $companyId]);
+  foreach ($stU as $u) {
+    $usuariosEmpresa[] = ['id' => (int)$u['id_user'],
+                          'nome' => nome_exibicao((string)$u['primeiro_nome'], (string)($u['ultimo_nome'] ?? ''))];
+  }
+}
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+$csrfAgenda = (string)$_SESSION['csrf_token'];
+
 $totalEventos = count($dados['eventos']);
 $totalPessoas = count($dados['pessoas']);
 ?>
@@ -123,6 +142,11 @@ $totalPessoas = count($dados['pessoas']);
             <i class="fa-solid fa-user"></i> Meus prazos
           </button>
           <?php endif; ?>
+          <?php if ($podeGerenciarEventos): ?>
+          <button type="button" class="ag-preset agev-novo" id="agevNovo">
+            <i class="fa-solid fa-plus"></i> Novo evento
+          </button>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -139,6 +163,7 @@ $totalPessoas = count($dados['pessoas']);
         <span class="item"><i class="fa-solid fa-list-check"></i>Iniciativa</span>
         <span class="item"><i class="fa-solid fa-circle"></i>Marco</span>
         <span class="item"><i class="fa-solid fa-flag"></i>Início</span>
+        <span class="item"><i class="fa-solid fa-calendar-day"></i>Evento</span>
         <span class="sep"></span>
         <span class="item"><span class="dot" style="background:var(--ag-vencido)"></span>Vencido</span>
         <span class="item"><span class="dot" style="background:var(--ag-hoje)"></span>Hoje</span>
@@ -160,9 +185,124 @@ $totalPessoas = count($dados['pessoas']);
     <?php include __DIR__ . '/partials/chat.php'; ?>
   </div>
 
+  <!-- Eventos da empresa: fundo + painel de detalhe (todos) e de cadastro (gestores) -->
+  <div class="agev-fundo" id="agevFundo"></div>
+
+  <aside class="agev-drawer" id="agevDetalhe" aria-hidden="true">
+    <header>
+      <h3 id="agevDetTitulo">Evento</h3>
+      <button type="button" class="ag-preset" data-agev-fechar style="margin-left:auto">Fechar</button>
+    </header>
+    <div class="agev-body">
+      <dl class="agev-det" id="agevDetCorpo"></dl>
+    </div>
+    <?php if ($podeGerenciarEventos): ?>
+    <div class="agev-acoes">
+      <button type="button" class="ag-preset" id="agevCancelarOc">Cancelar esta data</button>
+      <button type="button" class="ag-preset" id="agevEditar">Editar série</button>
+      <button type="button" class="ag-preset" id="agevExcluir">Excluir série</button>
+    </div>
+    <?php endif; ?>
+  </aside>
+
+  <?php if ($podeGerenciarEventos): ?>
+  <aside class="agev-drawer" id="agevForm" aria-hidden="true">
+    <header>
+      <h3 id="agevFormTitulo">Novo evento</h3>
+      <button type="button" class="ag-preset" data-agev-fechar style="margin-left:auto">Fechar</button>
+    </header>
+    <div class="agev-body">
+      <input type="hidden" id="agevId" value="0">
+
+      <div class="agev-campo">
+        <label for="agevTitulo">Título</label>
+        <input type="text" id="agevTitulo" maxlength="180" placeholder="Ex.: Reunião de resultados">
+      </div>
+
+      <div class="agev-campo">
+        <label for="agevDescricao">Descrição</label>
+        <textarea id="agevDescricao" placeholder="Pauta, objetivo do encontro, material necessário…"></textarea>
+      </div>
+
+      <div class="agev-campo">
+        <label for="agevLocal">Local</label>
+        <input type="text" id="agevLocal" maxlength="180" placeholder="Sala, link da chamada…">
+      </div>
+
+      <div class="agev-linha">
+        <div class="agev-campo">
+          <label for="agevData">Data</label>
+          <input type="date" id="agevData">
+        </div>
+        <div class="agev-campo">
+          <label for="agevHoraIni">Início</label>
+          <input type="time" id="agevHoraIni">
+        </div>
+        <div class="agev-campo">
+          <label for="agevHoraFim">Término</label>
+          <input type="time" id="agevHoraFim">
+        </div>
+      </div>
+
+      <div class="agev-campo">
+        <label for="agevRec">Repetição</label>
+        <select id="agevRec">
+          <option value="nenhuma">Não se repete</option>
+          <option value="semanal">Semanal</option>
+          <option value="quinzenal">Quinzenal</option>
+          <option value="mensal">Mensal</option>
+        </select>
+      </div>
+
+      <div class="agev-campo" id="agevBoxDias" hidden>
+        <label>Dias da semana</label>
+        <div class="agev-dias">
+          <label><input type="checkbox" class="agev-dia" value="0"> Dom</label>
+          <label><input type="checkbox" class="agev-dia" value="1"> Seg</label>
+          <label><input type="checkbox" class="agev-dia" value="2"> Ter</label>
+          <label><input type="checkbox" class="agev-dia" value="3"> Qua</label>
+          <label><input type="checkbox" class="agev-dia" value="4"> Qui</label>
+          <label><input type="checkbox" class="agev-dia" value="5"> Sex</label>
+          <label><input type="checkbox" class="agev-dia" value="6"> Sáb</label>
+        </div>
+        <div class="agev-hint">Sem marcar nada, repete no mesmo dia da semana da data escolhida.</div>
+      </div>
+
+      <div class="agev-campo" id="agevBoxMensal" hidden>
+        <label for="agevRegraMes">Como repetir no mês</label>
+        <select id="agevRegraMes">
+          <option value="dia">No mesmo dia do mês</option>
+          <option value="semana">Na mesma posição (ex.: 2ª terça)</option>
+        </select>
+      </div>
+
+      <div class="agev-campo" id="agevBoxFim" hidden>
+        <label for="agevDataFim">Repetir até (opcional)</label>
+        <input type="date" id="agevDataFim">
+      </div>
+
+      <div class="agev-campo">
+        <label>Participantes</label>
+        <div class="agev-pessoas" id="agevPessoas">
+          <?php foreach ($usuariosEmpresa as $u): ?>
+          <label><input type="checkbox" class="agev-pessoa" value="<?= (int)$u['id'] ?>"> <?= htmlspecialchars($u['nome'], ENT_QUOTES, 'UTF-8') ?></label>
+          <?php endforeach; ?>
+        </div>
+        <div class="agev-hint">O evento aparece na Agenda de todos, e em Minhas Tarefas de quem é participante.</div>
+      </div>
+    </div>
+    <div class="agev-acoes">
+      <button type="button" class="ag-preset" data-agev-fechar>Cancelar</button>
+      <button type="button" class="ag-preset agev-novo" id="agevSalvar">Salvar evento</button>
+    </div>
+  </aside>
+  <?php endif; ?>
+
   <script>
     window.AGENDA = <?= json_encode($dados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    window.AGEV_CSRF = <?= json_encode($csrfAgenda, JSON_UNESCAPED_SLASHES) ?>;
   </script>
   <script src="/OKR_system/assets/js/agenda.js"></script>
+  <script src="/OKR_system/assets/js/agenda_eventos.js"></script>
 </body>
 </html>

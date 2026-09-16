@@ -66,7 +66,7 @@ if (!function_exists('agenda_build_events')) {
    *   hoje: string
    * }
    */
-  function agenda_build_events(PDO $pdo, int $companyId, ?string $today = null): array {
+  function agenda_build_events(PDO $pdo, int $companyId, ?string $today = null, bool $incluirEventos = true): array {
     $today = $today ?: date('Y-m-d');
 
     $eventos     = [];
@@ -330,6 +330,46 @@ if (!function_exists('agenda_build_events')) {
       }
     }
 
+    /* ---------- 6) eventos da empresa (cadastrados pelo admin) ---------- */
+
+    // Fonte digitada, não derivada: título e pessoas vêm do próprio evento.
+    // Reusa os estados existentes de propósito — criar estado novo quebraria a
+    // ordenação de "pior estado" (ORDEM_ESTADO.indexOf devolve -1) usada pelos
+    // grupos de marcos na grade.
+    $eventosEmpresa = [];
+    if ($incluirEventos) {
+      require_once __DIR__ . '/agenda_eventos.php';
+      $carga = agev_carregar($pdo, $companyId, $today);
+      foreach ($carga['catalogo'] as $idEv => $cat) {
+        $eventosEmpresa[$idEv] = $cat;
+        foreach ($cat['pessoas'] as $pp) { $pessoasIds[(int)$pp['id']] = true; }
+      }
+      foreach ($carga['ocorrencias'] as $oc) {
+        $data = (string)$oc['data'];
+        $estado = $oc['cancelada']
+          ? 'cancelado'
+          : ($data < $today ? 'concluido' : ($data === $today ? 'hoje'
+            : ($data <= date('Y-m-d', strtotime($today . ' +7 days')) ? 'proximo' : 'futuro')));
+
+        $eventos[] = [
+          'id'            => 'ev:' . $oc['id_evento'] . ':' . $data,
+          'tipo'          => 'evento',
+          'data'          => $data,
+          'estado'        => $estado,
+          'status'        => $oc['cancelada'] ? 'cancelado' : ($data < $today ? 'concluido' : 'agendado'),
+          'id_objetivo'   => null,
+          'id_kr'         => null,
+          'id_iniciativa' => null,
+          'id_evento'     => (int)$oc['id_evento'],
+          'meta'          => [
+            'hora'      => $oc['hora'],
+            'data_ref'  => $oc['data_ref'],
+            'cancelada' => (bool)$oc['cancelada'],
+          ],
+        ];
+      }
+    }
+
     /* ---------- farol e progresso reais ---------- */
 
     // key_results.farol está NULL em praticamente todo o banco: o farol que vale
@@ -379,12 +419,14 @@ if (!function_exists('agenda_build_events')) {
     });
 
     return [
-      'eventos'     => $eventos,
-      'pessoas'     => $pessoas,
-      'objetivos'   => $objetivos,
-      'krs'         => $krs,
-      'iniciativas' => $iniciativas,
-      'hoje'        => $today,
+      'eventos'        => $eventos,
+      'pessoas'        => $pessoas,
+      'objetivos'      => $objetivos,
+      'krs'            => $krs,
+      'iniciativas'    => $iniciativas,
+      // Catálogo dos eventos da empresa (chave nova: as seis acima não mudaram).
+      'eventos_empresa'=> $eventosEmpresa,
+      'hoje'           => $today,
     ];
   }
 }
