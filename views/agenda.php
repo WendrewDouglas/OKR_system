@@ -81,6 +81,14 @@ if ($podeGerenciarEventos) {
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $csrfAgenda = (string)$_SESSION['csrf_token'];
 
+// Versão do asset pelo mtime do arquivo. Sem isso o navegador reaproveita o
+// agenda.js em cache e o roda contra o payload novo: o tipo 'evento' não existe
+// no TIPOS antigo e derruba o render inteiro da Agenda de quem já visitou a tela.
+$assetV = static function (string $rel): string {
+  $abs = __DIR__ . '/../' . ltrim($rel, '/');
+  return '/OKR_system/' . ltrim($rel, '/') . '?v=' . (is_file($abs) ? (string)filemtime($abs) : '0');
+};
+
 $totalEventos = count($dados['eventos']);
 $totalPessoas = count($dados['pessoas']);
 ?>
@@ -97,7 +105,7 @@ $totalPessoas = count($dados['pessoas']);
   <link rel="stylesheet" href="/OKR_system/assets/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous"/>
   <link rel="stylesheet" href="/OKR_system/assets/company_theme.php?cid=<?= $companyId ?>">
-  <link rel="stylesheet" href="/OKR_system/assets/css/pages/agenda.css">
+  <link rel="stylesheet" href="<?= htmlspecialchars($assetV('assets/css/pages/agenda.css'), ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body>
   <?php include __DIR__ . '/partials/sidebar.php'; ?>
@@ -302,7 +310,7 @@ $totalPessoas = count($dados['pessoas']);
     window.AGENDA = <?= json_encode($dados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     window.AGEV_CSRF = <?= json_encode($csrfAgenda, JSON_UNESCAPED_SLASHES) ?>;
   </script>
-  <script src="/OKR_system/assets/js/agenda.js"></script>
-  <script src="/OKR_system/assets/js/agenda_eventos.js"></script>
+  <script src="<?= htmlspecialchars($assetV('assets/js/agenda.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
+  <script src="<?= htmlspecialchars($assetV('assets/js/agenda_eventos.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>
