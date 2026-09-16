@@ -23,19 +23,21 @@ require_once __DIR__ . '/../auth/helpers/kr_helpers.php'; // fonte única: gerar
 require_once __DIR__ . '/../auth/helpers/kr_milestones.php'; // validação/ajuste de milestones previstos (fecho da meta)
 require_once __DIR__.'/../auth/acl.php';
 
+// O contexto precisa ser o próprio KR: com ['id_objetivo' => 0] (o form não manda
+// id_objetivo) a checagem de tenant não achava empresa e negava a tela para todos,
+// exceto admin_master. Vem antes do gate de página para quem não pode editar
+// receber a orientação de pedir ao OKR Master, e não o aviso genérico. O id vem da URL (?id / ?id_kr) ou do POST do update.
+$ctxKrId = trim((string)($_POST['id_kr'] ?? $_GET['id_kr'] ?? $_GET['id'] ?? ''));
+if (!has_cap('W:kr@ORG', ['id_kr' => $ctxKrId])) {
+  deny_with_modal('Você não tem permissão para editar este KR. Solicite ao OKR Master da sua empresa.');
+}
+
 // Gate automático pela tabela dom_paginas.requires_cap
 gate_page_by_path($_SERVER['SCRIPT_NAME'] ?? '');
 if (($_GET['mode'] ?? '') === 'edit') {
   require_cap('W:objetivo@ORG');
 }
 
-// O contexto precisa ser o próprio KR: com ['id_objetivo' => 0] (o form não manda
-// id_objetivo) a checagem de tenant não achava empresa e negava a tela para todos,
-// exceto admin_master. O id vem da URL (?id / ?id_kr) ou do POST do update.
-$ctxKrId = trim((string)($_POST['id_kr'] ?? $_GET['id_kr'] ?? $_GET['id'] ?? ''));
-if (!has_cap('W:kr@ORG', ['id_kr' => $ctxKrId])) {
-  deny_with_modal('Você não tem permissão para editar este KR. Solicite ao OKR Master da sua empresa.');
-}
 
 /* ===================== ENDPOINT AJAX (update) ===================== */
 if (isset($_GET['ajax'])) {
