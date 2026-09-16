@@ -254,6 +254,29 @@ if (isset($_GET['ajax'])) {
         }
         unset($m);
 
+        // 1b) o último milestone é espelho da meta (travado no grid, a tela avisa que
+        // "acompanha o campo Meta"): sem isto, mudar a meta caía em FECHO_META e abria
+        // o modal de ajuste mesmo com a série coerente.
+        // Só mexe quando a meta de fato se afastou (além da tolerância da unidade), para
+        // não marcar como editado o arredondamento que o gerador aplicou.
+        $iLast = count($serie) - 1;
+        $eps   = krm_tolerancia($unidade_medida ?: null);
+        if ($iLast >= 0) {
+          $L =& $serie[$iLast];
+          if ($isIntervalo) {
+            $lo = min($baseline, $meta); $hi = max($baseline, $meta);
+            if (!is_numeric($L['valor_esperado_min']) || abs((float)$L['valor_esperado_min'] - $lo) > $eps
+             || !is_numeric($L['valor_esperado_max']) || abs((float)$L['valor_esperado_max'] - $hi) > $eps) {
+              $L['valor_esperado_min'] = $lo;
+              $L['valor_esperado_max'] = $hi;
+              $L['valor_esperado']     = ($lo + $hi) / 2;
+            }
+          } elseif (!is_numeric($L['valor_esperado']) || abs((float)$L['valor_esperado'] - $meta) > $eps) {
+            $L['valor_esperado'] = $meta;
+          }
+          unset($L);
+        }
+
         // 2) aplica estratégia de ajuste, se solicitada
         if ($estrategia === 'reescalar') {
           $serie = $isIntervalo ? krm_ajustar_faixa_final($krNovo, $serie) : krm_reescalar($krNovo, $serie);
