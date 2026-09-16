@@ -29,7 +29,11 @@ if (($_GET['mode'] ?? '') === 'edit') {
   require_cap('W:objetivo@ORG');
 }
 
-require_cap('W:kr@ORG', ['id_objetivo' => (int)($_POST['id_objetivo'] ?? 0)]);
+// O contexto precisa ser o próprio KR: com ['id_objetivo' => 0] (o form não manda
+// id_objetivo) a checagem de tenant não achava empresa e negava a tela para todos,
+// exceto admin_master. O id vem da URL (?id / ?id_kr) ou do POST do update.
+$ctxKrId = trim((string)($_POST['id_kr'] ?? $_GET['id_kr'] ?? $_GET['id'] ?? ''));
+require_cap('W:kr@ORG', ['id_kr' => $ctxKrId]);
 
 /* ===================== ENDPOINT AJAX (update) ===================== */
 if (isset($_GET['ajax'])) {
