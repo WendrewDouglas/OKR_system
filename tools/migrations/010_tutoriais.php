@@ -69,10 +69,13 @@ $tutoriais = [
     ['06-agenda', 'Agenda de prazos',
      'O calendário com todos os prazos da empresa, com filtros em cascata, busca e as visões de mês, semana, lista e ciclo.',
      'Visões da estratégia', 3, 211],
-    // ordens 5 a 7 reservadas para editar objetivo, cadastrar KR e editar KR
+    // ordens 6 e 7 reservadas para cadastrar KR e editar KR
     ['07-novo-objetivo', 'Cadastro de objetivo',
      'Do botão Objetivo até o aviso ao aprovador: nome, tipo, pilar, ciclo, dono e a avaliação da inteligência artificial antes de salvar.',
      'Cadastro de OKRs', 4, 204],
+    ['08-editar-objetivo', 'Edição de objetivo',
+     'Como corrigir nome, ciclo, status ou responsável de um objetivo, com a justificativa obrigatória e o reenvio para aprovação.',
+     'Cadastro de OKRs', 5, 150],
     ['03-detalhe-objetivo', 'Detalhe do objetivo',
      'A tela onde o acompanhamento acontece: cabeçalho do objetivo, cartões de resumo, card do KR e as cinco abas.',
      'Acompanhamento no dia a dia', 8, 229],
