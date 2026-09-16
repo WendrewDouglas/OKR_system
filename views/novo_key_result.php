@@ -821,8 +821,11 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
     const out = [];
     if(!startISO || !endISO) return out;
 
-    const start = new Date(startISO);
-    const end   = new Date(endISO);
+    // new Date('AAAA-MM-DD') é meia-noite UTC: no Brasil vira o dia anterior e a prévia
+    // mostrava um marco a mais (ex.: 30/09 num ciclo que começa em 01/10). Lê no fuso local.
+    const localDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+    const start = localDate(startISO);
+    const end   = localDate(endISO);
 
     const f = (freq || '')
       .toLowerCase()
@@ -855,7 +858,7 @@ pb_log_error('view_load', 'Formulário Novo Key Result carregado', $__LOG_CTX_BA
       }
     }
 
-    if (out.length === 0) out.push(toISODate(new Date(endISO)));
+    if (out.length === 0) out.push(toISODate(end));
     return out;
   }
 
