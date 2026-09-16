@@ -191,14 +191,16 @@ if (isset($_GET['ajax'])) {
    * Accept da request contém application/json — o fetch() desta página manda
    * Accept: * / *, o que faria a resposta virar HTML e quebrar o .json() no client.
    */
-  $assertCap = static function(string $capKey, array $ctx = []) use ($pdo, $isMasterUser): void {
+  $assertCap = static function(string $capKey, array $ctx = [], string $msg = 'Sem permissão para esta ação.') use ($pdo, $isMasterUser): void {
     if ($isMasterUser($pdo)) return;
     if (!has_cap($capKey, $ctx)) {
       http_response_code(403);
-      echo json_encode(['success'=>false,'error'=>'Sem permissão para esta ação.'], JSON_UNESCAPED_UNICODE);
+      echo json_encode(['success'=>false,'error'=>$msg], JSON_UNESCAPED_UNICODE);
       exit;
     }
   };
+  // Mesmo texto do aviso que a tela mostra ao clicar (PODE_ESCREVER_KR no JS).
+  $msgSemPermKr = 'Você não tem permissão para esta ação. Solicite ao OKR Master da sua empresa.';
 
   $statusIniciativaValido = static function(PDO $pdo, string $status): bool {
     if ($status === '') return false;
@@ -2063,6 +2065,7 @@ foreach ($milestones as $m) {
     $just = trim($_POST['justificativa'] ?? '');
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
     $assertTenant('kr', ['id_kr'=>$id_kr]);
+    $assertCap('W:kr@ORG', ['id_kr'=>$id_kr], $msgSemPermKr);
     require_once __DIR__ . '/../auth/helpers/kr_status.php';
 
     try {
@@ -2152,6 +2155,7 @@ foreach ($milestones as $m) {
     $just  = trim($_POST['justificativa'] ?? '');
     if (!$id_kr || $just===''){ echo json_encode(['success'=>false,'error'=>'Informe a justificativa.']); exit; }
     $assertTenant('kr', ['id_kr'=>$id_kr]);
+    $assertCap('W:kr@ORG', ['id_kr'=>$id_kr], $msgSemPermKr);
 
     try {
       $pdo->beginTransaction();
@@ -2216,7 +2220,7 @@ foreach ($milestones as $m) {
     if (!$id_kr){ echo json_encode(['success'=>false,'error'=>'id_kr inválido']); exit; }
     $assertTenant('kr', ['id_kr'=>$id_kr]);
     // Exclusão é permanente: exige escrita em KR (colaborador e convidado não têm).
-    $assertCap('W:kr@ORG', ['id_kr'=>$id_kr]);
+    $assertCap('W:kr@ORG', ['id_kr'=>$id_kr], $msgSemPermKr);
 
     try {
       $pdo->beginTransaction();
@@ -2944,6 +2948,10 @@ require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/helpers/num_format.php';
 
 if (!isset($_SESSION['user_id'])) { header('Location: /OKR_system/views/login.php'); exit; }
+// Editar/Cancelar/Reativar/Excluir KR ficam visíveis para todos; sem W:kr a tela
+// avisa no clique (e os endpoints recusam do mesmo jeito).
+require_once __DIR__ . '/../auth/acl.php';
+$podeEscreverKr = has_cap('W:kr@ORG');
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf_token'];
 
@@ -3804,6 +3812,8 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     const csrfToken     = "<?= htmlspecialchars($csrf) ?>";
     const idObjetivo    = <?= (int)$id_objetivo ?>;
     const SCRIPT        = "<?= $_SERVER['SCRIPT_NAME'] ?>";
+    const PODE_ESCREVER_KR = <?= !empty($podeEscreverKr) ? 'true' : 'false' ?>;
+    const MSG_SEM_PERM_KR  = "Você não tem permissão para esta ação. Solicite ao OKR Master da sua empresa.";
 
     const $ = (sel, ctx=document) => ctx.querySelector(sel);
     //const $  = (s,p=document)=>p.querySelector(s);
@@ -3813,7 +3823,7 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
     function fmtBRL(x){ return (Number(x)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
     function escapeHtml(s){ return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
     function truncate(s,n){ if(!s)return''; return s.length>n?s.slice(0,n-1)+'…':s; }
-    function toast(msg, ok=true){ const t=document.createElement('div'); t.className='toast'+(ok?'':' error'); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+    function toast(msg, ok=true, ms=3000){ const t=document.createElement('div'); t.className='toast'+(ok?'':' error'); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),ms); }
 
     // ================== Log & Discussões do KR ==================
     // O histórico vem montado do servidor (?ajax=kr_log_list); aqui só filtra e desenha.
@@ -5016,6 +5026,16 @@ $kpi['em_risco']  = (int)($kpi['em_risco']  ?? 0);
 
     // Delegação de eventos
     document.addEventListener('click', async (e)=>{
+      // Ações de escrita no KR (aba Resumo): sem permissão, avisa em vez de seguir.
+      // Fica antes de qualquer await para o preventDefault valer no link Editar KR.
+      if (!PODE_ESCREVER_KR) {
+        const acaoKr = e.target.closest('#krContainer a[href*="editar_key_result.php"], button[data-act="cancel-kr"], button[data-act="reactivate-kr"], button[data-act="delete-kr"]');
+        if (acaoKr) {
+          e.preventDefault();
+          toast(MSG_SEM_PERM_KR, false, 6000);
+          return;
+        }
+      }
       const btnT = e.target.closest('[data-act="toggle"]');
       if (btnT){
         const card = e.target.closest('.kr-card');

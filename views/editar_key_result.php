@@ -33,7 +33,9 @@ if (($_GET['mode'] ?? '') === 'edit') {
 // id_objetivo) a checagem de tenant não achava empresa e negava a tela para todos,
 // exceto admin_master. O id vem da URL (?id / ?id_kr) ou do POST do update.
 $ctxKrId = trim((string)($_POST['id_kr'] ?? $_GET['id_kr'] ?? $_GET['id'] ?? ''));
-require_cap('W:kr@ORG', ['id_kr' => $ctxKrId]);
+if (!has_cap('W:kr@ORG', ['id_kr' => $ctxKrId])) {
+  deny_with_modal('Você não tem permissão para editar este KR. Solicite ao OKR Master da sua empresa.');
+}
 
 /* ===================== ENDPOINT AJAX (update) ===================== */
 if (isset($_GET['ajax'])) {
