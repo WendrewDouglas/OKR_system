@@ -26,7 +26,7 @@ $csrf = $_SESSION['csrf_token'];
     .list{ display:grid; gap:10px; }
     .card{ background:linear-gradient(180deg, var(--card), #0e1319); border:1px solid var(--border); border-radius:14px; padding:12px; color:var(--text); display:grid; grid-template-columns:1fr auto; gap:8px; }
     .title{ font-weight:900; letter-spacing:.2px; display:flex; align-items:center; gap:8px; }
-    .msg{ color:#cbd5e1; }
+    .msg{ color:#cbd5e1; white-space:pre-line; }
     .meta{ color:#9aa4b2; font-size:.85rem; }
     .badge{ font-size:.78rem; border:1px solid var(--border); padding:2px 8px; border-radius:999px; }
     .actions{ display:flex; align-items:center; gap:6px; }

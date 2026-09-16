@@ -108,7 +108,7 @@ function notify_event(PDO $pdo, array $context): void {
   // In-app para criador
   if (!empty($creator['id_user_criador']) || !empty($creator['id'])) {
     $uid = (int)($creator['id_user_criador'] ?? $creator['id']);
-    notify_inapp($pdo, $uid, $titulo, nl2br(htmlentities($mensagem, ENT_QUOTES, 'UTF-8')), $url);
+    notify_inapp($pdo, $uid, $titulo, $mensagem, $url);
   }
 
   // Email (escapa a mensagem — contém a observação/justificativa do usuário)
@@ -337,7 +337,8 @@ function notify_approvers_new_item(PDO $pdo, string $module, string $itemId, arr
                     $pdo,
                     (int)$apr['id_user'],
                     "Novo {$label} pendente",
-                    htmlspecialchars("O {$label} \"{$desc}\" foi criado e aguarda sua aprovação.", ENT_QUOTES, 'UTF-8'),
+                    // texto puro: a web escapa ao exibir e o app usa Text(); escapar aqui mostrava &quot;
+                    "O {$label} \"{$desc}\" foi criado e aguarda sua aprovação.",
                     $url
                 );
 
