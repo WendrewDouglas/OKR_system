@@ -118,6 +118,7 @@ $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.p
 $isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
 $isAdminPush        = in_array($currentPath, ['/OKR_system/views/admin_push.php','/OKR_system/admin_push']);
 $isAdminGroup       = ($isSystemHealth || $isAdminCompanies || $isAdminPush);
+$isTutoriais        = in_array($currentPath, ['/OKR_system/views/tutoriais.php','/OKR_system/tutoriais']);
 $isCrm              = in_array($currentPath, ['/OKR_system/views/crm.php','/OKR_system/crm']);
 $crmView            = $isCrm ? (string)($_GET['view'] ?? 'overview') : '';
 $crmViews           = ['overview','leads','companies','contacts','pipeline','activities','segments','campaigns','imports','settings'];
@@ -494,6 +495,14 @@ body.collapsed .sidebar-footer .org { display: none; }
       </ul>
     </li>
     <?php endif; ?>
+    <!-- Tutoriais: biblioteca de vídeos, aberta a todos os usuários logados -->
+    <li>
+      <div class="menu-item <?= $isTutoriais ? 'active' : '' ?>"
+           data-href="/OKR_system/views/tutoriais.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-graduation-cap icon-main"></i><span>Tutoriais</span>
+      </div>
+    </li>
     <?php if ($canSeePrivileged): ?>
     <li class="sidebar-section-label">CRM Comercial</li>
     <li class="<?= $isCrmGroup ? 'open' : '' ?>">

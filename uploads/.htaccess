@@ -21,6 +21,11 @@
   Require all denied
 </FilesMatch>
 
+# Tipos de mídia servidos daqui (biblioteca de tutoriais).
+# O .vtt vinha sem Content-Type e navegador recusa faixa de legenda assim.
+AddType text/vtt .vtt
+AddType video/mp4 .mp4
+
 # Sem listagem de diretório e sem execução de CGI
 Options -Indexes -ExecCGI
 RemoveHandler .php .phtml .phar .cgi .pl .py
