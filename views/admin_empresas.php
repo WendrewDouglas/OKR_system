@@ -53,7 +53,6 @@ $tabExiste = static function (string $t) use ($pdo): bool {
   return (bool)$st->fetchColumn();
 };
 $temAtivo  = $colExiste('company', 'ativo');
-$temLogin  = $colExiste('usuarios', 'dt_ultimo_login');
 $temPrefs  = $tabExiste('usuarios_notif_pref');
 $hoje      = date('Y-m-d');
 
@@ -64,7 +63,7 @@ $sql = "SELECT id_company, organizacao, razao_social, cnpj, municipio, uf, creat
      . " FROM company ORDER BY organizacao";
 foreach ($pdo->query($sql) as $r) {
   $empresas[(int)$r['id_company']] = $r + [
-    'usr_total' => 0, 'usr_ativos' => 0, 'usr_avisos' => 0, 'ult_login' => null,
+    'usr_total' => 0, 'usr_ativos' => 0, 'usr_avisos' => 0,
     'objetivos' => 0, 'krs' => 0, 'krs_andamento' => 0, 'iniciativas' => 0,
     'atraso_marcos' => 0, 'atraso_inis' => 0, 'ult_apont' => null,
   ];
@@ -76,7 +75,6 @@ $soma = static function (array &$emp, int $cid, string $campo, $valor): void {
 /* ---------- colaboradores ---------- */
 $q = $pdo->query("
   SELECT u.id_company, COUNT(*) total, SUM(u.ativo = 1) ativos"
-  . ($temLogin ? ", MAX(u.dt_ultimo_login) ult_login" : ", NULL ult_login")
   . ($temPrefs ? ", SUM(u.ativo = 1 AND (p.lembrete_marco = 1 OR p.lembrete_iniciativa = 1 OR p.relatorio_atrasos = 1 OR p.resumo_semanal = 1)) avisos" : ", 0 avisos") . "
     FROM usuarios u " . ($temPrefs ? "LEFT JOIN usuarios_notif_pref p ON p.id_user = u.id_user" : "") . "
    WHERE u.id_company IS NOT NULL
@@ -87,7 +85,6 @@ foreach ($q as $r) {
   $soma($empresas, $cid, 'usr_total', (int)$r['total']);
   $soma($empresas, $cid, 'usr_ativos', (int)$r['ativos']);
   $soma($empresas, $cid, 'usr_avisos', (int)$r['avisos']);
-  $soma($empresas, $cid, 'ult_login', $r['ult_login']);
 }
 
 /* ---------- OKR ---------- */
@@ -155,6 +152,9 @@ foreach ($pdo->query("
   $soma($empresas, (int)$r['id_company'], 'ult_apont', $r['ult']);
 }
 
+uasort($empresas, static fn($a, $b) =>
+  [(int)$b['ativo'], mb_strtolower((string)$a['organizacao'])] <=> [(int)$a['ativo'], mb_strtolower((string)$b['organizacao'])]);
+
 /* ---------- KPIs ---------- */
 $kpi = ['empresas' => count($empresas), 'ativas' => 0, 'colab' => 0, 'atraso' => 0];
 foreach ($empresas as $e) {
@@ -221,6 +221,8 @@ table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--te
 .pe tr.is-off td:not(.pe-col-toggle){ opacity:.55; }
 .pe .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pe-name{ font-weight:700; }
+.pe td.pe-col-name{ min-width:230px; }
+.pe-meta span{ white-space:nowrap; }
 .pe-id{ color:var(--text-secondary,#aaa); font-weight:400; font-size:.75rem; }
 .pe-meta{ font-size:.75rem; color:var(--text-secondary,#aaa); margin-top:2px; }
 .pe-muted{ color:var(--text-secondary,#aaa); }
@@ -290,15 +292,14 @@ table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--te
         <thead>
           <tr>
             <th>Empresa</th>
+            <th>Situação</th>
             <th class="num">Colaboradores</th>
             <th class="num">Objetivos</th>
             <th class="num">KRs em andamento</th>
             <th class="num">Iniciativas</th>
             <th class="num">Em atraso</th>
             <th class="num">Com avisos</th>
-            <th>Último acesso</th>
             <th>Último apontamento</th>
-            <th>Situação</th>
           </tr>
         </thead>
         <tbody id="peBody">
@@ -312,19 +313,8 @@ table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--te
           <tr data-busca="<?= h($busca) ?>" data-ativa="<?= $ativa ? '1' : '0' ?>" class="<?= $ativa ? '' : 'is-off' ?>">
             <td class="pe-col-name">
               <div class="pe-name"><?= h($nome) ?> <span class="pe-id">#<?= $cid ?></span></div>
-              <div class="pe-meta"><?= h(implode(' · ', array_filter([cnpj_fmt($e['cnpj']), $local]))) ?: '&nbsp;' ?></div>
-            </td>
-            <td class="num" data-lbl="Colaboradores" title="ativos / cadastrados"><?= num_br($e['usr_ativos']) ?> <span class="pe-muted">/ <?= num_br($e['usr_total']) ?></span></td>
-            <td class="num" data-lbl="Objetivos"><?= num_br($e['objetivos']) ?></td>
-            <td class="num" data-lbl="KRs em andamento" title="<?= num_br($e['krs']) ?> KRs no total"><?= num_br($e['krs_andamento']) ?> <span class="pe-muted">/ <?= num_br($e['krs']) ?></span></td>
-            <td class="num" data-lbl="Iniciativas"><?= num_br($e['iniciativas']) ?></td>
-            <td class="num" data-lbl="Em atraso" title="<?= num_br($e['atraso_marcos']) ?> marcos sem apontamento + <?= num_br($e['atraso_inis']) ?> iniciativas vencidas">
-              <?= $atraso > 0 ? '<span class="pe-late">' . num_br($atraso) . '</span>' : '<span class="pe-ok">0</span>' ?>
-            </td>
-            <td class="num" data-lbl="Com avisos" title="colaboradores ativos com ao menos um aviso ligado"><?= num_br($e['usr_avisos']) ?></td>
-            <td data-lbl="Último acesso"><?= $temLogin ? data_rel($e['ult_login']) : '<span class="pe-muted">sem registro</span>' ?></td>
-            <td data-lbl="Último apontamento"><?= data_rel($e['ult_apont']) ?></td>
-            <td class="pe-col-toggle" data-lbl="Situação">
+              <div class="pe-meta"><?= implode(' · ', array_map(static fn($x) => '<span>' . h($x) . '</span>', array_filter([cnpj_fmt($e['cnpj']), $local]))) ?: '&nbsp;' ?></div>
+            </td>            <td class="pe-col-toggle" data-lbl="Situação">
               <label class="pe-sw" title="<?= $e['ativo_alterado_em'] ? 'Alterado em ' . h(date('d/m/Y H:i', strtotime($e['ativo_alterado_em']))) : 'Ativa = recebe avisos de pendência' ?>">
                 <input type="checkbox" class="pe-toggle" data-id="<?= $cid ?>" data-nome="<?= h($nome) ?>"
                   <?= $ativa ? 'checked' : '' ?> <?= $temAtivo ? '' : 'disabled' ?> aria-label="Empresa ativa: <?= h($nome) ?>">
@@ -332,6 +322,15 @@ table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--te
                 <span class="lbl-on">Ativa</span><span class="lbl-off">Inativa</span>
               </label>
             </td>
+            <td class="num" data-lbl="Colaboradores" title="ativos / cadastrados"><span><?= num_br($e['usr_ativos']) ?> <span class="pe-muted">/ <?= num_br($e['usr_total']) ?></span></span></td>
+            <td class="num" data-lbl="Objetivos"><?= num_br($e['objetivos']) ?></td>
+            <td class="num" data-lbl="KRs em andamento" title="<?= num_br($e['krs']) ?> KRs no total"><span><?= num_br($e['krs_andamento']) ?> <span class="pe-muted">/ <?= num_br($e['krs']) ?></span></span></td>
+            <td class="num" data-lbl="Iniciativas"><?= num_br($e['iniciativas']) ?></td>
+            <td class="num" data-lbl="Em atraso" title="<?= num_br($e['atraso_marcos']) ?> marcos sem apontamento + <?= num_br($e['atraso_inis']) ?> iniciativas vencidas">
+              <?= $atraso > 0 ? '<span class="pe-late">' . num_br($atraso) . '</span>' : '<span class="pe-ok">0</span>' ?>
+            </td>
+            <td class="num" data-lbl="Com avisos" title="colaboradores ativos com ao menos um aviso ligado"><?= num_br($e['usr_avisos']) ?></td>
+            <td data-lbl="Último apontamento"><?= data_rel($e['ult_apont']) ?></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
