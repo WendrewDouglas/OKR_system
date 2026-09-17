@@ -111,8 +111,8 @@ $enviarEmail = static function (int $uid, string $email, string $chave, string $
     file_put_contents("$preview/{$hoje}_u{$uid}_" . str_replace(':', '-', $chave) . '.html', $html);
   }
   $destino = $paraTeste !== '' ? $paraTeste : $email;
-  echo "    > e-mail [$chave] para " . mask_email($destino) . ": $assunto ($n itens)\n";
-  if ($dry) return;
+  echo "    > e-mail [$chave] para " . mask_email($destino) . ": $assunto (" . notif_plural($n, 'item', 'itens') . ")\n";
+  if ($dry) { $tot['emails']++; return; }
 
   if (!filter_var($destino, FILTER_VALIDATE_EMAIL)) {
     if ($gravaLog) notif_registrar($pdo, $uid, $hoje, 'email', $chave, 'sem_destino', $n, 'e-mail inválido');
@@ -216,7 +216,7 @@ foreach ($usuarios as $u) {
     $route   = '/notificacoes';
   }
   echo "    > push: $pTitulo / $pCorpo\n";
-  if ($dry) continue;
+  if ($dry) { $tot['push']++; continue; }
 
   notif_inbox($pdo, $uid, $pTitulo, $pCorpo, '/OKR_system/views/agenda.php',
     ['origem' => 'lembrete_okr', 'dia' => $hoje, 'hoje' => $nHoje, 'em3' => $nEm3, 'atrasados' => $nAtr]);
@@ -227,7 +227,7 @@ foreach ($usuarios as $u) {
   if ($r['status'] === 'falha') $tot['falhas']++;
 }
 
-echo sprintf("[%s] fim: %d usuário(s), %d e-mail(s), %d push, %d já enviados, %d falha(s)\n",
-  date('c'), $tot['usuarios'], $tot['emails'], $tot['push'], $tot['pulados'], $tot['falhas']);
+echo sprintf("[%s] fim%s: %d usuário(s), %d e-mail(s), %d push, %d já enviados, %d falha(s)\n",
+  date('c'), $dry ? ' (simulado, nada foi enviado)' : '', $tot['usuarios'], $tot['emails'], $tot['push'], $tot['pulados'], $tot['falhas']);
 
 flock($lock, LOCK_UN);
