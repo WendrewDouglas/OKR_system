@@ -212,7 +212,9 @@ const GE_PAPEIS = [
   'gestor_master' => ['Gestor master', 'r-amber'],
   'user_admin'   => ['Administrador', 'r-purple'],
   'user_gestor'  => ['Gestor', 'r-blue'],
+  'gestor_user'  => ['Gestor', 'r-blue'],
   'user_colab'   => ['Colaborador', 'r-green'],
+  'user_guest'   => ['Convidado', 'r-gray'],
 ];
 const GE_AVISOS = [
   'lembrete_marco'      => ['fa-regular fa-bell', 'Lembrete de marco'],
