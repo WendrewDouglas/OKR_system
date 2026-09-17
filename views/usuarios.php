@@ -162,6 +162,27 @@ $csrf = $_SESSION['csrf_token'];
     .role.role-level{ border-style:solid; }
     .right{ display:flex; gap:8px; }
 
+    /* ===== Avisos de pendência (4 chaves por usuário) ===== */
+    .notif{ grid-column:1 / -1; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+            border-top:1px solid #1f2635; padding-top:10px; }
+    .notif-lbl{ font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#93a4bd; margin-right:2px; }
+    .nsw{ display:inline-flex; align-items:center; gap:8px; font-size:.8rem; color:#c9d4e5; cursor:pointer;
+          border:1px solid #1f2635; background:#0c1118; border-radius:999px; padding:5px 10px 5px 6px; user-select:none; }
+    .nsw input{ position:absolute; opacity:0; width:1px; height:1px; }
+    .nsw .trk{ position:relative; width:30px; height:17px; border-radius:999px; background:#334155; transition:background .15s; flex:0 0 auto; }
+    .nsw .trk::after{ content:""; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#cbd5e1; transition:transform .15s; }
+    .nsw input:checked + .trk{ background:#b7950b; }
+    .nsw input:checked + .trk::after{ transform:translateX(13px); background:#fff; }
+    .nsw input:focus-visible + .trk{ outline:2px solid #60a5fa; outline-offset:2px; }
+    .nsw:has(input:checked){ border-color:rgba(246,195,67,.55); color:#fde68a; }
+    .nsw.is-locked{ cursor:not-allowed; opacity:.55; }
+    .nsw.is-busy{ opacity:.6; pointer-events:none; }
+    .notif-warn{ font-size:.75rem; color:#fbbf24; }
+    @media (max-width: 720px){
+      .card{ grid-template-columns:auto 1fr; }
+      .card .right{ grid-column:1 / -1; justify-content:flex-end; }
+    }
+
     .empty{ padding:16px; border:1px dashed #334155; border-radius:12px; color:#cbd5e1; text-align:center; background:#0b1118; }
     .skeleton{
       position:relative; overflow:hidden; border-radius:var(--radius);
@@ -1027,8 +1048,59 @@ function userCard(_u){
             <i class="fa-regular fa-trash-can"></i>
           </button>` : ''}
       </div>
+      ${notifRow(u, safeId)}
     </article>
   `;
+}
+
+/* ====================== AVISOS DE PENDÊNCIA ====================== */
+const NOTIF_OPCOES = [
+  { k:'lembrete_marco',      ico:'fa-regular fa-bell',        txt:'Lembrete de marco',      dica:'E-mail e push 3 dias antes e no dia do marco do KR, se ainda não houver apontamento' },
+  { k:'lembrete_iniciativa', ico:'fa-solid fa-bullseye',      txt:'Lembrete de iniciativa', dica:'E-mail e push no dia do prazo da iniciativa, se ela não estiver concluída' },
+  { k:'relatorio_atrasos',   ico:'fa-regular fa-clock',       txt:'Atrasos',                dica:'Toda terça e quinta: todos os marcos e iniciativas em atraso desta pessoa' },
+  { k:'resumo_semanal',      ico:'fa-solid fa-chart-column',  txt:'Resumo geral',           dica:'Toda segunda: pendências de todos os responsáveis da empresa' },
+];
+
+function notifRow(u, safeId){
+  if (!u.notif || !safeId) return '';
+  const pode = !!u.can_notif;
+  const algum = NOTIF_OPCOES.some(o => u.notif[o.k]);
+  let aviso = '';
+  if (algum && u.ativo === false) aviso = 'Usuário inativo: não recebe avisos';
+  else if (algum && !u.email_corporativo) aviso = 'Sem e-mail: só recebe push';
+
+  const chaves = NOTIF_OPCOES.map(o => `
+    <label class="nsw${pode ? '' : ' is-locked'}" title="${esc(o.dica)}${pode ? '' : ' (somente administradores alteram)'}">
+      <input type="checkbox" class="notif-sw" data-id="${esc(safeId)}" data-k="${o.k}"
+        ${u.notif[o.k] ? 'checked' : ''} ${pode ? '' : 'disabled'}
+        aria-label="${esc(o.txt)}">
+      <span class="trk" aria-hidden="true"></span>
+      <i class="${o.ico}" aria-hidden="true"></i> ${esc(o.txt)}
+    </label>`).join('');
+
+  return `<div class="notif">
+    <span class="notif-lbl"><i class="fa-regular fa-envelope"></i> Avisos</span>
+    ${chaves}
+    ${aviso ? `<span class="notif-warn"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(aviso)}</span>` : ''}
+  </div>`;
+}
+
+async function onNotifChange(ev){
+  const inp = ev.target.closest('.notif-sw');
+  if (!inp) return;
+  const lbl = inp.closest('.nsw');
+  const valor = inp.checked;
+  lbl?.classList.add('is-busy');
+  try{
+    await apiFetchFlexible('save_notif_prefs', { id_user: inp.dataset.id, chave: inp.dataset.k, valor: valor ? '1' : '0' }, 'POST');
+    const nome = NOTIF_OPCOES.find(o => o.k === inp.dataset.k)?.txt || 'Aviso';
+    toast(`${nome} ${valor ? 'ativado' : 'desativado'}`, 'success');
+  }catch(e){
+    inp.checked = !valor;
+    toast(e?.message || 'Não foi possível salvar o aviso', 'warn');
+  }finally{
+    lbl?.classList.remove('is-busy');
+  }
 }
 
 /* ====================== OPTIONS & LIST LOADERS ====================== */
@@ -1640,6 +1712,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     t=setTimeout(loadList, 320);
   });
   $('#btnRefresh')?.addEventListener('click', loadList);
+  $('#list')?.addEventListener('change', onNotifChange);
   $('#btnClear')?.addEventListener('click', ()=>{
     if (IS_MASTER) $('#fCompany').value = 'all'; else if (MY_COMPANY) $('#fCompany').value = String(MY_COMPANY);
     $('#fRole').value = 'all';

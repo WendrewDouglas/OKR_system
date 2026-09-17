@@ -19,6 +19,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../auth/acl.php';
 require_once __DIR__ . '/functions.php'; // <<< ADICIONADO: helpers de e-mail/reset
+require_once __DIR__ . '/helpers/notif_prefs.php';
 
 /* ----------------------- Helpers ----------------------- */
 function jexit(int $code, array $payload) {
@@ -228,6 +229,10 @@ $SOU_ADMIN_MASTER = (static function (PDO $pdo, int $uid): bool {
    têm, e isso seria afrouxar, não endurecer. */
 $PODE_MEXER_EM_ACL = ($IS_MASTER || $SOU_ADMIN_MASTER);
 
+/* Avisos de pendência (4 chaves por usuário): admin_master em qualquer empresa,
+   user_admin só na própria. Não usa M:user@ORG pelo mesmo motivo acima. */
+$PODE_NOTIF = $PODE_MEXER_EM_ACL || in_array('user_admin', fetch_user_role_keys($pdo, $MEU_ID), true);
+
 $foraDaMinhaEmpresa = static function (int $targetId) use ($pdo, $MINHA_COMPANY): bool {
   if ($targetId <= 0) return false;
   $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ? LIMIT 1");
@@ -396,7 +401,8 @@ if ($method==='GET' && $action==='list') {
     $hasNivel = column_exists($pdo,'usuarios','id_nivel_cargo');
     $hasFunc  = column_exists($pdo,'usuarios','id_funcao');
 
-    $selectExtra  = $hasDep   ? ", u.id_departamento" : ", NULL AS id_departamento";
+    $selectExtra  = column_exists($pdo,'usuarios','ativo') ? ", u.ativo" : ", 1 AS ativo";
+    $selectExtra .= $hasDep   ? ", u.id_departamento" : ", NULL AS id_departamento";
     $selectExtra .= $hasNivel ? ", u.id_nivel_cargo"  : ($hasFunc ? ", u.id_funcao AS id_nivel_cargo" : ", NULL AS id_nivel_cargo");
     // <<< ESSENCIAL
 
@@ -435,7 +441,16 @@ if ($method==='GET' && $action==='list') {
     // filtro não retornava nada, vazando usuários de todos os tenants. Resultado vazio
     // agora permanece vazio — a busca já é escopada por empresa acima.
 
-    $users = array_map(function($r) use($IS_MASTER, $MEU_ID){
+    $notifPrefs = table_exists($pdo, 'usuarios_notif_pref')
+      ? notif_prefs_carregar($pdo, array_column($rows ?: [], 'id_user'))
+      : [];
+    $notifEdita = static function (array $r) use ($PODE_NOTIF, $SOU_ADMIN_MASTER, $IS_MASTER, $MINHA_COMPANY, $notifPrefs): bool {
+      if (!$PODE_NOTIF || !$notifPrefs) return false;
+      if ($SOU_ADMIN_MASTER || $IS_MASTER) return true;
+      return $MINHA_COMPANY > 0 && (int)$r['id_company'] === $MINHA_COMPANY;
+    };
+
+    $users = array_map(function($r) use($IS_MASTER, $MEU_ID, $notifPrefs, $notifEdita){
       $roles = array_values(array_filter(array_map('trim', explode(',', (string)($r['roles_csv'] ?? '')))));
 
       // Catálogo único: resolve por avatars.path (gallery/custom/legado).
@@ -451,6 +466,9 @@ if ($method==='GET' && $action==='list') {
         'company_name'      => $r['company_name'],
         'roles'             => $roles,
         'avatar'            => $avatar, // <<< NOVO
+        'ativo'             => (int)($r['ativo'] ?? 1) === 1,
+        'notif'             => $notifPrefs[(int)$r['id_user']] ?? notif_prefs_padrao(),
+        'can_notif'         => $notifEdita($r),
         'can_edit'          => $IS_MASTER || ((int)$r['id_user']===$MEU_ID),
         'can_delete'        => $IS_MASTER && (int)$r['id_user']!==$MEU_ID && (int)$r['id_user']!==1,
 
@@ -937,6 +955,36 @@ if ($method==='POST' && $action==='save_permissions') {
   } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     jexit(400, ['success'=>false,'error'=>$e->getMessage()]);
+  }
+}
+
+/* ======================================================
+ * SAVE_NOTIF_PREFS — liga/desliga os avisos de pendência de um usuário
+ * Parâmetros: id_user, chave (uma de NOTIF_PREF_CHAVES), valor (0|1)
+ * ====================================================*/
+if ($method==='POST' && $action==='save_notif_prefs') {
+  if (!$PODE_NOTIF) jexit(403, ['success'=>false,'error'=>'Sem permissão para alterar avisos.']);
+  if (!table_exists($pdo, 'usuarios_notif_pref')) jexit(503, ['success'=>false,'error'=>'Avisos ainda não instalados (migração 012).']);
+  $id    = (int)($_POST['id_user'] ?? 0);
+  $chave = (string)($_POST['chave'] ?? '');
+  $valor = (string)($_POST['valor'] ?? '') === '1';
+  if ($id <= 0) jexit(422, ['success'=>false,'error'=>'ID inválido']);
+  if (!in_array($chave, NOTIF_PREF_CHAVES, true)) jexit(422, ['success'=>false,'error'=>'Aviso inválido']);
+
+  $st = $pdo->prepare("SELECT id_company FROM usuarios WHERE id_user = ?");
+  $st->execute([$id]);
+  $alvoCompany = $st->fetchColumn();
+  if ($alvoCompany === false) jexit(404, ['success'=>false,'error'=>'Usuário não encontrado']);
+  if (!$SOU_ADMIN_MASTER && !$IS_MASTER && (int)$alvoCompany !== $MINHA_COMPANY) {
+    jexit(403, ['success'=>false,'error'=>'Sem permissão para alterar avisos de outra organização.']);
+  }
+
+  try {
+    $prefs = notif_prefs_salvar($pdo, $id, [$chave => $valor], $MEU_ID);
+    jexit(200, ['success'=>true, 'notif'=>$prefs]);
+  } catch (Throwable $e) {
+    app_log('NOTIF_PREFS_FAIL', ['id_user'=>$id, 'error'=>$e->getMessage()]);
+    jexit(400, ['success'=>false,'error'=>'Não foi possível salvar.']);
   }
 }
 
