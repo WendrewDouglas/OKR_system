@@ -215,8 +215,9 @@ function data_rel(?string $dt): string {
 
 .pe-table-wrap{ background:var(--card,#1a1f2b); border:1px solid var(--border,#2a2f3b); border-radius:12px; overflow-x:auto; }
 table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--text,#eee); }
-.pe th{ text-align:left; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; color:var(--text-secondary,#aaa); padding:.75rem 1rem; border-bottom:1px solid var(--border,#2a2f3b); white-space:nowrap; }
-.pe td{ padding:.8rem 1rem; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
+.pe th{ text-align:left; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; color:var(--text-secondary,#aaa); padding:.75rem .8rem; border-bottom:1px solid var(--border,#2a2f3b); line-height:1.3; vertical-align:bottom; }
+.pe th.num{ text-align:right; }
+.pe td{ padding:.8rem .8rem; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
 .pe tr:last-child td{ border-bottom:0; }
 .pe tr.is-off td:not(.pe-col-toggle){ opacity:.55; }
 .pe .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
