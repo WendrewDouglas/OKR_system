@@ -208,7 +208,8 @@ function ge_iniciais(string $a, ?string $b): string {
   return mb_strtoupper(mb_substr($a, 0, 1) . mb_substr((string)$b, 0, 1));
 }
 const GE_PAPEIS = [
-  'admin_master' => ['Admin master', 'r-red'],
+  'admin_master'  => ['Admin master', 'r-red'],
+  'gestor_master' => ['Gestor master', 'r-amber'],
   'user_admin'   => ['Administrador', 'r-purple'],
   'user_gestor'  => ['Gestor', 'r-blue'],
   'user_colab'   => ['Colaborador', 'r-green'],
@@ -339,7 +340,7 @@ function ge_usuario(array $u): string {
 .ge-ulist-h{ display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.75rem 1.1rem .25rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ge-mut); font-weight:700; }
 .ge-ulist-h a{ text-transform:none; letter-spacing:0; color:var(--ge-gold); font-weight:700; text-decoration:none; font-size:.78rem; }
 .ge-ulist{ list-style:none; margin:0; padding:0 0 .4rem; }
-.ge-user{ display:grid; grid-template-columns:32px minmax(0,1.6fr) minmax(0,1.2fr) 110px 78px; align-items:center; gap:.75rem; padding:.55rem 1.1rem; font-size:.82rem; border-top:1px solid rgba(255,255,255,.04); }
+.ge-user{ display:grid; grid-template-columns:32px minmax(0,1.6fr) minmax(0,1.2fr) 110px 86px; align-items:center; gap:.75rem; padding:.55rem 1.1rem; font-size:.82rem; border-top:1px solid rgba(255,255,255,.04); }
 .ge-user:hover{ background:rgba(255,255,255,.03); }
 .ge-user.is-off{ opacity:.55; }
 .ge-av{ width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.08); display:grid; place-items:center; color:var(--ge-gold); font-size:.7rem; font-weight:800; overflow:hidden; }
@@ -352,6 +353,7 @@ function ge_usuario(array $u): string {
 .ge-role{ font-size:.66rem; font-weight:700; padding:.12rem .45rem; border-radius:5px; border:1px solid; white-space:nowrap; }
 .r-red{ background:rgba(239,68,68,.14); color:#fca5a5; border-color:rgba(239,68,68,.3); }
 .r-purple{ background:rgba(168,85,247,.14); color:#d8b4fe; border-color:rgba(168,85,247,.3); }
+.r-amber{ background:rgba(245,158,11,.14); color:#fcd34d; border-color:rgba(245,158,11,.3); }
 .r-blue{ background:rgba(59,130,246,.14); color:#93c5fd; border-color:rgba(59,130,246,.3); }
 .r-green{ background:rgba(34,197,94,.14); color:#86efac; border-color:rgba(34,197,94,.3); }
 .r-gray{ background:rgba(255,255,255,.05); color:var(--ge-mut); border-color:var(--ge-line); }
@@ -382,6 +384,7 @@ function ge_usuario(array $u): string {
   .ge-head .ge-sw{ grid-column:2; grid-row:2; }
   .ge-stats{ grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:repeat(3,1fr); }
   .ge-stat{ align-items:flex-start; min-width:0; }
+  .ge-stat span{ white-space:normal; line-height:1.2; }
   .ge-chev{ grid-column:3; grid-row:1; }
   .ge-seg{ width:100%; } .ge-seg button{ flex:1; }
   .ge-user{ grid-template-columns:32px minmax(0,1fr); }
