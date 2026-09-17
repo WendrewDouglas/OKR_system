@@ -217,12 +217,14 @@ function data_rel(?string $dt): string {
 table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--text,#eee); }
 .pe th{ text-align:left; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; color:var(--text-secondary,#aaa); padding:.75rem .8rem; border-bottom:1px solid var(--border,#2a2f3b); line-height:1.3; vertical-align:bottom; }
 .pe th.num{ text-align:right; }
+table.pe th{ white-space:normal; }
+.pe th{ letter-spacing:.03em; }
 .pe td{ padding:.8rem .8rem; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
 .pe tr:last-child td{ border-bottom:0; }
 .pe tr.is-off td:not(.pe-col-toggle){ opacity:.55; }
 .pe .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pe-name{ font-weight:700; }
-.pe td.pe-col-name{ min-width:230px; }
+.pe td.pe-col-name{ min-width:210px; }
 .pe-meta span{ white-space:nowrap; }
 .pe-id{ color:var(--text-secondary,#aaa); font-weight:400; font-size:.75rem; }
 .pe-meta{ font-size:.75rem; color:var(--text-secondary,#aaa); margin-top:2px; }
@@ -300,7 +302,7 @@ table.pe{ width:100%; border-collapse:collapse; font-size:.85rem; color:var(--te
             <th class="num">Iniciativas</th>
             <th class="num">Em atraso</th>
             <th class="num">Com avisos</th>
-            <th>Último apontamento</th>
+            <th title="Último apontamento de KR">Últ. apont.</th>
           </tr>
         </thead>
         <tbody id="peBody">
