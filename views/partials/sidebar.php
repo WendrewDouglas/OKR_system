@@ -117,6 +117,7 @@ $isMinhasTarefas    = in_array($currentPath, ['/OKR_system/views/minhas_tarefas.
 $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.php','/OKR_system/system_health']);
 $isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
 $isAdminPush        = in_array($currentPath, ['/OKR_system/views/admin_push.php','/OKR_system/admin_push']);
+$isAdminEmpresas    = in_array($currentPath, ['/OKR_system/views/admin_empresas.php','/OKR_system/admin_empresas']);
 $isAdminGroup       = ($isSystemHealth || $isAdminCompanies || $isAdminPush);
 $isTutoriais        = in_array($currentPath, ['/OKR_system/views/tutoriais.php','/OKR_system/tutoriais']);
 $isCrm              = in_array($currentPath, ['/OKR_system/views/crm.php','/OKR_system/crm']);
@@ -566,6 +567,16 @@ body.collapsed .sidebar-footer .org { display: none; }
           <i class="fas fa-sliders"></i><span>Configurações</span>
         </li>
       </ul>
+    </li>
+    <?php endif; ?>
+    <?php if ($isAdminMaster): ?>
+    <!-- Painel de Empresas: exclusivo de admin_master (a própria página revalida) -->
+    <li>
+      <div class="menu-item <?= $isAdminEmpresas ? 'active' : '' ?>"
+           data-href="/OKR_system/views/admin_empresas.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-city icon-main"></i><span>Painel de Empresas</span>
+      </div>
     </li>
     <?php endif; ?>
   </ul>

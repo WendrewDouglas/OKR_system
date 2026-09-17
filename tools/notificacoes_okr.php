@@ -10,13 +10,15 @@
  * Opções:
  *   --dry-run          não envia nem grava nada; só lista o que sairia
  *   --date=AAAA-MM-DD  simula outro dia (segunda = resumo, terça/quinta = atrasos)
- *   --company=N        só usuários da empresa N (e, no resumo do admin, só ela)
+ *   --company=N        só usuários da empresa N (e, no resumo do admin, só ela).
+ *                      Com --dry-run ou --to, vale mesmo para empresa inativa (teste).
  *   --user=N|email     só este usuário (id ou e-mail)
  *   --itens            com --company: lista as pendências da empresa e quem é o responsável, e sai
  *   --to=email         manda todos os e-mails para este endereço (teste: sem push, sem log)
  *   --no-push          não envia push nem grava na central de notificações
  *   --preview=DIR      grava o HTML de cada e-mail em DIR (funciona com --dry-run)
  *
+ * Só empresas ativas (company.ativo, Painel de Empresas) geram avisos.
  * Idempotente: notif_envio_log impede segundo envio no mesmo dia.
  */
 declare(strict_types=1);
@@ -100,11 +102,19 @@ if (isset($opt['itens'])) {
 $dow       = (int)date('N', strtotime($hoje)); // 1=seg
 $segunda   = $dow === 1;
 $diasSem   = [1 => 'segunda', 2 => 'terça', 3 => 'quarta', 4 => 'quinta', 5 => 'sexta', 6 => 'sábado', 7 => 'domingo'];
-// Empresa demo (11) fica fora do resumo do admin. Ajustável pelo .env.
-$excluir   = array_filter(array_map('intval', explode(',', (string)env('NOTIF_EXCLUIR_EMPRESAS', '11'))));
+// Empresas que podem gerar aviso. Em teste (--dry-run/--to) a empresa pedida
+// em --company entra mesmo inativa, para dar para testar na demo.
+$ativas    = notif_empresas_ativas($pdo);
+$emTeste   = $dry || $paraTeste !== '';
+if ($soEmpresa && $emTeste && !isset($ativas[$soEmpresa])) {
+  $nm = $pdo->prepare("SELECT COALESCE(NULLIF(organizacao,''), razao_social, CONCAT('Empresa #', id_company)) FROM company WHERE id_company = ?");
+  $nm->execute([$soEmpresa]);
+  $ativas[$soEmpresa] = (string)($nm->fetchColumn() ?: "Empresa #$soEmpresa") . ' [inativa, só teste]';
+}
 
 $modo = $dry ? 'DRY-RUN' : ($paraTeste !== '' ? "TESTE para $paraTeste" : 'REAL');
 echo '[' . date('c') . "] notificacoes_okr $modo dia=$hoje ({$diasSem[$dow]})\n";
+echo '  empresas ativas: ' . ($ativas ? implode(', ', $ativas) : 'nenhuma') . "\n";
 
 /* ---------- destinatários: quem tem alguma chave ligada ---------- */
 $sql = "
@@ -131,7 +141,6 @@ $dadosEmpresa = static function (int $cid) use (&$cache, $pdo, $hoje): array {
   if (!isset($cache[$cid])) $cache[$cid] = notif_itens_empresa($pdo, $cid, $hoje);
   return $cache[$cid];
 };
-$ativas = null;
 
 $tot = ['usuarios' => count($usuarios), 'emails' => 0, 'push' => 0, 'pulados' => 0, 'falhas' => 0];
 
@@ -168,10 +177,13 @@ foreach ($usuarios as $u) {
 
   echo "  - #$uid $nome (empresa $cid" . ($admin ? ', admin_master' : '') . ")\n";
 
+  $ativaPropria = isset($ativas[$cid]);
+  if (!$ativaPropria && !($admin && $prefs['resumo_semanal'])) continue; // empresa inativa: nada a enviar
+
   /* pendências pessoais */
   $pac = ['hoje' => [], 'em3' => [], 'atrasados' => []];
   $querPessoal = $prefs['lembrete_marco'] || $prefs['lembrete_iniciativa'] || $prefs['relatorio_atrasos'];
-  if ($querPessoal && $cid > 0 && (!$soEmpresa || $soEmpresa === $cid)) {
+  if ($querPessoal && $ativaPropria && (!$soEmpresa || $soEmpresa === $cid)) {
     $pac = notif_pacote_pessoal($dadosEmpresa($cid)['itens'], $uid, $prefs, $hoje);
   }
   $nHoje = count($pac['hoje']); $nEm3 = count($pac['em3']); $nAtr = count($pac['atrasados']);
@@ -181,13 +193,9 @@ foreach ($usuarios as $u) {
   $resumos = []; // cid => [nome, grupos, pessoas, total]
   if ($segunda && $prefs['resumo_semanal']) {
     if ($admin) {
-      // --company explícito vale mesmo para empresa excluída (é assim que se testa na demo).
-      $ativas ??= notif_empresas_ativas($pdo, $soEmpresa ? [] : $excluir);
       $alvo = $soEmpresa ? array_intersect_key($ativas, [$soEmpresa => true]) : $ativas;
     } else {
-      $nm = $pdo->prepare("SELECT COALESCE(NULLIF(organizacao,''), razao_social, CONCAT('Empresa #', id_company)) FROM company WHERE id_company = ?");
-      $nm->execute([$cid]);
-      $alvo = $cid > 0 ? [$cid => (string)($nm->fetchColumn() ?: "Empresa #$cid")] : [];
+      $alvo = $ativaPropria ? [$cid => $ativas[$cid]] : [];
     }
     foreach ($alvo as $rc => $rnome) {
       $d = $dadosEmpresa((int)$rc);

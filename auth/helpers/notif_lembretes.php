@@ -17,8 +17,10 @@ declare(strict_types=1);
  *     da agenda); no dia do vencimento é só lembrete;
  *   - KR cancelado/pausado/concluído e iniciativa concluída/cancelada/pausada
  *     não geram cobrança (quem decide é agenda_estado());
+ *   - só empresa ativa (company.ativo, Painel de Empresas) gera aviso;
  *   - admin_master recebe o resumo de cada empresa ativa, um e-mail por
- *     empresa; os demais recebem só o da própria empresa;
+ *     empresa, mesmo que a própria empresa dele esteja inativa; os demais
+ *     recebem só o da própria empresa;
  *   - um e-mail pessoal por dia, juntando tudo o que couber naquele dia.
  *
  * Os itens saem de agenda_build_events(), que já amarra marco e iniciativa à
@@ -46,33 +48,24 @@ function notif_optout_url(int $idUser): string {
  * ==================================================================== */
 
 /**
- * Empresa ativa = ao menos um usuário ativo e ao menos um KR em andamento
- * (nem concluído nem cancelado). status do KR é texto livre: normaliza em PHP.
+ * Empresas ativas = company.ativo = 1 (ligado no Painel de Empresas, migração 013).
+ * Só elas geram avisos. Sem a coluna (migração não aplicada), nenhuma empresa é ativa.
  * @return array<int,string> id_company => nome
  */
-function notif_empresas_ativas(PDO $pdo, array $excluir = []): array {
-  $excluir = array_map('intval', $excluir);
-  $nomes = [];
-  $st = $pdo->query("
-    SELECT c.id_company, COALESCE(NULLIF(c.organizacao,''), c.razao_social, CONCAT('Empresa #', c.id_company)) AS nome
-      FROM company c
-     WHERE EXISTS (SELECT 1 FROM usuarios u WHERE u.id_company = c.id_company AND u.ativo = 1)
-  ");
-  foreach ($st as $r) $nomes[(int)$r['id_company']] = (string)$r['nome'];
+function notif_empresas_ativas(PDO $pdo): array {
+  $st = $pdo->prepare("SELECT 1 FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company' AND COLUMN_NAME = 'ativo'");
+  $st->execute();
+  if (!$st->fetchColumn()) return [];
 
   $ativas = [];
-  $stK = $pdo->query("
-    SELECT DISTINCT o.id_company, k.status
-      FROM key_results k
-      INNER JOIN objetivos o ON o.id_objetivo = k.id_objetivo
+  $q = $pdo->query("
+    SELECT id_company, COALESCE(NULLIF(organizacao,''), razao_social, CONCAT('Empresa #', id_company)) AS nome
+      FROM company
+     WHERE ativo = 1
+     ORDER BY nome
   ");
-  foreach ($stK as $r) {
-    $cid = (int)$r['id_company'];
-    if (!isset($nomes[$cid]) || in_array($cid, $excluir, true)) continue;
-    $s = krs_normalize_status($r['status']);
-    if ($s !== 'concluido' && $s !== 'cancelado') $ativas[$cid] = $nomes[$cid];
-  }
-  asort($ativas, SORT_NATURAL | SORT_FLAG_CASE);
+  foreach ($q as $r) $ativas[(int)$r['id_company']] = (string)$r['nome'];
   return $ativas;
 }
 
