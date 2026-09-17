@@ -115,10 +115,8 @@ $isRelOKRs          = ($currentPath === '/OKR_system/views/relatorios_okrs.php')
 $isReports          = ($isRelOKRs || $currentPath === '/OKR_system/views/rel_desempenho.php');
 $isMinhasTarefas    = in_array($currentPath, ['/OKR_system/views/minhas_tarefas.php','/OKR_system/minhas_tarefas']);
 $isSystemHealth     = in_array($currentPath, ['/OKR_system/views/system_health.php','/OKR_system/system_health']);
-$isAdminCompanies   = in_array($currentPath, ['/OKR_system/views/admin_companies.php','/OKR_system/admin_companies']);
 $isAdminPush        = in_array($currentPath, ['/OKR_system/views/admin_push.php','/OKR_system/admin_push']);
 $isAdminEmpresas    = in_array($currentPath, ['/OKR_system/views/admin_empresas.php','/OKR_system/admin_empresas']);
-$isAdminGroup       = ($isSystemHealth || $isAdminCompanies || $isAdminPush);
 $isTutoriais        = in_array($currentPath, ['/OKR_system/views/tutoriais.php','/OKR_system/tutoriais']);
 $isCrm              = in_array($currentPath, ['/OKR_system/views/crm.php','/OKR_system/crm']);
 $crmView            = $isCrm ? (string)($_GET['view'] ?? 'overview') : '';
@@ -214,11 +212,8 @@ if ($pdo && $userId) {
   } catch (Throwable $e) { /* ignora */ }
 }
 
-/* --- Allowlist de menus restritos (CRM + Administrador) ---
-   Somente estes usuários enxergam essas opções no menu lateral; os demais
-   nem sabem que existem. Mantido por id_user (estável). */
-$SIDEBAR_PRIVILEGED_USER_IDS = [1, 310]; // 1 = Wendrew Gomes, 310 = Willian Agner
-$canSeePrivileged = in_array((int)$userId, $SIDEBAR_PRIVILEGED_USER_IDS, true);
+/* Menus restritos (seção "Acesso Admin": CRM, Gestão de Empresas, System
+   Health, Envios Push) aparecem só para admin_master ($isAdminMaster acima). */
 ?>
 <!-- ===================== SIDEBAR ===================== -->
 <style>
@@ -469,33 +464,6 @@ body.collapsed .sidebar-footer .org { display: none; }
         <?php endif; ?>
       </ul>
     </li>
-    <?php if ($canSeePrivileged): ?>
-    <li class="<?= $isAdminGroup ? 'open' : '' ?>">
-      <div class="menu-item <?= $isAdminGroup ? 'active' : '' ?>" onclick="onMenuClick(this, event)">
-        <i class="fas fa-shield-halved icon-main"></i><span>Administrador</span>
-        <i class="fas fa-chevron-down icon-chevron"
-           title="Abrir/Fechar"
-           onclick="event.stopPropagation(); this.closest('li').classList.toggle('open');"></i>
-      </div>
-      <ul class="submenu">
-        <li class="<?= $isSystemHealth ? 'active' : '' ?>"
-            data-href="/OKR_system/views/system_health.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-heartbeat"></i><span>System Health</span>
-        </li>
-        <li class="<?= $isAdminCompanies ? 'active' : '' ?>"
-            data-href="/OKR_system/views/admin_companies.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-building-circle-check"></i><span>Empresas & Usuários</span>
-        </li>
-        <li class="<?= $isAdminPush ? 'active' : '' ?>"
-            data-href="/OKR_system/views/admin_push.php"
-            onclick="onSubmenuClick(this)">
-          <i class="fas fa-paper-plane"></i><span>Envios Push</span>
-        </li>
-      </ul>
-    </li>
-    <?php endif; ?>
     <!-- Tutoriais: biblioteca de vídeos, aberta a todos os usuários logados -->
     <li>
       <div class="menu-item <?= $isTutoriais ? 'active' : '' ?>"
@@ -504,8 +472,9 @@ body.collapsed .sidebar-footer .org { display: none; }
         <i class="fas fa-graduation-cap icon-main"></i><span>Tutoriais</span>
       </div>
     </li>
-    <?php if ($canSeePrivileged): ?>
-    <li class="sidebar-section-label">CRM Comercial</li>
+    <?php if ($isAdminMaster): ?>
+    <!-- Acesso Admin: só admin_master (cada página também revalida o papel) -->
+    <li class="sidebar-section-label">Acesso Admin</li>
     <li class="<?= $isCrmGroup ? 'open' : '' ?>">
       <div class="menu-item crm-menu <?= $isCrmGroup ? 'active' : '' ?>"
            data-href="/OKR_system/views/crm.php"
@@ -568,14 +537,25 @@ body.collapsed .sidebar-footer .org { display: none; }
         </li>
       </ul>
     </li>
-    <?php endif; ?>
-    <?php if ($isAdminMaster): ?>
-    <!-- Painel de Empresas: exclusivo de admin_master (a própria página revalida) -->
     <li>
       <div class="menu-item <?= $isAdminEmpresas ? 'active' : '' ?>"
            data-href="/OKR_system/views/admin_empresas.php"
            onclick="onMenuClick(this, event)">
-        <i class="fas fa-city icon-main"></i><span>Painel de Empresas</span>
+        <i class="fas fa-city icon-main"></i><span>Gestão de Empresas</span>
+      </div>
+    </li>
+    <li>
+      <div class="menu-item <?= $isSystemHealth ? 'active' : '' ?>"
+           data-href="/OKR_system/views/system_health.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-heartbeat icon-main"></i><span>System Health</span>
+      </div>
+    </li>
+    <li>
+      <div class="menu-item <?= $isAdminPush ? 'active' : '' ?>"
+           data-href="/OKR_system/views/admin_push.php"
+           onclick="onMenuClick(this, event)">
+        <i class="fas fa-paper-plane icon-main"></i><span>Envios Push</span>
       </div>
     </li>
     <?php endif; ?>

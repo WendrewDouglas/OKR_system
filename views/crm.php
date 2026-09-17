@@ -12,10 +12,16 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 
-/* Acesso restrito: CRM disponível apenas para usuários autorizados.
+/* Acesso restrito: CRM só para admin_master (menu "Acesso Admin").
    Os demais são redirecionados silenciosamente (não revela a existência da página). */
-$CRM_ALLOWED_USER_IDS = [1, 310]; // 1 = Wendrew Gomes, 310 = Willian Agner
-if (!in_array((int)$_SESSION['user_id'], $CRM_ALLOWED_USER_IDS, true)) {
+$__crmAdm = pdo_conn()->prepare("
+  SELECT 1 FROM rbac_user_role ur
+    JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
+   WHERE ur.user_id = ? AND r.role_key = 'admin_master'
+   LIMIT 1
+");
+$__crmAdm->execute([(int)$_SESSION['user_id']]);
+if (!$__crmAdm->fetchColumn()) {
   header('Location: /OKR_system/dashboard');
   exit;
 }

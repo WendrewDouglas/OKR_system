@@ -21,6 +21,18 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Só admin_master (a página expõe o token do health check)
+$__shAdm = pdo_conn()->prepare("
+  SELECT 1 FROM rbac_user_role ur
+    JOIN rbac_roles r ON r.role_id = ur.role_id AND r.is_active = 1
+   WHERE ur.user_id = ? AND r.role_key = 'admin_master'
+   LIMIT 1
+");
+$__shAdm->execute([(int)$_SESSION['user_id']]);
+if (!$__shAdm->fetchColumn()) {
+    deny_with_modal('Acesso restrito a administradores do sistema.');
+}
+
 // CSRF
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
