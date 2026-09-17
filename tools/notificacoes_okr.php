@@ -11,7 +11,8 @@
  *   --dry-run          não envia nem grava nada; só lista o que sairia
  *   --date=AAAA-MM-DD  simula outro dia (segunda = resumo, terça/quinta = atrasos)
  *   --company=N        só usuários da empresa N (e, no resumo do admin, só ela)
- *   --user=N           só o usuário N
+ *   --user=N|email     só este usuário (id ou e-mail)
+ *   --itens            com --company: lista as pendências da empresa e quem é o responsável, e sai
  *   --to=email         manda todos os e-mails para este endereço (teste: sem push, sem log)
  *   --no-push          não envia push nem grava na central de notificações
  *   --preview=DIR      grava o HTML de cada e-mail em DIR (funciona com --dry-run)
@@ -32,11 +33,12 @@ require_once __DIR__ . '/../auth/functions.php';
 require_once __DIR__ . '/../auth/helpers/notif_lembretes.php';
 
 /* ---------- opções ---------- */
-$opt = getopt('', ['dry-run', 'date:', 'company:', 'user:', 'to:', 'no-push', 'preview:']);
+$opt = getopt('', ['dry-run', 'date:', 'company:', 'user:', 'to:', 'no-push', 'preview:', 'itens']);
 $dry       = isset($opt['dry-run']);
 $hoje      = isset($opt['date']) ? (string)$opt['date'] : date('Y-m-d');
 $soEmpresa = isset($opt['company']) ? (int)$opt['company'] : 0;
-$soUser    = isset($opt['user']) ? (int)$opt['user'] : 0;
+$userArg   = isset($opt['user']) ? trim((string)$opt['user']) : '';
+$soUser    = 0;
 $paraTeste = isset($opt['to']) ? trim((string)$opt['to']) : '';
 $semPush   = isset($opt['no-push']) || $paraTeste !== '';
 $preview   = isset($opt['preview']) ? rtrim((string)$opt['preview'], '/\\') : '';
@@ -63,6 +65,37 @@ $pdo = new PDO(
   DB_USER, DB_PASS,
   [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
 );
+
+if ($userArg !== '') {
+  $q = $pdo->prepare(ctype_digit($userArg)
+    ? 'SELECT id_user FROM usuarios WHERE id_user = ?'
+    : 'SELECT id_user FROM usuarios WHERE email_corporativo = ?');
+  $q->execute([$userArg]);
+  $soUser = (int)$q->fetchColumn();
+  if ($soUser <= 0) { fwrite(STDERR, "Usuário não encontrado: $userArg\n"); exit(1); }
+}
+
+/* ---------- diagnóstico: o que a empresa tem pendente e de quem é ---------- */
+if (isset($opt['itens'])) {
+  if (!$soEmpresa) { fwrite(STDERR, "--itens exige --company=N\n"); exit(1); }
+  $d = notif_itens_empresa($pdo, $soEmpresa, $hoje);
+  $em3 = date('Y-m-d', strtotime($hoje . ' +3 days'));
+  echo "Pendências da empresa $soEmpresa vistas em $hoje (vence em 3 dias = $em3):\n";
+  usort($d['itens'], static fn($a, $b) => [$a['data'], $a['tipo']] <=> [$b['data'], $b['tipo']]);
+  foreach ($d['itens'] as $it) {
+    $resp = $it['resp'] > 0 ? '#' . $it['resp'] . ' ' . ($d['pessoas'][$it['resp']]['nome'] ?? '?') : 'sem responsável';
+    printf("  %s  %-8s %-10s %-24s %s\n", $it['data'], $it['estado'], $it['tipo'], $resp,
+      mb_strimwidth($it['titulo'] . ' | KR: ' . $it['kr'], 0, 90, '...'));
+  }
+  echo count($d['itens']) . " item(ns) em hoje/próximos 7 dias/vencidos.\n\nChaves ligadas:\n";
+  $q = $pdo->query("SELECT p.*, u.primeiro_nome, u.id_company, u.ativo FROM usuarios_notif_pref p JOIN usuarios u ON u.id_user = p.id_user");
+  foreach ($q as $r) {
+    $on = array_keys(array_filter(array_intersect_key($r, array_flip(NOTIF_PREF_CHAVES)), static fn($v) => (int)$v === 1));
+    if ($on) printf("  #%d %s (empresa %d%s): %s\n", $r['id_user'], $r['primeiro_nome'], $r['id_company'],
+      (int)$r['ativo'] === 1 ? '' : ', INATIVO', implode(', ', $on));
+  }
+  exit(0);
+}
 
 $dow       = (int)date('N', strtotime($hoje)); // 1=seg
 $segunda   = $dow === 1;
